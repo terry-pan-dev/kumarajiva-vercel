@@ -41,7 +41,7 @@ export async function action({ request }: ActionFunctionArgs) {
         return redirect(`/update_password?email=${user.email}`, { headers });
       }
       logger.info('login', 'redirect to root page');
-      return redirect('/', { headers });
+      return redirect('/dashboard', { headers });
     } else {
       logger.info('login', 'wrong credentials');
       return json({ password: 'please enter correct credentials' }, { status: 401 });
@@ -65,7 +65,6 @@ export default function LoginForm() {
 
   const { errors } = form.formState;
   const onSubmit = (data: z.infer<typeof loginSchema>) => {
-    console.log(data);
     fetcher.submit(data, { method: 'post' });
   };
 

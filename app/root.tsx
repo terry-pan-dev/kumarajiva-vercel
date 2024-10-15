@@ -1,21 +1,8 @@
-import {
-  json,
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-  useLoaderData,
-  useOutletContext,
-  type MetaFunction,
-} from '@remix-run/react';
+import { Links, Meta, Outlet, Scripts, ScrollRestoration, type MetaFunction } from '@remix-run/react';
 import './tailwind.css';
 import { Analytics } from '@vercel/analytics/react';
-import { type LinksFunction, type LoaderFunctionArgs } from '@vercel/remix';
+import { type LinksFunction } from '@vercel/remix';
 import { type PropsWithChildren } from 'react';
-import { ReadUser } from '../drizzle/tables';
-import { assertAuthUser } from './auth.server';
-import { SideBarMenu } from './components/SideBarMenu';
 
 export const links: LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

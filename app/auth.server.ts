@@ -26,7 +26,11 @@ const credentialStrategy = new FormStrategy(async ({ form, context }) => {
     console.log('authenticator', error);
   }
   logger.info('authenticator', 'after readUserByEmail');
-  logger.log('authenticator', 'user', user);
+  logger.log('authenticator', {
+    userId: user?.id,
+    email: user?.email,
+    role: user?.role,
+  });
   if (user) {
     logger.info('authenticator', 'before bcrypt compare');
     const isValid = await bcrypt.compare(password as string, user.password);
