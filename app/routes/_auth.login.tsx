@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { assertAuthUser, authenticator } from '~/auth.server';
+import { authenticator } from '~/auth.server';
 import { logger } from '~/lib/logger';
-import { cn, emailRegex } from '~/lib/utils';
+import { cn } from '~/lib/utils';
 import { commitSession, getSession } from '~/session.server';
 import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -47,8 +47,7 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({ password: 'please enter correct credentials' }, { status: 401 });
     }
   } catch (error: unknown) {
-    logger.error('login', 'message', (error as Error)?.message);
-    logger.error('login', 'stack trace', (error as Error)?.stack);
+    logger.error('login', 'message', error);
     return json({ password: 'Internal Server Error' }, { status: 500 });
   }
 }
