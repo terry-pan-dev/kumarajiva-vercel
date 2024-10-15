@@ -1,0 +1,167 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useFetcher } from '@remix-run/react';
+import React, { useCallback, useEffect, useState, type PropsWithChildren } from 'react';
+import { FormProvider, useForm, useFormContext, type Mode } from 'react-hook-form';
+import { ClientOnly } from 'remix-utils/client-only';
+import { type z, type ZodSchema } from 'zod';
+import { FormControl, FormDescription, FormItem, FormLabel, Input, Textarea } from './ui';
+import { Button } from './ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+
+interface FormModalProps<TFormValues extends ZodSchema = ZodSchema> {
+  title: string;
+  description?: string;
+  defaultValues?: z.infer<TFormValues>;
+  schema: TFormValues;
+  trigger: React.ReactNode;
+  mode?: Mode;
+}
+
+export const FormModal = <T extends ZodSchema = ZodSchema>({
+  children,
+  title,
+  description,
+  trigger,
+  schema,
+  defaultValues,
+  mode = 'onSubmit',
+}: PropsWithChildren<FormModalProps<T>>) => {
+  const form = useForm<typeof schema>({
+    resolver: zodResolver(schema),
+    mode,
+    defaultValues,
+  });
+  const fetcher = useFetcher<{ success: boolean }>();
+
+  const disabled = fetcher.state !== 'idle';
+
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      form.reset();
+    }
+  }, [open, form]);
+
+  useEffect(() => {
+    if (fetcher.data?.success) {
+      setOpen(false);
+    }
+  }, [fetcher.data]);
+
+  const onSubmit = useCallback(
+    (data: z.infer<typeof schema>) => {
+      fetcher.submit(data, { method: 'post' });
+    },
+    [fetcher],
+  );
+
+  return (
+    <ClientOnly fallback={<div>Loading...</div>}>
+      {() => (
+        <Dialog onOpenChange={setOpen} open={open}>
+          <DialogTrigger
+            asChild
+            onClick={(e) => {
+              setOpen(true);
+              e.stopPropagation();
+            }}
+          >
+            {trigger}
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl lg:max-w-4xl" aria-describedby="form-modal-description">
+            <DialogHeader>
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription className="hidden">{description || 'form modal'}</DialogDescription>
+            </DialogHeader>
+
+            <FormProvider {...form}>
+              <fetcher.Form method="post" onSubmit={form.handleSubmit(onSubmit)}>
+                <div>{children}</div>
+                <div className="h-4" />
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(false)}>
+                      Close
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={disabled}>
+                    Save
+                  </Button>
+                </DialogFooter>
+              </fetcher.Form>
+            </FormProvider>
+          </DialogContent>
+        </Dialog>
+      )}
+    </ClientOnly>
+  );
+};
+
+interface FormInputProps {
+  name: string;
+  label: string;
+  type?: string;
+  required?: boolean;
+  description?: string;
+}
+
+interface BaseFormFieldProps extends FormInputProps {
+  errors: ReturnType<typeof useFormContext>['formState']['errors'];
+}
+
+export function FormInput({ name, label, type = 'text', required = false, description }: FormInputProps) {
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext();
+
+  return (
+    <BaseFormField name={name} label={label} required={required} description={description} errors={errors}>
+      <Input id={name} type={type} {...register(name)} />
+    </BaseFormField>
+  );
+}
+
+export function FormTextarea({ name, label, required = false, description }: FormInputProps) {
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext();
+
+  return (
+    <BaseFormField name={name} label={label} required={required} description={description} errors={errors}>
+      <Textarea placeholder={label} {...register(name)} />
+    </BaseFormField>
+  );
+}
+
+function BaseFormField({
+  errors,
+  name,
+  label,
+  required = false,
+  description,
+  children,
+}: PropsWithChildren<BaseFormFieldProps>) {
+  return (
+    <FormItem>
+      <FormLabel>
+        {label}
+        {required && <span className="text-red-600">*</span>}
+      </FormLabel>
+      <FormControl>{children}</FormControl>
+      {description && <FormDescription>{description}</FormDescription>}
+      {errors[name] && <p className="text-sm text-red-500">{errors[name]?.message as string}</p>}
+    </FormItem>
+  );
+}

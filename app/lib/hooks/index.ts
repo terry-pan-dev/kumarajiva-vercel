@@ -1,0 +1,1 @@
+export { useSearchHook } from './useSearchHook';

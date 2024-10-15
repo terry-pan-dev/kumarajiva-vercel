@@ -1,0 +1,30 @@
+@font-face {
+  font-family: 'Huayingmin';
+  src: local('HuayingMinchoClassic'),
+    url('./fonts/chinese/huayingmin/HuayingMinchoClassic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Huninn';
+  src: local('jf-openhuninn-2.0'),
+    url('./fonts/chinese/huninn/jf-openhuninn-2.0.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Fangsong';
+  src: local('tkFangSong'), url('./fonts/chinese/fangsong/tkFangSong.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Dance';
+  src: local('DancingScript-VariableFont_wght'),
+    url('./fonts/english/dancing/DancingScript-VariableFont_wght.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}

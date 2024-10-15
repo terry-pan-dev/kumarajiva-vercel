@@ -1,13 +1,48 @@
 import {
+  json,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
-} from "@remix-run/react";
-import { Analytics } from "@vercel/analytics/react";
+  useLoaderData,
+  useOutletContext,
+  type MetaFunction,
+} from '@remix-run/react';
+import './tailwind.css';
+import { Analytics } from '@vercel/analytics/react';
+import { type LinksFunction, type LoaderFunctionArgs } from '@vercel/remix';
+import { type PropsWithChildren } from 'react';
+import { ReadUser } from '../drizzle/tables';
+import { assertAuthUser } from './auth.server';
+import { SideBarMenu } from './components/SideBarMenu';
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export const links: LinksFunction = () => [
+  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+  {
+    rel: 'preconnect',
+    href: 'https://fonts.gstatic.com',
+    crossOrigin: 'anonymous',
+  },
+  {
+    rel: 'stylesheet',
+    href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap',
+  },
+];
+
+export const meta: MetaFunction = () => [
+  {
+    charset: 'utf-8',
+  },
+  {
+    title: 'Kumarajiva',
+  },
+  {
+    viewport: 'width=device-width,initial-scale=1',
+  },
+];
+
+export function Layout({ children }: PropsWithChildren) {
   return (
     <html lang="en">
       <head>
@@ -17,7 +52,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {children}
+        <Outlet />
         <ScrollRestoration />
         <Scripts />
         <Analytics />
