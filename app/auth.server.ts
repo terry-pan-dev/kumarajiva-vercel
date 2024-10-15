@@ -19,7 +19,12 @@ const credentialStrategy = new FormStrategy(async ({ form, context }) => {
   }
 
   logger.info('authenticator', 'before readUserByEmail');
-  const user = await readUserByEmail(email as string);
+  let user;
+  try {
+    user = await readUserByEmail(email as string);
+  } catch (error) {
+    console.log('authenticator', error);
+  }
   logger.info('authenticator', 'after readUserByEmail');
   logger.log('authenticator', 'user', user);
   if (user) {
