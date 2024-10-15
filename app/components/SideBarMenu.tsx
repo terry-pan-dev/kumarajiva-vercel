@@ -12,7 +12,7 @@ import { cn } from '~/lib/utils';
 import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet, Users } from 'lucide-react';
 
 const menuItems = [
-  { icon: Home, label: 'Home', href: '/' },
+  { icon: Home, label: 'Home', href: '/dashboard' },
   { icon: Book, label: 'Translation', href: '/translation' },
   { icon: Sheet, label: 'Glossary', href: '/glossary' },
   { icon: BookCopy, label: 'Reference', href: '/reference' },

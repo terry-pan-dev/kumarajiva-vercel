@@ -228,7 +228,6 @@ const Workspace = ({ paragraph }: { paragraph: Paragraph }) => {
     watch,
   } = form;
 
-  console.log({ isDirty });
   const { toast } = useToast();
 
   useEffect(() => {
