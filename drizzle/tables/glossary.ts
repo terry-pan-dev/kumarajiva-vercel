@@ -1,4 +1,4 @@
-import { index, pgTable, text, uuid, vector } from 'drizzle-orm/pg-core';
+import { index, pgTable, text, unique, uuid, vector } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
 
 export const glossariesTable = pgTable(
@@ -23,6 +23,7 @@ export const glossariesTable = pgTable(
   },
   (table) => ({
     embeddingIndex: index('embeddingIndex').using('hnsw', table.embedding.op('vector_cosine_ops')),
+    uniquePairIndex: unique('uniquePairIndex').on(table.origin, table.target),
   }),
 );
 
