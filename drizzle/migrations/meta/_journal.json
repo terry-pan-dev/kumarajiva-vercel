@@ -36,6 +36,13 @@
       "when": 1729259154250,
       "tag": "0004_update-embedding-size",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1729290963162,
+      "tag": "0005_remote-search-id",
+      "breakpoints": true
     }
   ]
 }

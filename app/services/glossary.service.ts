@@ -41,7 +41,7 @@ export const searchGlossaries = async (searchTerm: string): Promise<ReadGlossary
   return dbClient.select().from(glossariesTable).where(gt(similarity, 0.5)).orderBy(desc(similarity)).limit(5);
 };
 
-export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId' | 'updatedBy' | 'createdBy'>) => {
+export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
   const embedding = await generateEmbedding(`${glossary.origin?.toLowerCase()} : ${glossary.target?.toLowerCase()}`);
   if (!embedding) {
     throw new Error('Failed to create embedding');
@@ -50,8 +50,5 @@ export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId' |
   return dbClient.insert(glossariesTable).values({
     ...glossary,
     embedding,
-    searchId: '5eefc822-fadf-4e8d-892b-0a3badef4282',
-    updatedBy: '5eefc822-fadf-4e8d-892b-0a3badef4282',
-    createdBy: '5eefc822-fadf-4e8d-892b-0a3badef4282',
   });
 };

@@ -15,7 +15,6 @@ export const glossariesTable = pgTable('glossaries', {
   glossaryAuthor: text('glossary_author'),
   translationDate: text('translation_date'),
   discussion: text('discussion'),
-  searchId: text('search_id').notNull(),
   embedding: vector('embedding', { dimensions: 1536 }),
   ...auditAtFields,
   ...auditByFields,

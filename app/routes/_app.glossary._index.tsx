@@ -1,9 +1,10 @@
 import { useLoaderData, useNavigate, useRouteError } from '@remix-run/react';
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
+import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import { type ReadGlossary } from '~/drizzle/tables';
 import { createGlossary, readGlossaries, searchGlossaries } from '~/services';
 import { useMemo, useState } from 'react';
 import { z, ZodError } from 'zod';
+import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { FormInput, FormModal, FormTextarea } from '../components/FormModal';
 import { Icons } from '../components/icons';
@@ -68,16 +69,26 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+  const user = await assertAuthUser(request);
+  if (!user) {
+    return redirect('/login');
+  }
   const formData = Object.fromEntries(await request.formData());
 
   try {
     const data = validatePayloadOrThrow({ schema: formSchema, formData });
-    await createGlossary(data);
+    const newGlossary = {
+      ...data,
+      createdBy: user.id,
+      updatedBy: user.id,
+    };
+
+    await createGlossary(newGlossary);
   } catch (error) {
+    console.error('Error creating glossary', error);
     if (error instanceof ZodError) {
       return json({ success: false, errors: error.format() });
     }
-    console.error(error);
     return json({ success: false, errors: 'Internal Server Error' });
   }
   return json({ success: true });
