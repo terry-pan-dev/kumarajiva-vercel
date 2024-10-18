@@ -43,6 +43,13 @@
       "when": 1729290963162,
       "tag": "0005_remote-search-id",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1729291791122,
+      "tag": "0006_add-embedding-index",
+      "breakpoints": true
     }
   ]
 }
