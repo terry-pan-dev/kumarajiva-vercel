@@ -22,6 +22,20 @@
       "when": 1729250175754,
       "tag": "0002_add-order-to-reference",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1729258236403,
+      "tag": "0003_add-embedding-to-glossary",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1729259154250,
+      "tag": "0004_update-embedding-size",
+      "breakpoints": true
     }
   ]
 }

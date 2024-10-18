@@ -9,7 +9,7 @@ export function BreadcrumbLine() {
     .map((match) => ({
       href: match.pathname,
       // name: match.pathname.replace('/', '').replace('translation', 'tripitaka').toUpperCase(),
-      name: 'Tripitaka',
+      name: match.pathname.split('/').filter(Boolean).length === 1 ? 'Sutra' : 'Roll',
     }));
   return (
     <Breadcrumb>
@@ -20,7 +20,7 @@ export function BreadcrumbLine() {
               <BreadcrumbLink href={breadcrumb.href}>{breadcrumb.name}</BreadcrumbLink>
             </BreadcrumbItem>
             {index !== breadcrumbs.length - 1 && (
-              <BreadcrumbSeparator>
+              <BreadcrumbSeparator className="pl-2">
                 <Icons.ChevronRight />
               </BreadcrumbSeparator>
             )}

@@ -1,9 +1,8 @@
-import { useLoaderData, useRouteError } from '@remix-run/react';
+import { useLoaderData, useNavigate, useRouteError } from '@remix-run/react';
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import { type ReadGlossary } from '~/drizzle/tables';
-import { useSearchHook } from '~/lib/hooks';
-import { createGlossary, readGlossaries } from '~/services';
-import { useMemo } from 'react';
+import { createGlossary, readGlossaries, searchGlossaries } from '~/services';
+import { useMemo, useState } from 'react';
 import { z, ZodError } from 'zod';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { FormInput, FormModal, FormTextarea } from '../components/FormModal';
@@ -52,6 +51,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const skip = parseInt(searchParams.get('skip') || '0', 10);
     const take = parseInt(searchParams.get('take') || '25', 10);
 
+    const searchTerm = searchParams.get('searchTerm') || '';
+
+    if (searchTerm) {
+      console.log(searchTerm);
+      const glossaries = await searchGlossaries(searchTerm);
+      return json({ success: true, data: glossaries });
+    }
+
     const glossaries = await readGlossaries({ skip, take });
     return json({ success: true, data: glossaries });
   } catch (error) {
@@ -84,8 +91,6 @@ export function ErrorBoundary() {
 export default function GlossaryIndex() {
   const { data } = useLoaderData<typeof loader>();
 
-  const { searchTerm, setSearchTerm } = useSearchHook(1000);
-
   const glossaries = useMemo(() => {
     return data.map((glossary) => ({
       ...glossary,
@@ -97,7 +102,7 @@ export default function GlossaryIndex() {
 
   return (
     <div>
-      <SearchBar term={searchTerm} onUpdate={setSearchTerm} />
+      <SearchBar />
       <div className="h-4" />
       <GlossaryList glossaries={glossaries} />
 
@@ -106,11 +111,32 @@ export default function GlossaryIndex() {
   );
 }
 
-const SearchBar = ({ term, onUpdate }: { term: string; onUpdate: (term: string) => void }) => {
+const SearchBar = () => {
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const navigate = useNavigate();
+
+  const handleSubmit = () => {
+    if (searchTerm) {
+      navigate({
+        pathname: '/glossary',
+        search: `?searchTerm=${searchTerm}`,
+      });
+      setSearchTerm('');
+    } else {
+      navigate('/glossary');
+    }
+  };
+
   return (
     <div className="flex w-full items-center space-x-2">
-      <Input type="text" placeholder="Glossary Term" value={term} onChange={(e) => onUpdate(e.target.value)} />
-      <Button type="submit">Search</Button>
+      <Input
+        name="searchTerm"
+        type="text"
+        placeholder="Glossary Term"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+      <Button onClick={handleSubmit}>Search</Button>
     </div>
   );
 };

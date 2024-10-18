@@ -15,6 +15,10 @@ const dbClient = drizzle(vercelSql, { schema });
 
 const main = async () => {
   // seed teams table
+  console.log('enable extension vector');
+  await dbClient.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+  console.log('enable extension vector done');
+
   console.log('seeding teams table');
   await dbClient.insert(teamsTable).values(teams).onConflictDoNothing();
   console.log('seeding teams table done');

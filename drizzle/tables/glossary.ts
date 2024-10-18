@@ -1,4 +1,4 @@
-import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, vector } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
 
 export const glossariesTable = pgTable('glossaries', {
@@ -16,6 +16,7 @@ export const glossariesTable = pgTable('glossaries', {
   translationDate: text('translation_date'),
   discussion: text('discussion'),
   searchId: text('search_id').notNull(),
+  embedding: vector('embedding', { dimensions: 1536 }),
   ...auditAtFields,
   ...auditByFields,
 });
