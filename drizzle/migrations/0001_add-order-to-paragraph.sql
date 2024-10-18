@@ -1,0 +1,1 @@
+ALTER TABLE "paragraphs" ADD COLUMN "order" text DEFAULT '0' NOT NULL;

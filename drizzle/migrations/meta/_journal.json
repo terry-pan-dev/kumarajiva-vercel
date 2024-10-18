@@ -8,6 +8,20 @@
       "when": 1728989570185,
       "tag": "0000_init-migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1729248442849,
+      "tag": "0001_add-order-to-paragraph",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1729250175754,
+      "tag": "0002_add-order-to-reference",
+      "breakpoints": true
     }
   ]
 }

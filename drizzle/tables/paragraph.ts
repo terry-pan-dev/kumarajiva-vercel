@@ -7,6 +7,7 @@ import { rollsTable } from './roll';
 export const paragraphsTable = pgTable('paragraphs', {
   id: uuid('id').primaryKey().defaultRandom(),
   content: text('content').notNull(),
+  order: text('order').notNull().default('0'),
   parentId: uuid('parent_id').references((): AnyPgColumn => paragraphsTable.id),
   rollId: uuid('roll_id')
     .references(() => rollsTable.id)

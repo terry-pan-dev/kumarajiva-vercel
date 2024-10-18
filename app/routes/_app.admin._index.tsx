@@ -1,4 +1,4 @@
-import { useLoaderData } from '@remix-run/react';
+import { useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs } from '@vercel/remix';
 import { type UserRole } from '~/drizzle/schema';
 import bcrypt from 'bcryptjs';
@@ -8,6 +8,7 @@ import { ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
 import AdminActionButtons from '../components/AdminActionButtons';
 import { AdminForm } from '../components/AdminForm';
+import { ErrorInfo } from '../components/ErrorInfo';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge } from '../components/ui';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { createTeam, readTeams } from '../services/teams.service';
@@ -80,6 +81,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: false, errors: 'Internal server error' });
   }
   return json({ success: true });
+};
+
+export const ErrorBoundary = () => {
+  const error = useRouteError();
+
+  return <ErrorInfo error={error} />;
 };
 
 export default function AdminIndex() {

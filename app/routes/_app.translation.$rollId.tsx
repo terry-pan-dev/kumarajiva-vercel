@@ -8,6 +8,7 @@ import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 import { z, ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
+import { Paragraph } from '../components/Paragraph';
 import {
   Button,
   Collapsible,
@@ -333,12 +334,6 @@ const DragPanel = ({ children }: PropsWithChildren) => {
   );
 };
 
-type ParagraphProps = {
-  text: string;
-  title?: string;
-  isOrigin?: boolean;
-};
-
 interface StreamCardProps {
   text: string;
   title: string;
@@ -398,19 +393,6 @@ const WorkspaceCard = ({ title, text }: WorkspaceCardProps) => {
         </div>
       </div>
       <p className="text-md text-slate-500">{text}</p>
-    </div>
-  );
-};
-
-const Paragraph = ({ text, title, isOrigin }: ParagraphProps) => {
-  return (
-    <div
-      className={`mx-auto flex h-auto w-full space-x-4 rounded-xl p-4 shadow-lg ${isOrigin ? 'bg-card' : 'bg-card-foreground'}`}
-    >
-      <div className="w-full">
-        {title && <div className="text-md font-medium text-black">{title}</div>}
-        <p className="text-md text-slate-500">{text}</p>
-      </div>
     </div>
   );
 };
