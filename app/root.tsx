@@ -2,7 +2,6 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration, type MetaFunction } fr
 import './tailwind.css';
 import { Analytics } from '@vercel/analytics/react';
 import { type LinksFunction } from '@vercel/remix';
-import { Toaster } from './components/ui/toaster';
 
 export const links: LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -40,7 +39,6 @@ export function Layout() {
       </head>
       <body>
         <Outlet />
-        <Toaster />
         <ScrollRestoration />
         <Scripts />
         <Analytics />

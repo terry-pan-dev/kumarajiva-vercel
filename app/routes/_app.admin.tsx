@@ -2,6 +2,7 @@ import { Outlet, type MetaFunction } from '@remix-run/react';
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
 import { assertAuthUser } from '../auth.server';
 import { Separator } from '../components/ui';
+import { Toaster } from '../components/ui/toaster';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Administration' }];
@@ -19,6 +20,7 @@ export default function AdminLayout() {
       <div className="text-2xl font-semibold">Administration</div>
       <Separator className="bg-yellow-600" />
       <Outlet />
+      <Toaster />
     </div>
   );
 }
