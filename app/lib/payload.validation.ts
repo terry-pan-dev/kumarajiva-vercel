@@ -1,6 +1,6 @@
 import { type z, type ZodSchema } from 'zod';
 
-export const validatePayload = <T extends ZodSchema = ZodSchema>({
+export const validatePayloadOrThrow = <T extends ZodSchema = ZodSchema>({
   schema,
   formData,
 }: {

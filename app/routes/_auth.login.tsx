@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { Icons } from '../components/icons';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { validatePayload } from '../lib/payload.validation';
+import { validatePayloadOrThrow } from '../lib/payload.validation';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -27,7 +27,7 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     const clonedRequest = request.clone();
     const formData = Object.fromEntries(await clonedRequest.formData());
-    validatePayload({ schema: loginSchema, formData });
+    validatePayloadOrThrow({ schema: loginSchema, formData });
 
     const user = await authenticator.authenticate('credential', request);
 

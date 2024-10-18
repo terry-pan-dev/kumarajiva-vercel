@@ -1,10 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher } from '@remix-run/react';
 import React, { useCallback, useEffect, useState, type PropsWithChildren } from 'react';
-import { FormProvider, useForm, useFormContext, type Mode } from 'react-hook-form';
+import { Controller, FormProvider, useForm, useFormContext, type Mode } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 import { type z, type ZodSchema } from 'zod';
-import { FormControl, FormDescription, FormItem, FormLabel, Input, Textarea } from './ui';
+import {
+  FormControl,
+  FormDescription,
+  FormItem,
+  FormLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from './ui';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -24,6 +36,8 @@ interface FormModalProps<TFormValues extends ZodSchema = ZodSchema> {
   schema: TFormValues;
   trigger: React.ReactNode;
   mode?: Mode;
+  // hidden input field, the indicate the kind of form
+  kind?: string;
 }
 
 export const FormModal = <T extends ZodSchema = ZodSchema>({
@@ -33,6 +47,7 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
   trigger,
   schema,
   defaultValues,
+  kind,
   mode = 'onSubmit',
 }: PropsWithChildren<FormModalProps<T>>) => {
   const form = useForm<typeof schema>({
@@ -49,6 +64,7 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
   useEffect(() => {
     if (!open) {
       form.reset();
+      form.clearErrors();
     }
   }, [open, form]);
 
@@ -60,9 +76,13 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
 
   const onSubmit = useCallback(
     (data: z.infer<typeof schema>) => {
-      fetcher.submit(data, { method: 'post' });
+      const kindData = {
+        ...data,
+        kind,
+      };
+      fetcher.submit(kindData, { method: 'post' });
     },
-    [fetcher],
+    [fetcher, kind],
   );
 
   return (
@@ -113,6 +133,10 @@ interface FormInputProps {
   type?: string;
   required?: boolean;
   description?: string;
+  options?: {
+    label: string;
+    value: string;
+  }[];
 }
 
 interface BaseFormFieldProps extends FormInputProps {
@@ -128,6 +152,36 @@ export function FormInput({ name, label, type = 'text', required = false, descri
   return (
     <BaseFormField name={name} label={label} required={required} description={description} errors={errors}>
       <Input id={name} type={type} {...register(name)} />
+    </BaseFormField>
+  );
+}
+
+export function FormSelect({ name, label, required = false, description, options }: FormInputProps) {
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext();
+
+  return (
+    <BaseFormField name={name} label={label} required={required} description={description} errors={errors}>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <SelectTrigger id={name}>
+              <SelectValue placeholder={`Select ${label}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {options?.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label.toUpperCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      />
     </BaseFormField>
   );
 }

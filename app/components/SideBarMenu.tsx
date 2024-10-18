@@ -1,4 +1,4 @@
-import { Form, Link, useLocation } from '@remix-run/react';
+import { Form, Link, NavLink, useLocation, useNavigation } from '@remix-run/react';
 import {
   Avatar,
   AvatarFallback,
@@ -9,14 +9,14 @@ import {
   TooltipTrigger,
 } from '~/components/ui';
 import { cn } from '~/lib/utils';
-import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet, Users } from 'lucide-react';
+import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet } from 'lucide-react';
+import { Icons } from './icons';
 
 const menuItems = [
   { icon: Home, label: 'Home', href: '/dashboard' },
   { icon: Book, label: 'Translation', href: '/translation' },
   { icon: Sheet, label: 'Glossary', href: '/glossary' },
   { icon: BookCopy, label: 'Reference', href: '/reference' },
-  { icon: Users, label: 'Management', href: '/management' },
   { icon: Cog, label: 'Admin', href: '/admin' },
   { icon: Search, label: 'Search', href: '/search' },
 ];
@@ -34,6 +34,7 @@ export function SideBarMenu({
   userEmail = 'unknown@btts-kumarajiva.com',
   avatarSrc = '/avatar.jpg',
 }: SideBarMenuProps) {
+  const navigation = useNavigation();
   const pathname = useLocation().pathname;
   const avatarFallback = userName.charAt(0).toUpperCase();
 
@@ -45,24 +46,31 @@ export function SideBarMenu({
             K
           </div>
           <span className="ml-3 hidden text-2xl font-semibold text-white lg:inline">Kumarajiva</span>
+          {navigation.state === 'loading' && <Icons.Loader className="ml-auto h-5 w-5 animate-spin text-white" />}
         </Link>
 
         <nav className="w-full flex-1 overflow-y-auto border-y border-yellow-600 pt-4 lg:px-0">
           {menuItems.map((item) => (
             <Tooltip key={item.href} delayDuration={500}>
               <TooltipTrigger asChild>
-                <Link
+                <NavLink
                   to={item.href}
                   className={cn(
                     'text-md mb-1 flex items-center justify-center px-3 py-3 font-medium text-white lg:justify-start lg:px-6',
-                    'hover:rounded-md hover:bg-gray-100 hover:bg-slate-200/50 hover:text-yellow-600 lg:hover:text-white',
-                    pathname === item.href && 'rounded-md bg-slate-200 text-yellow-600',
+                    'hover:bg-slate-200/50 hover:text-yellow-600 lg:hover:text-white',
+                    pathname.startsWith(item.href)
+                      ? 'active rounded-md bg-slate-200 text-yellow-600'
+                      : 'bg-transparent hover:rounded-md',
                   )}
                   aria-label={item.label}
                 >
-                  <item.icon className="h-5 w-5 lg:mr-3" />
-                  <span className="hidden lg:inline">{item.label}</span>
-                </Link>
+                  {({ isActive }) => (
+                    <>
+                      <item.icon className={cn('h-5 w-5 lg:mr-3', isActive && 'text-yellow-600')} />
+                      <span className="hidden lg:inline">{item.label}</span>
+                    </>
+                  )}
+                </NavLink>
               </TooltipTrigger>
               <TooltipContent side="right" className="lg:hidden">
                 <p>{item.label}</p>

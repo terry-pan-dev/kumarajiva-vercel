@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui';
-import { validatePayload } from '../lib/payload.validation';
+import { validatePayloadOrThrow } from '../lib/payload.validation';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
@@ -64,7 +64,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = Object.fromEntries(await request.formData());
 
   try {
-    const data = validatePayload({ schema: formSchema, formData });
+    const data = validatePayloadOrThrow({ schema: formSchema, formData });
     await createGlossary(data);
   } catch (error) {
     if (error instanceof ZodError) {
@@ -226,7 +226,7 @@ const GlossaryCreateModal = () => {
       title="Create Glossary"
       trigger={
         <Button variant="outline" size="icon" className="fixed bottom-10 right-10 rounded-full">
-          <Icons.add className="h-4 w-4" />
+          <Icons.Add className="h-4 w-4" />
         </Button>
       }
       schema={formSchema}

@@ -2,7 +2,7 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration, type MetaFunction } fr
 import './tailwind.css';
 import { Analytics } from '@vercel/analytics/react';
 import { type LinksFunction } from '@vercel/remix';
-import { type PropsWithChildren } from 'react';
+import { Toaster } from './components/ui/toaster';
 
 export const links: LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -29,7 +29,7 @@ export const meta: MetaFunction = () => [
   },
 ];
 
-export function Layout({ children }: PropsWithChildren) {
+export function Layout() {
   return (
     <html lang="en">
       <head>
@@ -40,6 +40,7 @@ export function Layout({ children }: PropsWithChildren) {
       </head>
       <body>
         <Outlet />
+        <Toaster />
         <ScrollRestoration />
         <Scripts />
         <Analytics />

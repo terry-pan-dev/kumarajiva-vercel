@@ -34,7 +34,6 @@ import {
   Link2Off,
   List,
   ListOrdered,
-  LucideProps,
   MessageSquare,
   MessageSquarePlus,
   Minus,
@@ -64,6 +63,7 @@ import {
   WrapText,
   X,
   type LucideIcon,
+  type LucideProps,
 } from 'lucide-react';
 
 export type Icon = LucideIcon;
@@ -196,15 +196,96 @@ const google = (props: LucideProps) => (
     ></path>
   </svg>
 );
+
+const loader = (props: LucideProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M12 2v4" />
+    <path d="m16.2 7.8 2.9-2.9" />
+    <path d="M18 12h4" />
+    <path d="m16.2 16.2 2.9 2.9" />
+    <path d="M12 18v4" />
+    <path d="m4.9 19.1 2.9-2.9" />
+    <path d="M2 12h4" />
+    <path d="m4.9 4.9 2.9 2.9" />
+  </svg>
+);
+
+const user = (props: LucideProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+
+const users = (props: LucideProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
+const book = (props: LucideProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
+    <path d="m8 13 4-7 4 7" />
+    <path d="M9.1 11h5.7" />
+  </svg>
+);
 export const Icons = {
-  add: Plus,
-  chevronDown: ChevronDown,
+  Add: Plus,
+  ChevronDown: ChevronDown,
   alignCenter: AlignCenter,
   alignJustify: AlignJustify,
   alignLeft: AlignLeft,
   alignRight: AlignRight,
   download: Download,
-  arrowLeft: ArrowLeft,
+  ArrowLeft: ArrowLeft,
   arrowRight: ArrowRight,
   arrowDown: ChevronDown,
   bg: PaintBucket,
@@ -217,7 +298,7 @@ export const Icons = {
   borderRight,
   borderTop,
   check: Check,
-  chevronRight: ChevronRight,
+  ChevronRight: ChevronRight,
   chevronsUpDown: ChevronsUpDown,
   clear: X,
   close: X,
@@ -231,7 +312,7 @@ export const Icons = {
   commentAdd: MessageSquarePlus,
   delete: Trash,
   dragHandle: GripVertical,
-  editing: Edit2,
+  Editing: Edit2,
   emoji: Smile,
   externalLink: ExternalLink,
   h1: Heading1,
@@ -244,7 +325,7 @@ export const Icons = {
   indent: Indent,
   italic: Italic,
   kbd: Keyboard,
-  home,
+  Home: home,
   Google: google,
   lineHeight: WrapText,
   link: Link2,
@@ -267,6 +348,10 @@ export const Icons = {
   underline: Underline,
   unlink: Link2Off,
   viewing: Eye,
+  User: user,
+  Users: users,
+  Loader: loader,
+  Book: book,
 
   // www
   gitHub: (props: LucideProps) => (

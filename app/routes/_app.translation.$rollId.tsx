@@ -3,8 +3,8 @@ import { useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
+import React, { useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 import { z, ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
@@ -23,7 +23,7 @@ import {
   Textarea,
 } from '../components/ui';
 import { useToast } from '../hooks/use-toast';
-import { validatePayload } from '../lib/payload.validation';
+import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { readParagraphsByRollId, upsertParagraph } from '../services/paragraph.service';
 
 interface Paragraph {
@@ -78,7 +78,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const formData = Object.fromEntries(await request.formData());
 
   try {
-    const result = validatePayload({ schema: paragraphActionSchema, formData });
+    const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
     console.log({ result, rollId });
     await upsertParagraph({
       content: result.translation,
@@ -180,34 +180,6 @@ export default function TranslationRoll() {
   );
 }
 
-const References = ({ references }: { references: Reference[] }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full space-y-2">
-      <div className="flex items-center justify-between space-x-4 px-4">
-        <h3 className="text-md font-semibold">References</h3>
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm">
-            {isOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
-            <span className="sr-only">Toggle</span>
-          </Button>
-        </CollapsibleTrigger>
-      </div>
-      {references.length ? (
-        <div className="rounded-md border px-4 py-2 font-mono text-sm shadow-sm">{references[0].content}</div>
-      ) : null}
-      <CollapsibleContent className="space-y-2">
-        {references.length > 1
-          ? references.slice(1).map((reference) => (
-              <div key={reference.id} className="rounded-md border px-4 py-2 font-mono text-sm shadow-sm">
-                {reference.content}
-              </div>
-            ))
-          : null}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-};
 const Workspace = ({ paragraph }: { paragraph: Paragraph }) => {
   const { id, origin, target, references, rollId } = paragraph;
   const fetcher = useFetcher<{ success: boolean }>();
@@ -273,30 +245,20 @@ const Workspace = ({ paragraph }: { paragraph: Paragraph }) => {
     }
   }, [textAreaRef, translation]);
 
-  const copy = useCallback((text: string) => {
-    try {
-      form.setValue('translation', text, { shouldDirty: true });
-      navigator.clipboard.writeText(text);
-    } catch (error) {
-      console.error('Failed to copy text: ', error);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
-    <div className="flex h-full flex-col justify-start gap-4 px-1">
-      <motion.div
-        className="flex flex-col gap-4"
-        initial={{ opacity: 0, x: '100%' }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: '100%' }}
-        transition={{ duration: 0.3 }}
-      >
-        <Paragraph text={origin} title="Origin" />
-        <OpenAIStreamCard text={origin} title="OpenAI" copy={copy} />
-      </motion.div>
-      <References references={references} />
-      <FormProvider {...form}>
+    <FormProvider {...form}>
+      <div className="flex h-full flex-col justify-start gap-4 px-1">
+        <motion.div
+          className="flex flex-col"
+          initial={{ opacity: 0, x: '100%' }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: '100%' }}
+          transition={{ duration: 0.3 }}
+        >
+          <Paragraph text={origin} title="Origin" />
+          <OpenAIStreamCard text={origin} title="OpenAI" />
+        </motion.div>
+        <References references={references} />
         <fetcher.Form method="post" className="mt-auto" onSubmit={handleSubmit(onSubmit)}>
           <div className="mt-auto grid w-full gap-2">
             <input type="hidden" {...register('paragraphId')} />
@@ -315,8 +277,35 @@ const Workspace = ({ paragraph }: { paragraph: Paragraph }) => {
             </Button>
           </div>
         </fetcher.Form>
-      </FormProvider>
-    </div>
+      </div>
+    </FormProvider>
+  );
+};
+
+const References = ({ references }: { references: Reference[] }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full gap-2">
+      <div className="flex items-center justify-between space-x-4 px-4">
+        <h3 className="text-md font-semibold">References</h3>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm">
+            {isOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
+            <span className="sr-only">Toggle</span>
+          </Button>
+        </CollapsibleTrigger>
+      </div>
+      {references.length ? <WorkspaceCard title={references[0].sutraName} text={references[0].content} /> : null}
+      <CollapsibleContent className="gap-2">
+        {references.length > 1
+          ? references
+              .slice(1)
+              .map((reference) => (
+                <WorkspaceCard key={reference.id} title={reference.sutraName} text={reference.content} />
+              ))
+          : null}
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 
@@ -353,14 +342,15 @@ type ParagraphProps = {
 interface StreamCardProps {
   text: string;
   title: string;
-  copy: (text: string) => void;
 }
 
-const OpenAIStreamCard = ({ text, title, copy }: StreamCardProps) => {
+const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
   const [translationResult, setTranslationResult] = useState<string>('');
+  const textRef = useRef<string>('');
 
   useEffect(() => {
     setTranslationResult('');
+    textRef.current = '';
     const condition = true;
     const fetchStream = async () => {
       const response = await fetch(`/chat?origin=${text}`);
@@ -373,6 +363,7 @@ const OpenAIStreamCard = ({ text, title, copy }: StreamCardProps) => {
           if (done) break;
           const chunk = decoder.decode(value);
           setTranslationResult((prev) => prev + chunk);
+          textRef.current += chunk;
         }
       }
     };
@@ -381,32 +372,30 @@ const OpenAIStreamCard = ({ text, title, copy }: StreamCardProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
 
-  const copyActionButton = (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => copy(translationResult)}
-      className="transition-transform duration-300 hover:scale-110"
-    >
-      <Copy className="h-4 w-4" />
-    </Button>
-  );
-
-  return <WorkspaceCard title={title} text={translationResult} actionButtons={[copyActionButton]} />;
-};
+  return <WorkspaceCard title={title} text={translationResult} />;
+});
 
 interface WorkspaceCardProps {
   title: string;
   text: string;
-  actionButtons: React.ReactNode[];
 }
 
-const WorkspaceCard = ({ title, text, actionButtons }: WorkspaceCardProps) => {
+const WorkspaceCard = ({ title, text }: WorkspaceCardProps) => {
+  const formContext = useFormContext();
   return (
-    <div className="flex h-full flex-col justify-start gap-2 rounded-xl bg-card-foreground p-4 shadow-lg">
+    <div className="mt-4 flex flex-col justify-start rounded-xl bg-card-foreground p-4 shadow-lg">
       <div className="flex items-center justify-between">
         <div className="text-md font-medium">{title}</div>
-        <div className="flex items-center gap-2">{actionButtons}</div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => formContext.setValue('translation', text, { shouldDirty: true })}
+            className="transition-transform duration-300 hover:scale-110"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <p className="text-md text-slate-500">{text}</p>
     </div>

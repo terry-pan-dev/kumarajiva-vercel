@@ -21,7 +21,7 @@ export function BreadcrumbLine() {
             </BreadcrumbItem>
             {index !== breadcrumbs.length - 1 && (
               <BreadcrumbSeparator>
-                <Icons.chevronRight />
+                <Icons.ChevronRight />
               </BreadcrumbSeparator>
             )}
           </div>

@@ -35,3 +35,5 @@ export const usersTableRelations = relations(usersTable, ({ one }) => ({
 export type ReadUser = typeof usersTable.$inferSelect;
 export type CreateUser = typeof usersTable.$inferInsert;
 export type UpdateUser = Partial<CreateUser>;
+export type UserRole = 'admin' | 'leader' | 'editor' | 'reader' | 'assistant' | 'manager';
+export type Lang = 'english' | 'chinese' | 'sanskrit' | 'indonesian';
