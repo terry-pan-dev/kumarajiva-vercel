@@ -10,6 +10,7 @@ const dbClient = drizzle(postgresql, { schema });
 export const readParagraphsByRollId = async (rollId: string) => {
   return dbClient.query.paragraphsTable.findMany({
     where: (paragraphs, { eq }) => eq(paragraphs.rollId, rollId),
+    orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
     with: {
       paragraph: true,
       references: true,
