@@ -19,7 +19,7 @@ export default function AppLayout() {
     <div className="flex h-screen">
       <SideBarMenu userName={user.username} userEmail={user.email} userRole={user.role} avatarSrc={user.avatar} />
       <main className="flex-1 overflow-y-auto">
-        <Outlet context={{ user }} />
+        <Outlet />
       </main>
     </div>
   );

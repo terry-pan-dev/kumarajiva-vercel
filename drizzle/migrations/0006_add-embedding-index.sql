@@ -1,1 +1,0 @@
-CREATE INDEX IF NOT EXISTS "embeddingIndex" ON "glossaries" USING hnsw ("embedding" vector_cosine_ops);

@@ -1,6 +1,6 @@
 import { useLoaderData, useRouteError } from '@remix-run/react';
-import { json, redirect, type ActionFunctionArgs } from '@vercel/remix';
-import { type UserRole } from '~/drizzle/schema';
+import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
+import { type UserRole } from '~/drizzle/tables/enums';
 import bcrypt from 'bcryptjs';
 import { useCallback } from 'react';
 import { match } from 'ts-pattern';
@@ -16,10 +16,14 @@ import { createUser, readUsers, updateUser } from '../services/user.service';
 import { createTeamSchema } from '../validations/team.validation';
 import { createUserSchema, updateUserSchema } from '../validations/user.validation';
 
-export const loader = async () => {
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const user = await assertAuthUser(request);
+  if (!user) {
+    return redirect('/login');
+  }
   const users = await readUsers();
   const teams = await readTeams();
-  return json({ users, teams });
+  return json({ users: users.filter((u) => u.id !== user.id || u.email === 'pantaotao123@gmail.com'), teams, user });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -50,7 +54,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (kind === 'user') {
       if (id) {
         const updateData = validatePayloadOrThrow({ schema: updateUserSchema, formData: data });
-        console.debug('updateData', updateData);
+        console.debug('updateUser', updateData);
         await updateUser(updateData);
       } else {
         const result = validatePayloadOrThrow({ schema: createUserSchema, formData: data });
@@ -76,9 +80,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   } catch (error) {
     console.error('admin action error', error);
     if (error instanceof ZodError) {
-      return json({ success: false, errors: error.format() });
+      return json({ success: false, errors: { error: error.format() } });
     }
-    return json({ success: false, errors: 'Internal server error' });
+    return json({ success: false, errors: { error: 'Internal server error' } });
   }
   return json({ success: true });
 };
@@ -91,6 +95,7 @@ export const ErrorBoundary = () => {
 
 export default function AdminIndex() {
   const { users, teams } = useLoaderData<typeof loader>();
+  console.log('admin index', { users, teams });
   const getBadgeVariant = useCallback((role: UserRole) => {
     return match(role)
       .with('admin', () => 'bg-pink-500')

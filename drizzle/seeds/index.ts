@@ -31,7 +31,10 @@ const main = async () => {
   console.log('seeding users table done');
   // seed sutras table
   console.log('seeding sutras table');
-  await dbClient.insert(sutrasTable).values(sutras).onConflictDoNothing();
+  await dbClient
+    .insert(sutrasTable)
+    .values(sutras as any)
+    .onConflictDoNothing();
   console.log('seeding sutras table done');
   // seed rolls table
   console.log('seeding rolls table');

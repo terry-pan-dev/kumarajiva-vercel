@@ -1,6 +1,7 @@
+import { type ReadTeam } from '~/drizzle/tables';
+import { langEnum, roleEnum } from '~/drizzle/tables/enums';
 import { createUserSchema } from '~/validations/user.validation';
 import { useState } from 'react';
-import { langEnum, roleEnum, type ReadTeam } from '../../drizzle/schema';
 import { createTeamSchema } from '../validations/team.validation';
 import { FormInput, FormModal, FormSelect } from './FormModal';
 import { Icons } from './icons';

@@ -1,1 +1,0 @@
-ALTER TABLE "glossaries" ADD COLUMN "embedding" vector(2048);

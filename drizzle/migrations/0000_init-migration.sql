@@ -1,18 +1,7 @@
-DO $$ BEGIN
- CREATE TYPE "public"."lang" AS ENUM('english', 'chinese', 'sanskrit', 'indonesian');
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- CREATE TYPE "public"."roles" AS ENUM('admin', 'leader', 'editor', 'reader', 'assistant', 'manager');
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "paragraphs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content" text NOT NULL,
+	"order" text DEFAULT '0' NOT NULL,
 	"parent_id" uuid,
 	"roll_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -26,6 +15,7 @@ CREATE TABLE IF NOT EXISTS "references" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"sutra_name" text NOT NULL,
 	"content" text NOT NULL,
+	"order" text DEFAULT '0' NOT NULL,
 	"paragraph_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
@@ -53,7 +43,7 @@ CREATE TABLE IF NOT EXISTS "sutras" (
 	"subtitle" text,
 	"category" text NOT NULL,
 	"translator" text NOT NULL,
-	"language" text NOT NULL,
+	"language" "lang" DEFAULT 'chinese' NOT NULL,
 	"parent_id" uuid,
 	"team_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -107,12 +97,13 @@ CREATE TABLE IF NOT EXISTS "glossaries" (
 	"glossary_author" text,
 	"translation_date" text,
 	"discussion" text,
-	"search_id" text NOT NULL,
+	"embedding" vector(1536),
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp,
 	"created_by" text NOT NULL,
-	"updated_by" text NOT NULL
+	"updated_by" text NOT NULL,
+	CONSTRAINT "uniquePairIndex" UNIQUE("origin","target")
 );
 --> statement-breakpoint
 DO $$ BEGIN
@@ -162,3 +153,5 @@ DO $$ BEGIN
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "embeddingIndex" ON "glossaries" USING hnsw ("embedding" vector_cosine_ops);

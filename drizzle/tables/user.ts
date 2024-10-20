@@ -1,11 +1,8 @@
 import { relations } from 'drizzle-orm';
-import { boolean, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
+import { langEnum, roleEnum } from './enums';
 import { teamsTable } from './team';
-
-export const langEnum = pgEnum('lang', ['english', 'chinese', 'sanskrit', 'indonesian']);
-
-export const roleEnum = pgEnum('roles', ['admin', 'leader', 'editor', 'reader', 'assistant', 'manager']);
 
 export const usersTable = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -35,5 +32,3 @@ export const usersTableRelations = relations(usersTable, ({ one }) => ({
 export type ReadUser = typeof usersTable.$inferSelect;
 export type CreateUser = typeof usersTable.$inferInsert;
 export type UpdateUser = Partial<CreateUser>;
-export type UserRole = 'admin' | 'leader' | 'editor' | 'reader' | 'assistant' | 'manager';
-export type Lang = 'english' | 'chinese' | 'sanskrit' | 'indonesian';

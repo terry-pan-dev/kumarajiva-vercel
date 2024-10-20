@@ -36,13 +36,13 @@ const formSchema = z.object({
   target: z.string().min(1, {
     message: 'Target must be at least 1 characters.',
   }),
-  origin_sutra_text: z.string().optional(),
-  target_sutra_text: z.string().optional(),
-  sutra_name: z.string().optional(),
+  originSutraText: z.string().optional(),
+  targetSutraText: z.string().optional(),
+  sutraName: z.string().optional(),
   volume: z.string().optional(),
-  cbeta_frequency: z.string().optional(),
-  glossary_author: z.string().optional(),
-  translation_date: z.string().optional(),
+  cbetaFrequency: z.string().optional(),
+  glossaryAuthor: z.string().optional(),
+  translationDate: z.string().optional(),
   discussion: z.string().optional(),
 });
 
@@ -57,6 +57,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (searchTerm) {
       console.log(searchTerm);
       const glossaries = await searchGlossaries(searchTerm);
+      console.log(glossaries);
       return json({ success: true, data: glossaries });
     }
 
@@ -82,6 +83,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       createdBy: user.id,
       updatedBy: user.id,
     };
+
+    console.log(newGlossary);
 
     await createGlossary(newGlossary);
   } catch (error) {
@@ -284,17 +287,13 @@ const GlossaryCreateForm = () => {
     <div className="grid grid-cols-2 gap-4">
       <FormInput name="origin" label="Origin" required description="The original term in the source language." />
       <FormInput name="target" label="Target" required description="The translated term in the target language." />
-      <FormTextarea name="origin_sutra_text" label="Origin Sutra Text" description="The original text of the sutra." />
-      <FormTextarea
-        name="target_sutra_text"
-        label="Target Sutra Text"
-        description="The translated text of the sutra."
-      />
-      <FormTextarea name="sutra_name" label="Sutra Name" description="The name of the sutra." />
+      <FormTextarea name="originSutraText" label="Origin Sutra Text" description="The original text of the sutra." />
+      <FormTextarea name="targetSutraText" label="Target Sutra Text" description="The translated text of the sutra." />
+      <FormTextarea name="sutraName" label="Sutra Name" description="The name of the sutra." />
       <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
-      <FormTextarea name="cbeta_frequency" label="CBETA Frequency" description="The frequency of the sutra in CBETA." />
-      <FormTextarea name="glossary_author" label="Glossary Author" description="The author of the glossary." />
-      <FormTextarea name="translation_date" label="Translation Date" description="The date of the translation." />
+      <FormTextarea name="cbetaFrequency" label="CBETA Frequency" description="The frequency of the sutra in CBETA." />
+      <FormTextarea name="glossaryAuthor" label="Glossary Author" description="The author of the glossary." />
+      <FormTextarea name="translationDate" label="Translation Date" description="The date of the translation." />
       <FormTextarea name="discussion" label="Discussion" description="Any additional discussion about the glossary." />
     </div>
   );

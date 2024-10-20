@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher } from '@remix-run/react';
-import { langEnum, roleEnum, type ReadTeam, type ReadUser } from '~/drizzle/schema';
+import { type ReadTeam, type ReadUser } from '~/drizzle/tables';
+import { langEnum, roleEnum } from '~/drizzle/tables/enums';
 import { useCallback, useEffect } from 'react';
 import { Controller, FormProvider, useForm } from 'react-hook-form';
 import { type ZodSchema } from 'zod';

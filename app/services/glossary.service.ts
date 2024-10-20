@@ -36,9 +36,9 @@ const generateEmbedding = async (text: string) => {
 };
 
 export const searchGlossaries = async (searchTerm: string): Promise<ReadGlossary[]> => {
-  const embedding = await generateEmbedding(searchTerm);
+  const embedding = await generateEmbedding(searchTerm?.trim().toLowerCase());
   const similarity = sql<number>`1 - (${cosineDistance(glossariesTable.embedding, embedding)})`;
-  return dbClient.select().from(glossariesTable).where(gt(similarity, 0.5)).orderBy(desc(similarity)).limit(5);
+  return dbClient.select().from(glossariesTable).where(gt(similarity, 0.3)).orderBy(desc(similarity)).limit(5);
 };
 
 export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>) => {

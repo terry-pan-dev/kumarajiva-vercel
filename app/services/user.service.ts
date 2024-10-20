@@ -27,6 +27,7 @@ export const updateUserPassword = async (user: UpdateUser) => {
 };
 
 export const readUsers = async (): Promise<ReadUser[]> => {
+  console.log('readUsers');
   return dbClient.query.usersTable.findMany({
     orderBy: asc(usersTable.username),
   });

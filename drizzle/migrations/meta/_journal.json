@@ -5,57 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1728989570185,
+      "when": 1729386404688,
       "tag": "0000_init-migration",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1729248442849,
-      "tag": "0001_add-order-to-paragraph",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1729250175754,
-      "tag": "0002_add-order-to-reference",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1729258236403,
-      "tag": "0003_add-embedding-to-glossary",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1729259154250,
-      "tag": "0004_update-embedding-size",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1729290963162,
-      "tag": "0005_remote-search-id",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1729291791122,
-      "tag": "0006_add-embedding-index",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1729292053740,
-      "tag": "0007_add-unique-pair-index",
       "breakpoints": true
     }
   ]

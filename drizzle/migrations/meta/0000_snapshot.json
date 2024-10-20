@@ -1,5 +1,5 @@
 {
-  "id": "f5b62603-a7de-4470-bb8c-0d7e05482846",
+  "id": "b8369521-d0db-4fb8-8596-646738b15ace",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -20,6 +20,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
         },
         "parent_id": {
           "name": "parent_id",
@@ -120,6 +127,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
         },
         "paragraph_id": {
           "name": "paragraph_id",
@@ -316,9 +330,11 @@
         },
         "language": {
           "name": "language",
-          "type": "text",
+          "type": "lang",
+          "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'chinese'"
         },
         "parent_id": {
           "name": "parent_id",
@@ -668,11 +684,11 @@
           "primaryKey": false,
           "notNull": false
         },
-        "search_id": {
-          "name": "search_id",
-          "type": "text",
+        "embedding": {
+          "name": "embedding",
+          "type": "vector(1536)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -707,36 +723,39 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "embeddingIndex": {
+          "name": "embeddingIndex",
+          "columns": [
+            {
+              "expression": "embedding",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "hnsw",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "uniquePairIndex": {
+          "name": "uniquePairIndex",
+          "nullsNotDistinct": false,
+          "columns": [
+            "origin",
+            "target"
+          ]
+        }
+      }
     }
   },
-  "enums": {
-    "public.lang": {
-      "name": "lang",
-      "schema": "public",
-      "values": [
-        "english",
-        "chinese",
-        "sanskrit",
-        "indonesian"
-      ]
-    },
-    "public.roles": {
-      "name": "roles",
-      "schema": "public",
-      "values": [
-        "admin",
-        "leader",
-        "editor",
-        "reader",
-        "assistant",
-        "manager"
-      ]
-    }
-  },
+  "enums": {},
   "schemas": {},
   "sequences": {},
   "_meta": {

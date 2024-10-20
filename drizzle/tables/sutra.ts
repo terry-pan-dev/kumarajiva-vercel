@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import { pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
 import { rollsTable } from '../schema';
+import { langEnum } from './enums';
 import { teamsTable } from './team';
 
 export const sutrasTable = pgTable('sutras', {
@@ -10,7 +11,7 @@ export const sutrasTable = pgTable('sutras', {
   subtitle: text('subtitle'),
   category: text('category').notNull(),
   translator: text('translator').notNull(),
-  language: text('language').notNull(),
+  language: langEnum('language').notNull().default('chinese'),
   parentId: uuid('parent_id').references((): AnyPgColumn => sutrasTable.id),
   teamId: uuid('team_id')
     .references(() => teamsTable.id)

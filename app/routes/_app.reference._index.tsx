@@ -1,17 +1,19 @@
 import { Link, useLoaderData, useRouteError } from '@remix-run/react';
-import { json, type LoaderFunctionArgs } from '@vercel/remix';
+import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
+import { assertAuthUser } from '../auth.server';
 import { TranslationCard } from '../components/Card';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { readSutras } from '../services/sutra.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const user = await assertAuthUser(request);
+  if (!user) {
+    return redirect('/login');
+  }
   try {
-    const sutras = await readSutras({
-      skip: 0,
-      take: 10,
-    });
+    const sutras = await readSutras({ user });
     return json({ success: true, sutras });
   } catch (error) {
     console.error(error);

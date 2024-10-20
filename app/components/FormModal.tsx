@@ -72,16 +72,17 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
   const { toast } = useToast();
 
   useEffect(() => {
-    if (fetcher.data?.success) {
+    if (fetcher.state === 'idle' && fetcher.data?.success) {
       setOpen(false);
-    } else {
+    }
+    if (fetcher.state === 'idle' && !fetcher.data?.success && fetcher.data?.errors) {
       toast({
         title: 'Oops!',
-        description: fetcher.data?.errors?.join(', '),
+        description: JSON.stringify(fetcher.data?.errors),
         variant: 'error',
       });
     }
-  }, [fetcher.data, toast]);
+  }, [fetcher.data, fetcher.state, toast]);
 
   const onSubmit = useCallback(
     (data: z.infer<typeof schema>) => {

@@ -1,18 +1,16 @@
-import { sql } from '@vercel/postgres';
+import { sql as postgresSql } from '@vercel/postgres';
 import * as schema from '~/drizzle/schema';
-import { sutrasTable, type CreateSutra } from '~/drizzle/tables';
+import { sutrasTable, type CreateSutra, type ReadUser } from '~/drizzle/tables';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import 'dotenv/config';
 
-const dbClient = drizzle(sql, { schema });
+const dbClient = drizzle(postgresSql, { schema });
 
-export type Pagination = {
-  skip: number;
-  take: number;
-};
-
-export const readSutras = async ({ skip, take }: Pagination) => {
+export const readSutras = async ({ user }: { user: ReadUser }) => {
+  console.log('user.originLang', user.originLang);
   return dbClient.query.sutrasTable.findMany({
+    where: eq(sutrasTable.language, user.originLang),
     with: {
       rolls: true,
     },

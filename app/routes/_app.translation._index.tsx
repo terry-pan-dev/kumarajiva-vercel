@@ -1,17 +1,22 @@
-import { Link, useLoaderData, useRouteError } from '@remix-run/react';
-import { json, type LoaderFunctionArgs } from '@vercel/remix';
+import { Link, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
+import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
+import { type ReadUser } from '../../drizzle/schema';
+import { assertAuthUser } from '../auth.server';
 import { TranslationCard } from '../components/Card';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { readSutras } from '../services/sutra.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const user = await assertAuthUser(request);
+  if (!user) {
+    return redirect('/login');
+  }
   try {
-    const sutras = await readSutras({
-      skip: 0,
-      take: 10,
-    });
+    console.log('user', user);
+    const sutras = await readSutras({ user });
+    console.log(sutras);
     return json({ success: true, sutras });
   } catch (error) {
     console.error(error);
@@ -30,6 +35,7 @@ export const ErrorBoundary = () => {
 };
 
 export default function TranslationIndex() {
+  const context = useOutletContext<{ user: ReadUser }>();
   const { sutras } = useLoaderData<typeof loader>();
   const [sutraId, setSutraId] = useState('');
   const Sutras = sutras.map((sutra) => (
@@ -66,6 +72,19 @@ export default function TranslationIndex() {
       </Link>
     </motion.div>
   ));
+
+  if (sutras.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center text-lg">
+        <p>
+          There is no <span className="font-semibold">{context.user.originLang.toUpperCase()}</span> sutra to translate
+          under your language.
+        </p>
+        <p>Please contact the administrator to update your language.</p>
+        <p>Or wait for new sutras to be added to your language.</p>
+      </div>
+    );
+  }
 
   return (
     <motion.div

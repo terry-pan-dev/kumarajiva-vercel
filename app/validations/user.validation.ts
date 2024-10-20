@@ -1,4 +1,4 @@
-import { langEnum, roleEnum } from '~/drizzle/schema';
+import { langEnum, roleEnum } from '~/drizzle/tables/enums';
 import { z } from 'zod';
 
 export const createUserSchema = z.object({

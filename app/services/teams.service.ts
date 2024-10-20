@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/vercel-postgres';
 const dbClient = drizzle(sql, { schema });
 
 export const readTeams = async (): Promise<ReadTeam[]> => {
+  console.log('readTeams');
   return dbClient.query.teamsTable.findMany();
 };
 
