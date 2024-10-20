@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState, type PropsWithChildren } from 
 import { Controller, FormProvider, useForm, useFormContext, type Mode } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 import { type z, type ZodSchema } from 'zod';
+import { useToast } from '../hooks/use-toast';
 import {
   FormControl,
   FormDescription,
@@ -55,7 +56,7 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
     mode,
     defaultValues,
   });
-  const fetcher = useFetcher<{ success: boolean }>();
+  const fetcher = useFetcher<{ success: boolean; errors?: string[] }>();
 
   const disabled = fetcher.state !== 'idle';
 
@@ -68,11 +69,19 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
     }
   }, [open, form]);
 
+  const { toast } = useToast();
+
   useEffect(() => {
     if (fetcher.data?.success) {
       setOpen(false);
+    } else {
+      toast({
+        title: 'Oops!',
+        description: fetcher.data?.errors?.join(', '),
+        variant: 'error',
+      });
     }
-  }, [fetcher.data]);
+  }, [fetcher.data, toast]);
 
   const onSubmit = useCallback(
     (data: z.infer<typeof schema>) => {
@@ -133,6 +142,7 @@ interface FormInputProps {
   type?: string;
   required?: boolean;
   description?: string;
+  placeholder?: string;
   options?: {
     label: string;
     value: string;
@@ -143,7 +153,12 @@ interface BaseFormFieldProps extends FormInputProps {
   errors: ReturnType<typeof useFormContext>['formState']['errors'];
 }
 
-export function FormInput({ name, label, type = 'text', required = false, description }: FormInputProps) {
+export function HiddenInput({ name, value }: { name: string; value: string }) {
+  const { register } = useFormContext();
+  return <input type="hidden" value={value} hidden {...register(name)} />;
+}
+
+export function FormInput({ name, label, type = 'text', required = false, description, placeholder }: FormInputProps) {
   const {
     register,
     formState: { errors },
@@ -151,7 +166,7 @@ export function FormInput({ name, label, type = 'text', required = false, descri
 
   return (
     <BaseFormField name={name} label={label} required={required} description={description} errors={errors}>
-      <Input id={name} type={type} {...register(name)} />
+      <Input id={name} type={type} placeholder={placeholder} {...register(name)} />
     </BaseFormField>
   );
 }

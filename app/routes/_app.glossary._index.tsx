@@ -85,11 +85,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     await createGlossary(newGlossary);
   } catch (error) {
-    console.error('Error creating glossary', error);
     if (error instanceof ZodError) {
       return json({ success: false, errors: error.format() });
     }
-    return json({ success: false, errors: 'Internal Server Error' });
+    if (error instanceof Error) {
+      if ('code' in error) {
+        if (error.code === '23505') {
+          return json({ success: false, errors: ['Glossary already exists'] });
+        }
+      }
+    }
+    return json({ success: false, errors: ['Internal Server Error'] });
   }
   return json({ success: true });
 };

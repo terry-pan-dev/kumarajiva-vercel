@@ -1,6 +1,7 @@
 import { Outlet } from '@remix-run/react';
 import { type MetaFunction } from '@vercel/remix';
 import { Separator } from '../components/ui/separator';
+import { Toaster } from '../components/ui/toaster';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
@@ -13,6 +14,7 @@ export default function GlossaryLayout() {
       <div className="text-2xl font-semibold">Glossary</div>
       <Separator className="bg-yellow-600" />
       <Outlet />
+      <Toaster />
     </div>
   );
 }

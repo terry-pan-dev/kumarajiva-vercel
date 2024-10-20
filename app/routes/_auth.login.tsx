@@ -1,16 +1,14 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useFetcher } from '@remix-run/react';
+import { useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { authenticator } from '~/auth.server';
 import { logger } from '~/lib/logger';
-import { cn } from '~/lib/utils';
 import { commitSession, getSession } from '~/session.server';
-import React from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import AuthForm from '../components/AuthForm';
+import { ErrorInfo } from '../components/ErrorInfo';
+import { FormInput } from '../components/FormModal';
 import { Icons } from '../components/icons';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
+import { Spacer } from '../components/ui/spacer';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 
 const loginSchema = z.object({
@@ -33,41 +31,42 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (user) {
       const session = await getSession(request.headers.get('cookie'));
+      logger.info('login route: ', 'setting session');
       session.set(authenticator.sessionKey, user);
 
       const headers = new Headers({ 'Set-Cookie': await commitSession(session) });
       if (user.firstLogin) {
-        logger.info('login', 'first login user');
-        return redirect(`/update_password?email=${user.email}`, { headers });
+        logger.info('login route: ', 'first login user');
+        return redirect(`/update-password?email=${user.email}`, { headers });
       }
-      logger.info('login', 'redirect to root page');
+      logger.info('login route: ', 'redirect to root page');
       return redirect('/dashboard', { headers });
     } else {
-      logger.info('login', 'wrong credentials');
-      return json({ password: 'please enter correct credentials' }, { status: 401 });
+      logger.info('login route: ', 'wrong credentials');
+      return json({ success: false, errors: { password: 'please enter correct credentials' } });
     }
   } catch (error: unknown) {
-    logger.error('login', 'message', error);
-    return json({ password: 'Internal Server Error' }, { status: 500 });
+    logger.error('login route: ', 'message', error);
+    return json(
+      {
+        success: false,
+        errors: [
+          {
+            password: 'Internal Server Error',
+          },
+        ],
+      },
+      { status: 500 },
+    );
   }
 }
+export const ErrorBoundary = () => {
+  const error = useRouteError();
 
-export default function LoginForm() {
-  const fetcher = useFetcher();
+  return <ErrorInfo error={error} />;
+};
 
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  const { errors } = form.formState;
-  const onSubmit = (data: z.infer<typeof loginSchema>) => {
-    fetcher.submit(data, { method: 'post' });
-  };
-
+export default function LoginFormRoute() {
   return (
     <div className="mx-auto w-full max-w-md rounded-none bg-white p-4 shadow-input dark:bg-black md:rounded-2xl md:p-8">
       <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-200">Welcome to Kumarajiva</h2>
@@ -75,25 +74,25 @@ export default function LoginForm() {
         Kumarajiva is a internal use tool. Login if you can, otherwise ask admin to invite you.
       </p>
 
-      <FormProvider {...form}>
-        <form className="my-8" onSubmit={form.handleSubmit(onSubmit)}>
-          <LabelInputContainer className="mb-4">
-            <Label htmlFor="email">Email Address</Label>
-            <Input id="email" placeholder="example@gmail.com" type="email" {...form.register('email')} />
-            {errors.email && <p className="text-sm text-red-500">{errors.email?.message}</p>}
-          </LabelInputContainer>
-          <LabelInputContainer className="mb-4">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" placeholder="••••••••" type="password" {...form.register('password')} />
-            {errors.password && <p className="text-sm text-red-500">{errors.password?.message}</p>}
-          </LabelInputContainer>
+      <Spacer />
+
+      <AuthForm
+        schema={loginSchema}
+        defaultValues={{
+          email: '',
+          password: '',
+        }}
+      >
+        <div className="flex flex-col space-y-4">
+          <FormInput name="email" label="Email Address" type="email" required placeholder="example@gmail.com" />
+
+          <FormInput name="password" label="Password" type="password" required placeholder="••••••••" />
 
           <button
             className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-900 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset]"
             type="submit"
           >
             Login &rarr;
-            <BottomGradient />
           </button>
 
           <div className="my-8 h-[1px] w-full bg-gradient-to-r from-transparent via-neutral-300 to-transparent dark:via-neutral-700" />
@@ -108,8 +107,8 @@ export default function LoginForm() {
               <BottomGradient />
             </button>
           </div>
-        </form>
-      </FormProvider>
+        </div>
+      </AuthForm>
     </div>
   );
 }
@@ -121,8 +120,4 @@ const BottomGradient = () => {
       <span className="absolute inset-x-10 -bottom-px mx-auto block h-px w-1/2 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-0 blur-sm transition duration-500 group-hover/btn:opacity-100" />
     </>
   );
-};
-
-const LabelInputContainer = ({ children, className }: { children: React.ReactNode; className?: string }) => {
-  return <div className={cn('flex w-full flex-col space-y-2', className)}>{children}</div>;
 };

@@ -13,6 +13,19 @@ export const readUserByEmail = async (email: string): Promise<ReadUser | undefin
   });
 };
 
+export const updateUserPassword = async (user: UpdateUser) => {
+  if (!user.email) {
+    throw new Error('User email is required');
+  }
+  return dbClient
+    .update(usersTable)
+    .set({
+      ...user,
+      firstLogin: false,
+    })
+    .where(eq(usersTable.email, user.email));
+};
+
 export const readUsers = async (): Promise<ReadUser[]> => {
   return dbClient.query.usersTable.findMany({
     orderBy: asc(usersTable.username),
