@@ -1,4 +1,4 @@
 {
     "regions": ["syd1"],
-    "buildCommand": ["pnpm build && pnpm db:migrate"]
+    "buildCommand": "pnpm build && pnpm db:migrate"
 }
