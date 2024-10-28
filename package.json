@@ -9,6 +9,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint --no-error-on-unmatched-pattern --max-warnings=1 --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "db:push": "dotenv -e .env -- drizzle-kit push",
+    "db:migrate": "dotenv -e .env -- drizzle-kit migrate",
+    "db:check": "dotenv -e .env -- drizzle-kit check",
     "db:generate": "drizzle-kit generate",
     "db:studio": "dotenv -e .env -- drizzle-kit studio",
     "db:studio:prod": "dotenv -e .env.prod -- drizzle-kit studio",
