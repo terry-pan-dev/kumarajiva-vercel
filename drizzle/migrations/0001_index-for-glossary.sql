@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "originLangTargetLangIndex" ON "glossaries" USING btree ("origin_lang","target_lang");

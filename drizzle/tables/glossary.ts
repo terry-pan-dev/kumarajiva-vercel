@@ -24,6 +24,7 @@ export const glossariesTable = pgTable(
   (table) => ({
     embeddingIndex: index('embeddingIndex').using('hnsw', table.embedding.op('vector_cosine_ops')),
     uniquePairIndex: unique('uniquePairIndex').on(table.origin, table.target),
+    originLangTargetLangIndex: index('originLangTargetLangIndex').on(table.originLang, table.targetLang),
   }),
 );
 

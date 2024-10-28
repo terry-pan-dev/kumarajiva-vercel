@@ -8,6 +8,13 @@
       "when": 1729386404688,
       "tag": "0000_init-migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1730149531626,
+      "tag": "0001_index-for-glossary",
+      "breakpoints": true
     }
   ]
 }

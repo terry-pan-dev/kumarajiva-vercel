@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
+import { type ReadReference } from '~/drizzle/tables/reference';
 import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
 import React, { useEffect, useRef, useState, type PropsWithChildren } from 'react';
@@ -25,40 +26,13 @@ import {
 } from '../components/ui';
 import { useToast } from '../hooks/use-toast';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
-import { readParagraphsByRollId, upsertParagraph } from '../services/paragraph.service';
-
-interface Paragraph {
-  id: string;
-  origin: string;
-  rollId: string;
-  target: string | null;
-  references: Reference[];
-}
-
-interface Reference {
-  id: string;
-  sutraName: string;
-  content: string;
-}
+import { readParagraphsByRollId, upsertParagraph, type IParagraph } from '../services/paragraph.service';
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const { rollId } = params;
-  const originalParagraphs = await readParagraphsByRollId(rollId as string);
-  const paragraphs = originalParagraphs
-    .filter((paragraph) => paragraph.parentId === null)
-    .map((p) => ({
-      id: p.id,
-      origin: p.content,
-      target: originalParagraphs.find((para) => para.parentId === p.id)?.content,
-      rollId: p.rollId,
-      references: p.references.map((r) => ({
-        id: r.id,
-        sutraName: r.sutraName,
-        content: r.content,
-      })),
-    }));
+  const paragraphs = await readParagraphsByRollId(rollId as string);
 
-  return json({ success: true, paragraphs });
+  return json({ success: true, paragraphs: paragraphs ?? [] });
 }
 
 const paragraphActionSchema = z.object({
@@ -165,7 +139,8 @@ export default function TranslationRoll() {
         <ResizableHandle withHandle className="bg-yellow-600" />
         <RightPanel>
           <ScrollArea className="h-full pr-4">
-            <Workspace paragraph={paragraphs.find((p) => p.id === selectedParagraph) as Paragraph} />
+            {/* TODO: make sure type safe, the problem is createdAt is date and string */}
+            <Workspace paragraph={paragraphs.find((p) => p.id === selectedParagraph) as unknown as IParagraph} />
           </ScrollArea>
         </RightPanel>
       </DragPanel>
@@ -181,7 +156,7 @@ export default function TranslationRoll() {
   );
 }
 
-const Workspace = ({ paragraph }: { paragraph: Paragraph }) => {
+const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
   const { id, origin, target, references, rollId } = paragraph;
   const fetcher = useFetcher<{ success: boolean }>();
 
@@ -283,7 +258,7 @@ const Workspace = ({ paragraph }: { paragraph: Paragraph }) => {
   );
 };
 
-const References = ({ references }: { references: Reference[] }) => {
+const References = ({ references }: { references: ReadReference[] }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full gap-2">
