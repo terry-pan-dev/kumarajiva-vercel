@@ -1,5 +1,6 @@
-import { type LoaderFunctionArgs } from '@vercel/remix';
+import { redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import OpenAI from 'openai';
+import { assertAuthUser } from '../auth.server';
 
 export const config = { runtime: 'edge' };
 
@@ -12,6 +13,10 @@ const client = new OpenAI({
  * http 2.0 protocol. If you test it locally, it may not work.
  */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const user = await assertAuthUser(request);
+  if (!user) {
+    return redirect('/login');
+  }
   const url = new URL(request.url);
 
   const content = url.searchParams.get('origin');
@@ -27,7 +32,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     messages: [
       {
         role: 'system',
-        content: 'Now you are professional translator. You translate from Chinese to English.',
+        content: `Now you are professional translator. You translate from ${user.originLang} to ${user.targetLang}.`,
       },
       {
         role: 'user',

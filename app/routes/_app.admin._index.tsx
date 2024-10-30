@@ -95,7 +95,6 @@ export const ErrorBoundary = () => {
 
 export default function AdminIndex() {
   const { users, teams } = useLoaderData<typeof loader>();
-  console.log('admin index', { users, teams });
   const getBadgeVariant = useCallback((role: UserRole) => {
     return match(role)
       .with('admin', () => 'bg-pink-500')

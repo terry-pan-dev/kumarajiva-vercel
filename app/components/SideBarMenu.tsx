@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from '~/components/ui';
 import { cn } from '~/lib/utils';
-import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet } from 'lucide-react';
+import { Book, BookCopy, Cog, Home, LogOut, Sheet } from 'lucide-react';
 import { Icons } from './icons';
 
 const menuItems = [
@@ -18,7 +18,7 @@ const menuItems = [
   { icon: Sheet, label: 'Glossary', href: '/glossary' },
   { icon: BookCopy, label: 'Reference', href: '/reference' },
   { icon: Cog, label: 'Admin', href: '/admin' },
-  { icon: Search, label: 'Search', href: '/search' },
+  // { icon: Search, label: 'Search', href: '/search' },
 ];
 
 interface SideBarMenuProps {

@@ -1,0 +1,1 @@
+ALTER TABLE "paragraphs" ALTER COLUMN "language" SET NOT NULL;

@@ -2,8 +2,8 @@ import { sql as postgresql } from '@vercel/postgres';
 import * as schema from '~/drizzle/schema';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import 'dotenv/config';
-import { paragraphsTable, type CreateParagraph, type ReadParagraph, type ReadReference } from '~/drizzle/schema';
-import { aliasedTable, and, asc, eq, isNull } from 'drizzle-orm';
+import { paragraphsTable, type CreateParagraph, type ReadReference } from '~/drizzle/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 
 const dbClient = drizzle(postgresql, { schema });
 
@@ -15,32 +15,25 @@ export interface IParagraph {
   references: ReadReference[];
 }
 
-export const readParagraphsByRollId = async (rollId: string): Promise<IParagraph[]> => {
-  const source = aliasedTable(paragraphsTable, 'source');
-  const target = aliasedTable(paragraphsTable, 'target');
-  const paragraphs = (await dbClient
-    .select()
-    .from(source)
-    .leftJoin(target, eq(source.id, target.parentId))
-    .orderBy(asc(source.order))
-    .where(and(isNull(source.parentId), eq(source.rollId, rollId)))) as unknown as {
-    source: ReadParagraph;
-    target: ReadParagraph;
-  }[];
-
-  const references = await dbClient.query.paragraphsTable.findMany({
-    where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), isNull(paragraphs.parentId)),
+export const readParagraphsByRollId = async ({
+  rollId,
+  user,
+}: {
+  rollId: string;
+  user: schema.ReadUser;
+}): Promise<IParagraph[]> => {
+  const paragraphs = await dbClient.query.paragraphsTable.findMany({
+    where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, user.originLang)),
     with: {
+      children: true,
       references: true,
     },
   });
 
-  const result = paragraphs.map((paragraph: { source: ReadParagraph; target: ReadParagraph }) => ({
-    id: paragraph.source.id,
-    rollId: paragraph.source.rollId,
-    origin: paragraph.source.content,
-    target: paragraph.target ? paragraph.target.content : null,
-    references: references.find((r) => r.id === paragraph.source.id)?.references || [],
+  const result = paragraphs.map((paragraph) => ({
+    ...paragraph,
+    origin: paragraph.content,
+    target: paragraph.children?.content,
   }));
 
   return result;
@@ -51,7 +44,7 @@ export const readParagraphsAndReferencesByRollId = async (rollId: string) => {
     where: (paragraphs, { eq }) => and(eq(paragraphs.rollId, rollId), isNull(paragraphs.parentId)),
     orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
     with: {
-      paragraph: true,
+      parent: true,
       references: {
         orderBy: (references, { asc }) => [asc(references.order)],
       },
@@ -60,11 +53,37 @@ export const readParagraphsAndReferencesByRollId = async (rollId: string) => {
 };
 
 export const upsertParagraph = async (paragraph: CreateParagraph) => {
-  const prev = await dbClient.query.paragraphsTable.findFirst({
-    where: (paragraphs, { eq }) => eq(paragraphs.parentId, paragraph.parentId || ''),
+  const { parentId, rollId } = paragraph;
+  const roll = await dbClient.query.rollsTable.findFirst({
+    where: (rolls, { eq }) => eq(rolls.id, rollId),
+    with: {
+      children: true,
+    },
   });
-  if (prev) {
-    return dbClient.update(paragraphsTable).set(paragraph).where(eq(paragraphsTable.id, prev.id));
+  if (!roll?.children) {
+    throw new Error('Roll has no children');
   }
-  return dbClient.insert(paragraphsTable).values(paragraph);
+  if (!parentId) {
+    throw new Error('Parent id is required');
+  }
+  const originParagraph = await dbClient.query.paragraphsTable.findFirst({
+    where: (paragraphs, { eq }) => eq(paragraphs.id, parentId),
+    with: {
+      children: true,
+    },
+  });
+  if (originParagraph?.children) {
+    return dbClient
+      .update(paragraphsTable)
+      .set({
+        ...paragraph,
+        rollId: roll.children.id,
+      })
+      .where(eq(paragraphsTable.id, originParagraph.children.id));
+  }
+  return dbClient.insert(paragraphsTable).values({
+    ...paragraph,
+    order: originParagraph?.order,
+    rollId: roll?.children.id,
+  });
 };

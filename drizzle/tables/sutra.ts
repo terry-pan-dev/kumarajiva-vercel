@@ -25,7 +25,11 @@ export const sutrasTableRelations = relations(sutrasTable, ({ one, many }) => ({
     fields: [sutrasTable.teamId],
     references: [teamsTable.id],
   }),
-  sutra: one(sutrasTable, {
+  children: one(sutrasTable, {
+    fields: [sutrasTable.id],
+    references: [sutrasTable.parentId],
+  }),
+  parent: one(sutrasTable, {
     fields: [sutrasTable.parentId],
     references: [sutrasTable.id],
   }),

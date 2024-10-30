@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { assertAuthUser } from '../auth.server';
 import { TranslationCard } from '../components/Card';
 import { ErrorInfo } from '../components/ErrorInfo';
-import { readSutras } from '../services/sutra.service';
+import { readSutrasAndRolls } from '../services/sutra.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
@@ -13,7 +13,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return redirect('/login');
   }
   try {
-    const sutras = await readSutras({ user });
+    const sutras = await readSutrasAndRolls({ user });
     return json({ success: true, sutras });
   } catch (error) {
     console.error(error);

@@ -57,7 +57,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (searchTerm) {
       console.log(searchTerm);
       const glossaries = await searchGlossaries(searchTerm);
-      console.log(glossaries);
       return json({ success: true, data: glossaries });
     }
 
@@ -83,8 +82,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       createdBy: user.id,
       updatedBy: user.id,
     };
-
-    console.log(newGlossary);
 
     await createGlossary(newGlossary);
   } catch (error) {

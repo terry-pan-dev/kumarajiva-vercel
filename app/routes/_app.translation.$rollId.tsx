@@ -28,9 +28,13 @@ import { useToast } from '../hooks/use-toast';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { readParagraphsByRollId, upsertParagraph, type IParagraph } from '../services/paragraph.service';
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ params, request }: LoaderFunctionArgs) {
+  const user = await assertAuthUser(request);
+  if (!user) {
+    return redirect('/login');
+  }
   const { rollId } = params;
-  const paragraphs = await readParagraphsByRollId(rollId as string);
+  const paragraphs = await readParagraphsByRollId({ rollId: rollId as string, user });
 
   return json({ success: true, paragraphs: paragraphs ?? [] });
 }
@@ -54,13 +58,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   try {
     const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
-    console.log({ result, rollId });
     await upsertParagraph({
       content: result.translation,
       rollId: rollId as string,
       parentId: result.paragraphId,
       createdBy: user.id,
       updatedBy: user.id,
+      language: user.targetLang,
     });
   } catch (error) {
     console.log({ error });
@@ -150,7 +154,11 @@ export default function TranslationRoll() {
   return (
     <ScrollArea className="h-full px-2 lg:px-8">
       <RadioGroup className="gap-4" onValueChange={setSelectedParagraph}>
-        {Paragraphs}
+        {paragraphs.length ? (
+          Paragraphs
+        ) : (
+          <div className="text-center text-lg">We are preparing paragraphs for you...</div>
+        )}
       </RadioGroup>
     </ScrollArea>
   );

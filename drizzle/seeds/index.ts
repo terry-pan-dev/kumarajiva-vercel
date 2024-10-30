@@ -52,11 +52,12 @@ const main = async () => {
   console.log('seeding paragraphs table');
   await dbClient
     .insert(paragraphsTable)
-    .values(paragraphs)
+    .values(paragraphs as any)
     .onConflictDoUpdate({
       target: paragraphsTable.id,
       set: {
         order: sql.raw(`excluded.${paragraphsTable.order.name}`),
+        language: sql.raw(`excluded.${paragraphsTable.language.name}`),
         updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
       },
     });

@@ -4,4 +4,5 @@ node_modules
 .env
 .vercel
 .env.local
+.env.prod
 /scripts

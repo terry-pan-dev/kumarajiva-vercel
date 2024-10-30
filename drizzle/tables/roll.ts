@@ -7,7 +7,7 @@ import { sutrasTable } from './sutra';
 export const rollsTable = pgTable('rolls', {
   id: uuid('id').primaryKey().defaultRandom(),
   title: text('title').notNull(),
-  subtitle: text('subtitle'),
+  subtitle: text('subtitle').notNull(),
   parentId: uuid('parent_id').references((): AnyPgColumn => rollsTable.id),
   sutraId: uuid('sutra_id')
     .references(() => sutrasTable.id)
@@ -20,6 +20,10 @@ export const rollsTableRelations = relations(rollsTable, ({ one, many }) => ({
   sutra: one(sutrasTable, {
     fields: [rollsTable.sutraId],
     references: [sutrasTable.id],
+  }),
+  children: one(rollsTable, {
+    fields: [rollsTable.id],
+    references: [rollsTable.parentId],
   }),
   parent: one(rollsTable, {
     fields: [rollsTable.parentId],
