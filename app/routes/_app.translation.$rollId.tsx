@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
+import { useFetcher, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { type ReadReference } from '~/drizzle/tables/reference';
+import { type ReadUser } from '~/drizzle/tables/user';
 import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
 import React, { useEffect, useRef, useState, type PropsWithChildren } from 'react';
@@ -323,6 +324,7 @@ interface StreamCardProps {
 }
 
 const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
+  const context = useOutletContext<{ user: ReadUser }>();
   const [translationResult, setTranslationResult] = useState<string>('');
   const textRef = useRef<string>('');
 
@@ -331,7 +333,9 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
     textRef.current = '';
     const condition = true;
     const fetchStream = async () => {
-      const response = await fetch(`/chat?origin=${text}`);
+      const response = await fetch(
+        `/chat?origin=${text}&sourceLang=${context.user.originLang}&targetLang=${context.user.targetLang}`,
+      );
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
