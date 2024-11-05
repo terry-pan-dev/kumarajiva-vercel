@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS "paragraphs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content" text NOT NULL,
 	"order" text DEFAULT '0' NOT NULL,
+	"language" "lang" NOT NULL,
 	"parent_id" uuid,
 	"roll_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -27,7 +28,7 @@ CREATE TABLE IF NOT EXISTS "references" (
 CREATE TABLE IF NOT EXISTS "rolls" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" text NOT NULL,
-	"subtitle" text,
+	"subtitle" text NOT NULL,
 	"parent_id" uuid,
 	"sutra_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -86,24 +87,17 @@ CREATE TABLE IF NOT EXISTS "users" (
 CREATE TABLE IF NOT EXISTS "glossaries" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"origin" text NOT NULL,
-	"target" text NOT NULL,
-	"origin_lang" text,
-	"target_lang" text,
-	"origin_sutra_text" text,
-	"target_sutra_text" text,
-	"sutra_name" text,
-	"volume" text,
+	"phonetic" text,
+	"subscribers" integer DEFAULT 0,
+	"author" text,
 	"cbeta_frequency" text,
-	"glossary_author" text,
-	"translation_date" text,
+	"translations" json DEFAULT '[]'::json,
 	"discussion" text,
-	"embedding" vector(1536),
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp,
 	"created_by" text NOT NULL,
-	"updated_by" text NOT NULL,
-	CONSTRAINT "uniquePairIndex" UNIQUE("origin","target")
+	"updated_by" text NOT NULL
 );
 --> statement-breakpoint
 DO $$ BEGIN
@@ -153,5 +147,3 @@ DO $$ BEGIN
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "embeddingIndex" ON "glossaries" USING hnsw ("embedding" vector_cosine_ops);

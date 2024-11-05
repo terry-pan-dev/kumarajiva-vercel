@@ -1,67 +1,38 @@
-import { useLoaderData, useNavigate, useRouteError } from '@remix-run/react';
+import { useFetcher, useLoaderData, useNavigate, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
-import { type ReadGlossary } from '~/drizzle/tables';
-import { createGlossary, readGlossaries, searchGlossaries } from '~/services';
-import { useMemo, useState } from 'react';
-import { z, ZodError } from 'zod';
+import { type ReadGlossary } from '~/drizzle/schema';
+import { readGlossaries, searchGlossaries, updateGlossary } from '~/services';
+import React, { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
-import { FormInput, FormModal, FormTextarea } from '../components/FormModal';
-import { Icons } from '../components/icons';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  Badge,
-  Button,
-  Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui';
+import { GlossaryList } from '../components/GlossaryList';
+import { Button, Input } from '../components/ui';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
+import { glossaryFormSchema } from '../validations/glossary.validation';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
 };
 
-const formSchema = z.object({
-  origin: z.string().min(1, {
-    message: 'Origin must be at least 1 characters.',
-  }),
-  target: z.string().min(1, {
-    message: 'Target must be at least 1 characters.',
-  }),
-  originSutraText: z.string().optional(),
-  targetSutraText: z.string().optional(),
-  sutraName: z.string().optional(),
-  volume: z.string().optional(),
-  cbetaFrequency: z.string().optional(),
-  glossaryAuthor: z.string().optional(),
-  translationDate: z.string().optional(),
-  discussion: z.string().optional(),
-});
-
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
     const { searchParams } = new URL(request.url);
-    const skip = parseInt(searchParams.get('skip') || '0', 10);
-    const take = parseInt(searchParams.get('take') || '25', 10);
-
+    const page = parseInt(searchParams.get('page') || '1', 10);
     const searchTerm = searchParams.get('searchTerm') || '';
 
     if (searchTerm) {
-      console.log(searchTerm);
       const glossaries = await searchGlossaries(searchTerm);
-      return json({ success: true, data: glossaries });
+      return json({ success: true, glossaries, page: -1 });
     }
 
-    const glossaries = await readGlossaries({ skip, take });
-    return json({ success: true, data: glossaries });
+    if (page === -1) {
+      return json({ success: true, glossaries: [], page: -1 });
+    }
+
+    const glossaries = await readGlossaries({ page });
+
+    return json({ success: true, glossaries, page: glossaries.length ? page : -1 });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
@@ -74,16 +45,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return redirect('/login');
   }
   const formData = Object.fromEntries(await request.formData());
+  const bookmark = formData.bookmark;
+  const glossaryId = formData.glossaryId as string;
+  if (bookmark) {
+    await updateGlossary({
+      id: glossaryId,
+      subscribers: bookmark === 'true' ? 1 : -1,
+    });
+    return json({ success: true });
+  }
 
   try {
-    const data = validatePayloadOrThrow({ schema: formSchema, formData });
+    const data = validatePayloadOrThrow({ schema: glossaryFormSchema, formData });
     const newGlossary = {
       ...data,
       createdBy: user.id,
       updatedBy: user.id,
     };
+    console.log(newGlossary);
 
-    await createGlossary(newGlossary);
+    // await createGlossary(newGlossary);
   } catch (error) {
     if (error instanceof ZodError) {
       return json({ success: false, errors: error.format() });
@@ -105,25 +86,57 @@ export function ErrorBoundary() {
 
   return <ErrorInfo error={error} />;
 }
-export default function GlossaryIndex() {
-  const { data } = useLoaderData<typeof loader>();
 
-  const glossaries = useMemo(() => {
-    return data.map((glossary) => ({
+export default function GlossaryIndex() {
+  const { glossaries, page } = useLoaderData<typeof loader>();
+  const [glossariesState, setGlossariesState] = useState<ReadGlossary[]>(
+    glossaries.map((glossary) => ({
       ...glossary,
       createdAt: new Date(glossary.createdAt),
       updatedAt: new Date(glossary.updatedAt),
       deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
-    }));
-  }, [data]);
+    })),
+  );
+
+  const fetcher = useFetcher<{ glossaries: ReadGlossary[]; page: number }>();
+
+  useEffect(() => {
+    if (fetcher.state === 'loading' || fetcher.state === 'submitting') {
+      return;
+    }
+    if (fetcher.data?.glossaries.length) {
+      const newGlossaries =
+        fetcher.data?.glossaries?.map((glossary) => ({
+          ...glossary,
+          createdAt: new Date(glossary.createdAt),
+          updatedAt: new Date(glossary.updatedAt),
+          deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
+        })) || [];
+      setGlossariesState((prev) => [...prev, ...newGlossaries]);
+    }
+  }, [fetcher.data, fetcher.state]);
+
+  const loadNext = useCallback(() => {
+    const currentPage = fetcher.data?.page || page;
+    if (currentPage !== -1) {
+      fetcher.load(`/glossary?index&page=${currentPage + 1}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.data?.page]);
+
+  const glossaryListRef = useRef<HTMLDivElement>(null);
 
   return (
     <div>
       <SearchBar />
       <div className="h-4" />
-      <GlossaryList glossaries={glossaries} />
-
-      <GlossaryCreateModal />
+      <InfiniteScroller
+        loading={fetcher.state === 'loading' || fetcher.state === 'submitting'}
+        loadNext={loadNext}
+        ref={glossaryListRef}
+      >
+        <GlossaryList glossaries={glossariesState} ref={glossaryListRef} />
+      </InfiniteScroller>
     </div>
   );
 }
@@ -158,140 +171,50 @@ const SearchBar = () => {
   );
 };
 
-type Colors = {
-  origin: string;
-  target: string;
-};
-const GlossaryList = ({ glossaries }: { glossaries: ReadGlossary[] }) => {
-  const colors = useMemo<Colors>(() => {
-    return {
-      origin: 'bg-green-200',
-      target: 'bg-cyan-200',
+interface InfiniteScrollerProps extends PropsWithChildren {
+  loading: boolean;
+  loadNext: () => void;
+}
+const InfiniteScroller = React.forwardRef<HTMLDivElement, InfiniteScrollerProps>((props, ref) => {
+  const { children, loading, loadNext } = props;
+  const scrollListener = useRef(loadNext);
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    scrollListener.current = loadNext;
+  }, [loadNext]);
+
+  const onScrollHappen = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      const documentHeight = document.documentElement.scrollHeight;
+      const scrollDifference = Math.floor(window.innerHeight + window.scrollY);
+      const scrollEnded = documentHeight == scrollDifference;
+
+      if (scrollEnded && !loading) {
+        scrollListener.current();
+      }
+    }, 500); // Adjust this delay as needed (in milliseconds)
+  };
+
+  useEffect(() => {
+    if (!ref || !('current' in ref && ref.current)) {
+      return;
+    }
+
+    ref.current.addEventListener('scroll', onScrollHappen);
+
+    return () => {
+      if (ref.current) {
+        ref.current.removeEventListener('scroll', onScrollHappen);
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (glossaries.length) {
-    return (
-      <div>
-        {glossaries.map((glossary) => (
-          <Accordion type="single" collapsible key={glossary.id} className="group">
-            <AccordionItem value="item-1">
-              <AccordionTrigger className="px-4 py-2 text-gray-700 group-odd:bg-card">
-                <GlossaryItemHeader glossary={glossary} colors={colors} />
-              </AccordionTrigger>
-              <AccordionContent>
-                <GlossaryItemContent glossary={glossary} colors={colors} />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
-
-const GlossaryItemHeader = ({ glossary, colors }: { glossary: ReadGlossary; colors: Colors }) => {
-  return (
-    <div className="flex justify-start gap-2">
-      <Badge className={`${colors.origin} hover:${colors.origin} rounded-sm text-sm text-black`}>
-        {glossary.origin}
-      </Badge>
-      <Badge className={`${colors.target} hover:${colors.target} rounded-sm text-sm text-black`}>
-        {glossary.target}
-      </Badge>
-    </div>
-  );
-};
-
-const GlossaryItemContent = ({ glossary, colors }: { glossary: ReadGlossary; colors: Colors }) => {
-  return (
-    <Table className="bg-primary-foreground">
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[150px]">Name</TableHead>
-          <TableHead>Value</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow>
-          <TableCell className="font-medium">Origin Term</TableCell>
-          <TableCell className={colors.origin}>{glossary.origin}</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell className="font-medium">Target Term</TableCell>
-          <TableCell className={colors.target}>{glossary.target}</TableCell>
-        </TableRow>
-        {glossary.originSutraText && (
-          <TableRow>
-            <TableCell className="font-medium">Origin Sutra Text</TableCell>
-            <TableCell>{glossary.originSutraText}</TableCell>
-          </TableRow>
-        )}
-        {glossary.targetSutraText && (
-          <TableRow>
-            <TableCell className="font-medium">Target Sutra Text</TableCell>
-            <TableCell>{glossary.targetSutraText}</TableCell>
-          </TableRow>
-        )}
-        {glossary.sutraName && (
-          <TableRow>
-            <TableCell className="font-medium">Sutra Name</TableCell>
-            <TableCell>{glossary.sutraName}</TableCell>
-          </TableRow>
-        )}
-        {glossary.volume && (
-          <TableRow>
-            <TableCell className="font-medium">Volume</TableCell>
-            <TableCell>{glossary.volume}</TableCell>
-          </TableRow>
-        )}
-        {glossary.translationDate && (
-          <TableRow>
-            <TableCell className="font-medium">Translation Date</TableCell>
-            <TableCell>{glossary.translationDate}</TableCell>
-          </TableRow>
-        )}
-        {glossary.discussion && (
-          <TableRow>
-            <TableCell className="font-medium">Discussion</TableCell>
-            <TableCell>{glossary.discussion}</TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  );
-};
-
-const GlossaryCreateModal = () => {
-  return (
-    <FormModal
-      title="Create Glossary"
-      trigger={
-        <Button variant="outline" size="icon" className="fixed bottom-10 right-10 rounded-full">
-          <Icons.Add className="h-4 w-4" />
-        </Button>
-      }
-      schema={formSchema}
-    >
-      <GlossaryCreateForm />
-    </FormModal>
-  );
-};
-
-const GlossaryCreateForm = () => {
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <FormInput name="origin" label="Origin" required description="The original term in the source language." />
-      <FormInput name="target" label="Target" required description="The translated term in the target language." />
-      <FormTextarea name="originSutraText" label="Origin Sutra Text" description="The original text of the sutra." />
-      <FormTextarea name="targetSutraText" label="Target Sutra Text" description="The translated text of the sutra." />
-      <FormTextarea name="sutraName" label="Sutra Name" description="The name of the sutra." />
-      <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
-      <FormTextarea name="cbetaFrequency" label="CBETA Frequency" description="The frequency of the sutra in CBETA." />
-      <FormTextarea name="glossaryAuthor" label="Glossary Author" description="The author of the glossary." />
-      <FormTextarea name="translationDate" label="Translation Date" description="The date of the translation." />
-      <FormTextarea name="discussion" label="Discussion" description="Any additional discussion about the glossary." />
-    </div>
-  );
-};
+  return <>{children}</>;
+});
+InfiniteScroller.displayName = 'InfiniteScroller';

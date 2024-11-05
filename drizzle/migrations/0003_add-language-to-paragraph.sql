@@ -1,1 +1,0 @@
-ALTER TABLE "paragraphs" ADD COLUMN "language" "lang";

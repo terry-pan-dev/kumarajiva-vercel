@@ -1,32 +1,35 @@
-import { index, pgTable, text, unique, uuid, vector } from 'drizzle-orm/pg-core';
+import { integer, json, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
+import { type Lang } from './enums';
 
-export const glossariesTable = pgTable(
-  'glossaries',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    origin: text('origin').notNull(),
-    target: text('target').notNull(),
-    originLang: text('origin_lang'),
-    targetLang: text('target_lang'),
-    originSutraText: text('origin_sutra_text'),
-    targetSutraText: text('target_sutra_text'),
-    sutraName: text('sutra_name'),
-    volume: text('volume'),
-    cbetaFrequency: text('cbeta_frequency'),
-    glossaryAuthor: text('glossary_author'),
-    translationDate: text('translation_date'),
-    discussion: text('discussion'),
-    embedding: vector('embedding', { dimensions: 1536 }),
-    ...auditAtFields,
-    ...auditByFields,
-  },
-  (table) => ({
-    embeddingIndex: index('embeddingIndex').using('hnsw', table.embedding.op('vector_cosine_ops')),
-    uniquePairIndex: unique('uniquePairIndex').on(table.origin, table.target),
-    originLangTargetLangIndex: index('originLangTargetLangIndex').on(table.originLang, table.targetLang),
-  }),
-);
+export const glossariesTable = pgTable('glossaries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  glossary: text('origin').notNull(),
+  phonetic: text('phonetic'),
+  subscribers: integer('subscribers').default(0),
+  author: text('author'),
+  cbetaFrequency: text('cbeta_frequency'),
+  translations: json()
+    .$type<
+      {
+        glossary: string;
+        language: Lang;
+        sutraName: string;
+        volume: string;
+        updatedBy: string;
+        updatedAt: string;
+        originSutraText?: string | null;
+        targetSutraText?: string | null;
+        author?: string | null;
+        partOfSpeech?: string | null;
+        phonetic?: string | null;
+      }[]
+    >()
+    .default([]),
+  discussion: text('discussion'),
+  ...auditAtFields,
+  ...auditByFields,
+});
 
 export type ReadGlossary = typeof glossariesTable.$inferSelect;
 export type CreateGlossary = typeof glossariesTable.$inferInsert;

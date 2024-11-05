@@ -1,6 +1,9 @@
 import { Outlet, useLoaderData } from '@remix-run/react';
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
+import { type ReadUser } from '../../drizzle/schema';
 import { assertAuthUser } from '../auth.server';
+import { AbilityContext, defineAbilityFor } from '../authorisation';
+import { SearchProvider } from '../components/SearchContext';
 import { SideBarMenu } from '../components/SideBarMenu';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -15,12 +18,18 @@ export default function AppLayout() {
     return <Outlet />;
   }
 
+  const ability = defineAbilityFor(user as unknown as ReadUser);
+
   return (
-    <div className="flex h-screen">
-      <SideBarMenu userName={user.username} userEmail={user.email} userRole={user.role} avatarSrc={user.avatar} />
-      <main className="flex-1 overflow-y-auto">
-        <Outlet />
-      </main>
-    </div>
+    <AbilityContext.Provider value={ability}>
+      <SearchProvider>
+        <div className="flex h-screen">
+          <SideBarMenu userName={user.username} userEmail={user.email} userRole={user.role} avatarSrc={user.avatar} />
+          <main className="flex-1 overflow-y-auto">
+            <Outlet />
+          </main>
+        </div>
+      </SearchProvider>
+    </AbilityContext.Provider>
   );
 }

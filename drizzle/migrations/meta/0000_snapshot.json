@@ -1,5 +1,5 @@
 {
-  "id": "b8369521-d0db-4fb8-8596-646738b15ace",
+  "id": "d2155376-7d2f-428f-bba9-5911017aad68",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -27,6 +27,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'0'"
+        },
+        "language": {
+          "name": "language",
+          "type": "lang",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
         },
         "parent_id": {
           "name": "parent_id",
@@ -214,7 +221,7 @@
           "name": "subtitle",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "parent_id": {
           "name": "parent_id",
@@ -618,44 +625,21 @@
           "primaryKey": false,
           "notNull": true
         },
-        "target": {
-          "name": "target",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "origin_lang": {
-          "name": "origin_lang",
+        "phonetic": {
+          "name": "phonetic",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "target_lang": {
-          "name": "target_lang",
-          "type": "text",
+        "subscribers": {
+          "name": "subscribers",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "default": 0
         },
-        "origin_sutra_text": {
-          "name": "origin_sutra_text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "target_sutra_text": {
-          "name": "target_sutra_text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sutra_name": {
-          "name": "sutra_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "volume": {
-          "name": "volume",
+        "author": {
+          "name": "author",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -666,27 +650,16 @@
           "primaryKey": false,
           "notNull": false
         },
-        "glossary_author": {
-          "name": "glossary_author",
-          "type": "text",
+        "translations": {
+          "name": "translations",
+          "type": "json",
           "primaryKey": false,
-          "notNull": false
-        },
-        "translation_date": {
-          "name": "translation_date",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "default": "'[]'::json"
         },
         "discussion": {
           "name": "discussion",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "embedding": {
-          "name": "embedding",
-          "type": "vector(1536)",
           "primaryKey": false,
           "notNull": false
         },
@@ -723,36 +696,10 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "embeddingIndex": {
-          "name": "embeddingIndex",
-          "columns": [
-            {
-              "expression": "embedding",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "vector_cosine_ops"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "hnsw",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "uniquePairIndex": {
-          "name": "uniquePairIndex",
-          "nullsNotDistinct": false,
-          "columns": [
-            "origin",
-            "target"
-          ]
-        }
-      }
+      "uniqueConstraints": {}
     }
   },
   "enums": {},

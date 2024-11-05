@@ -1,1 +1,0 @@
-ALTER TABLE "rolls" ALTER COLUMN "subtitle" SET NOT NULL;

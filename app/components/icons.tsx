@@ -197,6 +197,24 @@ const google = (props: LucideProps) => (
   </svg>
 );
 
+const lineChart = (props: LucideProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+    <path d="m19 9-5 5-4-4-3 3" />
+  </svg>
+);
+
 const loader = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -270,13 +288,67 @@ const book = (props: LucideProps) => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
+    className="lucide lucide-book"
     {...props}
   >
     <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
-    <path d="m8 13 4-7 4 7" />
-    <path d="M9.1 11h5.7" />
   </svg>
 );
+
+const clock = (props: LucideProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+const bookmark = (props: LucideProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+  </svg>
+);
+
+const squarePen = (props: LucideProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-square-pen"
+    {...props}
+  >
+    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
+  </svg>
+);
+
 export const Icons = {
   Add: Plus,
   ChevronDown: ChevronDown,
@@ -302,6 +374,8 @@ export const Icons = {
   chevronsUpDown: ChevronsUpDown,
   clear: X,
   close: X,
+  Clock: clock,
+  SquarePen: squarePen,
   code: Code2,
   codeblock: FileCode,
   color: Baseline,
@@ -329,6 +403,7 @@ export const Icons = {
   Google: google,
   lineHeight: WrapText,
   link: Link2,
+  LineChart: lineChart,
   minus: Minus,
   more: MoreHorizontal,
   ol: ListOrdered,
@@ -352,6 +427,7 @@ export const Icons = {
   Users: users,
   Loader: loader,
   Book: book,
+  BookMark: bookmark,
 
   // www
   gitHub: (props: LucideProps) => (

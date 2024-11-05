@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1729386404688,
+      "when": 1730816887779,
       "tag": "0000_init-migration",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1730149531626,
-      "tag": "0001_index-for-glossary",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1730289746482,
-      "tag": "0002_make-roll-subtitle-mandatory",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1730292433414,
-      "tag": "0003_add-language-to-paragraph",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1730292472942,
-      "tag": "0004_make-paragraph-language-mandatory",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1730292568722,
-      "tag": "0005_add-default-to-language",
       "breakpoints": true
     }
   ]

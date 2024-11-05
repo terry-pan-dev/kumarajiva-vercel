@@ -1,1 +1,0 @@
-ALTER TABLE "paragraphs" ALTER COLUMN "language" SET DEFAULT 'english';

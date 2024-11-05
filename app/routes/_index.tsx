@@ -17,7 +17,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export default function HomeLayout() {
   return (
     <div>
-      <Outlet context={{ user: { abc: 'idi' } }} />
+      <Outlet />
       <Toaster />
     </div>
   );

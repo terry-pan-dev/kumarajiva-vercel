@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useState, type PropsWithChildren } from 'reac
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 import { z, ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
+import ContextMenuWrapper from '../components/ContextMenu';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { Paragraph } from '../components/Paragraph';
 import {
@@ -99,13 +100,17 @@ export default function TranslationRoll() {
     <div key={paragraph.id} className="flex items-center gap-4 px-2">
       {paragraph?.target ? (
         <div className={`${selectedParagraph ? 'flex flex-col' : 'grid grid-cols-2'} gap-4`}>
-          <Paragraph text={paragraph.origin} isOrigin />
+          <ContextMenuWrapper>
+            <Paragraph text={paragraph.origin} isOrigin />
+          </ContextMenuWrapper>
           <Label
             onDoubleClick={() => setSelectedParagraph(paragraph.id)}
             className="text-md flex h-auto font-normal"
             ref={selectedParagraph === paragraph.id ? labelRef : undefined}
           >
-            <Paragraph text={paragraph.target} />
+            <ContextMenuWrapper>
+              <Paragraph text={paragraph.target} />
+            </ContextMenuWrapper>
           </Label>
         </div>
       ) : (
@@ -124,7 +129,9 @@ export default function TranslationRoll() {
             className="text-md w-full font-normal"
             ref={selectedParagraph === paragraph.id ? labelRef : undefined}
           >
-            <Paragraph text={paragraph.origin} />
+            <ContextMenuWrapper>
+              <Paragraph text={paragraph.origin} />
+            </ContextMenuWrapper>
           </Label>
         </motion.div>
       )}
@@ -240,8 +247,12 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
           exit={{ opacity: 0, x: '100%' }}
           transition={{ duration: 0.3 }}
         >
-          <Paragraph text={origin} title="Origin" />
-          <OpenAIStreamCard text={origin} title="OpenAI" />
+          <ContextMenuWrapper>
+            <Paragraph text={origin} title="Origin" />
+          </ContextMenuWrapper>
+          <ContextMenuWrapper>
+            <OpenAIStreamCard text={origin} title="OpenAI" />
+          </ContextMenuWrapper>
         </motion.div>
         <References references={references} />
         <fetcher.Form method="post" className="mt-auto" onSubmit={handleSubmit(onSubmit)}>
