@@ -21,6 +21,13 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      fontSize: {
+        base: 'var(--font-size)',
+        sm: 'calc(var(--font-size) * 0.8)',
+        md: 'calc(var(--font-size) * 1.0)',
+        lg: 'calc(var(--font-size) * 1.2)',
+        xl: 'calc(var(--font-size) * 1.4)',
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

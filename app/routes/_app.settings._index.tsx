@@ -4,6 +4,9 @@ import { json, type LoaderFunctionArgs } from '@vercel/remix';
 import { useEffect, useMemo } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { GlossaryList } from '../components/GlossaryList';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+import { Slider } from '../components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { readGlossariesByIds } from '../services';
 
@@ -33,7 +36,13 @@ export default function SettingsIndex() {
         </ClientOnly>
       </TabsContent>
       <TabsContent value="search">Change your password here.</TabsContent>
-      <TabsContent value="font-settings">Change your password here.</TabsContent>
+      <TabsContent value="font-settings">
+        <ClientOnly>
+          {() => {
+            return <FontSizePreference />;
+          }}
+        </ClientOnly>
+      </TabsContent>
     </Tabs>
   );
 }
@@ -43,7 +52,6 @@ function GlossaryComponent() {
   const [subscribedGlossaries, _] = useLocalStorage<string[]>('subscribedGlossaries', []);
   const loaderData = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-  //   const fetcher = useFetcher<{ success: boolean; glossaries: ReadGlossary[] }>();
 
   useEffect(() => {
     console.log(subscribedGlossaries);
@@ -67,6 +75,58 @@ function GlossaryComponent() {
     return [];
   }, [loaderData]);
 
-  console.log(glossaries);
   return <GlossaryList glossaries={glossaries} />;
+}
+
+export function FontSizePreference() {
+  const [fontSize, setFontSize] = useLocalStorage<number>('fontSize', 14);
+
+  const handleFontSizeChange = (newValue: number[]) => {
+    setFontSize(newValue[0]);
+  };
+
+  const handleReset = () => {
+    setFontSize(14);
+  };
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--font-size', `${fontSize}px`);
+  }, [fontSize]);
+
+  return (
+    <Card className="mx-auto w-full max-w-md bg-white text-foreground dark:bg-gray-950">
+      <CardHeader>
+        <CardTitle>Font Size Preferences</CardTitle>
+        <CardDescription>Adjust the font size to your liking</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <label
+            htmlFor="font-size-slider"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Font Size: {fontSize}px
+          </label>
+          <Slider
+            className="w-full"
+            id="font-size-slider"
+            min={14}
+            max={20}
+            step={1}
+            value={[fontSize]}
+            onValueChange={handleFontSizeChange}
+          />
+        </div>
+        <div className="rounded-md border p-4" style={{ fontSize: `${fontSize}px` }}>
+          <h3 className="mb-2 font-semibold">Preview</h3>
+          <p>This is how your text will look with the selected font size.</p>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button onClick={handleReset} variant="default" className="w-full">
+          Reset to Default
+        </Button>
+      </CardFooter>
+    </Card>
+  );
 }
