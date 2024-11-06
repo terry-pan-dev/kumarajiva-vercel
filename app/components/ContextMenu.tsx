@@ -1,6 +1,3 @@
-'use client';
-
-import { Search } from 'lucide-react';
 import { useEffect, useState, type PropsWithChildren } from 'react';
 import {
   ContextMenu,
@@ -10,6 +7,7 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from '../components/ui/context-menu';
+import { Icons } from './icons';
 import { useSearchContext } from './SearchContext';
 
 export default function ContextMenuWrapper({ children }: PropsWithChildren) {
@@ -55,7 +53,7 @@ export default function ContextMenuWrapper({ children }: PropsWithChildren) {
           disabled={!selectedText}
           className="flex cursor-pointer items-center"
         >
-          <Search className="mr-2 h-4 w-4" />
+          <Icons.Search className="mr-2 h-4 w-4" />
           Search Glossary
           <ContextMenuShortcut>⌘K</ContextMenuShortcut>
         </ContextMenuItem>

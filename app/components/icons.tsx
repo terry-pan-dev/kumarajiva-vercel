@@ -411,7 +411,7 @@ export const Icons = {
   paragraph: Pilcrow,
   refresh: RotateCcw,
   row: RectangleHorizontal,
-  search: Search,
+  Search: Search,
   settings: Settings,
   strikethrough: Strikethrough,
   subscript: Subscript,
