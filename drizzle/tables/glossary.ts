@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { integer, json, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
 import { type Lang } from './enums';
@@ -27,6 +28,7 @@ export const glossariesTable = pgTable('glossaries', {
     >()
     .default([]),
   discussion: text('discussion'),
+  searchId: text('search_id').default(sql`NULL`),
   ...auditAtFields,
   ...auditByFields,
 });

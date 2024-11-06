@@ -22,7 +22,7 @@ export const readGlossaries = async ({ page, limit = 10 }: Pagination): Promise<
   return dbClient.query.glossariesTable.findMany({
     limit,
     offset: (page - 1) * limit,
-    orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
+    // orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
     // orderBy: [asc(glossariesTable.updatedAt)],
   });
 };

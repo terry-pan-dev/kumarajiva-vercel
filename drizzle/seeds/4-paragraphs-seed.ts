@@ -76,4 +76,103 @@ export const paragraphs = [
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
     updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
   },
+  {
+    id: '2b69d855-0d79-4785-b542-2997d1ad10d9',
+    content:
+      '復有佛世界微塵數主城神，所謂：寶峯光耀主城神、妙嚴宮殿主城神、清淨喜寶主城神、離憂清淨主城神、華燈焰眼主城神、焰幢明現主城神、盛福光明主城神、清淨光明主城神、香髻莊嚴主城神、妙寶光明主城神……。如是等而為上首，有佛世界微塵數，皆於無量不思議劫，嚴淨如來所居宮殿。',
+    parentId: null,
+    order: '7',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'c3ebefc6-474f-4f17-924d-f069b8e7e656',
+    content:
+      '復有無量主空神，所謂：淨光普照主空神、普遊深廣主空神、生吉祥風主空神、離障安住主空神、廣步妙髻主空神、無礙光焰主空神、無礙勝力主空神、離垢光明主空神、深遠妙音主空神、光遍十方主空神……。如是等而為上首，其數無量，心皆離垢，廣大明潔。',
+    parentId: null,
+    order: '8',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'f6278e98-50eb-4198-bce9-b7eb7bef425e',
+    content:
+      '復有無量主方神，所謂：遍住一切主方神、普現光明主方神、光行莊嚴主方神、周行不礙主方神、永斷迷惑主方神、普遊淨空主方神、大雲幢音主方神、髻目無亂主方神、普觀世業主方神、周遍遊覽主方神……。如是等而為上首，其數無量，能以方便，普放光明，恒照十方，相續不絕。',
+    parentId: null,
+    order: '9',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '5eb19932-f4c1-424f-85c8-e9e928e64b47',
+    content:
+      '「諸佛子！世界海有十種事，過去、現在、未來諸佛，已說、現說、當說。何者為十？所謂：世界海起具因緣，世界海所依住，世界海形狀，世界海體性，世界海莊嚴，世界海清淨，世界海佛出興，世界海劫住，世界海劫轉變差別，世界海無差別門。諸佛子！略說世界海，有此十事；若廣說者，與世界海微塵數等，過去、現在、未來諸佛，已說、現說、當說。',
+    parentId: null,
+    order: '10',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '41288042-9edc-4649-82b4-d60fb2dc3121',
+    content:
+      '爾時，普賢菩薩復告大眾言：「諸佛子！應知世界海有種種體。所謂：或以一切寶莊嚴為體，或以一寶種種莊嚴為體，或以一切寶光明為體，或以種種色光明為體，或以一切莊嚴光明為體，或以不可壞金剛為體，或以佛力持為體，或以妙寶相為體，或以佛變化為體，或以日摩尼輪為體，或以極微細寶為體，或以一切寶焰為體，或以種種香為體，或以一切寶華冠為體，或以一切寶影像為體，或以一切莊嚴所示現為體，或以一念心普示現境界為體，或以菩薩形寶為體，或以寶華蘂為體，或以佛言音為體。」',
+    parentId: null,
+    order: '11',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '1d071d76-777a-4701-9a70-590a7f2432b2',
+    content:
+      '爾時，普賢菩薩復告大眾言：「諸佛子！應知世界海有世界海微塵數清淨方便海。所謂：諸菩薩親近一切善知識同善根故，增長廣大功德雲遍法界故，淨修廣大諸勝解故，觀察一切菩薩境界而安住故，修治一切諸波羅蜜悉圓滿故，觀察一切菩薩諸地而入住故，出生一切淨願海故，修習一切出要行故，入於一切莊嚴海故，成就清淨方便力故……。如是等，有世界海微塵數。」',
+    parentId: null,
+    order: '12',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '8c90bdee-9428-4e9a-9328-75649277043d',
+    content:
+      '爾時，普賢菩薩復告大眾言：「諸佛子！應知一一世界海有世界海微塵數佛出現差別。所謂：或現小身，或現大身，或現短壽，或現長壽，或唯嚴淨一佛國土，或有嚴淨無量佛土，或唯顯示一乘法輪，或有顯示不可思議諸乘法輪，或現調伏少分眾生，或示調伏無邊眾生……。如是等，有世界海微塵數。」',
+    parentId: null,
+    order: '13',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '22c7d66c-af50-4901-98c9-103fa279f0cc',
+    content:
+      '「諸佛子！世界海有十種事，過去、現在、未來諸佛，已說、現說、當說。何者為十？所謂：世界海起具因緣，世界海所依住，世界海形狀，世界海體性，世界海莊嚴，世界海清淨，世界海佛出興，世界海劫住，世界海劫轉變差別，世界海無差別門。諸佛子！略說世界海，有此十事；若廣說者，與世界海微塵數等，過去、現在、未來諸佛，已說、現說、當說。',
+    parentId: null,
+    order: '14',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'abde2028-6d7b-4ff2-a3c7-3e4f482a1b81',
+    content:
+      '「諸佛子！略說以十種因緣故，一切世界海已成、現成、當成。何者為十？所謂：如來神力故，法應如是故，一切眾生行業故，一切菩薩成一切智所得故，一切眾生及諸菩薩同集善根故，一切菩薩嚴淨國土願力故，一切菩薩成就不退行願故，一切菩薩清淨勝解自在故，一切如來善根所流及一切諸佛成道時自在勢力故，普賢菩薩自在願力故。諸佛子！是為略說十種因緣；若廣說者，有世界海微塵數。」',
+    parentId: null,
+    order: '15',
+    rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
+    language: 'chinese' as const,
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
 ];

@@ -1,4 +1,4 @@
-import { useFetcher, useLoaderData, useNavigate, useRouteError } from '@remix-run/react';
+import { useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import { type ReadGlossary } from '~/drizzle/schema';
 import { readGlossaries, searchGlossaries, updateGlossary } from '~/services';
@@ -100,6 +100,8 @@ export default function GlossaryIndex() {
 
   const fetcher = useFetcher<{ glossaries: ReadGlossary[]; page: number }>();
 
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
   useEffect(() => {
     if (fetcher.state === 'loading' || fetcher.state === 'submitting') {
       return;
@@ -112,9 +114,15 @@ export default function GlossaryIndex() {
           updatedAt: new Date(glossary.updatedAt),
           deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
         })) || [];
-      setGlossariesState((prev) => [...prev, ...newGlossaries]);
+      if (searchTerm && fetcher.data?.page === -1) {
+        setGlossariesState(newGlossaries);
+        setSearchTerm('');
+      }
+      if (!searchTerm && fetcher.data?.page !== -1) {
+        setGlossariesState((prev) => [...prev, ...newGlossaries]);
+      }
     }
-  }, [fetcher.data, fetcher.state]);
+  }, [fetcher.data, fetcher.state, searchTerm, fetcher.data?.page]);
 
   const loadNext = useCallback(() => {
     const currentPage = fetcher.data?.page || page;
@@ -128,7 +136,7 @@ export default function GlossaryIndex() {
 
   return (
     <div>
-      <SearchBar />
+      <SearchBar fetcher={fetcher} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       <div className="h-4" />
       <InfiniteScroller
         loading={fetcher.state === 'loading' || fetcher.state === 'submitting'}
@@ -141,33 +149,25 @@ export default function GlossaryIndex() {
   );
 }
 
-const SearchBar = () => {
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const navigate = useNavigate();
-
-  const handleSubmit = () => {
-    if (searchTerm) {
-      navigate({
-        pathname: '/glossary',
-        search: `?searchTerm=${searchTerm}`,
-      });
-      setSearchTerm('');
-    } else {
-      navigate('/glossary');
-    }
-  };
-
+interface SearchBarProps {
+  fetcher: ReturnType<typeof useFetcher>;
+  searchTerm: string;
+  setSearchTerm: (searchTerm: string) => void;
+}
+const SearchBar = ({ fetcher, searchTerm, setSearchTerm }: SearchBarProps) => {
   return (
-    <div className="flex w-full items-center space-x-2">
-      <Input
-        name="searchTerm"
-        type="text"
-        placeholder="Glossary Term"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <Button onClick={handleSubmit}>Search</Button>
-    </div>
+    <fetcher.Form method="get" action={`/glossary?index&searchTerm=${searchTerm}`}>
+      <div className="flex w-full items-center space-x-2">
+        <Input
+          name="searchTerm"
+          type="text"
+          placeholder="Glossary Term"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Button type="submit">Search</Button>
+      </div>
+    </fetcher.Form>
   );
 };
 

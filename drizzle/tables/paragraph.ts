@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
 import { langEnum } from './enums';
@@ -14,6 +14,7 @@ export const paragraphsTable = pgTable('paragraphs', {
   rollId: uuid('roll_id')
     .references(() => rollsTable.id)
     .notNull(),
+  searchId: text('search_id').default(sql`NULL`),
   ...auditAtFields,
   ...auditByFields,
 });

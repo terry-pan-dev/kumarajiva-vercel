@@ -1,5 +1,5 @@
 {
-  "id": "d2155376-7d2f-428f-bba9-5911017aad68",
+  "id": "1ce2e23d-5940-420d-86cb-57f0620259db",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -45,7 +45,14 @@
           "name": "roll_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "search_id": {
+          "name": "search_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "NULL"
         },
         "created_at": {
           "name": "created_at",
@@ -88,19 +95,6 @@
           "tableTo": "paragraphs",
           "columnsFrom": [
             "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "paragraphs_roll_id_rolls_id_fk": {
-          "name": "paragraphs_roll_id_rolls_id_fk",
-          "tableFrom": "paragraphs",
-          "tableTo": "rolls",
-          "columnsFrom": [
-            "roll_id"
           ],
           "columnsTo": [
             "id"
@@ -662,6 +656,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "search_id": {
+          "name": "search_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "NULL"
         },
         "created_at": {
           "name": "created_at",

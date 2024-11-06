@@ -16,10 +16,10 @@ import { glossaries } from './6-glossaries-seed';
 const dbClient = drizzle(vercelSql, { schema });
 
 const main = async () => {
-  // seed teams table
-  console.log('enable extension vector');
-  await dbClient.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
-  console.log('enable extension vector done');
+  // clean algolia index
+  console.log('clean algolia index');
+  await algoliaClient.deleteIndex({ indexName: 'paragraphs' });
+  await algoliaClient.deleteIndex({ indexName: 'glossaries' });
 
   console.log('seeding teams table');
   await dbClient.insert(teamsTable).values(teams).onConflictDoNothing();
@@ -56,22 +56,35 @@ const main = async () => {
 
   // seed paragraphs table
   console.log('seeding paragraphs table');
-  await dbClient.insert(paragraphsTable).values(paragraphs).onConflictDoNothing();
-  await algoliaClient.saveObjects({
+  const paragraphsResponse = await algoliaClient.saveObjects({
     indexName: 'paragraphs',
-    objects: paragraphs,
+    objects: paragraphs.map((paragraph) => ({ id: paragraph.id, content: paragraph.content })),
   });
+  const paragraphWithSearchId = paragraphs.map((paragraph, index) => ({
+    ...paragraph,
+    searchId: paragraphsResponse[0].objectIDs[index],
+  }));
+  await dbClient.insert(paragraphsTable).values(paragraphWithSearchId).onConflictDoNothing();
 
   await dbClient.insert(referencesTable).values(references).onConflictDoNothing();
   console.log('seeding references table done');
 
   console.log('seeding glossaries table');
 
-  await dbClient.insert(schema.glossariesTable).values(glossaries).onConflictDoNothing();
-  await algoliaClient.saveObjects({
+  const glossariesResponse = await algoliaClient.saveObjects({
     indexName: 'glossaries',
-    objects: glossaries,
+    objects: glossaries.map((glossary) => ({
+      id: glossary.id,
+      phonetic: glossary.phonetic,
+      glossary: glossary.glossary,
+      translations: glossary.translations,
+    })),
   });
+  const glossariesWithSearchId = glossaries.map((glossary, index) => ({
+    ...glossary,
+    searchId: glossariesResponse[0].objectIDs[index],
+  }));
+  await dbClient.insert(schema.glossariesTable).values(glossariesWithSearchId).onConflictDoNothing();
   console.log('seeding glossaries table done');
 };
 

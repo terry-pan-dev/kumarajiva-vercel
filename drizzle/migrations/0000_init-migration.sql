@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS "paragraphs" (
 	"order" text DEFAULT '0' NOT NULL,
 	"language" "lang" NOT NULL,
 	"parent_id" uuid,
-	"roll_id" uuid NOT NULL,
+	"roll_id" uuid,
+	"search_id" text DEFAULT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp,
@@ -93,6 +94,7 @@ CREATE TABLE IF NOT EXISTS "glossaries" (
 	"cbeta_frequency" text,
 	"translations" json DEFAULT '[]'::json,
 	"discussion" text,
+	"search_id" text DEFAULT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp,
@@ -102,12 +104,6 @@ CREATE TABLE IF NOT EXISTS "glossaries" (
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "paragraphs" ADD CONSTRAINT "paragraphs_parent_id_paragraphs_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."paragraphs"("id") ON DELETE no action ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "paragraphs" ADD CONSTRAINT "paragraphs_roll_id_rolls_id_fk" FOREIGN KEY ("roll_id") REFERENCES "public"."rolls"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

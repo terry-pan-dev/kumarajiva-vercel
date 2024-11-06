@@ -13,6 +13,7 @@ import {
 } from '~/drizzle/schema';
 import { and, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { v4 as uuidv4 } from 'uuid';
 import { type SearchResultListProps } from '../components/SideBarMenu';
 import algoliaClient from '../providers/algolia';
 
@@ -65,7 +66,7 @@ export const readParagraphsAndReferencesByRollId = async (rollId: string) => {
 
 export type ParagraphSearchResult = Awaited<ReturnType<typeof queryParagraphs>>;
 
-const queryParagraphs = (ids: string[]) => {
+const queryParagraphs = (ids: string[], numberOfHits: number) => {
   const children = alias(paragraphsTable, 'children');
   const parent = alias(paragraphsTable, 'parent');
   const roll = alias(rollsTable, 'roll');
@@ -94,19 +95,22 @@ const queryParagraphs = (ids: string[]) => {
     .leftJoin(roll, eq(paragraphsTable.rollId, roll.id))
     .leftJoin(sutra, eq(roll.sutraId, sutra.id))
     .where(inArray(paragraphsTable.id, ids))
-    .limit(5);
+    .limit(numberOfHits);
 };
 
 export const searchAlgolia = async (searchTerm: string): Promise<SearchResultListProps['results']> => {
+  const numberOfHits = 5;
   const { results } = await algoliaClient.search<ReadParagraph>({
     requests: [
       {
         indexName: 'paragraphs',
         query: searchTerm,
+        hitsPerPage: numberOfHits,
       },
       {
         indexName: 'glossaries',
         query: searchTerm,
+        hitsPerPage: numberOfHits,
       },
     ],
   });
@@ -118,7 +122,7 @@ export const searchAlgolia = async (searchTerm: string): Promise<SearchResultLis
       if ('hits' in result) {
         if (result.index === 'paragraphs') {
           ids = result.hits.map((hit) => hit.id);
-          const paragraphs = await queryParagraphs(ids);
+          const paragraphs = await queryParagraphs(ids, numberOfHits);
           searchResults.push(...paragraphs?.map((p) => ({ ...p, type: 'Paragraph' as const })));
         }
         if (result.index === 'glossaries') {
@@ -127,7 +131,7 @@ export const searchAlgolia = async (searchTerm: string): Promise<SearchResultLis
             .select()
             .from(glossariesTable)
             .where(inArray(glossariesTable.id, ids))
-            .limit(5);
+            .limit(numberOfHits);
           searchResults.push(...glossaries?.map((g) => ({ ...g, type: 'Glossary' as const })));
         }
       }
@@ -138,6 +142,9 @@ export const searchAlgolia = async (searchTerm: string): Promise<SearchResultLis
 
 export const upsertParagraph = async (paragraph: CreateParagraph) => {
   const { parentId, rollId } = paragraph;
+  if (!rollId) {
+    throw new Error('Roll id is required');
+  }
   const roll = await dbClient.query.rollsTable.findFirst({
     where: (rolls, { eq }) => eq(rolls.id, rollId),
     with: {
@@ -156,7 +163,18 @@ export const upsertParagraph = async (paragraph: CreateParagraph) => {
       children: true,
     },
   });
+
   if (originParagraph?.children) {
+    if (originParagraph.children.searchId) {
+      await algoliaClient.partialUpdateObject({
+        indexName: 'paragraphs',
+        objectID: originParagraph.children.searchId,
+        attributesToUpdate: {
+          content: paragraph.content,
+        },
+      });
+    }
+
     const result = await dbClient
       .update(paragraphsTable)
       .set({
@@ -167,19 +185,23 @@ export const upsertParagraph = async (paragraph: CreateParagraph) => {
 
     return result;
   }
+
+  const paragraphId = uuidv4();
+  console.log({ paragraphId });
+  const savedSearchResult = await algoliaClient.saveObject({
+    indexName: 'paragraphs',
+    body: { ...paragraph, id: paragraphId },
+  });
   const result = await dbClient
     .insert(paragraphsTable)
     .values({
+      id: paragraphId,
       ...paragraph,
       order: originParagraph?.order,
       rollId: roll?.children.id,
+      searchId: savedSearchResult.objectID,
     })
     .returning({ id: paragraphsTable.id });
-
-  await algoliaClient.saveObjects({
-    indexName: 'paragraphs',
-    objects: [{ ...paragraph, id: result[0].id }],
-  });
 
   return result;
 };
