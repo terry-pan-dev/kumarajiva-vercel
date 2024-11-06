@@ -87,8 +87,15 @@ export default function TranslationRoll() {
   const { paragraphs } = useLoaderData<typeof loader>();
 
   const labelRef = useRef<HTMLLabelElement>(null);
+  const notSelectedRef = useRef<HTMLLabelElement>(null);
 
   const [selectedParagraph, setSelectedParagraph] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (notSelectedRef.current) {
+      notSelectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [notSelectedRef]);
 
   useEffect(() => {
     if (selectedParagraph && labelRef.current) {
@@ -127,7 +134,7 @@ export default function TranslationRoll() {
           <Label
             htmlFor={paragraph.id}
             className="text-md w-full font-normal"
-            ref={selectedParagraph === paragraph.id ? labelRef : undefined}
+            ref={selectedParagraph === paragraph.id ? labelRef : notSelectedRef}
           >
             <ContextMenuWrapper>
               <Paragraph text={paragraph.origin} />
