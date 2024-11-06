@@ -1,5 +1,8 @@
 import { Outlet, useLoaderData } from '@remix-run/react';
+import { useLocalStorage } from '@uidotdev/usehooks';
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
+import { useEffect } from 'react';
+import { ClientOnly } from 'remix-utils/client-only';
 import { type ReadUser } from '../../drizzle/schema';
 import { assertAuthUser } from '../auth.server';
 import { AbilityContext, defineAbilityFor } from '../authorisation';
@@ -13,7 +16,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function AppLayout() {
   const { user } = useLoaderData<typeof loader>();
-
   if (!user) {
     return <Outlet />;
   }
@@ -29,7 +31,19 @@ export default function AppLayout() {
             <Outlet />
           </main>
         </div>
+        <ClientOnly>{() => <SettingLoader />}</ClientOnly>
       </SearchProvider>
     </AbilityContext.Provider>
   );
 }
+
+const SettingLoader = () => {
+  const fontSize = useLocalStorage<number>('fontSize', 14);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--font-size', `${fontSize[0]}px`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+};

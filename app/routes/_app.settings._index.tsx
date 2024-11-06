@@ -25,8 +25,8 @@ export default function SettingsIndex() {
     <Tabs defaultValue="glossary" className="w-full">
       <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="glossary">Glossary Subscriptions</TabsTrigger>
-        <TabsTrigger value="search">Search Config</TabsTrigger>
         <TabsTrigger value="font-settings">Font Settings</TabsTrigger>
+        <TabsTrigger value="search">Search Config</TabsTrigger>
       </TabsList>
       <TabsContent value="glossary">
         <ClientOnly>
@@ -35,7 +35,6 @@ export default function SettingsIndex() {
           }}
         </ClientOnly>
       </TabsContent>
-      <TabsContent value="search">Change your password here.</TabsContent>
       <TabsContent value="font-settings">
         <ClientOnly>
           {() => {
@@ -43,6 +42,7 @@ export default function SettingsIndex() {
           }}
         </ClientOnly>
       </TabsContent>
+      <TabsContent value="search">To be implemented</TabsContent>
     </Tabs>
   );
 }
@@ -54,7 +54,6 @@ function GlossaryComponent() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log(subscribedGlossaries);
     if (subscribedGlossaries.length) {
       const glossaryIds = subscribedGlossaries.map((id) => `glossaryIds=${id}`).join('&');
       navigate(`/settings?${glossaryIds}`, {

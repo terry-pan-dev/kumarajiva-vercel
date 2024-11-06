@@ -26,7 +26,6 @@ export default {
         sm: 'calc(var(--font-size) * 0.8)',
         md: 'calc(var(--font-size) * 1.0)',
         lg: 'calc(var(--font-size) * 1.2)',
-        xl: 'calc(var(--font-size) * 1.4)',
       },
       colors: {
         background: 'hsl(var(--background))',

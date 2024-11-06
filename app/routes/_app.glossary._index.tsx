@@ -119,7 +119,11 @@ export default function GlossaryIndex() {
         setSearchTerm('');
       }
       if (!searchTerm && fetcher.data?.page !== -1) {
-        setGlossariesState((prev) => [...prev, ...newGlossaries]);
+        if (fetcher.data?.page === 1) {
+          setGlossariesState(newGlossaries);
+        } else {
+          setGlossariesState((prev) => [...prev, ...newGlossaries]);
+        }
       }
     }
   }, [fetcher.data, fetcher.state, searchTerm, fetcher.data?.page]);
