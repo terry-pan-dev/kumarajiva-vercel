@@ -205,11 +205,12 @@ const InfiniteScroller = React.forwardRef<HTMLDivElement, InfiniteScrollerProps>
       return;
     }
 
-    ref.current.addEventListener('scroll', onScrollHappen);
+    const currentRef = ref.current;
+    currentRef.addEventListener('scroll', onScrollHappen);
 
     return () => {
-      if (ref.current) {
-        ref.current.removeEventListener('scroll', onScrollHappen);
+      if (currentRef) {
+        currentRef.removeEventListener('scroll', onScrollHappen);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
