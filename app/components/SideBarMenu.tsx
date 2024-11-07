@@ -35,7 +35,6 @@ const menuItems = [
   { icon: Sheet, label: 'Glossary', href: '/glossary' },
   { icon: BookCopy, label: 'Reference', href: '/reference' },
   { icon: Cog, label: 'Admin', href: '/admin' },
-  { icon: Search, label: 'Search ⌘+K', href: '/search' },
 ];
 
 interface SideBarMenuProps {
@@ -82,33 +81,50 @@ export function SideBarMenu({
         </Link>
 
         <nav className="w-full flex-1 overflow-y-auto border-y border-yellow-600 pt-4 lg:px-0">
-          {menuItems.map((item) => (
-            <Tooltip key={item.href} delayDuration={500}>
-              <TooltipTrigger asChild>
-                <NavLink
-                  to={item.href}
-                  className={cn(
-                    'text-md mb-1 flex items-center justify-center px-3 py-3 font-medium text-white lg:justify-start lg:px-6',
-                    'hover:bg-slate-200/50 hover:text-yellow-600 lg:hover:text-white',
-                    pathname.startsWith(item.href)
-                      ? 'active rounded-md bg-slate-200 text-yellow-600'
-                      : 'bg-transparent hover:rounded-md',
-                  )}
-                  aria-label={item.label}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon className={cn('h-5 w-5 lg:mr-3', isActive && 'text-yellow-600')} />
-                      <span className="hidden lg:inline">{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="lg:hidden">
-                <p>{item.label}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
+          {menuItems
+            .filter((item) => {
+              if (item.href.includes('admin') && userRole !== 'admin') {
+                return false;
+              }
+              if (item.href.includes('reference') && userRole !== 'admin' && userRole !== 'manager') {
+                return false;
+              }
+              return true;
+            })
+            .map((item) => (
+              <Tooltip key={item.href} delayDuration={500}>
+                <TooltipTrigger asChild>
+                  <NavLink
+                    to={item.href}
+                    className={cn(
+                      'mb-1 flex items-center justify-center px-3 py-3 text-md font-medium text-white lg:justify-start lg:px-6',
+                      'hover:bg-slate-200/50 hover:text-yellow-600 lg:hover:text-white',
+                      pathname.startsWith(item.href)
+                        ? 'active rounded-md bg-slate-200 text-yellow-600'
+                        : 'bg-transparent hover:rounded-md',
+                    )}
+                    aria-label={item.label}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <item.icon className={cn('h-5 w-5 lg:mr-3', isActive && 'text-yellow-600')} />
+                        <span className="hidden lg:inline">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="lg:hidden">
+                  <p>{item.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          <div
+            onClick={() => setOpen(true)}
+            className="mb-1 flex cursor-pointer items-center justify-center px-3 py-3 text-md font-medium text-white hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600 lg:justify-start lg:px-6 lg:hover:text-white"
+          >
+            <Search className="h-5 w-5 lg:mr-3" />
+            <span className="hidden lg:inline">Search ⌘+K</span>
+          </div>
         </nav>
 
         <div className="mt-auto py-4">

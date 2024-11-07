@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useState, type PropsWithChildren } from 'reac
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 import { z, ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
+import { Can } from '../authorisation';
 import ContextMenuWrapper from '../components/ContextMenu';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { Paragraph } from '../components/Paragraph';
@@ -115,7 +116,7 @@ export default function TranslationRoll() {
           </ContextMenuWrapper>
           <Label
             onDoubleClick={() => setSelectedParagraph(paragraph.id)}
-            className="text-md flex h-auto font-normal"
+            className="flex h-auto text-md font-normal"
             ref={selectedParagraph === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
@@ -136,7 +137,7 @@ export default function TranslationRoll() {
           />
           <Label
             htmlFor={paragraph.id}
-            className="text-md w-full font-normal"
+            className="w-full text-md font-normal"
             ref={selectedParagraph === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
@@ -268,19 +269,21 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
         <fetcher.Form method="post" className="mt-auto" onSubmit={handleSubmit(onSubmit)}>
           <div className="mt-auto grid w-full gap-2">
             <input type="hidden" {...register('paragraphId')} />
-            <Textarea
-              disabled={disabledEdit}
-              placeholder={disabledEdit ? 'Please select a new paragraph to edit.' : 'Type your translation here.'}
-              className="h-8"
-              {...register('translation')}
-              ref={(e) => {
-                register('translation').ref(e);
-                textAreaRef.current = e;
-              }}
-            />
-            <Button disabled={!isDirty} type="submit">
-              Save Translation
-            </Button>
+            <Can I="Create" this="Paragraph">
+              <Textarea
+                disabled={disabledEdit}
+                placeholder={disabledEdit ? 'Please select a new paragraph to edit.' : 'Type your translation here.'}
+                className="h-8"
+                {...register('translation')}
+                ref={(e) => {
+                  register('translation').ref(e);
+                  textAreaRef.current = e;
+                }}
+              />
+              <Button disabled={!isDirty} type="submit">
+                Save Translation
+              </Button>
+            </Can>
           </div>
         </fetcher.Form>
       </div>
