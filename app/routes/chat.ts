@@ -1,7 +1,7 @@
 import { type LoaderFunctionArgs } from '@vercel/remix';
 import OpenAI from 'openai';
 import { type Lang } from '../../drizzle/tables/enums';
-import { searchGlossaries } from '../services/glossary.service';
+import { searchGlossaries } from '../services/edge.only';
 
 export const config = { runtime: 'edge' };
 

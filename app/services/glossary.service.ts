@@ -5,7 +5,6 @@ import { drizzle } from 'drizzle-orm/vercel-postgres';
 import 'dotenv/config';
 import { eq, inArray, sql } from 'drizzle-orm';
 import OpenAI from 'openai';
-import algoliaClient from '../providers/algolia';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -67,24 +66,6 @@ export const updateGlossary = async (glossary: UpdateGlossary) => {
       .where(eq(glossariesTable.id, glossary.id));
   }
   return dbClient.update(glossariesTable).set(glossary).where(eq(glossariesTable.id, glossary.id));
-};
-
-export const searchGlossaries = async (searchTerm: string, limit = 5): Promise<ReadGlossary[]> => {
-  const { results } = await algoliaClient.search<ReadGlossary>({
-    requests: [
-      {
-        indexName: 'glossaries',
-        query: searchTerm.trim(),
-      },
-    ],
-  });
-  if (results.length) {
-    if ('hits' in results[0]) {
-      const ids = results[0].hits.map((hit) => hit.id);
-      return dbClient.select().from(glossariesTable).where(inArray(glossariesTable.id, ids)).limit(limit);
-    }
-  }
-  return [];
 };
 
 export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>) => {

@@ -1,7 +1,7 @@
 import { useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import { type ReadGlossary } from '~/drizzle/schema';
-import { readGlossaries, searchGlossaries, updateGlossary } from '~/services';
+import { readGlossaries, updateGlossary } from '~/services';
 import React, { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
@@ -9,6 +9,7 @@ import { ErrorInfo } from '../components/ErrorInfo';
 import { GlossaryList } from '../components/GlossaryList';
 import { Button, Input } from '../components/ui';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
+import { searchGlossaries } from '../services/edge.only';
 import { glossaryFormSchema } from '../validations/glossary.validation';
 
 export const meta: MetaFunction = () => {
