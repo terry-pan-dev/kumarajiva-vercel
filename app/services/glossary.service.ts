@@ -69,7 +69,7 @@ export const updateGlossary = async (glossary: UpdateGlossary) => {
   return dbClient.update(glossariesTable).set(glossary).where(eq(glossariesTable.id, glossary.id));
 };
 
-export const searchGlossaries = async (searchTerm: string): Promise<ReadGlossary[]> => {
+export const searchGlossaries = async (searchTerm: string, limit = 5): Promise<ReadGlossary[]> => {
   const { results } = await algoliaClient.search<ReadGlossary>({
     requests: [
       {
@@ -81,8 +81,7 @@ export const searchGlossaries = async (searchTerm: string): Promise<ReadGlossary
   if (results.length) {
     if ('hits' in results[0]) {
       const ids = results[0].hits.map((hit) => hit.id);
-      console.log(searchTerm, ids);
-      return dbClient.select().from(glossariesTable).where(inArray(glossariesTable.id, ids)).limit(5);
+      return dbClient.select().from(glossariesTable).where(inArray(glossariesTable.id, ids)).limit(limit);
     }
   }
   return [];
