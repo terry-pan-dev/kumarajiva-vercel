@@ -1,6 +1,6 @@
 import { useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { authenticator } from '~/auth.server';
+import { authenticator } from '~/authenticator';
 import { logger } from '~/lib/logger';
 import { commitSession, getSession } from '~/session.server';
 import { z } from 'zod';
