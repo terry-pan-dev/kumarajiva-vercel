@@ -1,6 +1,9 @@
+import highlightWords from 'highlight-words';
 import { ChevronRight } from 'lucide-react';
+import { useMemo } from 'react';
 import { type ParagraphSearchResult } from '../services/paragraph.service';
 import { Icons } from './icons';
+import { useSearchContext } from './SearchContext';
 import { Card, CardContent, CardFooter } from './ui/card';
 import { Divider } from './ui/divider';
 import { Separator } from './ui/separator';
@@ -22,7 +25,7 @@ export function ParagraphItem({ paragraph }: ParagraphItemProps) {
               </Badge>
             </div> */}
           <h3 className="mb-1 truncate text-lg font-semibold text-primary sm:text-xl">{paragraph.sutra?.title}</h3>
-          <h4 className="sm:text-md mb-2 truncate text-sm font-semibold text-secondary">{paragraph.roll?.title}</h4>
+          <h4 className="mb-2 truncate text-sm font-semibold text-secondary sm:text-md">{paragraph.roll?.title}</h4>
           <p className="line-clamp-2 text-sm text-muted-foreground">{paragraph.content}</p>
         </div>
         <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
@@ -31,6 +34,15 @@ export function ParagraphItem({ paragraph }: ParagraphItemProps) {
   );
 }
 export const ParagraphDetail = ({ paragraph }: { paragraph: ParagraphSearchResult[number] }) => {
+  const { search } = useSearchContext();
+
+  const chunks = useMemo(() => {
+    return highlightWords({
+      text: paragraph.content,
+      query: search,
+      matchExactly: true,
+    });
+  }, [paragraph.content, search]);
   return (
     <Card className="flex h-full flex-col">
       {/* <CardHeader className="flex-row items-center justify-between pb-0">
@@ -51,7 +63,23 @@ export const ParagraphDetail = ({ paragraph }: { paragraph: ParagraphSearchResul
           <h3 className="text-xl font-semibold tracking-tight text-primary">{paragraph.sutra?.title}</h3>
           <h4 className="text-md font-semibold text-secondary">{paragraph.roll?.title}</h4>
         </div>
-        <p className="text-sm text-muted-foreground">{paragraph.content}</p>
+        {chunks?.length ? (
+          <p className="text-sm text-muted-foreground">
+            {chunks.map(({ text, match, key }) =>
+              match ? (
+                <span className="rounded-sm bg-yellow-300 box-decoration-clone px-1" key={key}>
+                  {text}
+                </span>
+              ) : (
+                <span className="box-decoration-clone" key={key}>
+                  {text}
+                </span>
+              ),
+            )}
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">{paragraph.content}</p>
+        )}
         {paragraph.children && <Divider>{paragraph.children?.language.toUpperCase()}</Divider>}
         {paragraph.children && <p className="text-sm text-muted-foreground">{paragraph.children.content}</p>}
       </CardContent>
