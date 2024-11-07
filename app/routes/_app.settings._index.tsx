@@ -74,11 +74,15 @@ function GlossaryComponent() {
     return [];
   }, [loaderData]);
 
+  if (!glossaries.length) {
+    return <div className="mx-auto w-full max-w-md">You have not subscribed to any glossaries yet.</div>;
+  }
+
   return <GlossaryList glossaries={glossaries} />;
 }
 
 export function FontSizePreference() {
-  const [fontSize, setFontSize] = useLocalStorage<number>('fontSize', 14);
+  const [fontSize, setFontSize] = useLocalStorage<number>('fontPreference', 14);
 
   const handleFontSizeChange = (newValue: number[]) => {
     setFontSize(newValue[0]);

@@ -20,3 +20,4 @@ export * from './skeleton';
 export * from './toast';
 export * from './select';
 export * from './slider';
+export * from './alert';

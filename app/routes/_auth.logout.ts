@@ -1,6 +1,5 @@
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { assertAuthUser } from '~/auth.server';
-import { authenticator } from '~/authenticator';
+import { assertAuthUser, authenticator } from '~/auth.server';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);

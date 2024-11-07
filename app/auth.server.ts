@@ -1,11 +1,14 @@
 import type { LoaderFunctionArgs } from '@remix-run/node';
+import type { ReadUser } from '~/drizzle/tables';
 import { logger } from '~/lib/logger';
 import { readUserByEmail } from '~/services/user.service';
 import bcrypt from 'bcryptjs';
+import { Authenticator } from 'remix-auth';
 import { FormStrategy } from 'remix-auth-form';
 import { GoogleStrategy } from 'remix-auth-google';
-import { authenticator } from './authenticator';
-import { destroySession, getSession } from './session.server';
+import { destroySession, getSession, sessionStorage } from './session.server';
+
+export const authenticator = new Authenticator<ReadUser | undefined>(sessionStorage);
 
 const credentialStrategy = new FormStrategy(async ({ form, context }) => {
   const email = form.get('email');
