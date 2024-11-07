@@ -1,6 +1,5 @@
 import { type LoaderFunctionArgs } from '@vercel/remix';
 import OpenAI from 'openai';
-import { authenticator } from '../authenticator';
 
 export const config = { runtime: 'edge' };
 
@@ -13,11 +12,6 @@ const client = new OpenAI({
  * http 2.0 protocol. If you test it locally, it may not work.
  */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const user = await authenticator.isAuthenticated(request, {
-    failureRedirect: '/login',
-  });
-  console.log('chat loader', user);
-
   const url = new URL(request.url);
 
   const content = url.searchParams.get('origin');
