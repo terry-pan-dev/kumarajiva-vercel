@@ -38,7 +38,7 @@ const credentialStrategy = new FormStrategy(async ({ form, context }) => {
     logger.log('authenticator', 'isValid', isValid);
     if (isValid) {
       // not need expose hashed password to frontend
-      const newUser = { ...user, password: '' };
+      const newUser = { ...user, password: '', avatar: '' };
       return newUser;
     }
     return undefined;
@@ -59,7 +59,7 @@ const googleStrategy = new GoogleStrategy(
     if (!user) {
       throw new Error('user not found');
     }
-    return user;
+    return { ...user, avatar: '', password: '' };
   },
 );
 
@@ -82,6 +82,7 @@ export const assertAuthUser = async (request: LoaderFunctionArgs['request']) => 
 
   return {
     ...prevUser,
+    avatar: '',
     password: '',
   };
 };

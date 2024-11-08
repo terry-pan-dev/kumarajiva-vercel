@@ -14,6 +14,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   const allUsers = await readUsers();
 
+  const avatar = allUsers.find((u) => u.id === user?.id)?.avatar;
   const users = allUsers.map((u) => ({
     id: u.id,
     username: u.username,
@@ -21,11 +22,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     role: u.role,
   }));
 
-  return json({ user, users });
+  return json({ user, users, avatar });
 };
 
 export default function AppLayout() {
-  const { user, users } = useLoaderData<typeof loader>();
+  const { user, users, avatar } = useLoaderData<typeof loader>();
   const allUsers = useMemo(() => {
     return users.map((u) => ({
       id: u.id,
@@ -45,7 +46,7 @@ export default function AppLayout() {
     <AbilityContext.Provider value={ability}>
       <SearchProvider allUsers={allUsers}>
         <div className="flex h-screen">
-          <SideBarMenu userName={user.username} userEmail={user.email} userRole={user.role} avatarSrc={user.avatar} />
+          <SideBarMenu userName={user.username} userEmail={user.email} userRole={user.role} avatarSrc={avatar} />
           <main className="flex-1 overflow-y-auto">
             <Outlet />
           </main>

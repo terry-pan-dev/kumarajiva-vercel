@@ -1,15 +1,19 @@
 import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
-import { json, type LoaderFunctionArgs } from '@vercel/remix';
-import { useEffect, useMemo } from 'react';
+import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import AvatarEditor from 'react-avatar-editor';
 import { ClientOnly } from 'remix-utils/client-only';
 import { type ReadGlossary } from '../../drizzle/schema';
+import { assertAuthUser } from '../auth.server';
 import { GlossaryList } from '../components/GlossaryList';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Slider } from '../components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { readGlossariesByIds } from '../services';
+import { readGlossariesByIds, updateUser } from '../services';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { searchParams } = new URL(request.url);
@@ -21,12 +25,29 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return json({ success: true, glossaries: glossaries });
 }
 
+export async function action({ request }: ActionFunctionArgs) {
+  const user = await assertAuthUser(request);
+  if (!user) {
+    return redirect('/login');
+  }
+  const formData = await request.formData();
+  const image = formData.get('image') as string;
+  if (!image) {
+    return json({ success: false, error: 'No image provided' }, { status: 400 });
+  }
+
+  await updateUser({ avatar: image, id: user.id });
+
+  return json({ success: true });
+}
+
 export default function SettingsIndex() {
   return (
     <Tabs defaultValue="glossary" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="glossary">Glossary Subscriptions</TabsTrigger>
         <TabsTrigger value="font-settings">Font Settings</TabsTrigger>
+        <TabsTrigger value="user-settings">User Settings</TabsTrigger>
         <TabsTrigger value="search">Search Config</TabsTrigger>
       </TabsList>
       <TabsContent value="glossary">
@@ -43,8 +64,93 @@ export default function SettingsIndex() {
           }}
         </ClientOnly>
       </TabsContent>
+      <TabsContent value="user-settings">
+        <ClientOnly>
+          {() => {
+            return <AvatarEditPage />;
+          }}
+        </ClientOnly>
+      </TabsContent>
       <TabsContent value="search">To be implemented</TabsContent>
     </Tabs>
+  );
+}
+
+function AvatarEditPage() {
+  const [image, setImage] = useState<string | null>(null);
+  const [scale, setScale] = useState<number>(1);
+  const editorRef = useRef<AvatarEditor | null>(null);
+  const fetcher = useFetcher<{ success: boolean }>();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setImage(URL.createObjectURL(file));
+    }
+  };
+
+  const handleScaleChange = (value: number[]) => {
+    setScale(value[0]);
+  };
+
+  const handleSave = () => {
+    if (editorRef.current) {
+      const canvas = editorRef.current.getImageScaledToCanvas();
+      const dataUrl = canvas.toDataURL();
+      console.log('Edited image:', dataUrl);
+      fetcher.submit({ image: dataUrl }, { method: 'post' });
+    }
+  };
+
+  return (
+    <Card className="mx-auto w-full max-w-md text-foreground">
+      <CardHeader>
+        <CardTitle>Edit Your Avatar</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-center">
+          {image ? (
+            <AvatarEditor
+              ref={editorRef}
+              image={image}
+              width={250}
+              height={250}
+              border={50}
+              borderRadius={125}
+              color={[255, 255, 255, 0.6]} // RGBA
+              scale={scale}
+              rotate={0}
+            />
+          ) : (
+            <div className="flex h-[250px] w-[250px] items-center justify-center rounded-full bg-gray-200 text-gray-400">
+              <img src="https://www.signivis.com/img/custom/avatars/member-avatar-01.png" alt="avatar" />
+              <p className="absolute text-lg">No image uploaded</p>
+            </div>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="image-upload">Upload Image</Label>
+          <Input
+            className="cursor-pointer"
+            id="image-upload"
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+          />
+        </div>
+        {image && (
+          <div>
+            <Label htmlFor="zoom-slider">Zoom</Label>
+            <Slider id="zoom-slider" min={1} max={3} step={0.01} value={[scale]} onValueChange={handleScaleChange} />
+          </div>
+        )}
+      </CardContent>
+      <CardFooter>
+        <Button onClick={handleSave} disabled={!image || fetcher.state !== 'idle'} className="w-full" variant="default">
+          Save Avatar
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
 
