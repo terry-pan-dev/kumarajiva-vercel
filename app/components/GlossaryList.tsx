@@ -12,9 +12,10 @@ import { Spacer } from './ui/spacer';
 export const GlossaryList = React.forwardRef<HTMLDivElement, { glossaries: ReadGlossary[]; showEdit?: boolean }>(
   ({ glossaries, showEdit = true }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
+
     const selectedGlossary = useMemo(() => {
       return glossaries[selectedIndex];
-    }, [selectedIndex, glossaries]);
+    }, [glossaries, selectedIndex]);
 
     if (!glossaries.length) {
       return null;
@@ -92,7 +93,9 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
   isBookmarked = fetcher.formData ? fetcher.formData.get('bookmark') === 'true' : isBookmarked;
 
   useEffect(() => {
-    if (fetcher.formData) {
+    const id = fetcher.formData?.get('glossaryId');
+
+    if (fetcher.formData && id === glossary.id) {
       const result = fetcher.formData.get('bookmark') === 'true';
       const set = new Set(subscribedGlossaries);
       if (result) {
@@ -109,7 +112,7 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex-row items-center justify-between pb-0">
-        <fetcher.Form method="post" action="/glossary?index">
+        <fetcher.Form method="post" action="/glossary?index&page=-1">
           <input type="hidden" name="glossaryId" value={glossary.id} />
           <button type="submit" name="bookmark" value={isBookmarked ? 'false' : 'true'}>
             <Icons.BookMark className={`h-6 w-6 ${isBookmarked ? 'fill-red-500 text-red-500' : 'text-slate-800'}`} />
@@ -124,7 +127,7 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
       <CardContent className="flex-grow">
         <div className="my-2 flex items-end justify-start gap-2">
           <h2 className="text-3xl font-semibold tracking-tight text-primary">{glossary.glossary}</h2>
-          {glossary.phonetic && <h2 className="text-md font-mono text-secondary-foreground">({glossary.phonetic})</h2>}
+          {glossary.phonetic && <h2 className="font-mono text-md text-secondary-foreground">({glossary.phonetic})</h2>}
         </div>
 
         {glossary.translations?.map((translation) => {

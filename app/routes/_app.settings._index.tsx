@@ -1,8 +1,9 @@
-import { useLoaderData, useNavigate } from '@remix-run/react';
+import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
 import { useEffect, useMemo } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
+import { type ReadGlossary } from '../../drizzle/schema';
 import { GlossaryList } from '../components/GlossaryList';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
@@ -49,22 +50,20 @@ export default function SettingsIndex() {
 
 function GlossaryComponent() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [subscribedGlossaries, _] = useLocalStorage<string[]>('subscribedGlossaries', []);
-  const loaderData = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
+  const [subscribedGlossaries, _] = useLocalStorage<string[]>('subscribedGlossaries');
+  const fetcher = useFetcher<{ glossaries: ReadGlossary[]; success: boolean }>();
 
   useEffect(() => {
     if (subscribedGlossaries.length) {
       const glossaryIds = subscribedGlossaries.map((id) => `glossaryIds=${id}`).join('&');
-      navigate(`/settings?${glossaryIds}`, {
-        replace: true,
-      });
+      fetcher.load(`/settings?index&${glossaryIds}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const glossaries = useMemo(() => {
-    if (loaderData.success) {
-      return loaderData.glossaries?.map((glossary) => ({
+    if (fetcher.data?.success) {
+      return fetcher.data.glossaries.map((glossary) => ({
         ...glossary,
         createdAt: new Date(glossary.createdAt),
         updatedAt: new Date(glossary.updatedAt),
@@ -72,13 +71,15 @@ function GlossaryComponent() {
       }));
     }
     return [];
-  }, [loaderData]);
+  }, [fetcher.data]);
+
+  const glossaryStates = glossaries.filter((glossary) => subscribedGlossaries.includes(glossary.id));
 
   if (!glossaries.length) {
     return <div className="mx-auto w-full max-w-md">You have not subscribed to any glossaries yet.</div>;
   }
 
-  return <GlossaryList glossaries={glossaries} />;
+  return <GlossaryList glossaries={glossaryStates} />;
 }
 
 export function FontSizePreference() {

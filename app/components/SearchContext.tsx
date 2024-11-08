@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type PropsWithChildren } from 'react';
-import { UserRole } from '../../drizzle/tables/enums';
+import { type UserRole } from '../../drizzle/tables/enums';
 
 interface User {
   id: string;

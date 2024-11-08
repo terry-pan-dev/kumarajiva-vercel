@@ -100,7 +100,6 @@ export default function GlossaryIndex() {
   );
 
   const fetcher = useFetcher<{ glossaries: ReadGlossary[]; page: number }>();
-
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
@@ -127,7 +126,7 @@ export default function GlossaryIndex() {
         }
       }
     }
-  }, [fetcher.data, fetcher.state, searchTerm, fetcher.data?.page]);
+  }, [fetcher.data, fetcher.state, searchTerm, fetcher.data?.page, page, glossaries]);
 
   const loadNext = useCallback(() => {
     const currentPage = fetcher.data?.page || page;

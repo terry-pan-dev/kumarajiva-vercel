@@ -79,5 +79,9 @@ export const assertAuthUser = async (request: LoaderFunctionArgs['request']) => 
     await destroySession(session);
     return undefined;
   }
-  return prevUser;
+
+  return {
+    ...prevUser,
+    password: '',
+  };
 };

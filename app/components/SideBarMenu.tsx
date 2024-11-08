@@ -118,17 +118,25 @@ export function SideBarMenu({
                 </TooltipContent>
               </Tooltip>
             ))}
-          <div
-            onClick={() => setOpen(true)}
-            className="mb-1 flex cursor-pointer items-center justify-center px-3 py-3 text-md font-medium text-white hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600 lg:justify-start lg:px-6 lg:hover:text-white"
-          >
-            <Search className="h-5 w-5 lg:mr-3" />
-            <span className="hidden lg:inline">Search ⌘+K</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                onClick={() => setOpen(true)}
+                className="mb-1 flex cursor-pointer items-center justify-center px-3 py-3 text-md font-medium text-white hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600 lg:justify-start lg:px-6 lg:hover:text-white"
+              >
+                <Search className="h-5 w-5 lg:mr-3" />
+                <span className="hidden lg:inline">Search ⌘+K</span>
+              </div>
+            </TooltipTrigger>
+
+            <TooltipContent side="right">
+              <p>Search</p>
+            </TooltipContent>
+          </Tooltip>
         </nav>
 
-        <div className="mt-auto py-4">
-          <div className="flex flex-col-reverse items-center justify-center lg:flex-row lg:justify-between">
+        <div className="mt-auto pt-2 md:py-2">
+          <div className="flex flex-col items-center justify-center gap-2 lg:flex-row lg:justify-between">
             <Link to="/settings" className="flex items-center" aria-label="settings">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={avatarSrc || ''} alt="avatar" />

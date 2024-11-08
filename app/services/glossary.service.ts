@@ -21,7 +21,7 @@ export const readGlossaries = async ({ page, limit = 10 }: Pagination): Promise<
   return dbClient.query.glossariesTable.findMany({
     limit,
     offset: (page - 1) * limit,
-    // orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
+    orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
     // orderBy: [asc(glossariesTable.updatedAt)],
   });
 };
@@ -29,6 +29,7 @@ export const readGlossaries = async ({ page, limit = 10 }: Pagination): Promise<
 export const readGlossariesByIds = async (ids: string[]) => {
   return dbClient.query.glossariesTable.findMany({
     where: inArray(glossariesTable.id, ids),
+    orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
   });
 };
 
