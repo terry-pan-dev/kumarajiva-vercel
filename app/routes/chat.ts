@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { type Lang } from '../../drizzle/tables/enums';
 import { searchGlossaries } from '../services/edge.only';
 
-export const config = { runtime: 'edge' };
+// export const config = { runtime: 'edge' };
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
