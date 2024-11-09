@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
-import { pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { integer, pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
 import { langEnum } from './enums';
 import { referencesTable } from './reference';
@@ -8,6 +8,10 @@ import { rollsTable } from './roll';
 export const paragraphsTable = pgTable('paragraphs', {
   id: uuid('id').primaryKey().defaultRandom(),
   content: text('content').notNull(),
+  // number of the paragraph in the roll, this is the main order
+  number: integer('number').notNull().default(0),
+  // this is for added new order, for example if we add a new paragraph after
+  // number 5, the number will still be 5, but the order will be 5.1
   order: text('order').notNull().default('0'),
   language: langEnum('language').notNull(),
   parentId: uuid('parent_id').references((): AnyPgColumn => paragraphsTable.id),

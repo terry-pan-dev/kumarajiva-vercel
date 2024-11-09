@@ -4,7 +4,8 @@ export const paragraphs = [
     content:
       '如是我闻：一时，佛在摩竭提国阿兰若法菩提场中，始成正觉。其地坚固，金刚所成，上妙宝轮及众宝华、清净摩尼以为严饰，诸色相海无边显现；',
     parentId: null,
-    order: '0',
+    number: 0,
+    order: '0.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -15,7 +16,8 @@ export const paragraphs = [
     content:
       '摩尼为幢，常放光明，恒出妙音；众宝罗网、妙香华缨周匝垂布；摩尼宝王变现自在，雨无尽宝及众妙华分散于地；宝树行列，枝叶光茂。佛神力故，令此道场一切庄严于中影现。其菩提树高显殊特，金刚为身，琉璃为干，众杂妙宝以为枝条，宝叶扶踈，垂荫如云，宝华杂色，分枝布影；',
     parentId: null,
-    order: '1',
+    number: 1,
+    order: '1.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -26,7 +28,8 @@ export const paragraphs = [
     content:
       '复以摩尼而为其果，含晖发焰，与华间列。其树周圆咸放光明，于光明中雨摩尼宝；摩尼宝内有诸菩萨，其众如云，俱时出现。又以如来威神力故，其菩提树恒出妙音，说种种法，无有尽极。如来所处宫殿楼阁，广博严丽充遍十方，众色摩尼之所集成，种种宝华以为庄校；',
     parentId: null,
-    order: '2',
+    number: 2,
+    order: '2.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -37,7 +40,8 @@ export const paragraphs = [
     content:
       '诸庄严具流光如云，从宫殿间萃影成幢。无边菩萨道场众会咸集其所，以能出现诸佛光明不思议音。摩尼宝王而为其网，如来自在神通之力所有境界皆从中出',
     parentId: null,
-    order: '3',
+    number: 3,
+    order: '3.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -48,7 +52,8 @@ export const paragraphs = [
     content:
       '一切众生居处屋宅，皆于此中现其影像。又以诸佛神力所加，一念之间，悉包法界。其师子座高广妙好，摩尼为台，莲华为网，清净妙宝以为其轮，众色杂华而作璎珞',
     parentId: null,
-    order: '4',
+    number: 4,
+    order: '4.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -59,7 +64,8 @@ export const paragraphs = [
     content:
       '堂榭、楼阁、阶砌、户牖，凡诸物像备体庄严，宝树枝果周回间列，摩尼光云互相照耀，十方诸佛化现珠王，一切菩萨髻中妙宝悉放光明而来莹烛；复以诸佛威神所持，演说如来广大境界，妙音遐畅，无处不及。',
     parentId: null,
-    order: '5',
+    number: 5,
+    order: '5.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -70,7 +76,8 @@ export const paragraphs = [
     content:
       '尔时，世尊处于此座，于一切法成最正觉，智入三世悉皆平等，其身充满一切世间，其音普顺十方国土。譬如虚空具含众像，于诸境界无所分别；',
     parentId: null,
-    order: '6',
+    number: 6,
+    order: '6.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -81,7 +88,8 @@ export const paragraphs = [
     content:
       '復有佛世界微塵數主城神，所謂：寶峯光耀主城神、妙嚴宮殿主城神、清淨喜寶主城神、離憂清淨主城神、華燈焰眼主城神、焰幢明現主城神、盛福光明主城神、清淨光明主城神、香髻莊嚴主城神、妙寶光明主城神……。如是等而為上首，有佛世界微塵數，皆於無量不思議劫，嚴淨如來所居宮殿。',
     parentId: null,
-    order: '7',
+    number: 7,
+    order: '7.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -92,7 +100,8 @@ export const paragraphs = [
     content:
       '復有無量主空神，所謂：淨光普照主空神、普遊深廣主空神、生吉祥風主空神、離障安住主空神、廣步妙髻主空神、無礙光焰主空神、無礙勝力主空神、離垢光明主空神、深遠妙音主空神、光遍十方主空神……。如是等而為上首，其數無量，心皆離垢，廣大明潔。',
     parentId: null,
-    order: '8',
+    number: 8,
+    order: '8.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -103,7 +112,8 @@ export const paragraphs = [
     content:
       '復有無量主方神，所謂：遍住一切主方神、普現光明主方神、光行莊嚴主方神、周行不礙主方神、永斷迷惑主方神、普遊淨空主方神、大雲幢音主方神、髻目無亂主方神、普觀世業主方神、周遍遊覽主方神……。如是等而為上首，其數無量，能以方便，普放光明，恒照十方，相續不絕。',
     parentId: null,
-    order: '9',
+    number: 9,
+    order: '9.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -114,7 +124,8 @@ export const paragraphs = [
     content:
       '「諸佛子！世界海有十種事，過去、現在、未來諸佛，已說、現說、當說。何者為十？所謂：世界海起具因緣，世界海所依住，世界海形狀，世界海體性，世界海莊嚴，世界海清淨，世界海佛出興，世界海劫住，世界海劫轉變差別，世界海無差別門。諸佛子！略說世界海，有此十事；若廣說者，與世界海微塵數等，過去、現在、未來諸佛，已說、現說、當說。',
     parentId: null,
-    order: '10',
+    number: 10,
+    order: '10.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -125,7 +136,8 @@ export const paragraphs = [
     content:
       '爾時，普賢菩薩復告大眾言：「諸佛子！應知世界海有種種體。所謂：或以一切寶莊嚴為體，或以一寶種種莊嚴為體，或以一切寶光明為體，或以種種色光明為體，或以一切莊嚴光明為體，或以不可壞金剛為體，或以佛力持為體，或以妙寶相為體，或以佛變化為體，或以日摩尼輪為體，或以極微細寶為體，或以一切寶焰為體，或以種種香為體，或以一切寶華冠為體，或以一切寶影像為體，或以一切莊嚴所示現為體，或以一念心普示現境界為體，或以菩薩形寶為體，或以寶華蘂為體，或以佛言音為體。」',
     parentId: null,
-    order: '11',
+    number: 11,
+    order: '11.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -136,7 +148,8 @@ export const paragraphs = [
     content:
       '爾時，普賢菩薩復告大眾言：「諸佛子！應知世界海有世界海微塵數清淨方便海。所謂：諸菩薩親近一切善知識同善根故，增長廣大功德雲遍法界故，淨修廣大諸勝解故，觀察一切菩薩境界而安住故，修治一切諸波羅蜜悉圓滿故，觀察一切菩薩諸地而入住故，出生一切淨願海故，修習一切出要行故，入於一切莊嚴海故，成就清淨方便力故……。如是等，有世界海微塵數。」',
     parentId: null,
-    order: '12',
+    number: 12,
+    order: '12.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -147,7 +160,8 @@ export const paragraphs = [
     content:
       '爾時，普賢菩薩復告大眾言：「諸佛子！應知一一世界海有世界海微塵數佛出現差別。所謂：或現小身，或現大身，或現短壽，或現長壽，或唯嚴淨一佛國土，或有嚴淨無量佛土，或唯顯示一乘法輪，或有顯示不可思議諸乘法輪，或現調伏少分眾生，或示調伏無邊眾生……。如是等，有世界海微塵數。」',
     parentId: null,
-    order: '13',
+    number: 13,
+    order: '13.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -158,7 +172,8 @@ export const paragraphs = [
     content:
       '「諸佛子！世界海有十種事，過去、現在、未來諸佛，已說、現說、當說。何者為十？所謂：世界海起具因緣，世界海所依住，世界海形狀，世界海體性，世界海莊嚴，世界海清淨，世界海佛出興，世界海劫住，世界海劫轉變差別，世界海無差別門。諸佛子！略說世界海，有此十事；若廣說者，與世界海微塵數等，過去、現在、未來諸佛，已說、現說、當說。',
     parentId: null,
-    order: '14',
+    number: 14,
+    order: '14.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -169,7 +184,8 @@ export const paragraphs = [
     content:
       '「諸佛子！略說以十種因緣故，一切世界海已成、現成、當成。何者為十？所謂：如來神力故，法應如是故，一切眾生行業故，一切菩薩成一切智所得故，一切眾生及諸菩薩同集善根故，一切菩薩嚴淨國土願力故，一切菩薩成就不退行願故，一切菩薩清淨勝解自在故，一切如來善根所流及一切諸佛成道時自在勢力故，普賢菩薩自在願力故。諸佛子！是為略說十種因緣；若廣說者，有世界海微塵數。」',
     parentId: null,
-    order: '15',
+    number: 15,
+    order: '15.0',
     rollId: '3acff17c-a2b5-4bd1-ab8a-edd41f9890d1',
     language: 'chinese' as const,
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',

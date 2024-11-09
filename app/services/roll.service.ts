@@ -11,6 +11,15 @@ export const readRolls = async (): Promise<ReadRoll[]> => {
   return dbClient.query.rollsTable.findMany();
 };
 
+export const readRollById = async (rollId: string) => {
+  return dbClient.query.rollsTable.findFirst({
+    where: eq(rollsTable.id, rollId),
+    with: {
+      sutra: true,
+    },
+  });
+};
+
 export const createTargetRoll = async ({
   originRollId,
   targetRoll,

@@ -16,7 +16,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export default function TranslationLayout() {
   const { user } = useLoaderData<typeof loader>();
   return (
-    <div className="flex h-full flex-col gap-2 bg-secondary px-4">
+    <div className="flex h-auto min-h-screen flex-col gap-2 bg-secondary px-4">
       <div className="mt-2 text-xl font-semibold">Tripitaka</div>
       <BreadcrumbLine />
       <Separator className="bg-yellow-600" />
