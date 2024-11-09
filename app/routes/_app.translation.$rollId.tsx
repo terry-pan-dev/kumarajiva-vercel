@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
 import React, { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
-import { z, ZodError } from 'zod';
+import { ZodError, type z } from 'zod';
 import { assertAuthUser } from '../auth.server';
 import { Can } from '../authorisation';
 import ContextMenuWrapper from '../components/ContextMenu';
@@ -31,6 +31,7 @@ import { useToast } from '../hooks/use-toast';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { readParagraphsByRollId, upsertParagraph, type IParagraph } from '../services/paragraph.service';
 import { readRollById } from '../services/roll.service';
+import { paragraphActionSchema } from '../validations/paragraph.validation';
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
@@ -43,15 +44,6 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   return json({ success: true, paragraphs: paragraphs ?? [], rollInfo });
 }
-
-const paragraphActionSchema = z.object({
-  paragraphId: z
-    .string({
-      required_error: 'Please contact support, this error should not happen',
-    })
-    .uuid(),
-  translation: z.string().min(1, { message: 'Translation is required' }),
-});
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const { rollId } = params;
