@@ -15,8 +15,8 @@
     "db:studio": "dotenv -e .env -- drizzle-kit studio",
     "db:studio:prod": "dotenv -e .env.prod -- drizzle-kit studio",
     "get-hash-password": "tsx scripts/get-hash-password.ts",
-    "db:seed": "tsx drizzle/seeds/index.ts",
-    "db:seed:prod": "dotenv -e .env.prod -- tsx scripts/seed.ts",
+    "db:seed": "tsx drizzle/seeds/dev/index.ts",
+    "db:seed:prod": "dotenv -e .env.prod -- tsx drizzle/seeds/prod/index.ts",
     "prepare": "husky"
   },
   "dependencies": {

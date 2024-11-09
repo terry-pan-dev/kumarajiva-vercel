@@ -110,7 +110,7 @@ export default function TranslationRoll() {
   const Paragraphs = paragraphs.map((paragraph) => (
     <div key={paragraph.id} className="flex items-center gap-4 px-2">
       {paragraph?.target ? (
-        <div className={`${selectedParagraph ? 'flex flex-col' : 'grid grid-cols-2'} gap-4`}>
+        <div className={`${selectedParagraph ? 'flex flex-col' : 'grid grid-cols-2'} w-full gap-4`}>
           <ContextMenuWrapper>
             <Paragraph text={paragraph.origin} isOrigin />
           </ContextMenuWrapper>

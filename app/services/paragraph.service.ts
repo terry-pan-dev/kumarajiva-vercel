@@ -40,6 +40,7 @@ export const readParagraphsByRollId = async ({
       children: true,
       references: true,
     },
+    orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
   });
 
   const result = paragraphs.map((paragraph) => ({
