@@ -1,10 +1,22 @@
+DO $$ BEGIN
+ CREATE TYPE "public"."lang" AS ENUM('english', 'chinese', 'sanskrit', 'indonesian');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."roles" AS ENUM('admin', 'leader', 'editor', 'reader', 'assistant', 'manager');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "paragraphs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"content" text NOT NULL,
 	"order" text DEFAULT '0' NOT NULL,
 	"language" "lang" NOT NULL,
 	"parent_id" uuid,
-	"roll_id" uuid,
+	"roll_id" uuid NOT NULL,
 	"search_id" text DEFAULT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
@@ -47,6 +59,8 @@ CREATE TABLE IF NOT EXISTS "sutras" (
 	"translator" text NOT NULL,
 	"language" "lang" DEFAULT 'chinese' NOT NULL,
 	"parent_id" uuid,
+	"finish" boolean DEFAULT false NOT NULL,
+	"cbeta" text NOT NULL,
 	"team_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
@@ -104,6 +118,12 @@ CREATE TABLE IF NOT EXISTS "glossaries" (
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "paragraphs" ADD CONSTRAINT "paragraphs_parent_id_paragraphs_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."paragraphs"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "paragraphs" ADD CONSTRAINT "paragraphs_roll_id_rolls_id_fk" FOREIGN KEY ("roll_id") REFERENCES "public"."rolls"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

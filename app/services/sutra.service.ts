@@ -26,7 +26,7 @@ export const createTargetSutra = async ({
   targetSutra,
 }: {
   originSutraId: string;
-  targetSutra: CreateSutra;
+  targetSutra: Omit<CreateSutra, 'cbeta'>;
 }) => {
   const sutra = await dbClient.query.sutrasTable.findFirst({
     where: eq(sutrasTable.id, originSutraId),
