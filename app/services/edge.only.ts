@@ -8,6 +8,10 @@ import algoliaClient from '../providers/algolia';
 const dbClient = drizzle(vercelSql, { schema });
 
 export const searchGlossaries = async (searchTerm: string, limit = 5): Promise<ReadGlossary[]> => {
+  const indexExist = await algoliaClient.indexExists({ indexName: 'glossaries' });
+  if (!indexExist) {
+    return [];
+  }
   const { results } = await algoliaClient.search<ReadGlossary>({
     requests: [
       {
