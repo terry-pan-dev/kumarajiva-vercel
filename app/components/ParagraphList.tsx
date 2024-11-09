@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { type ParagraphSearchResult } from '../services/paragraph.service';
 import { Icons } from './icons';
 import { useSearchContext } from './SearchContext';
+import { Badge } from './ui/badge';
 import { Card, CardContent, CardFooter } from './ui/card';
 import { Divider } from './ui/divider';
 import { Separator } from './ui/separator';
@@ -59,6 +60,9 @@ export const ParagraphDetail = ({ paragraph }: { paragraph: ParagraphSearchResul
       </CardHeader> */}
       <CardContent className="flex-grow">
         <div className="my-2 flex flex-col items-start gap-2">
+          <Badge variant="default" className="mr-2 font-mono text-xs font-medium">
+            {`P-${paragraph.number}`}
+          </Badge>
           <h3 className="text-xl font-semibold tracking-tight text-primary">{paragraph.sutra?.title}</h3>
           <h4 className="font-mono text-md font-semibold text-secondary-foreground">{paragraph.roll?.title}</h4>
         </div>
