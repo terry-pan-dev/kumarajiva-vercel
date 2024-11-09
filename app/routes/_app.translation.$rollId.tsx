@@ -274,6 +274,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
           </ContextMenuWrapper>
         </motion.div>
         <References references={references} />
+        <div className="flex-grow"></div>
         <fetcher.Form method="post" className="mt-auto" onSubmit={handleSubmit(onSubmit)}>
           <div className="mt-auto grid w-full gap-2">
             <input type="hidden" {...register('paragraphId')} />

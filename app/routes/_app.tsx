@@ -47,7 +47,7 @@ export default function AppLayout() {
       <SearchProvider allUsers={allUsers}>
         <div className="flex h-screen">
           <SideBarMenu userName={user.username} userEmail={user.email} userRole={user.role} avatarSrc={avatar} />
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto bg-secondary">
             <Outlet />
           </main>
         </div>
