@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
 import React, { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
-import { z, ZodError } from 'zod';
+import { ZodError, type z } from 'zod';
 import { assertAuthUser } from '../auth.server';
 import { Can } from '../authorisation';
 import ContextMenuWrapper from '../components/ContextMenu';
