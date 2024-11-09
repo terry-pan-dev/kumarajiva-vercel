@@ -46,7 +46,7 @@ export default function ContextMenuWrapper({ children }: PropsWithChildren) {
 
   return (
     <ContextMenu onOpenChange={handleOpenChange}>
-      <ContextMenuTrigger className="block h-full">{children}</ContextMenuTrigger>
+      <ContextMenuTrigger className="block h-full w-full">{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-64">
         <ContextMenuItem
           onClick={() => handleSearch()}
