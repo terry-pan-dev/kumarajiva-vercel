@@ -38,7 +38,9 @@ export const readParagraphsByRollId = async ({
     where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, user.originLang)),
     with: {
       children: true,
-      references: true,
+      references: {
+        orderBy: (references, { asc }) => [asc(references.order)],
+      },
     },
     orderBy: (paragraphs, { asc }) => [asc(paragraphs.number), asc(paragraphs.order)],
   });
