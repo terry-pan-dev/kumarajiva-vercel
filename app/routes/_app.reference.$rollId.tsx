@@ -38,7 +38,7 @@ export default function ReferenceRoll() {
       <div key={paragraph.id}>
         <Paragraph text={paragraph.content} key={paragraph.id} isOrigin />
         <div className="h-2" />
-        <div className="flex justify-between gap-2">
+        <div className="flex flex-col justify-between gap-2 lg:flex-row">
           {paragraph.references.map((reference) => (
             <div key={reference.id} className="w-full">
               <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
