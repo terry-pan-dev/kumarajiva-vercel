@@ -30,6 +30,7 @@ import {
 import { useToast } from '../hooks/use-toast';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { readParagraphsByRollId, upsertParagraph, type IParagraph } from '../services/paragraph.service';
+import { readRollById } from '../services/roll.service';
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
@@ -38,8 +39,9 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   }
   const { rollId } = params;
   const paragraphs = await readParagraphsByRollId({ rollId: rollId as string, user });
+  const rollInfo = await readRollById(rollId as string);
 
-  return json({ success: true, paragraphs: paragraphs ?? [] });
+  return json({ success: true, paragraphs: paragraphs ?? [], rollInfo });
 }
 
 const paragraphActionSchema = z.object({
@@ -85,7 +87,7 @@ export function ErrorBoundary() {
   return <ErrorInfo error={error} />;
 }
 export default function TranslationRoll() {
-  const { paragraphs } = useLoaderData<typeof loader>();
+  const { paragraphs, rollInfo } = useLoaderData<typeof loader>();
 
   const labelRef = useRef<HTMLLabelElement>(null);
 
@@ -173,6 +175,12 @@ export default function TranslationRoll() {
   return (
     <ScrollArea className="h-full px-2 lg:px-8">
       <RadioGroup className="gap-4" onValueChange={setSelectedParagraph}>
+        {paragraphs.length && (
+          <>
+            <p className="text-center text-2xl">{rollInfo?.sutra.title}</p>
+            <p className="text-center text-lg">{rollInfo?.title}</p>
+          </>
+        )}
         {paragraphs.length ? (
           Paragraphs
         ) : (
