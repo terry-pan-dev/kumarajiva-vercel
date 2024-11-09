@@ -176,12 +176,12 @@ interface SearchBarProps {
 
 const SearchBar = ({ open, setOpen }: SearchBarProps) => {
   const { search, setSearch } = useSearchContext();
-  const fetcher = useFetcher<{ search: SearchResultListProps['results']; success: boolean }>();
+  const fetcher = useFetcher<{ search: SearchResultListProps['results']; success: boolean }>({ key: 'search' });
   const debouncedSearch = useDebounce(search, 500);
 
   useEffect(() => {
     if (debouncedSearch.length > 1) {
-      fetcher.submit({ search: debouncedSearch }, { method: 'post', action: '/search' });
+      fetcher.load(`/search?query=${debouncedSearch}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
@@ -213,7 +213,7 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
   useEffect(() => {
     if (!open) {
       setSearch('');
-      fetcher.submit({ search: '' }, { method: 'post', action: '/search' });
+      fetcher.load(`/search?query=${''}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

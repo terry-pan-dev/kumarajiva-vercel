@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFetcher, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
+import { useFetcher, useFetchers, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { type ReadReference } from '~/drizzle/tables/reference';
 import { type ReadUser } from '~/drizzle/tables/user';
@@ -91,15 +91,18 @@ export default function TranslationRoll() {
     }
   }, [selectedParagraph]);
 
+  const fetchers = useFetchers();
+
   useEffect(() => {
     const firstNotSelectedNode = paragraphs.find((p) => !p.target);
     if (firstNotSelectedNode) {
       const node = document.getElementById(firstNotSelectedNode.id);
-      if (node) {
+      const isSearching = fetchers.some((fetcher) => fetcher.key === 'search');
+      if (node && !isSearching) {
         node.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [paragraphs]);
+  }, [paragraphs, fetchers]);
 
   const Paragraphs = paragraphs.map((paragraph) => (
     <div key={paragraph.id} className="flex items-center gap-4 px-2">
