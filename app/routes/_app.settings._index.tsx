@@ -156,7 +156,7 @@ function AvatarEditPage() {
 
 function GlossaryComponent() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [subscribedGlossaries, _] = useLocalStorage<string[]>('subscribedGlossaries');
+  const [subscribedGlossaries, _] = useLocalStorage<string[]>('subscribedGlossaries', []);
   const fetcher = useFetcher<{ glossaries: ReadGlossary[]; success: boolean }>();
 
   useEffect(() => {
