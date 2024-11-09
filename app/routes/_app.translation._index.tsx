@@ -67,6 +67,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       parentId: rollId,
       createdBy: user.id,
       updatedBy: user.id,
+      finish: false,
     };
     await createTargetRoll({
       originRollId: rollId,

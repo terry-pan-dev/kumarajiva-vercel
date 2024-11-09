@@ -1,5 +1,5 @@
 {
-  "id": "1ce2e23d-5940-420d-86cb-57f0620259db",
+  "id": "be16a128-d090-4b7f-a749-18170b0dce8c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -45,7 +45,7 @@
           "name": "roll_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "search_id": {
           "name": "search_id",
@@ -95,6 +95,19 @@
           "tableTo": "paragraphs",
           "columnsFrom": [
             "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "paragraphs_roll_id_rolls_id_fk": {
+          "name": "paragraphs_roll_id_rolls_id_fk",
+          "tableFrom": "paragraphs",
+          "tableTo": "rolls",
+          "columnsFrom": [
+            "roll_id"
           ],
           "columnsTo": [
             "id"
@@ -342,6 +355,19 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "finish": {
+          "name": "finish",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "cbeta": {
+          "name": "cbeta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         },
         "team_id": {
           "name": "team_id",
@@ -703,7 +729,30 @@
       "uniqueConstraints": {}
     }
   },
-  "enums": {},
+  "enums": {
+    "public.lang": {
+      "name": "lang",
+      "schema": "public",
+      "values": [
+        "english",
+        "chinese",
+        "sanskrit",
+        "indonesian"
+      ]
+    },
+    "public.roles": {
+      "name": "roles",
+      "schema": "public",
+      "values": [
+        "admin",
+        "leader",
+        "editor",
+        "reader",
+        "assistant",
+        "manager"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "_meta": {

@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { boolean, pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
 import { rollsTable } from '../schema';
 import { langEnum } from './enums';
@@ -13,6 +13,8 @@ export const sutrasTable = pgTable('sutras', {
   translator: text('translator').notNull(),
   language: langEnum('language').notNull().default('chinese'),
   parentId: uuid('parent_id').references((): AnyPgColumn => sutrasTable.id),
+  finish: boolean('finish').notNull().default(false),
+  cbeta: text('cbeta').notNull(),
   teamId: uuid('team_id')
     .references(() => teamsTable.id)
     .notNull(),

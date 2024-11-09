@@ -5,3 +5,4 @@ export * from './sutra';
 export * from './team';
 export * from './user';
 export * from './glossary';
+export * from './enums';

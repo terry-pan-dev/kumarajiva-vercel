@@ -11,7 +11,7 @@
     "db:push": "dotenv -e .env -- drizzle-kit push",
     "db:migrate": "dotenv -e .env -- drizzle-kit migrate",
     "db:check": "dotenv -e .env -- drizzle-kit check",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "dotenv -e .env -- drizzle-kit generate",
     "db:studio": "dotenv -e .env -- drizzle-kit studio",
     "db:studio:prod": "dotenv -e .env.prod -- drizzle-kit studio",
     "get-hash-password": "tsx scripts/get-hash-password.ts",
