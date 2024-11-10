@@ -15,6 +15,13 @@
       "when": 1731140465326,
       "tag": "0001_add-number",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1731219709754,
+      "tag": "0002_add-notification-table",
+      "breakpoints": true
     }
   ]
 }

@@ -6,3 +6,4 @@ export * from './team';
 export * from './user';
 export * from './glossary';
 export * from './enums';
+export * from './notification';

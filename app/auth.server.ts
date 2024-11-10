@@ -46,13 +46,17 @@ const credentialStrategy = new FormStrategy(async ({ form, context }) => {
   return undefined;
 });
 
+const envMapper = {
+  development: 'http://localhost:3000',
+  preview: 'https://kumarajiva-vercel-terrypandevs-projects.vercel.app',
+  production: 'https://btts-kumarajiva.org',
+};
+
 const googleStrategy = new GoogleStrategy(
   {
     clientID: process.env.GOOGLE_CLIENT_ID as string,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-    callbackURL: `${
-      process.env.ENV === 'prod' ? 'https://btts-kumarajiva.org' : 'http://localhost:3000'
-    }/auth/google/callback`,
+    callbackURL: `${envMapper[(process.env.VERCEL_ENV as keyof typeof envMapper) || 'development']}/auth/google/callback`,
   },
   async ({ accessToken, refreshToken, extraParams, profile }) => {
     const user = await readUserByEmail(profile.emails[0].value);
