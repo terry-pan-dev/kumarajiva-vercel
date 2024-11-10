@@ -1,18 +1,24 @@
 import { useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { type UserRole } from '~/drizzle/tables/enums';
 import bcrypt from 'bcryptjs';
-import { useCallback } from 'react';
-import { match } from 'ts-pattern';
+import { useMemo } from 'react';
 import { ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
-import AdminActionButtons from '../components/AdminActionButtons';
-import { AdminForm } from '../components/AdminForm';
 import { ErrorInfo } from '../components/ErrorInfo';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge } from '../components/ui';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
+import { SystemNotification } from '../pages/admin/system.notification';
+import { AdminManagement } from '../pages/admin/user.management';
+import {
+  createNotification,
+  deleteBanner,
+  dismissNotification,
+  readAllNotifications,
+  toggleBanner,
+} from '../services/notification.service';
 import { createTeam, readTeams } from '../services/teams.service';
 import { createUser, readUsers, updateUser } from '../services/user.service';
+import { createBannerSchema } from '../validations/notification.validation';
 import { createTeamSchema } from '../validations/team.validation';
 import { createUserSchema, updateUserSchema } from '../validations/user.validation';
 
@@ -23,7 +29,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
   const users = await readUsers();
   const teams = await readTeams();
-  return json({ users: users.filter((u) => u.id !== user.id || u.email === 'pantaotao123@gmail.com'), teams, user });
+  const notifications = await readAllNotifications();
+  return json({
+    users: users.filter((u) => u.id !== user.id || u.email === 'pantaotao123@gmail.com'),
+    teams,
+    user,
+    notifications,
+  });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -76,6 +88,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         updatedBy: user.id,
       };
       await createTeam(newTeam);
+    } else if (kind === 'create-banner') {
+      const result = validatePayloadOrThrow({ schema: createBannerSchema, formData: data });
+      await createNotification({
+        ...result,
+        createdBy: user.id,
+        updatedBy: user.id,
+      });
+    } else if (kind === 'dismiss-notification') {
+      const notificationId = formData.get('notificationId') as string;
+      await dismissNotification({ user: user, notificationId });
+    } else if (kind === 'toggle-banner') {
+      const bannerId = formData.get('bannerId') as string;
+      await toggleBanner({ user: user, bannerId });
+    } else if (kind === 'delete-banner') {
+      const bannerId = formData.get('bannerId') as string;
+      await deleteBanner({ user: user, bannerId });
     }
   } catch (error) {
     console.error('admin action error', error);
@@ -94,45 +122,53 @@ export const ErrorBoundary = () => {
 };
 
 export default function AdminIndex() {
-  const { users, teams } = useLoaderData<typeof loader>();
-  const getBadgeVariant = useCallback((role: UserRole) => {
-    return match(role)
-      .with('admin', () => 'bg-pink-500')
-      .with('reader', () => 'bg-green-500')
-      .with('manager', () => 'bg-blue-500')
-      .with('leader', () => 'bg-yellow-500')
-      .with('editor', () => 'bg-purple-500')
-      .with('assistant', () => 'bg-orange-500')
-      .exhaustive();
-  }, []);
+  const { users, teams, notifications } = useLoaderData<typeof loader>();
+  const cleanedUsers = useMemo(
+    () =>
+      users.map((user) => ({
+        ...user,
+        createdAt: new Date(user.createdAt),
+        updatedAt: new Date(user.updatedAt),
+        deletedAt: user.deletedAt ? new Date(user.deletedAt) : null,
+        linkValidUntil: user.linkValidUntil ? new Date(user.linkValidUntil) : null,
+      })),
+    [users],
+  );
 
-  const cleanedTeams = teams.map((team) => ({
-    ...team,
-    createdAt: new Date(team.createdAt),
-    updatedAt: new Date(team.updatedAt),
-    deletedAt: team.deletedAt ? new Date(team.deletedAt) : null,
-  }));
+  const cleanedTeams = useMemo(
+    () =>
+      teams.map((team) => ({
+        ...team,
+        createdAt: new Date(team.createdAt),
+        updatedAt: new Date(team.updatedAt),
+        deletedAt: team.deletedAt ? new Date(team.deletedAt) : null,
+      })),
+    [teams],
+  );
+
+  const cleanedNotifications = useMemo(
+    () =>
+      notifications.map((notification) => ({
+        ...notification,
+        createdAt: new Date(notification.createdAt),
+        updatedAt: new Date(notification.updatedAt),
+        deletedAt: notification.deletedAt ? new Date(notification.deletedAt) : null,
+      })),
+    [notifications],
+  );
 
   return (
-    <div>
-      <AdminActionButtons teams={cleanedTeams} />
-      <div className="mx-auto w-full space-y-6 p-6">
-        <Accordion type="single" collapsible className="w-full">
-          {users.map((user) => (
-            <AccordionItem key={user.id} value={user.id}>
-              <AccordionTrigger className="flex bg-primary px-2 py-2 text-white">
-                <div className="flex items-center gap-2">
-                  <span>{user.username}</span>
-                  <Badge className={getBadgeVariant(user.role as UserRole)}>{user.role}</Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <AdminForm teams={teams} user={user} userSchema={updateUserSchema} />
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
-    </div>
+    <Tabs defaultValue="user-management" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="user-management">Users</TabsTrigger>
+        <TabsTrigger value="system-notifications">Notifications</TabsTrigger>
+      </TabsList>
+      <TabsContent value="user-management">
+        <AdminManagement users={cleanedUsers} teams={cleanedTeams} />
+      </TabsContent>
+      <TabsContent value="system-notifications">
+        <SystemNotification banners={cleanedNotifications} />
+      </TabsContent>
+    </Tabs>
   );
 }
