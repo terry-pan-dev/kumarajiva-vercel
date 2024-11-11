@@ -26,6 +26,13 @@ export const readGlossaries = async ({ page, limit = 10 }: Pagination): Promise<
   });
 };
 
+export const readSutraNames = async () => {
+  const result = await dbClient.select({ translations: glossariesTable.translations }).from(glossariesTable);
+
+  const sutraNames = result.map((r) => r.translations?.filter((t) => t.sutraName).map((t) => t.sutraName));
+  return Array.from(new Set(sutraNames.flat()));
+};
+
 export const readGlossariesByIds = async (ids: string[]) => {
   return dbClient.query.glossariesTable.findMany({
     where: inArray(glossariesTable.id, ids),
