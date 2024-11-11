@@ -125,7 +125,7 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
         )}
       </CardHeader>
       <CardContent className="flex-grow">
-        <div className="my-2 flex items-end justify-start gap-2">
+        <div className="my-2 flex flex-col items-start gap-2 lg:flex-row lg:items-end lg:justify-start">
           <h2 className="text-3xl font-semibold tracking-tight text-primary">{glossary.glossary}</h2>
           {glossary.phonetic && <h2 className="font-mono text-md text-secondary-foreground">({glossary.phonetic})</h2>}
         </div>
