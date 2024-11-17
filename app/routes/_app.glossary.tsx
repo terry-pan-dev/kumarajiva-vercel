@@ -21,9 +21,11 @@ export default function GlossaryLayout() {
   const { user, users } = useLoaderData<typeof loader>();
   return (
     <div className="flex h-auto min-h-screen flex-col gap-4 bg-secondary px-4">
-      <div className="h-2"></div>
-      <div className="text-2xl font-semibold">Glossary</div>
-      <GlossaryCreateModal />
+      <div className="h-1"></div>
+      <div className="flex items-center justify-between">
+        <div className="text-2xl font-semibold">Glossary</div>
+        <GlossaryCreateModal />
+      </div>
       <Separator className="bg-yellow-600" />
       <Outlet context={{ user, users }} />
       <Toaster />
@@ -36,7 +38,7 @@ const GlossaryCreateModal = () => {
     <FormModal
       title="Create Glossary For Chinese"
       trigger={
-        <Button variant="default" className="fixed right-4 top-5 w-[5rem]">
+        <Button variant="default" className="w-20">
           New
         </Button>
       }

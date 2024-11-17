@@ -116,7 +116,6 @@ export default function GlossaryIndex() {
         })) || [];
       if (searchTerm && fetcher.data?.page === -1) {
         setGlossariesState(newGlossaries);
-        setSearchTerm('');
       }
       if (!searchTerm && fetcher.data?.page !== -1) {
         if (fetcher.data?.page === 1) {
@@ -169,7 +168,9 @@ const SearchBar = ({ fetcher, searchTerm, setSearchTerm }: SearchBarProps) => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <Button type="submit">Search</Button>
+        <Button type="submit" className="w-20">
+          Search
+        </Button>
       </div>
     </fetcher.Form>
   );
