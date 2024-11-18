@@ -1,0 +1,1 @@
+ALTER TABLE "paragraphs_history" ALTER COLUMN "updated_by" SET DATA TYPE text;
