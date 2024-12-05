@@ -1,4 +1,5 @@
 import { boolean, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+
 import { auditAtFields, auditByFields } from '../audit';
 import { notificationEnum } from './enums';
 

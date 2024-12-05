@@ -1,9 +1,12 @@
 import { sql } from '@vercel/postgres';
-import * as schema from '~/drizzle/schema';
-import { usersTable, type CreateUser, type ReadUser, type UpdateUser } from '~/drizzle/tables';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
-import 'dotenv/config';
 import { asc, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/vercel-postgres';
+
+import * as schema from '~/drizzle/schema';
+
+import 'dotenv/config';
+
+import { usersTable, type CreateUser, type ReadUser, type UpdateUser } from '~/drizzle/tables';
 
 const dbClient = drizzle(sql, { schema });
 

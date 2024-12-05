@@ -1,7 +1,6 @@
 import type * as LabelPrimitive from '@radix-ui/react-label';
+
 import { Slot } from '@radix-ui/react-slot';
-import { Label } from '~/components/ui/label';
-import { cn } from '~/lib/utils';
 import * as React from 'react';
 import {
   Controller,
@@ -11,6 +10,9 @@ import {
   type FieldPath,
   type FieldValues,
 } from 'react-hook-form';
+
+import { Label } from '~/components/ui/label';
+import { cn } from '~/lib/utils';
 
 const Form = FormProvider;
 
@@ -84,7 +86,7 @@ const FormLabel = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const { error, formItemId } = useFormField();
 
-  return <Label ref={ref} className={cn(error && 'text-destructive', className)} htmlFor={formItemId} {...props} />;
+  return <Label ref={ref} htmlFor={formItemId} className={cn(error && 'text-destructive', className)} {...props} />;
 });
 FormLabel.displayName = 'FormLabel';
 
@@ -96,8 +98,8 @@ const FormControl = React.forwardRef<React.ElementRef<typeof Slot>, React.Compon
       <Slot
         ref={ref}
         id={formItemId}
-        aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
         aria-invalid={!!error}
+        aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
         {...props}
       />
     );

@@ -1,7 +1,11 @@
 import { sql as postgresql } from '@vercel/postgres';
-import * as schema from '~/drizzle/schema';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { and, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { v4 as uuidv4 } from 'uuid';
+
+import * as schema from '~/drizzle/schema';
 import {
   glossariesTable,
   paragraphsTable,
@@ -11,9 +15,7 @@ import {
   type ReadParagraph,
   type ReadReference,
 } from '~/drizzle/schema';
-import { and, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import { v4 as uuidv4 } from 'uuid';
+
 import { type SearchResultListProps } from '../components/SideBarMenu';
 import algoliaClient from '../providers/algolia';
 
@@ -196,10 +198,14 @@ export const upsertParagraph = async (paragraph: CreateParagraph) => {
 
   const paragraphId = uuidv4();
   console.log({ paragraphId });
-  const savedSearchResult = await algoliaClient.saveObject({
-    indexName: 'paragraphs',
-    body: { ...paragraph, id: paragraphId },
-  });
+  // TODO: remove this after testing
+  const savedSearchResult =
+    paragraph.rollId !== 'decb3798-76b5-424a-b83a-b9fdde6a7f53'
+      ? await algoliaClient.saveObject({
+          indexName: 'paragraphs',
+          body: { ...paragraph, id: paragraphId },
+        })
+      : { objectID: null };
   const result = await dbClient
     .insert(paragraphsTable)
     .values({

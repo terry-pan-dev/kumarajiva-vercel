@@ -80,4 +80,563 @@ export const references = [
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
     updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
   },
+  {
+    id: 'f0d02503-4628-46f3-9ac6-88ced49b4453',
+    paragraphId: '45367c18-8e5c-4162-a9e8-362b46163f06',
+    sutraName: '第一翻译',
+    content:
+      'Seven Masters of Quanzhen\n◎Narrate by The Venerable Master Hsuan Hua\nWang Chongyang and the Seven Masters of Quanzhen',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '5ff43c86-960e-4034-ad2a-ff0553cdbb47',
+    paragraphId: '8280ecb7-d1e8-4a9e-a635-552aeb5d3aa3',
+    sutraName: '第一翻译',
+    content:
+      "Wang Chongyang and the Seven Masters of Quanzhen\nImage source: Wikimedia Commons.\nFirst row, left to right: Wang Chongyang, Qiu Changchun, Sun Bu'er, Ma Yu, Tan Changzhen.\nSecond row, left to right: Hao Taigu, Wang Yuyang, Liu Changshen.\n",
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '130ed766-e738-4c44-ac95-97b70f6fb549',
+    paragraphId: '39aa089b-bc32-4f0a-9e53-3181906ca4b6',
+    sutraName: '第一翻译',
+    content:
+      "Today, I recalled a Taoist case study from China, and I would like to share it with everyone. This case is not from Buddhism, but it doesn't fall outside the realm of Buddhism. Buddhism encompasses all religions; no religion exists outside of Buddhism. Even religions that criticize or slander Buddhism are still included within Buddhism. This is because the principles of the Buddhadharma encompasses all of empty space and pervades all of Dharma Realm; nothing throughout the ten directions and three periods of time is not included. Whether you believe in the Buddha or not, you are included within Buddhism. Hence, even though this story conveys Taoist principles, we can still discuss it.\n",
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'c6300f5d-aacb-435f-a11d-b8b57fa256f0',
+    paragraphId: '45971817-1b28-458b-9b18-06aa7c8bbb95',
+    sutraName: '第一翻译',
+    content:
+      'Do you know who Laozi in Daoism is? Laozi is actually Patriarch Kāśyapa. Because he is willing to practice asceticism, because he is willing to appear as an unique example, he transformed into Laozi — it was not Kāśyapa himself who came but his transformation body. Confucius is the transformation body of Youth Water Moon, also a disciple of the Buddha, as is Yan Hui. They all came to China to pioneer Mahayana Buddhism, first incarnating as transformation bodies to promote the theories of Taoism and Confucianism in order to prepare for smooth integration with Buddhism in the future. Therefore, some people say that Confucianism, Buddhism, and Taoism are one family. They have their reasoning, but they do not fully understand the principles within and only skimmed the superficial surface.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '2fefdcc7-4307-4e2d-b397-e4d08e255f33',
+    paragraphId: '7238ed33-17bf-4d10-9e8d-21612b712a9c',
+    sutraName: '第一翻译',
+    content:
+      'This case took place in Shanxi at the end of the Song Dynasty. There was a man named Wang Zhe, and he was a martial arts scholar. A martial arts scholar is like someone with a master’s degree, but in martial arts instead of academics. He had a wife, a son, and a very wealthy family. One winter, it was snowing continuously for days, and two beggars came to his door, both dressed in tattered clothes and looked very poor. Upon seeing those two, Wang Zhe immediately felt a sense of pity and said to them, “You two don’t need to beg anymore. Come to my home, and I will take care of you.” Even though they were beggars, he treated them with respect and invited them to stay in his home permanently, offering to support them for the rest of their lives. However, these two beggars were quite unique and peculiar. They responded, “We are used to being poor and are not accustomed to enjoying comfort or ready-made meals. We will stay at your place for a few days, and that will be enough!”\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'ab4bdaea-a451-4b61-82fb-8e81b43d17cd',
+    paragraphId: '54eb9d95-1df1-4f9c-8f18-cd91b1d8336e',
+    sutraName: '第一翻译',
+    content:
+      'They ended up staying for about a month. These two beggars wanted to leave every day, but Wang Zhe kept insisting that they stay a few more days. Finally, the two beggars firmly said, "We must leave. Please don\'t try to keep us anymore!" Wang Zhe had no choice but to say, "If you must leave, alright, I\'ll see you off." He originally thought he would just see them off to the gate, taking a few more steps at most. However, as soon as he stepped out to escort them, much like how Shakyamuni Buddha used his spiritual power to transport Sundarananda, after only a few steps, he found himself on a bridge over twenty miles away. On the bridge, the two beggars took out their wine gourds and said, "Alright, we have to go now. We\'ve drunk a lot of your wine before, so today we invite you to have a drink with us." Wang Zhe said, "You also have wine? Alright, let\'s drink." After drinking three cups of wine, the two beggars said, "We are leaving now. On the third day of the third month next year, let\'s meet here on this bridge." After saying this, the two beggars left, and Wang Zhe passed out drunk on the bridge.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '57067f6a-7165-4abe-b3da-53b9ed3d54ec',
+    paragraphId: '64a44e64-d092-4389-9023-9577c1262267',
+    sutraName: '第一翻译',
+    content:
+      'The people in Wang Zhe\'s household knew he had gone out to see off two beggars, but when a long time passed without him returning, they sent people to search for him everywhere. Eventually, they found him passed out drunk on the bridge and carried him back home. When he sobered up, he then realized: "How is it that I only took a few steps to send those two people off and suddenly ended up at the bridge? Those two must have been immortals! I missed the chance to recognize them face-to-face. What a pity!" Then he thought to himself, "They said we would meet again on the same bridge on the third day of the third month next year—that must mean March 3rd." From then on, he stayed at home and didn’t go anywhere else because his wife wouldn’t allow him to leave the house. She told him it was too dangerous since he had followed those beggars and ended up passed out on the bridge. So, he didn’t go out again.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'c031428f-eda7-4d8e-b383-c858d3a1df59',
+    paragraphId: '64a44e64-d092-4389-9023-9577c1262267',
+    sutraName: '第二翻译',
+    content:
+      'Wang Zhe\'s family knew he had gone out to send off the two beggars, wondering “It has been some time, why is he not back yet”  and when he hadn\'t returned after a long time, they sent people to look for him. They found him passed out drunk on the bridge and carried him back home. When he sobered up, he wondered / then realized that "How did I end up at the bridge after just a few steps?” he had some enlightenment: “These two must be immortals. It\'s such a pity that I missed the opportunity."\n\nWhen he sobered up, he then realized, “ I was sending the two beggars off, and  just took a few steps, how come I end up at the bridge? They must be immortal.  I have missed my chance, such a pity!”\nThen he remembered, "They said to meet on the bridge on the third day of the third month next year, which is March 3rd." From then on, he stayed home, not going anywhere else, because his wife forbade him from leaving the house. She thought it was too dangerous, given that he had followed the beggars and ended up passed out on the bridge. So, he stayed remained at home.\n\nShe thought it was too dangerous, given that he had followed the beggars and ended up passed out on the bridge. So, he remained at home.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '43ad53f4-52a3-4855-9ea6-48cb3fbb9551',
+    paragraphId: 'e7565d68-3602-4ed2-bceb-4da841a067a5',
+    sutraName: '第一翻译',
+    content:
+      'On March 3rd of the following year/ On the 3rd day of the third lunar month of the following year , Wang Zhe went to the bridge in the early morning. Sure enough, the two men were already there. He happily approached them, knelt down, and said, "You two are living immortals! Please teach me how to cultivate and transcend life and death!" The two men said, "You recognize us. Very well, we will teach you the Way." They then instructed him on how to practice meditation, regulate his breathing, and refine the Reverted Elixir in Nine Cycles. Wang Zhe asked for their names. One said his name was Jin Zhong, and the other said his name was Shuang Kou. 金重 Jin Zhong, together form the character 鍾 Zhong, and 雙口 Shuang Kou form the character 呂Lü. Upon hearing this, Wang Zhe understood that they were the immortals Zhong and Lü, who had come to guide him. In the Han Dynasty of China, there was a man named Zhongli Quan, who became an immortal through Taoist cultivation methods. Lü Dongbin from Tang Dynasty is a disciple of Zhongli Quan.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '7321badf-c148-40ea-8bd4-d6cd3dff456b',
+    paragraphId: '14456a83-1e64-40ce-b587-6c23ad8bf04c',
+    sutraName: '第一翻译',
+    content:
+      'Wang Zhe returned home and wanted to cultivate the Way, but having a wife and children at home made it inconvenient. So, he pretended to go mad. He would beat, shout, bite and scream at people; sometimes he would laugh loudly, and other times he would cry hysterically. His wife, seeing him act this way, had him locked in a room by himself, bringing him food at set times each day. No one dared to approach him; if anyone did, he would act like he wanted to eat them, acting completely insane.\nIn that room, with no one to disturb him, he applied efforts in meditation and lived in seclusion. After twelve years, his cultivation was complete, and he decided to go to Shandong, because he knew that the disciples with whom he had affinities were there. Using his spiritual powers, he left the room and traveled to Tenghai County in Shandong, where he changed his name to Wang Chongyang.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '4d9893f4-5217-4c01-8e8f-69ebfd1dcc55',
+    paragraphId: '14456a83-1e64-40ce-b587-6c23ad8bf04c',
+    sutraName: '第二翻译',
+    content:
+      'Wang Zhe returned home with the intention to cultivate the way, but having a wife and sons at home made it inconvenient. So, he pretended to go mad, acting violently and erratically—hitting, shouting, biting, and yelling at anyone he saw. Sometimes he would laugh loudly, and other times he would cry loudly. Seeing him like this, his wife had him confined to a single room and arranged for meals to be delivered to him daily. No one wants to approach him because he would bite him/them. That’s how crazy he is. In this room, undisturbed by anyone, he meditated and practiced diligently in isolation. After twelve years of this intense practice, he attained enlightenment and decided to go to Shandong. Knowing that his destined disciples were in that region, he used his supernatural powers to leave the room and traveled to Tenghai County in Shandong, where he changed his name to Wang Chongyang.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '5c84381e-851c-46ee-a600-e986d6a02f58',
+    paragraphId: 'f63d0ecd-5304-4da3-87c6-89511349810a',
+    sutraName: '第一翻译',
+    content:
+      'In this county, there was a wealthy man named Ma Yu and his wife, Sun Yuan Zhen, both in their forties. They had no sons or daughters, but they had an abundance of money—so much that they were the wealthiest in the county. Wang Chongyang observed the causes and conditions and realized that he should first guide the couple. But how? He thought, "Ah! As my master transformed himself into a beggar to guide me, so will I transform myself into a beggar to guide my disciples."\nSo, he disguised himself as a beggar, carrying a yellow ceramic pot, and went to Ma Yu\'s village every day to beg for food. Each day, he passed by Ma Yu’s house, asking for food. This went on for more than six months. During that time, Ma Yu and Sun Yuan Zhen never spoke a single word to him. They saw him every day, but the disciples didn’t recognize their master. Seeing their master, they ignored him, and the master had no way of forcing their recognition. Although the master was compassionate, he also felt a bit embarrassed. He probably had not seen the notion of self as empty; although he gained spiritual powers, he still had a notion of "I have spiritual powers."\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '528a3fb1-7744-4afb-be78-7127f5a1b9d6',
+    paragraphId: 'f63d0ecd-5304-4da3-87c6-89511349810a',
+    sutraName: '第二翻译',
+    content:
+      'In this county, there was a wealthy man named Ma Yu. He and his wife, Sun Yuanzhen, are in their forties, and they have no children. Ma Yu is the richest man in the county. Wang Chongyang observed the cause and conditions and realized that he should first save Ma Yu and his wife. How could he save them? He thought, "Oh! My master disguised himself as a beggar to teach me, so I will also disguise myself as a beggar to teach my disciples." So, he disguised himself as a beggar, carrying a yellow porcelain pot, and went to Ma Yu\'s village every day to beg for food. Every day, he would pass by Ma Yu\'s house and ask for food. He did this for over six months. During this time, Ma Yu and Sun Yuanzhen never spoke a word to him. They saw him every day, but they did not recognize their master, thus ignoring him. And the master had no way to acknowledge his disciples. Although as the teacher, he would feel embarrassed if he were to approach them directly. He probably had not emptied out the notion of self.\nAlthough he had spiritual powers, he still had a notion of “I have spiritual powers.”\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'a0a4980d-b2c3-47a3-a12d-2bb984ffdaeb',
+    paragraphId: 'bf1e1e87-4cee-497a-b1c6-8f36c816497c',
+    sutraName: '第一翻译',
+    content:
+      'One day, Ma Yu returned home sighing heavily. His wife asked him, "What are you worried about?"\nHe replied, "Even though we have so much money now, we are already in our forties and have neither sons nor daughters. When we die, what will happen to all this money?"\nSun Yuan Zhen said, "Oh! There’s a solution. I think we should cultivate the Way. Even if we had children, we would still suffer in life. With so much money, we can find a great teacher to help us cultivate, and once we succeed, we will transcend life and death."\nMa Yu responded, "You’re dreaming! Do you think cultivation is that easy? Throughout history, how many people have truly succeeded? Who has really become an immortal? Hah! Stop entertaining such wild fantasies."\nSun Yuan Zhen replied, "Don’t worry. We can find a good and wise advisor."\nMa Yu asked, "And who do you think is a good and wise advisor?"\nSun Yuan Zhen said, "Look at the man who begs for food at our gate every day. I’ve observed that his countenance and demeanor is unlike that of ordinary people. I believe that he is a virtuous good and wise advisor. If we talk to him and ask him to teach us, we’ll definitely succeed."\nHearing her words, Ma Yu was moved and said, "Alright! The next time he comes, I’ll talk to him."\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '4be018a9-7aa4-4d48-86b0-236f3a474905',
+    paragraphId: 'bf1e1e87-4cee-497a-b1c6-8f36c816497c',
+    sutraName: '第二翻译',
+    content:
+      'One day, Ma Yu came home sighing. His wife asked him, "What are you worried about?" He replied, "Although we have a lot of money, we are both over forty years old and have no sons or daughters. If we die, what will happen to all this money?" Sun Yuanzhen said, "Oh! There is a solution. I think we should cultivate the Way. Even if we had children, we would still suffer. Since we have so much money, we can find a renowned master to cultivate the Way. If we succeed, we will transcend life and death." Ma Yu said, "You\'re dreaming. Is cultivation that easy? Throughout history, how many have succeeded in cultivation? Who has truly become an immortal? Hey! Stop imagining things." Sun Yuanzhen replied, "Don\'t worry, we can find a good knowing advisor." Ma Yu asked, "Who do you think is a good knowing advisor?" Sun Yuanzhen said, "You know the person who comes to our door begging for food every day? I see his appearance is different from ordinary people. He is a virtuous, good knowing advisor. 他就是一個有道德的善知識， If we talk to him and ask him to teach us, we will surely succeed." Hearing this, Ma Yu was moved and said, "Okay! When he comes again, I\'ll talk to him."\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '99fb858d-c305-478b-88b6-2f075889fe9e',
+    paragraphId: 'f213be6b-4e0c-406d-8b88-9a4aedfeae8b',
+    sutraName: '第一翻译',
+    content:
+      'The next day, Wang Chongyang came again to beg for food. In a tone that was not particularly respectful, Ma Yu called out, "Hey! You don’t need to go through the trouble of begging anymore. Starting today, you can stay here at my house. I have a good room for you to live in and good food for you to eat. You don’t need to beg anymore."\nAnd how did the beggar respond? He said, "Keep your nice room and good food for yourself. I don’t want to live in your nice room, nor do I want to eat your good food. I only want to eat the food I beg for and stay where I choose to stay."\nMa Yu had thought the beggar would happily accept his invitation, but to his surprise, the beggar refused. He hurried back to his wife and said, "You said that the beggar is a good and wise advisor and that we should learn the Way from him. But I invited him to stay at our house, and he didn’t want to."\nSun Yuan Zhen replied, "It must be that you said the wrong thing. If you had said the right thing, why wouldn’t he agree?"\nMa Yu said, "Then you go and talk to him!"\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '3b0db952-16fd-4fbb-ab2e-b18adb48e90e',
+    paragraphId: 'f213be6b-4e0c-406d-8b88-9a4aedfeae8b',
+    sutraName: '第二翻译',
+    content:
+      'The next day, Wang Chongyang came again to “beg” for food.  In a tone that was not very respectful, Ma Yu said, "Hey!" in a tone that was not very respectful. "You don’t need to beg anymore. From today on, stay at my house. I have a good house for you to live in and good food for you to eat. You don’t need to beg anymore." What/How do you think the beggar replied? He said/replied, "Keep your good house for yourself, and keep your good food for yourself. I don’t want to live in your good house or eat your good food. I just want  to eat the food I beg and live where I want to live." Ma Yu had thought the beggar would happily accept his invitation, but to his surprise, the beggar refused. He went back and told his wife, "You said the beggar was a good knowing advisor and that we should learn the Way from him. But when I invited him to stay at our house, he refused." Sun Yuanzhen said, "Of course, you didn’t speak/Of course… you must have spoken to him incorrectly. If you had/have not, why would he refuse?" Ma Yu replied, "Then you go and talk to him!"\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'e3ae6c24-2292-459f-95c4-1bc93f7a81e3',
+    paragraphId: '7a2c90a8-1677-467b-8071-e4e6bbd829fc',
+    sutraName: '第一翻译',
+    content:
+      'Sun Yuan Zhen came out and spoke to the beggar: "Ah, we know you are a true cultivator of the Way. We would like to invite you to stay at our house and teach us how to cultivate. Please have compassion on us!"\nWang Chongyang asked, "Why do you want to cultivate the Way with me?"\nSun Yuan Zhen replied, "Because I see the way that you are so carefree and at ease. It’s truly wonderful."\nWang Chongyang then asked her, "Since you know that being carefree and at ease is wonderful, why aren’t you carefree and at ease?"\nSun Yuan Zhen said, "I want to be pure, but I can’t attain purity. I want to be carefree, but I can’t attain it. I aspire to live as carefree and at ease as you, but I don’t know how to cultivate. That’s why I want to invite you, Master, to stay in our home and cultivate the Way with us. Our home can also serve as a Wayplace."\nHearing this, Wang Chongyang agreed.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '41bf864c-4aec-42f1-96b0-c7d16e391fbf',
+    paragraphId: '7a2c90a8-1677-467b-8071-e4e6bbd829fc',
+    sutraName: '第二翻译',
+    content:
+      'Sun Yuanzhen came out and spoke to the beggar, "Oh! We know that you are a true cultivator. We want to invite you to stay at our home and teach us how to cultivate the way. Please be compassionate!" Wang Chongyang asked, "Why do you want to cultivate with me?" Sun Yuanzhen replied, "Because I see that you are very carefree and at ease. It’s wonderful." Wang Chongyang then asked her, "Since you know that being carefree and at ease is good, why aren’t you carefree and at ease?" Sun Yuanzhen said, "I want to be pure and at ease, but I can\'t achieve it. I want to be carefree, but I can\'t. I want to learn how to be like you, so I thought of inviting you to our home to teach us how to cultivate. We can also make our home into a monastery." Hearing this, Wang Chongyang agreed.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'eb44754b-fe4d-4d64-a572-7ac3576b17f5',
+    paragraphId: 'a985c722-cfa8-45ba-a119-50a8b5c01a82',
+    sutraName: '第一翻译',
+    content:
+      'Wang Chongyang accepted Ma Yu’s invitation and stayed at his house for a period of time. However, Wang Chongyang observed that Ma Yu was not bringing forth the Bodhisattva resolve; he was only cultivating the Way for the sake of himself and his wife. Thus, one day, Wang Chongyang called Ma Yu before him and said, "Do you know why I came to Tenghai County?"\nMa Yu replied, "I don’t know. Master, why did you come here?"\nWang Chongyang said, "I came here specifically for you!"\nMa Yu asked, "What did you come to me for?"\nWang Chongyang replied, "I came for your wealth!"\nHearing this, Ma Yu thought, "Ah! This is a fraud! Why would someone cultivating the Way want my wealth? I’ve been tricked!" He immediately went to tell his wife, "You said this master is a good and wise advisor, but I think he’s a fraud, here to swindle us out of our wealth. He just told me he came here for me, and when I asked what for, he said it was for my wealth. Based on these words, it’s clear he isn’t a real cultivator."\nSun Yuan Zhen, upon hearing this, said, "Ah! You misunderstood! The master of course has a reason for saying this. Did you ask him what he wants your wealth for?"\nMa Yu replied, "No, I didn’t ask that."\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '0ae8cbb8-f55c-4164-b19f-ff871c21e0ec',
+    paragraphId: 'a985c722-cfa8-45ba-a119-50a8b5c01a82',
+    sutraName: '第二翻译',
+    content:
+      'Wang Chongyang accepted Ma Yu\'s invitation and stayed at his home for a while. Wang Chongyang observed that Ma Yu was not developing a Bodhisattva heart/mind, but was practicing cultivation solely for the benefit of himself and his wife. So one day, Wang Chongyang called Ma Yu to him and asked, "Do you know why I came to your county, Tenghai?" Ma Yu replied, "I don\'t know. Master, why did you come?" Wang Chongyang said, "I came here for you!" Ma Yu asked, "Why did you come here for me?" "I came for your wealth!" Upon hearing this, Ma Yu thought, "Ah! This is a cheater. Why would a cultivator want my wealth? I must have been deceived this time!" He quickly went to tell his wife, "You said this master was a good knowing advisor, but I think he is a big fraud here to cheat us out of our wealth. He just told me he came here for me. When I asked him why, he said it was for my wealth. From these few words, it’s clear he is not a true cultivator." Sun Yuanzhen replied, "Ah! You misunderstood! The master must have a purpose for saying this. Did you ask him why he wants your wealth?" Ma Yu said, "No, I didn\'t ask that." "Then go and ask him," his wife said.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '48bb8650-e167-4f7b-a6b4-4298c2c873b3',
+    paragraphId: 'a98de474-b550-4af9-b245-8afd625e07af',
+    sutraName: '第一翻译',
+    content:
+      'Ma Yu went back and asked, "Master, earlier you said you came for my wealth. Since you obviously want to use it, what do you intend to do with it?"\nWang Chongyang replied, "The amount of money you have right now is perfect for supporting practitioners of the Way throughout the ten directions. Let all those who cultivate the Way have a place here to eat, live, and practice with peace of mind. You could become a benefactor and create great merit! When I said I came for your wealth, this is what I meant!"\nHearing this, Ma Yu said, "Ah! So Master intends to use my wealth to establish a Wayplace. That’s no problem!"\nAnd so, he began spreading the word widely. He declared that anyone who wished to come and cultivate the Way would be provided with food, shelter, and clothing, all free of charge—because the Way cannot be bought or sold.\nNews of this spread across China, and soon, three to four thousand people registered to come and cultivate the Way. Among them were those sincerely seeking to cultivate and learn from a good and wise advisor. Others came because their families were too poor to support them and they heard they could get free food, clothing, and shelter. Some were bandits fleeing the law, wanted by the government, who showed up claiming to want to cultivate. There were also elderly people with no children or family to care for them, who heard about the free provisions and came as well.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '640fe6af-2402-444a-ba2d-2c102c5877c4',
+    paragraphId: 'a98de474-b550-4af9-b245-8afd625e07af',
+    sutraName: '第二翻译',
+    content:
+      'Ma Yu went to ask again, "Master, you said you came for my wealth. If you want to use my wealth, what do you want to do with it?" Wang Chongyang replied, "You have a lot of money now, and you can use it to support cultivators from the ten directions. This way, all those who cultivate the Way can have a place to eat and stay, focusing on their cultivation. You can be a benefactor, and this is a good deed! I said I came for your wealth for this reason!" Upon hearing this, Ma Yu realized, "Ah! So the master wants to use my wealth to establish a monastery. That’s no problem!" He then widely publicized that anyone who wanted to come and cultivate can come and would be provided with food, shelter, and clothing; all for free, as the Way is not for sale. Hearing this news, three to four thousand people from all over China came to sign up for cultivation. Some were genuinely seeking to cultivate and wanted to be close to a good knowing advisor; some were from very poor families and couldn\'t sustain their lives, so they came because they heard they would be provided for; some were outlaws who had broken the law and were being hunted by authorities, so they claimed they wanted to cultivate; and some were elderly with no children, and upon hearing that they would be provided with food and shelter / food and accommodation are provided for, they also came.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '1da7a2d9-db27-4e7a-b820-c5f39998149a',
+    paragraphId: '628828c0-82d0-42b2-a694-686c1f975e15',
+    sutraName: '第一翻译',
+    content:
+      'Wang Chongyang gave daily lectures on scriptures and commentary, which everyone listened with great interest. Not a single person wanted to leave. Why? Because the food was good, the accommodations were comfortable, the clothing was sufficient—everything was excellent. There was simply no other place as good as this, so no one wanted to leave. Cultivating the Way requires four essential conditions: method, resources, companions, and place. Method means knowing how to cultivate the Way; resources means there must be financial support for the practice. While a solitary cultivator can live in a simple hut and survive on roots and leaves, when there is a group of people, decent food becomes necessary. At the very least, there should be some milk and cheese to provide sufficient nutrition for practitioners.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '2894c431-3c89-4ef4-bac5-bc626077c43e',
+    paragraphId: '628828c0-82d0-42b2-a694-686c1f975e15',
+    sutraName: '第二翻译',
+    content:
+      "Wang Chongyang gave them lectures and dharma talk everyday. Everyone listened with great interest; no one left. Why? Because they ate well, lived well, and dressed well—everything was excellent/good. They couldn’t find such a good place anywhere else, so no one wanted to leave. Cultivation requires four conditions: method, resources, companions, and place. One must understand the methods of cultivation. One needs resources to plant the Way. If it's just one person living in a hut, eating grass roots and leaves might be sufficient. However, when there are many people, there must be enough food, and it needs to be good quality. At the very least, there should be some milk and cheese to ensure that those cultivators have adequate nutrition.\n",
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'b37cee44-d7c9-49bb-8977-1ece2c9a7b1e',
+    paragraphId: '2cf5d084-9521-46a5-a037-a2878aba9ef6',
+    sutraName: '第一翻译',
+    content:
+      'After about ten years, Wang Chongyang decided he wanted to go on a journey. However, before he could leave, he fell ill. What kind of illness? His entire body became covered in sores, and each sore was infested with numerous maggots, feeding on the pus and blood. It was an extremely unsightly and unpleasant condition, and the stench could be smelled from a hundred paces away.\nAround this time, the food was no longer as good, and clothing provisions had become mediocre as well. Seeing their master in such a state, the three to four thousand disciples began to doubt him. They said to each other:\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '62c5860e-e0db-4e55-a66d-355838b8bd85',
+    paragraphId: '2cf5d084-9521-46a5-a037-a2878aba9ef6',
+    sutraName: '第二翻译',
+    content:
+      'After a long time, probably about ten years. One day, Wang Chongyang decided to travel. Before he even set out, he fell ill. What kind of illness did he have? His entire body was covered with sores, and each sore was infested with many worms that were feeding on the pus and blood. It was very unsightly, and the stench could be smelled from a hundred paces away. Maybe the food wasn’t very good either, and their clothing was quite shabby. With their master falling ill, his the three to four thousand disciples saw this and thought, "Oh no! Aiyah, Oour master used to teach us the scriptures and how to cultivate, how to diligently practice to transcend life and death. Look at him now, like a clay Bodhisattva crossing the sea, unable to save himself. He has so many sores and smells so bad. If he were truly someone with cultivation, how could he get such a disease? Only very bad people get such a disease. We shouldn’t follow this fake good knowing advisor anymore. Let’s find a truly good knowing advisor elsewhere!"\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '90dbe745-e455-4309-9488-f36b98b9211f',
+    paragraphId: 'd9f203c5-0063-49b9-96c4-e9f01d176b64',
+    sutraName: '第一翻译',
+    content:
+      "Therefore, the three to four thousand disciples all left at once, leaving only seven behind. These seven were Qiu Changchun, Liu Changsheng, Tan Changzhen, Ma Yu, Hao Taigu, Wang Yuyang, and Sun Yuan Zhen, also known as Sun Bu'er. These seven individuals were determined to stay close to their master no matter what—no matter how unpleasant the smell, they were unafraid. Qiu, Liu, Tan, Ma, Hao, Wang, and Sun remained, waiting for their master to recover. After some time, Wang Chongyang's sores healed, and the unpleasant smell disappeared.\n",
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '30a11206-aafa-4345-955a-06d05bbe2457',
+    paragraphId: 'd9f203c5-0063-49b9-96c4-e9f01d176b64',
+    sutraName: '第二翻译',
+    content:
+      "As a result, the three to four thousand disciples all left, except for seven. These seven were Qiu Changchun, Liu Changsheng, Tan Changzhen, Ma Yu, Hao Taigu, Wang Yuyang, and Sun Yuanzhen, also known as Sun Bu'er. These seven people were determined to stay close to their master, regardless of the stench. They waited patiently, and eventually, Wang Chongyang's sores healed, and he no longer smelled bad.\n",
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'd5c99c38-6fc2-49f2-ae22-fad79b2c84dd',
+    paragraphId: '40f3dcf0-bd6e-435e-ba2d-c4b77339e865',
+    sutraName: '第一翻译',
+    content:
+      'One day, Wang Chongyang said to his disciples, "Let’s travel to the south!" So, he took his seven disciples and set off from Shandong, journeying southward. Along the way, the seven disciples took turns going out on alms rounds to bring back food for the group to eat. Wang Chongyang would eat the food brought by the other disciples, but he consistently refused to eat anything brought back by Qiu Changchun.\nOn one occasion, Qiu Changchun went out and managed to receive a large number of steamed buns. Knowing that his master particularly enjoyed steamed buns, he was delighted and carefully arranged them on a plate, presenting them to Wang Chongyang. However, Wang Chongyang became angry, picked up the plate, and threw it to the ground, scattering the buns everywhere. Qiu Changchun calmly picked up the buns one by one and ate them himself, without showing any sign of anger or complaint.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'd8ceeecc-6dd5-431d-941c-6467feb7481a',
+    paragraphId: '40f3dcf0-bd6e-435e-ba2d-c4b77339e865',
+    sutraName: '第二翻译',
+    content:
+      'One day, Wang Chongyang told his disciples, "Let\'s travel to the south!" So, he took his seven disciples and set off from Shandong, traveling to the south. Along the way, the seven disciples took turns going out to beg for food. Wang Chongyang ate the food that the other disciples brought back, but he never ate what Qiu Changchun brought back. Once, Qiu Changchun went out and begged for a lot of steamed buns. Knowing that his master liked steamed buns, he happily filled a plate with them and presented it to his master. However, Wang Chongyang became angry, took the plate, and threw it to the ground, scattering the buns everywhere. Qiu Changchun quietly picked up the buns and ate them slowly, without showing any anger.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'e71d040a-eb59-4a9a-b03b-be2396634b3b',
+    paragraphId: '21e1e02e-462e-41e7-bf64-980a48027e6d',
+    sutraName: '第一翻译',
+    content:
+      'That evening, the seven disciples stayed in the same room with their master. Worried that their master might be cold, they built a fire with a pile of wood to keep warm. However, Wang Chongyang became angry again. With a powerful wave of his robe sleeve, he extinguished the fire.\nAs the fire went out, smoke filled the room, causing the seven disciples to cough incessantly. Unable to stay inside any longer, they all went outside and sat in meditation. The moment they applied effort, they no longer felt cold.\nThe next day, Wang Chongyang said to them, "We’re not traveling anymore. Let’s return to Shandong."\nAnd so, the master and his seven disciples went back to Ma Yu’s home to continue their cultivation.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '7c99dad6-a8b1-4f33-8718-0ce3f9751b1e',
+    paragraphId: '21e1e02e-462e-41e7-bf64-980a48027e6d',
+    sutraName: '第二翻译',
+    content:
+      'At night, the seven disciples stayed in the same room with their master. Worried that Wang Chongyang might be cold, they built a fire to keep warm. Wang Chongyang, however, got very angry and with a strong wave of his robe sleeve, he extinguished the fire. As the fire went out, smoke began to fill the room, causing the seven disciples to cough and making it impossible to stay inside. They all went outside to meditate. Once they started to put in effort, they no longer felt cold. The next day, Wang Chongyang told them, "We are not going to travel anymore. Let\'s return to Shandong." So, the master and his seven disciples went back to Ma Yu\'s home to continue their cultivation.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '66a92073-a1d4-476e-b6f6-07232d0bb25f',
+    paragraphId: 'a35d58b8-a7f6-48a8-939f-8c87a18d19a8',
+    sutraName: '第一翻译',
+    content:
+      'Ma Yu was practicing cultivation, and so was his wife, so they each lived separately. One day, Wang Chongyang went into Sun Yuan Zhen\'s room and started saying inappropriate things to her: "You\'re all alone; how can you stand such loneliness?" He made several remarks of a similar indecent nature.\nSun Yuan Zhen was furious. She said, "I thought you were a good and wise advisor, but it turns out you\'re such a disgraceful person. This is completely inappropriate!" She then ran to her husband\'s room and told him, "Ah! We’ve chosen the wrong master. This master is not a good person; we’ve been deceived!"\nMa Yu asked, "What happened?"\nShe replied, "Just now, while I was meditating in my room, the master came in and tried to seduce me. He said all sorts of indecent things, like how I’m too beautiful to cultivate alone and that I should find a man, and so on. His words were unbearable!"\nMa Yu smiled and said, "Really?"\nSun Yuan Zhen insisted, "If you don’t believe me, go to my room and see for yourself!"\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '5f6d9845-0140-4aa4-878c-b74af1a474d3',
+    paragraphId: 'a35d58b8-a7f6-48a8-939f-8c87a18d19a8',
+    sutraName: '第二翻译',
+    content:
+      'Ma Yu cultivated, and his wife also had cultivated, so they lived separately. One day, Master Wang Chongyang went to Sun Yuanzhen\'s room and said some inappropriate words: "You are too lonely being by yourself. How can you bear it?" He said many other such improper things. Upon hearing this, Sun Yuanzhen became very angry and said, "I thought you were a virtuous teacher, but it turns out you\'re such a despicable person. This is completely inappropriate." She then ran to her husband\'s room and told him, "Oh! We have mistaken our master; he is not a good person. We\'ve been deceived this time." Ma Yu asked, "What happened?" She replied, "Just now, while I was meditating in my room, the master came in and tried to seduce me, saying many inappropriate things. He said that I am so beautiful and shouldn\'t be practicing alone, that I should find a man, and so on. It was too awful to hear." Ma Yu laughed and said, "Really?" Sun Yuanzhen said, "If you don\'t believe me, go to my room and see for yourself!"\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'e77d17d2-24a2-4b4f-b98b-5b8abdfceee9',
+    paragraphId: '1670fa48-a05d-4f44-9c48-305729e2c4ea',
+    sutraName: '第一翻译',
+    content:
+      'She brought her husband to her room, but when they looked, there was no one there.\nSun Yuan Zhen said, "Of course he ran away as soon as I left to tell you! What else would you expect?"\nMa Yu replied, "When you came to find me, I had just returned from the master\'s room. He told me to return to my room because someone was coming to look for me—it turns out that person was you. I was just speaking with the master. How could he have been in your room? That’s impossible!"\nSun Yuan Zhen said, "You’re so clueless! You don’t even believe me."\nBut Ma Yu trusted his master completely, and no matter what Sun Yuan Zhen said, he wouldn’t listen. He simply returned to his own room.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '83b7b054-ec31-41ff-aae9-cc93c8680cbd',
+    paragraphId: '1670fa48-a05d-4f44-9c48-305729e2c4ea',
+    sutraName: '第二翻译',
+    content:
+      'She took her husband to her room, but upon looking inside, they found nothing. Sun Yuanzhen said, "As soon as I ran out, he was afraid I\'d tell you, so of course, he ran away! There\'s nothing more to say!" Ma Yu replied, "When you came to find me, I had just returned from my master\'s room. It was he who told me to come back, saying someone was looking for me. It turned out to be you. I was just talking with my master! How could he be in your room? That\'s impossible!" Sun Yuanzhen said, "You\'re really foolish, not even believing me." Ma Yu trusted his master and wouldn\'t listen to anything Sun Yuanzhen said, so he left.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '91747b9f-aa6b-4b87-8074-934edbaa3e62',
+    paragraphId: 'e087aaae-2bc9-4edb-83df-2952cd2c49e9',
+    sutraName: '第一翻译',
+    content:
+      'A few days later, the master came to see Sun Yuan Zhen again. Just like before, his eyes, words, and even his hands behaved inappropriately. In short, his body, speech, and mind were all out of order and defiled.\nThis time, Sun Yuan Zhen said, "Master, have a seat. I need to step out to use the restroom; I’ll be right back."\nOnce outside, she grabbed a wooden stick and wedged it against the door, locking it from the outside with a key. "Let’s see where you run this time," she thought, and hurried off to find her husband.\nAs soon as Ma Yu saw her, he said, "Oh! You’ve come to say that the master was in your room again, haven’t you? Let me tell you honestly—I just came back from the master’s room because he told me you’d be coming to find me."\nSun Yuan Zhen replied, "If you don’t believe me, come with me and see for yourself!"\nMa Yu followed her back to her room. She removed the stick, unlocked the door, and they entered—only to find that, once again, there was no one inside.\nThis time, Sun Yuan Zhen realized she had been mistaken. She understood that her master attained an inconceivable state, having a body outside of the body, and used a transformation body to test her. From that moment on, she placed her full faith in Wang Chongyang without any doubt.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'a7fd4f00-e865-4e2f-a311-45a809e6c356',
+    paragraphId: 'e087aaae-2bc9-4edb-83df-2952cd2c49e9',
+    sutraName: '第二翻译',
+    content:
+      'After a few days, the master came to see Sun Yuanzhen again. Just like before, his eyes, mouth, and hands were all misbehaving—he was impure in body, speech, and mind. This time, Sun Yuanzhen said, "Master, please sit down. I\'ll be right back after I go to the bathroom." She went outside, grabbed a piece of wood to bar the door from the outside, and locked it with a lock. "Let\'s see if you can escape this time." Then she ran to find her husband. When her husband saw her, he said, "Oh! You\'re here again to say that the master is in your room, aren\'t you? To tell you the truth, I just came back from the master\'s room because he said you would come looking for me again." Sun Yuanzhen said, "If you don\'t believe me, come and see." Ma Yu went back with her, watched her remove the wooden bar and unlock the door, and when they went inside, they found no one. This time, Sun Yuanzhen realized she was wrong. The master had an incredible ability; he used a manifestation to test her. From then on, she had unwavering faith in Wang Chongyang.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'fce1b75b-a9a1-49e4-a3b7-83ec1a39e1ce',
+    paragraphId: '03fe2705-5b0e-43e4-bb2f-b5c495448b35',
+    sutraName: '第一翻译',
+    content:
+      'One day, Sun Yuan Zhen went to her master, Wang Chongyang, and asked him for guidance on how to cultivate. Wang Chongyang told her, "To practice cultivation, you need a sacred place, a location imbued with spiritual inspiration. Right now, in Luoyang, Henan, it is time for a true immortal to emerge from there. Could you go to that place to cultivate?"\nSun Yuan Zhen replied, "I can do that. I am willing to go there to cultivate."\nWang Chongyang said, "You think you can, but I don’t believe you can. You are too beautiful, and the journey is several hundred miles long. Traveling alone, you’re bound to encounter improper people. What will you do then?"\nSun Yuan Zhen said, "Master, don’t worry. I have a way to handle it."\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'e28ffd2e-dfc4-4ab2-9fd9-e8bca690b92e',
+    paragraphId: '03fe2705-5b0e-43e4-bb2f-b5c495448b35',
+    sutraName: '第二翻译',
+    content:
+      'One day, she went to master Wang Chongyang’s room to ask for guidance on how to cultivate the way. Wang Chongyang told her, "Cultivation requires a sacred place, a place with spiritual inspiration. Right now, Luoyang in Henan is the place where a true immortal should appear. Can you go there to cultivate?" Sun Yuanzhen replied, "I can go there to cultivate." Wang Chongyang said, "You think you can do it , but I don’t think you can. You are too beautiful, and the journey is several hundred miles. If you go alone, you will certainly meet improper people. What will you do then?" Sun Yuanzhen said, "Master, don\'t worry. I have a way."\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '5e70e118-f129-4b65-9b5d-9e469d9a6e9c',
+    paragraphId: 'd1be8b82-be86-44d1-8278-cb117c481211',
+    sutraName: '第一翻译',
+    content:
+      'She went to the kitchen, cleaned a pot, poured in some oil, and heated it until the oil was boiling. Then she added some water to the oil, causing it to splatter violently. She leaned her face over the pot, letting the hot oil splatters land on her skin, burning her face and leaving it covered in blisters, making her look disfigured.\nAfterward, she returned to see her master and asked, "Can I go now in this state?"\nSeeing her determination, Wang Chongyang praised her, saying, "You truly are someone extraordinary, surpassing your peers. Now you can absolutely go without any issue."\nFrom that point on, Sun Yuan Zhen adopted the name "Sun Bu’er," (不二 meaning “not two”) signifying her single-minded focus on cultivating the teachings her master had given her, this Not Two Dharma Door, not walking another path.\nWhen she arrived in Luoyang, Henan, she lived in an abandoned, dilapidated kiln that had once been used for firing bricks and tiles. She stayed there, and after twelve years, succeeded in cultivation.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'fc236356-057c-4007-a67e-f0b9108a44ac',
+    paragraphId: 'd1be8b82-be86-44d1-8278-cb117c481211',
+    sutraName: '第二翻译',
+    content:
+      'She went to the kitchen, cleaned a pot, and poured in some oil. After heating the oil until it was boiling, she added some water, causing the oil to spatter. She leaned her face close to the pot, and the splattering oil burnt her face, leaving numerous blisters. She then returned to her master and asked, "Can I go now like this?" Wang Chongyang, seeing her determination, praised her, saying, "You are truly exceptional, surpassing others in your dedication. You can definitely go now without any problems." Sun Yuanzhen then changed her name to "Sun Buer," meaning she was devoted to following her master\'s teachings and focused solely on the method taught by him, no longer pursuing any other path. She went to Luoyang in Henan and lived in a dilapidated kiln that had once been used for firing bricks and tiles. She stayed there for twelve years and attained enlightenment.\n',
+    order: '1',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'beff1053-1767-4111-a423-da5af27205ed',
+    paragraphId: 'eff65759-67ed-48da-9624-8214d6d46bd5',
+    sutraName: '第一翻译',
+    content:
+      'At this time, her master was ill at her home, and his condition was very severe. He spoke incoherently, as if he were delirious. One day, he told his remaining six disciples, "I am going to break my vegetarian vow and eat meat. Go buy some meat for me." Although the disciples were reluctant to see their master break his vow, they went to buy the meat out of respect for him. When the meat was brought back, Wang Chongyang said, "I won’t eat it today. Just hang it up in my room." After a few days, in the hot weather, the meat went rotten and became infested with maggots. Countless insects crawled in and out of the meat, as if swimming in it. The stench was so bad that it not just filled the entire room but the whole house.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '98a04503-3ece-4ee3-a243-f16bc49dcd56',
+    paragraphId: '9d195548-7049-4f38-bf3f-3996303856eb',
+    sutraName: '第一翻译',
+    content:
+      'One day/Another day, Wang Chongyang sat up and called his six disciples over, saying, "You all should break your vegetarian vow as well. I can’t eat all this meat by myself, so come and help me eat it." The other five/Five of his disciples (not only) refused to eat (but also) closed their eyes and pretended to be good cultivators. Only Qiu Changchun went (up) for the meat, took half of (the meat,)it and ate it. After tasting it, he exclaimed, "No wonder the Master called it rotten and infested with maggots; it tastes however incredibly good, better than anything I’ve ever had!" Having finished half, he wanted to (take and) eat the remaining piece as well. Wang Chongyang stopped him, saying, "Don’t take any more! Save that for me. Even one piece of meat, which you’ve taken, is already too much. Don’t eat any more!" Qiu Changchun was still not satisfied, while the other five disciples never knew how good the meat actually was. Later, Wang Chongyang ate the remaining piece himself. Not long after, Wang Chongyang passed away.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '022e518d-ad90-4d1d-8d56-467c4336e28d',
+    paragraphId: '924c51ce-758c-4e6f-9e89-5816c6c8d415',
+    sutraName: '第一翻译',
+    content:
+      'After Wang Chongyang died, his disciples placed him in a coffin and began to journey to his hometown in Shanxi. Strangely, the coffin was very light, so much so that it could be carried by just two people, allowing them to switch and work in pairs. Every day, when it was time to eat, meals were prepared and brought to them without their knowing. Qiu Changchun found this very peculiar and wondered, "How is it that food is always delivered to us at mealtimes? What’s the reason behind this?" Then, one day, when they were about a hundred miles from Wang Chongyang’s home in Shanxi, Qiu Changchun lied to the other fellow disciples, saying, "I have a stomachache. I need to go ahead and find a place to use the restroom." His fellow disciples agreed, and he went ahead alone. Upon reaching a village, he saw his master, wearing a yellow robe, begging alms at a house. Wang Chongyang was saying, "There are a few people behind carrying a coffin who haven’t eaten yet. Please show some compassion and offer them food. By doing this, you will form a good karmic connection, and everything will go smoothly for you in the future."\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'f1750515-0829-4326-8799-89104354b2a7',
+    paragraphId: '799a9c1e-902c-4ee6-abbc-50234ac63adb',
+    sutraName: '第一翻译',
+    content:
+      'When Qiu Changchun saw his master, he was overjoyed and said, "Master, you are alive! We thought you were dead!" He knelt down and held onto his master\'s leg, saying, "Master, you really tricked us! We thought you were dead, but you\'re still alive." He clung to his master\'s leg and refused to let go. Wang Chongyang said, "You foolish disciple! Why don’t you keep your cleverness to yourself instead of showing it off? Now you’ll have to endure three more years of hardship to achieve the Way, all because you keep using your petty cleverness." Among his disciples, Qiu Changchun was the smartest and understood things without needing explanations. Even though his master often tested him, he could endure it all. This time, thinking he had caught his master, Qiu Changchun was surprised when Wang Chongyang transformed into a gust of wind and disappeared after saying those words. From that moment on, no one brought them food anymore, and the remaining journey of over a hundred miles became very difficult regarding food. The disciples brought their master’s coffin back to his hometown. After staying there for a few days, they parted ways, with some traveling in pairs and others going alone to continue their cultivation journeys.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'd194a116-6e5e-405b-9ba4-344110d32346',
+    paragraphId: '741aa5b5-8899-4bab-96f2-5727112f3a90',
+    sutraName: '第一翻译',
+    content:
+      'Hao Taigu was originally a stone mason. He went to Mountain Hua and dug a cave in the rock face, intending to use it for his cultivation. Just after finishing the cave, an old cultivator came and asked for alms, specifically for the cave he had just dug. "Since you know how to make caves, why not donate this one to me and carve another one for yourself?" Hao Taigu thought, as a cultivator, he should be compassionate, and helping others. So he said, "Alright, you can live here." Then he started to dig another cave for himself. After finishing the new cave, another person came to ask for it, and he donated this cave as well. This pattern repeated each time he made a new cave, with an old cultivator coming to request it. In total, Hao Taigu made seventy-two caves on the mountain, each one being requested by and given to a different person.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '1b0624c7-5239-452c-af43-264dbb82149d',
+    paragraphId: '119e8cf5-8e33-4c91-84b1-7c9daa6f63aa',
+    sutraName: '第一翻译',
+    content:
+      'This time, Hao Taigu started to think, "Whenever I make a cave on the mid-levels of the mountain where people can reach, it always gets taken. I should go to the highest peak, where it\'s hard for people to reach, and dig a cave there. Then no one will come asking for it." So, he climbed to the highest peak of Mountain Hua. Mountain Hua, known as the Western Mountain among China\'s Five Great Mountains, has many bamboo trees. He made a cave at the very top of the mountain, and this time, no one came to ask for it because it was so difficult to reach. To get up and down, he used an iron chain that he had hung there, so ordinary people had no way to get to his place. However, a person came wanting to become his disciple. Hao Taigu accepted this sincere disciple, who then stayed with him, serving and assisting him with various tasks while he cultivated the Way\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '1d3b64a7-03ac-40fd-b1ef-2a302a573ba2',
+    paragraphId: '939948e2-14af-46ee-bde3-3e0e2f56da32',
+    sutraName: '第一翻译',
+    content:
+      'One day, Hao Taigu went down the mountain. While he was halfway down, his seemingly honest disciple did something very dishonest: he cut the iron chain from above, causing Hao Taigu to fall. The disciple assumed that his master would surely die from the fall, and that he could then take all of his master’s possessions for himself. He gathered all the valuable and non-valuable items and prepared to leave the mountain. As he was figuring out how to leave, he suddenly saw his master returning from below. Hao Taigu asked, "Where are you going?" The disciple replied, "Master, you fell down the mountain, and I thought you could never come back. I couldn\'t stay alone here, so I was planning to leave." Hao Taigu said, "Don\'t go, let\'s go back and continue our cultivation together." The disciple wondered how his master could survive such a fall. He reluctantly returned to continue to cultivate with his master. Over time, Hao Taigu helped this honest disciple to become dishonest, and eventually, both of them succeeded in their cultivation.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'e91270ab-1689-4fe1-918a-066f3a96f569',
+    paragraphId: 'ccbc4c80-2d7d-4f2a-85b9-397df57e3fca',
+    sutraName: '第一翻译',
+    content:
+      'Another cultivator, Liu Changsheng, chose to cultivate the Way in a brothel district. There have been women who have been prostitutes since ancient times regardless of China or other countries, often living concentrated in one area. Prostitutes are women who do not follow the rule. Liu Changsheng intentionally went to these places filled with women who did not follow rules to cultivate his Dao. Whenever a prostitute placed a flower in his Taoist hat, it was believed that her business would flourish that day, allowing her to earn a lot of money. Consequently, his hat was often adorned with many flowers. He cultivates the Way at the place with a lot of improper women.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'b00370ce-c8de-4ab1-ac1f-7eb8070a3255',
+    paragraphId: '0f6b6670-c9e5-4028-8c5d-e5c13d9c5d5c',
+    sutraName: '第一翻译',
+    content:
+      "He thought, 'By the river, there was water that brought a peach for me to eat, but if I go to the mountains, there won't be any water.' So, he bought a thick iron chain, went deep into a mountain, found a big tree, and chained his neck to the tree. Then he threw the key far into the grass, thinking, 'This time, there's no water, no peaches, and nothing to eat. Let's see if I will die or not!' He sat under the tree waiting to die. As he was about to starve again, a herbalist came by and, seeing him in such a state, was very surprised. 'Hey! What crime did you commit? Why are you locked  here?' Qiu Changchun replied, 'I did not commit any crime.”\n",
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'f6b374ef-2e40-4f47-8e29-e64c4d9ecdcc',
+    paragraphId: '09bd15b3-6d05-4fd2-bc7c-1e05c54892e5',
+    sutraName: '第一翻译',
+    content:
+      'He said, "Sir, you don\'t understand. Someone who practices physiognomy told me that I have Tengshe marks, which means I will definitely starve to death. I thought that since I am destined to starve to death anyway, I might as well starve to death sooner!"\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '88e16836-4a4f-4b93-acf3-33bd3988128f',
+    paragraphId: 'eb97f5ff-55a3-4fb3-b9ea-de9a00a5ecbf',
+    sutraName: '第一翻译',
+    content: 'He said, “I will achieve immortality if I cultivate.”\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: '61cec7e4-11e4-4b47-bf7b-e4339c4ad238',
+    paragraphId: '039b9c79-2b60-4753-88d5-a25ec3d2ca1a',
+    sutraName: '第一翻译',
+    content:
+      'From then on, Qiu Changchun put a lot of effort into cultivating the Way. How did he cultivate? He did not want a thatched hut, a bowl, or chopsticks. He wore clothes made from scraps of cloth discarded from manure piles, which he washed and stitched together. He had nothing but a gourd ladle, which he used for drinking water, eating food, and even as a hat. He begged for food everywhere, eating whatever leftover vegetables and rice he could find. He had no fixed place to live; sometimes he would spend the night under a tree, other times by the riverbank. In short, he takes things as they come and lives anywhere whenever he goes, without needing a tent.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
+  {
+    id: 'c26682ef-2d69-4dd4-a6b0-70ff471524a9',
+    paragraphId: '2ecc3b16-efc8-49f4-884e-357958c89eab',
+    sutraName: '第一翻译',
+    content:
+      'One day, while it was snowing, Qiu Changchun piled up manure and sat on it with his gourd ladle on his head, meditating. As he sat, he composed a poem: "Relying my body on the manure pile with a gourd ladle on my head,meeting the snowflakes from the sky." A passerby, surprised by the sight of someone speaking from the manure pile and seeing steam rising from under the gourd ladle, became curious. He struck the gourd ladle with a brick, breaking it in two. Qiu Changchun then said, "One family is warm and full, while a thousand families resent it. Half a brick shatters my gourd ladle." He meant that while he was comfortable, it led to others unhappiness. The brick broke his ladle. This highlights the harsh reality of cultivation, emphasizing that one must endure hardship, suffering, and patience to succeed in the path of practice.\n',
+    order: '0',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
 ];

@@ -1,6 +1,7 @@
 import highlightWords from 'highlight-words';
 import { ChevronRight } from 'lucide-react';
 import { useMemo } from 'react';
+
 import { type ParagraphSearchResult } from '../services/paragraph.service';
 import { Icons } from './icons';
 import { useSearchContext } from './SearchContext';
@@ -66,7 +67,7 @@ export const ParagraphDetail = ({ paragraph }: { paragraph: ParagraphSearchResul
           <h3 className="text-xl font-semibold tracking-tight text-primary">{paragraph.sutra?.title}</h3>
           <h4 className="font-mono text-md font-semibold text-secondary-foreground">{paragraph.roll?.title}</h4>
         </div>
-        <TextWithHighlight content={paragraph.content} search={search} />
+        <TextWithHighlight search={search} content={paragraph.content} />
         {paragraph.children && <Divider>{paragraph.children?.language.toUpperCase()}</Divider>}
         {paragraph.children && <p className="text-sm text-muted-foreground">{paragraph.children.content}</p>}
       </CardContent>
@@ -102,11 +103,11 @@ const TextWithHighlight = ({ content, search }: { content: string; search: strin
         <p className="text-sm text-muted-foreground">
           {chunks.map(({ text, match, key }) =>
             match ? (
-              <span className="rounded-sm bg-yellow-300 box-decoration-clone px-1" key={key}>
+              <span key={key} className="rounded-sm bg-yellow-300 box-decoration-clone px-1">
                 {text}
               </span>
             ) : (
-              <span className="box-decoration-clone" key={key}>
+              <span key={key} className="box-decoration-clone">
                 {text}
               </span>
             ),

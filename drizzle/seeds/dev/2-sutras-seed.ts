@@ -25,4 +25,18 @@ export const sutras = [
     createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
     updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
   },
+  {
+    id: '0f0aa2d1-9d05-426b-a0a0-046d58288a8d',
+    title: '全真七子',
+    subtitle: '',
+    category: '人物部類',
+    translator: 'DM Heng Sure',
+    language: 'chinese' as const,
+    teamId: '76ef21dd-9e34-4ab7-b143-9bb2fc8c201e',
+    parentId: null,
+    finish: true,
+    cbeta: 'Unknown',
+    createdBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+    updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
+  },
 ];

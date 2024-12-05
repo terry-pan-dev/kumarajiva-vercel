@@ -2,6 +2,7 @@ import { Link, useLoaderData, useOutletContext, useRouteError } from '@remix-run
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
+
 import { type ReadRoll, type ReadSutra, type ReadUser } from '../../drizzle/schema';
 import { assertAuthUser } from '../auth.server';
 import { TranslationCard } from '../components/Card';
@@ -100,9 +101,9 @@ export default function TranslationIndex() {
   const Sutras = sutras.map((sutra) => (
     <motion.div
       key={sutra.id}
-      className="m-2 cursor-pointer rounded-lg shadow-md"
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.3 }}
+      className="m-2 cursor-pointer rounded-lg shadow-md"
     >
       {sutra.children ? (
         <div onClick={() => setSutraId(sutra.id)}>
@@ -110,8 +111,8 @@ export default function TranslationIndex() {
         </div>
       ) : (
         <FormModal
-          title={`Create ${context.user.targetLang} sutra`}
           schema={createSutraSchema}
+          title={`Create ${context.user.targetLang} sutra`}
           trigger={
             <Link to={`/translation?sutraId=${sutra.id}`}>
               <TranslationCard title={sutra.title} subtitle={sutra.category} translator={sutra.translator} />
@@ -145,12 +146,12 @@ export default function TranslationIndex() {
   const Rolls = rolls?.map((roll) => (
     <motion.div
       key={roll.id}
-      className="cursor-pointer rounded-lg shadow-md"
       whileHover={{ scale: 1.02 }}
-      initial={{ opacity: 0, x: '100%' }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: '100%' }}
       transition={{ duration: 0.3 }}
+      exit={{ opacity: 0, x: '100%' }}
+      initial={{ opacity: 0, x: '100%' }}
+      className="cursor-pointer rounded-lg shadow-md"
     >
       {roll.children ? (
         <Link to={`/translation/${roll.id}`}>
@@ -158,8 +159,8 @@ export default function TranslationIndex() {
         </Link>
       ) : (
         <FormModal
-          title={`Create ${context.user.targetLang} roll`}
           schema={createRollSchema}
+          title={`Create ${context.user.targetLang} roll`}
           trigger={
             <Link to={`/translation?sutraId=${targetSutraId}&rollId=${roll.id}`}>
               <TranslationCard title={roll.title} subtitle={roll.subtitle} />
@@ -187,29 +188,29 @@ export default function TranslationIndex() {
 
   return (
     <motion.div
-      className={`flex ${sutraId ? 'flex-row' : 'items-center'}`}
       initial={false}
-      animate={{ flexDirection: sutraId ? 'row' : 'column' }}
       transition={{ duration: 0.5 }}
+      animate={{ flexDirection: sutraId ? 'row' : 'column' }}
+      className={`flex ${sutraId ? 'flex-row' : 'items-center'}`}
     >
       <motion.div
         className="flex flex-col"
+        transition={{ duration: 0.3 }}
         animate={{
           width: sutraId ? '50%' : '50%',
           height: sutraId ? 'auto' : '100%',
         }}
-        transition={{ duration: 0.3 }}
       >
         {Sutras}
       </motion.div>
       <AnimatePresence>
         {sutraId && (
           <motion.div
-            className="m-2 flex w-1/2 flex-col gap-4"
-            initial={{ opacity: 0, x: '100%' }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
             transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, x: '100%' }}
+            initial={{ opacity: 0, x: '100%' }}
+            className="m-2 flex w-1/2 flex-col gap-4"
           >
             {Rolls}
           </motion.div>
@@ -222,15 +223,15 @@ export default function TranslationIndex() {
 const CreateSutraForm = ({ sutra }: { sutra: ReadSutra }) => {
   return (
     <div className="grid grid-cols-2 gap-4">
-      <FormInput name="title" label={sutra.title} required description="Translate the title of the sutra." />
+      <FormInput required name="title" label={sutra.title} description="Translate the title of the sutra." />
       {sutra.subtitle && (
-        <FormInput name="subtitle" label={sutra.subtitle} required description="Translate the subtitle of the sutra." />
+        <FormInput required name="subtitle" label={sutra.subtitle} description="Translate the subtitle of the sutra." />
       )}
-      <FormInput name="category" label={sutra.category} required description="Translate the category of the sutra." />
+      <FormInput required name="category" label={sutra.category} description="Translate the category of the sutra." />
       <FormInput
+        required
         name="translator"
         label={sutra.translator}
-        required
         description="Translate the translator of the sutra."
       />
     </div>
@@ -240,8 +241,8 @@ const CreateSutraForm = ({ sutra }: { sutra: ReadSutra }) => {
 const CreateRollForm = ({ roll }: { roll: ReadRoll }) => {
   return (
     <div>
-      <FormInput name="title" label={roll.title} required description="Translate the title of the roll." />
-      <FormInput name="subtitle" label={roll.subtitle} required description="Translate the subtitle of the roll." />
+      <FormInput required name="title" label={roll.title} description="Translate the title of the roll." />
+      <FormInput required name="subtitle" label={roll.subtitle} description="Translate the subtitle of the roll." />
     </div>
   );
 };

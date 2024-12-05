@@ -1,4 +1,5 @@
 import { AbilityBuilder, PureAbility } from '@casl/ability';
+
 import { type ReadUser } from '~/drizzle/schema';
 
 type Actions = 'Create' | 'Read' | 'Update' | 'Delete';

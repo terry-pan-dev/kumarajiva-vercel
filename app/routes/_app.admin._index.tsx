@@ -3,6 +3,7 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import bcrypt from 'bcryptjs';
 import { useMemo } from 'react';
 import { ZodError } from 'zod';
+
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -158,7 +159,7 @@ export default function AdminIndex() {
   );
 
   return (
-    <Tabs defaultValue="user-management" className="w-full">
+    <Tabs className="w-full" defaultValue="user-management">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="user-management">Users</TabsTrigger>
         <TabsTrigger value="system-notifications">Notifications</TabsTrigger>

@@ -18,6 +18,7 @@
     "db:seed": "tsx drizzle/seeds/dev/index.ts",
     "db:seed:prod": "dotenv -e .env.prod -- tsx drizzle/seeds/prod/index.ts",
     "read-glossary": "tsx scripts/read-glossary.ts",
+    "transformation": "tsx scripts/transformation.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -91,6 +92,7 @@
     "dotenv-cli": "^7.4.2",
     "drizzle-kit": "^0.25.0",
     "eslint": "^8.38.0",
+    "eslint-plugin-perfectionist": "^4.1.2",
     "eslint-plugin-prettier": "^5.2.1",
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",

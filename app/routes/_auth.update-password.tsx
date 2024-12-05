@@ -1,8 +1,10 @@
 import { useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { logger } from '~/lib/logger';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+
+import { logger } from '~/lib/logger';
+
 import AuthForm from '../components/AuthForm';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { FormInput } from '../components/FormModal';
@@ -88,11 +90,11 @@ export default function UpdatePasswordRoute() {
       <AuthForm schema={schema} defaultValues={{ new_pass: '', confirm_pass: '' }}>
         <div className="flex flex-col space-y-4">
           {/* <HiddenInput name="email" value={email} /> */}
-          <FormInput name="new_pass" label="New Password" type="password" required placeholder="••••••••" />
-          <FormInput name="confirm_pass" label="Confirm Password" type="password" required placeholder="••••••••" />
+          <FormInput required name="new_pass" type="password" label="New Password" placeholder="••••••••" />
+          <FormInput required type="password" name="confirm_pass" placeholder="••••••••" label="Confirm Password" />
           <button
-            className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-900 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset]"
             type="submit"
+            className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-900 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset]"
           >
             Update Password &rarr;
           </button>

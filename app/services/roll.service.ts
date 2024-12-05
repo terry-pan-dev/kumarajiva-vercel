@@ -1,9 +1,12 @@
 import { sql } from '@vercel/postgres';
-import * as schema from '~/drizzle/schema';
-import { rollsTable, type ReadRoll } from '~/drizzle/tables';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
-import 'dotenv/config';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/vercel-postgres';
+
+import * as schema from '~/drizzle/schema';
+
+import 'dotenv/config';
+
+import { rollsTable, type ReadRoll } from '~/drizzle/tables';
 
 const dbClient = drizzle(sql, { schema });
 

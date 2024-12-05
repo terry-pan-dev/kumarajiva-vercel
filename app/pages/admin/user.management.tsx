@@ -1,3 +1,6 @@
+import { useCallback } from 'react';
+import { match } from 'ts-pattern';
+
 import AdminActionButtons from '~/components/AdminActionButtons';
 import { AdminForm } from '~/components/AdminForm';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge } from '~/components/ui';
@@ -5,8 +8,6 @@ import { type UserRole } from '~/drizzle/tables/enums';
 import { type ReadTeam } from '~/drizzle/tables/team';
 import { type ReadUser } from '~/drizzle/tables/user';
 import { updateUserSchema } from '~/validations/user.validation';
-import { useCallback } from 'react';
-import { match } from 'ts-pattern';
 
 export const AdminManagement = ({ users, teams }: { users: ReadUser[]; teams: ReadTeam[] }) => {
   const getBadgeVariant = useCallback((role: UserRole) => {
@@ -31,7 +32,7 @@ export const AdminManagement = ({ users, teams }: { users: ReadUser[]; teams: Re
     <div>
       <AdminActionButtons teams={cleanedTeams} />
       <div className="mx-auto w-full space-y-6 p-6">
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion collapsible type="single" className="w-full">
           {users.map((user) => (
             <AccordionItem key={user.id} value={user.id}>
               <AccordionTrigger className="flex bg-primary px-2 py-2 text-white">
@@ -41,7 +42,7 @@ export const AdminManagement = ({ users, teams }: { users: ReadUser[]; teams: Re
                 </div>
               </AccordionTrigger>
               <AccordionContent>
-                <AdminForm teams={teams} user={user} userSchema={updateUserSchema} />
+                <AdminForm user={user} teams={teams} userSchema={updateUserSchema} />
               </AccordionContent>
             </AccordionItem>
           ))}

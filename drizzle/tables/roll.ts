@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+
 import { auditAtFields, auditByFields } from '../audit';
 import { paragraphsTable } from './paragraph';
 import { sutrasTable } from './sutra';

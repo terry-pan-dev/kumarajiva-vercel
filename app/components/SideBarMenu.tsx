@@ -1,6 +1,10 @@
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Form, Link, NavLink, useFetcher, useLocation, useNavigation } from '@remix-run/react';
 import { useDebounce } from '@uidotdev/usehooks';
+import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ClientOnly } from 'remix-utils/client-only';
+
 import {
   Avatar,
   AvatarFallback,
@@ -19,9 +23,7 @@ import {
 } from '~/components/ui';
 import { type UserRole } from '~/drizzle/tables/enums';
 import { cn } from '~/lib/utils';
-import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { ClientOnly } from 'remix-utils/client-only';
+
 import { type ReadGlossary } from '../../drizzle/schema';
 import { type ParagraphSearchResult } from '../services/paragraph.service';
 import { GlossaryDetail, GlossaryItem } from './GlossaryList';
@@ -72,7 +74,7 @@ export function SideBarMenu({
   return (
     <TooltipProvider>
       <div className="flex min-h-screen w-14 flex-col items-center bg-primary px-2 shadow-md lg:w-64 lg:items-stretch lg:px-4">
-        <Link to="/" className="flex items-center justify-center py-4 lg:justify-start" aria-label="Logo">
+        <Link to="/" aria-label="Logo" className="flex items-center justify-center py-4 lg:justify-start">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-600 font-mono text-xl font-bold text-white">
             K
           </div>
@@ -96,6 +98,7 @@ export function SideBarMenu({
                 <TooltipTrigger asChild>
                   <NavLink
                     to={item.href}
+                    aria-label={item.label}
                     className={cn(
                       'mb-1 flex items-center justify-center px-3 py-3 text-md font-medium text-white lg:justify-start lg:px-6',
                       'hover:bg-slate-200/50 hover:text-yellow-600 lg:hover:text-white',
@@ -103,7 +106,6 @@ export function SideBarMenu({
                         ? 'active rounded-md bg-slate-200 text-yellow-600'
                         : 'bg-transparent hover:rounded-md',
                     )}
-                    aria-label={item.label}
                   >
                     {({ isActive }) => (
                       <>
@@ -137,9 +139,9 @@ export function SideBarMenu({
 
         <div className="mt-auto pt-2 md:py-2">
           <div className="flex flex-col items-center justify-center gap-2 lg:flex-row lg:justify-between">
-            <Link to="/settings" className="flex items-center" aria-label="settings">
+            <Link to="/settings" aria-label="settings" className="flex items-center">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={avatarSrc || ''} alt="avatar" />
+                <AvatarImage alt="avatar" src={avatarSrc || ''} />
                 <AvatarFallback className="bg-yellow-600 text-white">{avatarFallback}</AvatarFallback>
               </Avatar>
               <div className="ml-3 hidden max-w-28 lg:block">
@@ -151,7 +153,7 @@ export function SideBarMenu({
             </Link>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Form action="/logout" method="post">
+                <Form method="post" action="/logout">
                   <button type="submit">
                     <LogOut className="h-5 w-5 text-white" />
                   </button>
@@ -235,12 +237,12 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
             <div className="flex flex-col">
               <div className="flex items-center rounded-md bg-white">
                 <Input
+                  autoFocus
                   type="text"
-                  placeholder="Type to search..."
                   value={search}
+                  placeholder="Type to search..."
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full rounded-xl border-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                  autoFocus
                 />
                 {(fetcher.state === 'loading' || fetcher.state === 'submitting') && (
                   <Icons.Loader className="ml-auto mr-1 h-5 w-5 animate-spin text-slate-500" />
@@ -302,7 +304,7 @@ const SearchResultList = ({ results }: SearchResultListProps) => {
           <ClientOnly fallback={<div>Loading...</div>}>
             {() =>
               selectedIndex[1] === 'Glossary' ? (
-                <GlossaryDetail glossary={selectedGlossary} showEdit={false} />
+                <GlossaryDetail showEdit={false} glossary={selectedGlossary} />
               ) : (
                 <ParagraphDetail paragraph={selectedParagraph} />
               )

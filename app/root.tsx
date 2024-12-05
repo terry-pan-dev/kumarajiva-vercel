@@ -1,5 +1,7 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, type MetaFunction } from '@remix-run/react';
+
 import './tailwind.css';
+
 import { Analytics } from '@vercel/analytics/react';
 import { type LinksFunction } from '@vercel/remix';
 

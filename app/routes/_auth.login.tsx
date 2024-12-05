@@ -1,9 +1,11 @@
 import { Form, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
+import { z } from 'zod';
+
 import { authenticator } from '~/auth.server';
 import { logger } from '~/lib/logger';
 import { commitSession, getSession } from '~/session.server';
-import { z } from 'zod';
+
 import AuthForm from '../components/AuthForm';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { FormInput } from '../components/FormModal';
@@ -84,14 +86,14 @@ export default function LoginFormRoute() {
             password: '',
           }}
         >
-          <FormInput name="email" label="Email Address" type="email" required placeholder="example@gmail.com" />
+          <FormInput required name="email" type="email" label="Email Address" placeholder="example@gmail.com" />
 
-          <FormInput name="password" label="Password" type="password" required placeholder="••••••••" />
+          <FormInput required name="password" type="password" label="Password" placeholder="••••••••" />
 
           <Spacer />
           <button
-            className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-900 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset]"
             type="submit"
+            className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-black to-neutral-600 font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:bg-zinc-800 dark:from-zinc-900 dark:to-zinc-900 dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset]"
           >
             Login &rarr;
           </button>
@@ -102,8 +104,8 @@ export default function LoginFormRoute() {
         <div className="flex flex-col space-y-4">
           <Form method="post" action="/auth/google">
             <button
-              className="group/btn relative flex h-10 w-full items-center justify-start space-x-2 rounded-md bg-gray-50 px-4 font-medium text-black shadow-input dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
               type="submit"
+              className="group/btn relative flex h-10 w-full items-center justify-start space-x-2 rounded-md bg-gray-50 px-4 font-medium text-black shadow-input dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
             >
               <Icons.Google className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
               <span className="text-sm text-neutral-700 dark:text-neutral-300">Google</span>

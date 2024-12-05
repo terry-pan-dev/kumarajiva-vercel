@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { boolean, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+
 import { auditAtFields, auditByFields } from '../audit';
 import { langEnum, roleEnum } from './enums';
 import { teamsTable } from './team';

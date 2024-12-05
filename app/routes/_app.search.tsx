@@ -1,4 +1,5 @@
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
+
 import { searchAlgolia } from '../services/paragraph.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
