@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState, type PropsWithChildren } from 
 import { Controller, FormProvider, useForm, useFormContext, type Mode } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 import { type z, type ZodSchema } from 'zod';
+
 import { useToast } from '../hooks/use-toast';
 import {
   FormControl,
@@ -98,7 +99,7 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
   return (
     <ClientOnly fallback={<div>Loading...</div>}>
       {() => (
-        <Dialog onOpenChange={setOpen} open={open}>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger
             asChild
             onClick={(e) => {
@@ -156,7 +157,7 @@ interface BaseFormFieldProps extends FormInputProps {
 
 export function HiddenInput({ name, value }: { name: string; value: string }) {
   const { register } = useFormContext();
-  return <input type="hidden" value={value} hidden {...register(name)} />;
+  return <input hidden type="hidden" value={value} {...register(name)} />;
 }
 
 export function FormInput({ name, label, type = 'text', required = false, description, placeholder }: FormInputProps) {
@@ -166,7 +167,7 @@ export function FormInput({ name, label, type = 'text', required = false, descri
   } = useFormContext();
 
   return (
-    <BaseFormField name={name} label={label} required={required} description={description} errors={errors}>
+    <BaseFormField name={name} label={label} errors={errors} required={required} description={description}>
       <Input id={name} type={type} placeholder={placeholder} {...register(name)} />
     </BaseFormField>
   );
@@ -179,12 +180,12 @@ export function FormSelect({ name, label, required = false, description, options
   } = useFormContext();
 
   return (
-    <BaseFormField name={name} label={label} required={required} description={description} errors={errors}>
+    <BaseFormField name={name} label={label} errors={errors} required={required} description={description}>
       <Controller
         name={name}
         control={control}
         render={({ field }) => (
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <Select defaultValue={field.value} onValueChange={field.onChange}>
             <SelectTrigger id={name}>
               <SelectValue placeholder={`Select ${label}`} />
             </SelectTrigger>
@@ -209,7 +210,7 @@ export function FormTextarea({ name, label, required = false, description }: For
   } = useFormContext();
 
   return (
-    <BaseFormField name={name} label={label} required={required} description={description} errors={errors}>
+    <BaseFormField name={name} label={label} errors={errors} required={required} description={description}>
       <Textarea placeholder={label} {...register(name)} />
     </BaseFormField>
   );

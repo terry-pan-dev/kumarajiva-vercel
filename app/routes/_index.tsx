@@ -1,5 +1,6 @@
 import { Outlet, redirect } from '@remix-run/react';
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
+
 import { assertAuthUser } from '../auth.server';
 import { Toaster } from '../components/ui/toaster';
 

@@ -1,5 +1,6 @@
 import { Outlet, useLoaderData, type MetaFunction } from '@remix-run/react';
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
+
 import { assertAuthUser } from '../auth.server';
 import { BreadcrumbLine } from '../components/Breadcrumb';
 import { Separator } from '../components/ui/separator';

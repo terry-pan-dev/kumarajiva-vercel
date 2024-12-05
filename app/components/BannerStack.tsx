@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { Banner, type Banner as BannerType } from './Banner';
 
 interface BannerStackProps {

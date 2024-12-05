@@ -1,10 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher } from '@remix-run/react';
-import { type ReadTeam, type ReadUser } from '~/drizzle/tables';
-import { langEnum, roleEnum } from '~/drizzle/tables/enums';
 import { useCallback, useEffect } from 'react';
 import { Controller, FormProvider, useForm } from 'react-hook-form';
 import { type ZodSchema } from 'zod';
+
+import { type ReadTeam, type ReadUser } from '~/drizzle/tables';
+import { langEnum, roleEnum } from '~/drizzle/tables/enums';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui';
 import { useToast } from '../hooks/use-toast';
 import { type UpdateUserSchema } from '../validations/user.validation';
@@ -107,7 +109,7 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
               name="teamId"
               control={form.control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select defaultValue={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="team">
                     <SelectValue placeholder="Select team" />
                   </SelectTrigger>
@@ -133,7 +135,7 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
               name="role"
               control={form.control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select defaultValue={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="role">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
@@ -157,7 +159,7 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
               name="originLang"
               control={form.control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select defaultValue={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="originLang">
                     <SelectValue placeholder="Select source language" {...form.register('originLang')} />
                   </SelectTrigger>
@@ -183,7 +185,7 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
               name="targetLang"
               control={form.control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select defaultValue={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="targetLang">
                     <SelectValue placeholder="Select target language" {...form.register('targetLang')} />
                   </SelectTrigger>
@@ -203,7 +205,7 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
           </div>
           <div />
           <div className="flex justify-end">
-            <Button disabled={fetcher.state !== 'idle'} type="submit">
+            <Button type="submit" disabled={fetcher.state !== 'idle'}>
               Update
             </Button>
           </div>

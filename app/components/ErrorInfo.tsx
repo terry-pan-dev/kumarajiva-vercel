@@ -1,5 +1,6 @@
 import { isRouteErrorResponse, Link } from '@remix-run/react';
 import { AlertTriangle, Bug } from 'lucide-react';
+
 import { Icons } from './icons';
 
 interface ErrorBoundaryProps {

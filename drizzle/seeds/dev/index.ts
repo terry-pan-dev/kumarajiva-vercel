@@ -1,9 +1,11 @@
 import 'dotenv/config';
 import { sql as vercelSql } from '@vercel/postgres';
-import * as schema from '~/drizzle/schema';
-import { paragraphsTable, referencesTable, rollsTable, sutrasTable, teamsTable, usersTable } from '~/drizzle/tables';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
+
+import * as schema from '~/drizzle/schema';
+import { paragraphsTable, referencesTable, rollsTable, sutrasTable, teamsTable, usersTable } from '~/drizzle/tables';
+
 import algoliaClient from '../../../app/providers/algolia';
 import { teams } from './0-teams-seed';
 import { users } from './1-users-seed';

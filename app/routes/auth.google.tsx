@@ -1,4 +1,5 @@
 import { redirect, type ActionFunctionArgs } from '@remix-run/node';
+
 import { authenticator } from '~/auth.server';
 
 export const loader = () => redirect('/login');

@@ -1,8 +1,10 @@
 import { sql as vercelSql } from '@vercel/postgres';
-import * as schema from '~/drizzle/schema';
-import { glossariesTable, type ReadGlossary } from '~/drizzle/tables';
 import { inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
+
+import * as schema from '~/drizzle/schema';
+import { glossariesTable, type ReadGlossary } from '~/drizzle/tables';
+
 import algoliaClient from '../providers/algolia';
 
 const dbClient = drizzle(vercelSql, { schema });

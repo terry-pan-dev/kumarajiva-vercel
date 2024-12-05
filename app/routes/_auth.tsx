@@ -1,7 +1,8 @@
 import { Outlet } from '@remix-run/react';
-import { cn } from '~/lib/utils';
 import { motion, stagger, useAnimate } from 'framer-motion';
 import { useEffect } from 'react';
+
+import { cn } from '~/lib/utils';
 
 export default function Auth() {
   const paragraph = '若人欲了知，三世一切佛，应观法界性，一切唯心造';

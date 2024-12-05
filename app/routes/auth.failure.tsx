@@ -1,8 +1,9 @@
 import { Link } from '@remix-run/react';
+import { AlertTriangle, ExternalLink, RotateCcw } from 'lucide-react';
+
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '~/components/ui/card';
-import { AlertTriangle, ExternalLink, RotateCcw } from 'lucide-react';
 
 export default function OAuthLoginFailure({ errorMessage = 'An error occurred during the login process.' }) {
   return (

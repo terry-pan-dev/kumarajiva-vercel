@@ -1,13 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { type ReadReference } from '~/drizzle/tables/reference';
-import { type ReadUser } from '~/drizzle/tables/user';
 import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
 import React, { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 import { ZodError, type z } from 'zod';
+
+import { type ReadReference } from '~/drizzle/tables/reference';
+import { type ReadUser } from '~/drizzle/tables/user';
+
 import { assertAuthUser } from '../auth.server';
 import { Can } from '../authorisation';
 import ContextMenuWrapper from '../components/ContextMenu';
@@ -106,11 +108,11 @@ export default function TranslationRoll() {
       {paragraph?.target ? (
         <div className={`${selectedParagraph ? 'flex flex-col' : 'grid grid-cols-2'} w-full gap-4`}>
           <ContextMenuWrapper>
-            <Paragraph text={paragraph.origin} isOrigin />
+            <Paragraph isOrigin text={paragraph.origin} />
           </ContextMenuWrapper>
           <Label
-            onDoubleClick={() => setSelectedParagraph(paragraph.id)}
             className="flex h-auto text-md font-normal"
+            onDoubleClick={() => setSelectedParagraph(paragraph.id)}
             ref={selectedParagraph === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
@@ -120,13 +122,13 @@ export default function TranslationRoll() {
         </div>
       ) : (
         <motion.div
-          className="flex w-full items-center gap-2"
           whileHover={{ scale: 1.01 }}
           transition={{ duration: 0.3 }}
+          className="flex w-full items-center gap-2"
         >
           <RadioGroupItem
-            value={paragraph.id}
             id={paragraph.id}
+            value={paragraph.id}
             className={`${selectedParagraph === paragraph.id ? 'bg-primary' : ''}`}
           />
           <Label
@@ -167,12 +169,12 @@ export default function TranslationRoll() {
   return (
     <ScrollArea className="h-full px-2 lg:px-8">
       <RadioGroup className="gap-4" onValueChange={setSelectedParagraph}>
-        {paragraphs.length && (
+        {paragraphs.length ? (
           <>
             <p className="text-center text-2xl">{rollInfo?.sutra.title}</p>
             <p className="text-center text-lg">{rollInfo?.title}</p>
           </>
-        )}
+        ) : null}
         {paragraphs.length ? (
           Paragraphs
         ) : (
@@ -253,10 +255,10 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
       <div className="flex h-full flex-col justify-start gap-4 px-1">
         <motion.div
           className="flex flex-col"
-          initial={{ opacity: 0, x: '100%' }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: '100%' }}
           transition={{ duration: 0.3 }}
+          exit={{ opacity: 0, x: '100%' }}
+          initial={{ opacity: 0, x: '100%' }}
         >
           <ContextMenuWrapper>
             <Paragraph text={origin} title="Origin" />
@@ -272,16 +274,16 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
             <input type="hidden" {...register('paragraphId')} />
             <Can I="Create" this="Paragraph">
               <Textarea
+                className="h-8"
                 disabled={disabledEdit}
                 placeholder={disabledEdit ? 'Please select a new paragraph to edit.' : 'Type your translation here.'}
-                className="h-8"
                 {...register('translation')}
                 ref={(e) => {
                   register('translation').ref(e);
                   textAreaRef.current = e;
                 }}
               />
-              <Button disabled={!isDirty} type="submit">
+              <Button type="submit" disabled={!isDirty}>
                 Save Translation
               </Button>
             </Can>
@@ -299,19 +301,19 @@ const References = ({ references }: { references: ReadReference[] }) => {
       <div className="flex items-center justify-between space-x-4 px-4">
         <h3 className="text-md font-semibold">References</h3>
         <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm">
+          <Button size="sm" variant="ghost">
             {isOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
             <span className="sr-only">Toggle</span>
           </Button>
         </CollapsibleTrigger>
       </div>
-      {references.length ? <WorkspaceCard title={references[0].sutraName} text={references[0].content} /> : null}
+      {references.length ? <WorkspaceCard text={references[0].content} title={references[0].sutraName} /> : null}
       <CollapsibleContent className="gap-2">
         {references.length > 1
           ? references
               .slice(1)
               .map((reference) => (
-                <WorkspaceCard key={reference.id} title={reference.sutraName} text={reference.content} />
+                <WorkspaceCard key={reference.id} text={reference.content} title={reference.sutraName} />
               ))
           : null}
       </CollapsibleContent>
@@ -395,10 +397,10 @@ const WorkspaceCard = ({ title, text }: WorkspaceCardProps) => {
         <div className="text-md font-medium">{title}</div>
         <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
             size="icon"
-            onClick={() => formContext.setValue('translation', text, { shouldDirty: true })}
+            variant="ghost"
             className="transition-transform duration-300 hover:scale-110"
+            onClick={() => formContext.setValue('translation', text, { shouldDirty: true })}
           >
             <Copy className="h-4 w-4" />
           </Button>

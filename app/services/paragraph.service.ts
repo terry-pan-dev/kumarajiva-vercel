@@ -1,7 +1,11 @@
 import { sql as postgresql } from '@vercel/postgres';
-import * as schema from '~/drizzle/schema';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { and, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { v4 as uuidv4 } from 'uuid';
+
+import * as schema from '~/drizzle/schema';
 import {
   glossariesTable,
   paragraphsTable,
@@ -11,9 +15,7 @@ import {
   type ReadParagraph,
   type ReadReference,
 } from '~/drizzle/schema';
-import { and, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import { v4 as uuidv4 } from 'uuid';
+
 import { type SearchResultListProps } from '../components/SideBarMenu';
 import algoliaClient from '../providers/algolia';
 

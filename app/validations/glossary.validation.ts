@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { chineseRegex } from '../lib/utils';
 
 export const glossaryFormSchema = z.object({

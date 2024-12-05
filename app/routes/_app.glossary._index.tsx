@@ -1,9 +1,11 @@
 import { useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
-import { type ReadGlossary } from '~/drizzle/schema';
-import { readGlossaries, updateGlossary } from '~/services';
 import React, { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { ZodError } from 'zod';
+
+import { type ReadGlossary } from '~/drizzle/schema';
+import { readGlossaries, updateGlossary } from '~/services';
+
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { GlossaryList } from '../components/GlossaryList';
@@ -142,11 +144,11 @@ export default function GlossaryIndex() {
       <SearchBar fetcher={fetcher} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       <div className="h-4" />
       <InfiniteScroller
-        loading={fetcher.state === 'loading' || fetcher.state === 'submitting'}
         loadNext={loadNext}
         ref={glossaryListRef}
+        loading={fetcher.state === 'loading' || fetcher.state === 'submitting'}
       >
-        <GlossaryList glossaries={glossariesState} ref={glossaryListRef} />
+        <GlossaryList ref={glossaryListRef} glossaries={glossariesState} />
       </InfiniteScroller>
     </div>
   );
@@ -162,10 +164,10 @@ const SearchBar = ({ fetcher, searchTerm, setSearchTerm }: SearchBarProps) => {
     <fetcher.Form method="get" action={`/glossary?index&searchTerm=${searchTerm}`}>
       <div className="flex w-full items-center space-x-2">
         <Input
-          name="searchTerm"
           type="text"
-          placeholder="Glossary Term"
+          name="searchTerm"
           value={searchTerm}
+          placeholder="Glossary Term"
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <Button type="submit" className="w-20">

@@ -1,9 +1,11 @@
 import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
-import { type ReadGlossary } from '~/drizzle/tables';
 import { ChevronRight } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
+
+import { type ReadGlossary } from '~/drizzle/tables';
+
 import { Icons } from '../components/icons';
 import { Badge, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
 import { Divider } from '../components/ui/divider';
@@ -24,7 +26,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, { glossaries: ReadG
     if (glossaries.length) {
       return (
         <div className="flex gap-1 lg:gap-4">
-          <ScrollArea className="h-[calc(100vh-10rem)] w-1/2 gap-4 pr-4" ref={ref}>
+          <ScrollArea ref={ref} className="h-[calc(100vh-10rem)] w-1/2 gap-4 pr-4">
             {glossaries.map((glossary, index) => (
               <div
                 key={glossary.id}
@@ -38,7 +40,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, { glossaries: ReadG
           <div className="w-1/2">
             <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
               <ClientOnly fallback={<div>Loading...</div>}>
-                {() => <GlossaryDetail glossary={selectedGlossary} showEdit={showEdit} />}
+                {() => <GlossaryDetail showEdit={showEdit} glossary={selectedGlossary} />}
               </ClientOnly>
             </div>
           </div>

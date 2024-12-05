@@ -4,6 +4,7 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AvatarEditor from 'react-avatar-editor';
 import { ClientOnly } from 'remix-utils/client-only';
+
 import { type ReadGlossary } from '../../drizzle/schema';
 import { assertAuthUser } from '../auth.server';
 import { GlossaryList } from '../components/GlossaryList';
@@ -43,7 +44,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function SettingsIndex() {
   return (
-    <Tabs defaultValue="glossary" className="w-full">
+    <Tabs className="w-full" defaultValue="glossary">
       <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="glossary">Glossary Subscriptions</TabsTrigger>
         <TabsTrigger value="font-settings">Font Settings</TabsTrigger>
@@ -111,19 +112,19 @@ function AvatarEditPage() {
         <div className="flex justify-center">
           {image ? (
             <AvatarEditor
-              ref={editorRef}
-              image={image}
+              rotate={0}
               width={250}
-              height={250}
               border={50}
+              height={250}
+              image={image}
+              scale={scale}
+              ref={editorRef}
               borderRadius={125}
               color={[255, 255, 255, 0.6]} // RGBA
-              scale={scale}
-              rotate={0}
             />
           ) : (
             <div className="flex h-[250px] w-[250px] items-center justify-center rounded-full bg-gray-200 text-gray-400">
-              <img src="https://www.signivis.com/img/custom/avatars/member-avatar-01.png" alt="avatar" />
+              <img alt="avatar" src="https://www.signivis.com/img/custom/avatars/member-avatar-01.png" />
               <p className="absolute text-lg">No image uploaded</p>
             </div>
           )}
@@ -131,22 +132,22 @@ function AvatarEditPage() {
         <div>
           <Label htmlFor="image-upload">Upload Image</Label>
           <Input
-            className="cursor-pointer"
-            id="image-upload"
             type="file"
             accept="image/*"
+            id="image-upload"
+            className="cursor-pointer"
             onChange={handleImageChange}
           />
         </div>
         {image && (
           <div>
             <Label htmlFor="zoom-slider">Zoom</Label>
-            <Slider id="zoom-slider" min={1} max={3} step={0.01} value={[scale]} onValueChange={handleScaleChange} />
+            <Slider min={1} max={3} step={0.01} value={[scale]} id="zoom-slider" onValueChange={handleScaleChange} />
           </div>
         )}
       </CardContent>
       <CardFooter>
-        <Button onClick={handleSave} disabled={!image || fetcher.state !== 'idle'} className="w-full" variant="default">
+        <Button variant="default" className="w-full" onClick={handleSave} disabled={!image || fetcher.state !== 'idle'}>
           Save Avatar
         </Button>
       </CardFooter>
@@ -218,12 +219,12 @@ export function FontSizePreference() {
             Font Size: {fontSize}px
           </label>
           <Slider
-            className="w-full"
-            id="font-size-slider"
             min={14}
             max={20}
             step={1}
+            className="w-full"
             value={[fontSize]}
+            id="font-size-slider"
             onValueChange={handleFontSizeChange}
           />
         </div>
@@ -233,7 +234,7 @@ export function FontSizePreference() {
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={handleReset} variant="default" className="w-full">
+        <Button variant="default" className="w-full" onClick={handleReset}>
           Reset to Default
         </Button>
       </CardFooter>

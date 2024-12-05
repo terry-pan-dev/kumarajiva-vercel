@@ -1,7 +1,9 @@
 import { useFetcher } from '@remix-run/react';
-import type { BannerType } from '~/drizzle/tables/notification';
 import { X } from 'lucide-react';
 import React from 'react';
+
+import type { BannerType } from '~/drizzle/tables/notification';
+
 import { AdminBannerForm } from '../../components/AdminBannerForm';
 
 export const SystemNotification = ({ banners }: { banners: BannerType[] }) => {
@@ -47,7 +49,7 @@ export const SystemNotification = ({ banners }: { banners: BannerType[] }) => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <fetcher.Form method="post">
-                    <input type="hidden" name="kind" value="toggle-banner" />
+                    <input name="kind" type="hidden" value="toggle-banner" />
                     <input type="hidden" name="bannerId" value={banner.id} />
                     <button
                       type="submit"
@@ -57,7 +59,7 @@ export const SystemNotification = ({ banners }: { banners: BannerType[] }) => {
                     </button>
                   </fetcher.Form>
                   <fetcher.Form method="post">
-                    <input type="hidden" name="kind" value="delete-banner" />
+                    <input name="kind" type="hidden" value="delete-banner" />
                     <input type="hidden" name="bannerId" value={banner.id} />
                     <button type="submit" className="p-1 text-gray-400 hover:text-gray-500">
                       <X className="h-5 w-5" />

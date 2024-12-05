@@ -1,9 +1,11 @@
 import { sql as vercelSql } from '@vercel/postgres';
-import * as schema from '~/drizzle/schema';
-import type { ReadUser } from '~/drizzle/schema';
-import { notifications, type CreateNotification, type ReadNotification } from '~/drizzle/tables/notification';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
+
+import type { ReadUser } from '~/drizzle/schema';
+
+import * as schema from '~/drizzle/schema';
+import { notifications, type CreateNotification, type ReadNotification } from '~/drizzle/tables/notification';
 
 const dbClient = drizzle(vercelSql, { schema });
 

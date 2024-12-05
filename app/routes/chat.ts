@@ -1,5 +1,6 @@
 import { redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import OpenAI from 'openai';
+
 import { type Lang } from '../../drizzle/tables/enums';
 import { assertAuthUser } from '../auth.server';
 import { searchGlossaries } from '../services/edge.only';

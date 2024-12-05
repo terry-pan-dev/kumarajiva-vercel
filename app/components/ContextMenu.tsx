@@ -1,4 +1,5 @@
 import { useEffect, useState, type PropsWithChildren } from 'react';
+
 import {
   ContextMenu,
   ContextMenuContent,
@@ -49,8 +50,8 @@ export default function ContextMenuWrapper({ children }: PropsWithChildren) {
       <ContextMenuTrigger className="block h-full w-full">{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-64">
         <ContextMenuItem
-          onClick={() => handleSearch()}
           disabled={!selectedText}
+          onClick={() => handleSearch()}
           className="flex cursor-pointer items-center"
         >
           <Icons.Search className="mr-2 h-4 w-4" />

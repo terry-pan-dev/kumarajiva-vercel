@@ -1,5 +1,6 @@
 import { Outlet, useLoaderData } from '@remix-run/react';
 import { json, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
+
 import { assertAuthUser } from '../auth.server';
 import { FormInput, FormModal, FormTextarea } from '../components/FormModal';
 import { Button } from '../components/ui/button';
@@ -36,13 +37,13 @@ export default function GlossaryLayout() {
 const GlossaryCreateModal = () => {
   return (
     <FormModal
+      schema={glossaryFormSchema}
       title="Create Glossary For Chinese"
       trigger={
-        <Button variant="default" className="w-20">
+        <Button className="w-20" variant="default">
           New
         </Button>
       }
-      schema={glossaryFormSchema}
     >
       <GlossaryCreateForm />
     </FormModal>
@@ -52,8 +53,8 @@ const GlossaryCreateModal = () => {
 const GlossaryCreateForm = () => {
   return (
     <div className="grid grid-cols-2 gap-4">
-      <FormInput name="sutraName" label="Sutra Name" required description="The name of the sutra." />
-      <FormInput name="glossary" label="Glossary" required description="The Chinese glossary term." />
+      <FormInput required name="sutraName" label="Sutra Name" description="The name of the sutra." />
+      <FormInput required name="glossary" label="Glossary" description="The Chinese glossary term." />
       <FormTextarea name="sutraText" label="Sutra Text" description="The text of the sutra." />
       <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
       <FormTextarea name="cbetaFrequency" label="CBETA Frequency" description="The frequency of the sutra in CBETA." />

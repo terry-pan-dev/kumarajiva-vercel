@@ -1,6 +1,7 @@
-import type { NotificationType } from '~/drizzle/schema';
 import { AlertCircle, Bell, CheckCircle, Info, X } from 'lucide-react';
 import React from 'react';
+
+import type { NotificationType } from '~/drizzle/schema';
 
 export interface Banner {
   id: string;
@@ -49,9 +50,9 @@ export const Banner: React.FC<BannerProps> = ({ banner, onDismiss }) => {
           {banner.message}
         </p>
         <button
+          aria-label="Dismiss"
           onClick={() => onDismiss(banner.id)}
           className="p-1 transition-opacity hover:opacity-70"
-          aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
         </button>

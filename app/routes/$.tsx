@@ -1,7 +1,8 @@
 import { Link } from '@remix-run/react';
+import { Home } from 'lucide-react';
+
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '~/components/ui/card';
-import { Home } from 'lucide-react';
 
 export default function NotFound() {
   return (
@@ -17,7 +18,7 @@ export default function NotFound() {
           </p>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="default" asChild>
+          <Button asChild variant="default">
             <Link to="/" className="inline-flex items-center">
               <Home className="mr-2 h-4 w-4" />
               Go to Homepage

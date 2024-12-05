@@ -3,6 +3,7 @@ import { useLocalStorage } from '@uidotdev/usehooks';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { useEffect, useMemo } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
+
 import { type ReadUser } from '../../drizzle/schema';
 import { assertAuthUser } from '../auth.server';
 import { AbilityContext, defineAbilityFor } from '../authorisation';
@@ -62,7 +63,7 @@ export default function AppLayout() {
         <div>
           <BannerStack banners={notifications} onDismiss={handleDismiss} />
           <div className="flex h-screen">
-            <SideBarMenu userName={user.username} userEmail={user.email} userRole={user.role} avatarSrc={avatar} />
+            <SideBarMenu avatarSrc={avatar} userRole={user.role} userEmail={user.email} userName={user.username} />
             <main className="flex-1 overflow-y-auto bg-secondary">
               <Outlet />
             </main>

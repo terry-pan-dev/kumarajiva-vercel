@@ -1,6 +1,7 @@
 import { useFetcher } from '@remix-run/react';
 import { AlertCircle, Bell, CheckCircle, Info } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
+
 import type { Banner as BannerType } from './Banner';
 
 export const AdminBannerForm = () => {
@@ -34,13 +35,13 @@ export const AdminBannerForm = () => {
           Banner Message
         </label>
         <textarea
+          rows={3}
+          required
           id="message"
           name="message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          rows={3}
-          required
         />
       </div>
 
@@ -55,13 +56,13 @@ export const AdminBannerForm = () => {
           ].map(({ type: bannerType, icon: Icon, label }) => (
             <div
               key={bannerType}
+              onClick={() => setType(bannerType as BannerType['type'])}
               className={`flex flex-col items-center justify-center rounded-lg border-2 p-4 ${
                 type === bannerType ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-200'
               }`}
-              onClick={() => setType(bannerType as BannerType['type'])}
             >
               <Icon className="mx-auto mb-2 h-6 w-6" />
-              <input type="hidden" name="type" value={bannerType}></input>
+              <input name="type" type="hidden" value={bannerType}></input>
               <span className="text-sm font-medium">{label}</span>
             </div>
           ))}

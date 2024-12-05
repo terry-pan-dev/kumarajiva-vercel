@@ -2,6 +2,7 @@ import { useFetcher, useLoaderData } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
+
 import { assertAuthUser } from '../auth.server';
 import { Paragraph } from '../components/Paragraph';
 import { readParagraphsAndReferencesByRollId } from '../services/paragraph.service';
@@ -36,11 +37,11 @@ export default function ReferenceRoll() {
   const Paragraphs = paragraphs.map((paragraph) => {
     return (
       <div key={paragraph.id}>
-        <Paragraph text={paragraph.content} key={paragraph.id} isOrigin />
+        <Paragraph isOrigin key={paragraph.id} text={paragraph.content} />
         <div className="h-2" />
         <div className="flex flex-col justify-between gap-2 lg:flex-row">
           {paragraph.references.map((reference) => (
-            <div key={reference.id} className="w-full">
+            <div className="w-full" key={reference.id}>
               <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
                 <ReferenceForm referenceId={reference.id} content={reference.content} sutraName={reference.sutraName} />
               </div>
@@ -84,8 +85,8 @@ function ReferenceForm({
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 1, 0] }}
-            transition={{ duration: 1, ease: 'easeInOut' }}
             className="ml-2 text-sm text-green-400"
+            transition={{ duration: 1, ease: 'easeInOut' }}
           >
             Updated
           </motion.span>
@@ -93,29 +94,29 @@ function ReferenceForm({
       </h5>
       <input type="hidden" name="referenceId" value={referenceId} />
       <textarea
-        disabled={isSubmitting}
-        id="OrderNotes"
-        className="w-full resize-none border-none p-2 align-top sm:text-sm"
         rows={4}
-        name="content"
-        placeholder={'Input Reference Here'}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        name="content"
+        id="OrderNotes"
         ref={textAreaRef}
+        disabled={isSubmitting}
+        placeholder={'Input Reference Here'}
+        onChange={(e) => setText(e.target.value)}
+        className="w-full resize-none border-none p-2 align-top sm:text-sm"
       ></textarea>
       <div className="flex items-center justify-end gap-2 bg-white p-3">
         <button
           type="button"
-          className="rounded bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-300/80"
           disabled={isSubmitting}
           onClick={() => setText('')}
+          className="rounded bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-300/80"
         >
           Clear
         </button>
         <button
           type="submit"
-          className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/80"
           disabled={isSubmitting}
+          className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/80"
         >
           Update
         </button>

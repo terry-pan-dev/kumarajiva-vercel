@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { boolean, pgTable, text, uuid, type AnyPgColumn } from 'drizzle-orm/pg-core';
+
 import { auditAtFields, auditByFields } from '../audit';
 import { rollsTable } from '../schema';
 import { langEnum } from './enums';

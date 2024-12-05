@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { integer, json, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+
 import { auditAtFields, auditByFields } from '../audit';
 import { type Lang } from './enums';
 
