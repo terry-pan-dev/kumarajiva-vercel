@@ -149,7 +149,7 @@ export default function TranslationRoll() {
     return (
       <DragPanel>
         <LeftPanel>
-          <ScrollArea className="h-full pr-4">
+          <ScrollArea className="h-full w-full pr-4">
             <RadioGroup className="gap-4" onValueChange={setSelectedParagraph}>
               {Paragraphs}
             </RadioGroup>
@@ -157,7 +157,7 @@ export default function TranslationRoll() {
         </LeftPanel>
         <ResizableHandle withHandle className="bg-yellow-600" />
         <RightPanel>
-          <ScrollArea className="h-full pr-4">
+          <ScrollArea className="h-full w-full pr-4">
             {/* TODO: make sure type safe, the problem is createdAt is date and string */}
             <Workspace paragraph={paragraphs.find((p) => p.id === selectedParagraph) as unknown as IParagraph} />
           </ScrollArea>
@@ -295,7 +295,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
 };
 
 const References = ({ references }: { references: ReadReference[] }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(true);
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full gap-2">
       <div className="flex items-center justify-between space-x-4 px-4">

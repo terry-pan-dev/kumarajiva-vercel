@@ -23,14 +23,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const content = url.searchParams.get('origin');
   const sourceLang = (url.searchParams.get('sourceLang') || 'chinese') as Lang;
   const targetLang = (url.searchParams.get('targetLang') || 'english') as Lang;
-  console.log({ sourceLang, targetLang });
+  console.log({ sourceLang, targetLang, content });
 
   if (!content?.trim()) {
     return;
   }
 
+  // TODO: find a way to handle search results for long content
+  const trimmedContent = content.trim();
+  const contentArray = Array.from(trimmedContent);
+  const truncatedContent = contentArray.slice(0, 150).join('');
+  const newContent = truncatedContent;
+  const byteLength = Buffer.byteLength(newContent, 'utf8');
+  console.log(`UTF-8 byte length: ${byteLength}`);
+
   const glossaries: string[] = [];
-  const searchResults = await searchGlossaries(content, 50);
+  const searchResults = await searchGlossaries(newContent, 50);
   if (searchResults.length) {
     searchResults.forEach((result) => {
       let origin = '';
@@ -44,7 +52,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
   }
 
-  let prompt = `Now you are professional translator. You translate from ${sourceLang} to ${targetLang}`;
+  let prompt = `Now you are a professional translator. You translate from ${sourceLang} to ${targetLang}, Please make concise and accurate translation.`;
 
   if (glossaries.length) {
     prompt += `\n\nHere are some glossaries you can reference: ${glossaries.join('\n')}`;

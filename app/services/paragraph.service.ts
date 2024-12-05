@@ -198,10 +198,14 @@ export const upsertParagraph = async (paragraph: CreateParagraph) => {
 
   const paragraphId = uuidv4();
   console.log({ paragraphId });
-  const savedSearchResult = await algoliaClient.saveObject({
-    indexName: 'paragraphs',
-    body: { ...paragraph, id: paragraphId },
-  });
+  // TODO: remove this after testing
+  const savedSearchResult =
+    paragraph.rollId !== 'decb3798-76b5-424a-b83a-b9fdde6a7f53'
+      ? await algoliaClient.saveObject({
+          indexName: 'paragraphs',
+          body: { ...paragraph, id: paragraphId },
+        })
+      : { objectID: null };
   const result = await dbClient
     .insert(paragraphsTable)
     .values({
