@@ -128,7 +128,7 @@ export default function TranslationRoll() {
             ref={selectedParagraph === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
-              <div className="relative">
+              <div className="relative h-full">
                 <Paragraph text={paragraph.target} />
                 <ParagraphHistory histories={paragraph.histories} />
               </div>
