@@ -1,14 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
+import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
-import React, { useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 import { ZodError, type z } from 'zod';
 
+import { Icons } from '~/components/icons';
 import { type ReadReference } from '~/drizzle/tables/reference';
 import { type ReadUser } from '~/drizzle/tables/user';
+
+import type { ReadHistory } from '../../drizzle/tables/paragraph';
 
 import { assertAuthUser } from '../auth.server';
 import { Can } from '../authorisation';
@@ -29,6 +33,7 @@ import {
   ScrollArea,
   Textarea,
 } from '../components/ui';
+import { HoverCard, HoverCardTrigger, HoverCardContent } from '../components/ui/hover-card';
 import { useToast } from '../hooks/use-toast';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { readParagraphsByRollId, upsertParagraph, type IParagraph } from '../services/paragraph.service';
@@ -103,7 +108,14 @@ export default function TranslationRoll() {
     }
   }, [paragraphs]);
 
-  const Paragraphs = paragraphs.map((paragraph) => (
+  const cleanedParagraphs = useMemo(() => {
+    return paragraphs.map((paragraph) => ({
+      ...paragraph,
+      histories: paragraph.histories.map((history) => ({ ...history, updatedAt: new Date(history.updatedAt) })),
+    }));
+  }, [paragraphs]);
+
+  const Paragraphs = cleanedParagraphs.map((paragraph) => (
     <div key={paragraph.id} className="flex items-center gap-4 px-2">
       {paragraph?.target ? (
         <div className={`${selectedParagraph ? 'flex flex-col' : 'grid grid-cols-2'} w-full gap-4`}>
@@ -116,7 +128,10 @@ export default function TranslationRoll() {
             ref={selectedParagraph === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
-              <Paragraph text={paragraph.target} />
+              <div className="relative">
+                <Paragraph text={paragraph.target} />
+                <ParagraphHistory histories={paragraph.histories} />
+              </div>
             </ContextMenuWrapper>
           </Label>
         </div>
@@ -407,6 +422,106 @@ const WorkspaceCard = ({ title, text }: WorkspaceCardProps) => {
         </div>
       </div>
       <p className="text-md text-slate-500">{text}</p>
+    </div>
+  );
+};
+
+export const ParagraphHistory = ({ histories }: { histories: ReadHistory[] }) => {
+  return histories.length ? (
+    <div className="absolute right-1 top-1">
+      <ParagraphHistoryPopover>
+        <ParagraphHistoryTimeline histories={histories} />
+      </ParagraphHistoryPopover>
+    </div>
+  ) : null;
+};
+
+export const ParagraphHistoryPopover = ({ children }: PropsWithChildren) => {
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <Button variant="link" className="h-6 w-6 p-0">
+          <Icons.FileClock className="h-4 w-4" />
+        </Button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-full max-w-xl lg:max-w-3xl">{children}</HoverCardContent>
+    </HoverCard>
+  );
+};
+
+interface ParagraphHistoryTimelineProps {
+  histories: ReadHistory[];
+}
+export const ParagraphHistoryTimeline = ({ histories }: ParagraphHistoryTimelineProps) => {
+  const { users } = useOutletContext<{ users: { id: string; username: string; email: string }[] }>();
+
+  return (
+    <div className="relative h-96 overflow-y-auto">
+      {/* Container for timeline content with relative positioning */}
+      <div className="relative min-h-full">
+        {/* Vertical timeline line - now positioned relative to the content container */}
+        <div className="absolute left-2 top-0 h-full w-[2px] bg-slate-300" />
+
+        <div className="flex flex-col gap-4">
+          {histories.map((history) => {
+            const user = users.find((u) => u.id === history.updatedBy);
+
+            // First get word diffs
+            const wordDiffs = diffWords(history.oldContent, history.newContent);
+
+            // Count changed words
+            const changedWordCount = wordDiffs.reduce((count, diff) => {
+              if (diff.added || diff.removed) {
+                return count + diff.value.split(/\s+/).length;
+              }
+              return count;
+            }, 0);
+
+            // Choose final diffs based on word change count
+            const diffs = changedWordCount > 5 ? diffSentences(history.oldContent, history.newContent) : wordDiffs;
+
+            return (
+              <div className="flex items-start gap-6 pl-4" key={history.updatedAt.toLocaleString()}>
+                {/* Timeline dot */}
+                <div className="relative -ml-[15px] mt-2 h-4 w-4">
+                  <div className="absolute h-4 w-4 rounded-full border-2 border-slate-300 bg-white" />
+                  <div className="absolute left-1 top-1 h-2 w-2 rounded-full bg-slate-300" />
+                </div>
+
+                {/* Content */}
+                <div className="flex flex-col">
+                  <span className="text-md text-slate-500">{history.updatedAt.toLocaleString()}</span>
+                  <span className="text-md font-medium">{user?.username || 'Unknown user'}</span>
+                  <pre className="mt-1 whitespace-pre-wrap text-sm">
+                    <div className="grid grid-cols-2 gap-4 rounded bg-slate-50 p-2">
+                      <div className="max-w-lg border-r border-slate-200 pr-4">
+                        {diffs.map((diff, i) => (
+                          <span
+                            key={`old-${i}`}
+                            className={diff.removed ? 'bg-red-100 text-red-800' : 'text-slate-600'}
+                          >
+                            {diff.added ? '' : diff.value}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="max-w-lg">
+                        {diffs.map((diff, i) => (
+                          <span
+                            key={`new-${i}`}
+                            className={diff.added ? 'bg-green-100 text-green-800' : 'text-slate-600'}
+                          >
+                            {diff.removed ? '' : diff.value}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </pre>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

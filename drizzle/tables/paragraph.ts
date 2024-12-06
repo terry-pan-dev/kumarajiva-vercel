@@ -61,3 +61,4 @@ export const paragraphsTableRelations = relations(paragraphsTable, ({ many, one 
 export type CreateParagraph = typeof paragraphsTable.$inferInsert;
 export type ReadParagraph = typeof paragraphsTable.$inferSelect;
 export type UpdateParagraph = Partial<CreateParagraph>;
+export type ReadHistory = typeof paragraphsHistoryTable.$inferSelect;
