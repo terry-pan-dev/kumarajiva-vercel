@@ -349,6 +349,27 @@ const squarePen = (props: LucideProps) => (
   </svg>
 );
 
+const fileClock = (props: LucideProps) => (
+  <svg
+    width="24"
+    height="24"
+    fill="none"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+    className="lucide lucide-file-clock"
+    {...props}
+  >
+    <path d="M16 22h2a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <circle r="6" cx="8" cy="16" />
+    <path d="M9.5 17.5 8 16.25V14" />
+  </svg>
+);
+
 export const Icons = {
   Add: Plus,
   ChevronDown: ChevronDown,
@@ -389,6 +410,7 @@ export const Icons = {
   Editing: Edit2,
   emoji: Smile,
   externalLink: ExternalLink,
+  FileClock: fileClock,
   h1: Heading1,
   h2: Heading2,
   h3: Heading3,

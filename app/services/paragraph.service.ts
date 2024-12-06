@@ -5,16 +5,10 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { v4 as uuidv4 } from 'uuid';
 
+import type { ReadHistory, CreateParagraph, ReadParagraph, ReadReference } from '~/drizzle/schema';
+
+import { glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
 import * as schema from '~/drizzle/schema';
-import {
-  glossariesTable,
-  paragraphsTable,
-  rollsTable,
-  sutrasTable,
-  type CreateParagraph,
-  type ReadParagraph,
-  type ReadReference,
-} from '~/drizzle/schema';
 
 import { type SearchResultListProps } from '../components/SideBarMenu';
 import algoliaClient from '../providers/algolia';
@@ -27,6 +21,7 @@ export interface IParagraph {
   rollId: string;
   target: string | null;
   references: ReadReference[];
+  histories: ReadHistory[];
 }
 
 export const readParagraphsByRollId = async ({
@@ -39,7 +34,13 @@ export const readParagraphsByRollId = async ({
   const paragraphs = await dbClient.query.paragraphsTable.findMany({
     where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, user.originLang)),
     with: {
-      children: true,
+      children: {
+        with: {
+          history: {
+            orderBy: (history, { desc }) => [desc(history.updatedAt)],
+          },
+        },
+      },
       references: {
         orderBy: (references, { asc }) => [asc(references.order)],
       },
@@ -51,6 +52,7 @@ export const readParagraphsByRollId = async ({
     ...paragraph,
     origin: paragraph.content,
     target: paragraph.children?.content,
+    histories: paragraph.children?.history || [],
   }));
 
   return result;
