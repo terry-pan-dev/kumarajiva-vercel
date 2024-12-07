@@ -2,16 +2,25 @@ import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { ChevronRight } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 
 import { type ReadGlossary } from '~/drizzle/tables';
 
 import { Icons } from '../components/icons';
-import { Badge, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
+import { Badge, Button, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
 import { Divider } from '../components/ui/divider';
+import { glossaryEditFormSchema } from '../validations/glossary.validation';
+import { FormInput, FormModal } from './FormModal';
 import { Spacer } from './ui/spacer';
 
-export const GlossaryList = React.forwardRef<HTMLDivElement, { glossaries: ReadGlossary[]; showEdit?: boolean }>(
+interface GlossaryListProps {
+  glossaries: ReadGlossary[];
+  // ShowEdit is useful when in the screen that people not allowed to edit glossary
+  showEdit?: boolean;
+}
+
+export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
   ({ glossaries, showEdit = true }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
@@ -121,9 +130,20 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
           </button>
         </fetcher.Form>
         {showEdit && (
-          <div>
-            <Icons.SquarePen className="h-6 w-6 text-slate-800" />
-          </div>
+          <FormModal
+            title="Edit Glossary"
+            schema={glossaryEditFormSchema}
+            defaultValues={{
+              translations: glossary.translations || [],
+            }}
+            trigger={
+              <Button size="icon" variant="ghost">
+                <Icons.SquarePen className="h-6 w-6 text-slate-800" />
+              </Button>
+            }
+          >
+            <GlossaryEditForm />
+          </FormModal>
         )}
       </CardHeader>
       <CardContent className="flex-grow">
@@ -180,5 +200,57 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
         </div>
       </CardFooter>
     </Card>
+  );
+};
+
+const GlossaryEditForm = () => {
+  const { fields } = useFieldArray({
+    name: 'translations',
+  });
+
+  return (
+    <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
+      {fields.map((field, index) => (
+        <div key={field.id}>
+          {/* @ts-ignore */}
+          <Divider>{field.language.toUpperCase()}</Divider>
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput
+              required
+              label="Glossary"
+              name={`translations.${index}.glossary`}
+              description="The glossary of the translation."
+            />
+            <FormInput
+              required
+              label="Sutra Name"
+              name={`translations.${index}.sutraName`}
+              description="The sutra name of the translation."
+            />
+            <FormInput
+              required
+              label="Volume"
+              name={`translations.${index}.volume`}
+              description="The volume of the translation."
+            />
+            <FormInput
+              label="Origin Sutra Text"
+              name={`translations.${index}.originSutraText`}
+              description="The origin sutra text of the translation."
+            />
+            <FormInput
+              label="Target Sutra Text"
+              name={`translations.${index}.targetSutraText`}
+              description="The target sutra text of the translation."
+            />
+            <FormInput
+              label="Phonetic"
+              name={`translations.${index}.phonetic`}
+              description="The phonetic of the translation."
+            />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };

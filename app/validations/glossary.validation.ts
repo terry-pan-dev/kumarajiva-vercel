@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { langEnum } from '../../drizzle/schema';
 import { chineseRegex } from '../lib/utils';
 
 export const glossaryFormSchema = z.object({
@@ -19,4 +20,17 @@ export const glossaryFormSchema = z.object({
   cbetaFrequency: z.string().optional(),
   author: z.string().optional(),
   discussion: z.string().optional(),
+});
+
+export const glossaryEditFormSchema = z.object({
+  translations: z.array(
+    z.object({
+      glossary: z.string(),
+      language: z.enum(langEnum.enumValues),
+      sutraName: z.string(),
+      volume: z.string(),
+      originSutraText: z.string().nullish(),
+      targetSutraText: z.string().nullish(),
+    }),
+  ),
 });
