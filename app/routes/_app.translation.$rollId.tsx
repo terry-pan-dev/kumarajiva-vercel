@@ -202,6 +202,7 @@ export default function TranslationRoll() {
 
 const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
   const { id, origin, target, references, rollId } = paragraph;
+  console.log('paragraph', target);
   const fetcher = useFetcher<{ success: boolean }>();
 
   const form = useForm<z.infer<typeof paragraphActionSchema>>({
@@ -264,6 +265,14 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
       textAreaRef.current.style.height = scrollHeight + 'px';
     }
   }, [textAreaRef, translation]);
+
+  useEffect(() => {
+    if (target) {
+      form.setValue('translation', target);
+    } else {
+      form.setValue('translation', '');
+    }
+  }, [target, form]);
 
   return (
     <FormProvider {...form}>

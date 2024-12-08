@@ -2,16 +2,25 @@ import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { ChevronRight } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 
 import { type ReadGlossary } from '~/drizzle/tables';
 
 import { Icons } from '../components/icons';
-import { Badge, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
+import { Badge, Button, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
 import { Divider } from '../components/ui/divider';
+import { glossaryEditFormSchema } from '../validations/glossary.validation';
+import { FormInput, FormModal, HiddenInput } from './FormModal';
 import { Spacer } from './ui/spacer';
 
-export const GlossaryList = React.forwardRef<HTMLDivElement, { glossaries: ReadGlossary[]; showEdit?: boolean }>(
+interface GlossaryListProps {
+  glossaries: ReadGlossary[];
+  // ShowEdit is useful when in the screen that people not allowed to edit glossary
+  showEdit?: boolean;
+}
+
+export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
   ({ glossaries, showEdit = true }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
@@ -68,9 +77,9 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
             </Badge>
           </div> */}
           <h3 className="mb-2 truncate text-lg font-semibold text-primary sm:text-xl">{glossary.glossary}</h3>
-          {glossary.translations?.map((translation) => {
+          {glossary.translations?.map((translation, index) => {
             return (
-              <p key={translation.glossary} className="line-clamp-2 text-sm text-muted-foreground">
+              <p key={index} className="line-clamp-2 text-sm text-muted-foreground">
                 {translation.glossary}
               </p>
             );
@@ -87,17 +96,20 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
   const fetcher = useFetcher<{ success: boolean }>();
 
   let isBookmarked = useMemo(() => {
-    const result = subscribedGlossaries.includes(glossary.id);
-    return result;
+    if (glossary?.id) {
+      const result = subscribedGlossaries.includes(glossary.id);
+      return result;
+    }
+    return false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [glossary.id, subscribedGlossaries]);
+  }, [glossary, subscribedGlossaries]);
 
   isBookmarked = fetcher.formData ? fetcher.formData.get('bookmark') === 'true' : isBookmarked;
 
   useEffect(() => {
     const id = fetcher.formData?.get('glossaryId');
 
-    if (fetcher.formData && id === glossary.id) {
+    if (fetcher.formData && id === glossary?.id) {
       const result = fetcher.formData.get('bookmark') === 'true';
       const set = new Set(subscribedGlossaries);
       if (result) {
@@ -109,21 +121,35 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
       setSubscribedGlossaries(newSubscribedGlossaries);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher.formData, subscribedGlossaries, glossary.id]);
+  }, [fetcher.formData, subscribedGlossaries, glossary]);
 
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex-row items-center justify-between pb-0">
         <fetcher.Form method="post" action="/glossary?index&page=-1">
-          <input type="hidden" name="glossaryId" value={glossary.id} />
+          <input type="hidden" name="glossaryId" value={glossary?.id} />
           <button type="submit" name="bookmark" value={isBookmarked ? 'false' : 'true'}>
             <Icons.BookMark className={`h-6 w-6 ${isBookmarked ? 'fill-red-500 text-red-500' : 'text-slate-800'}`} />
           </button>
         </fetcher.Form>
         {showEdit && (
-          <div>
-            <Icons.SquarePen className="h-6 w-6 text-slate-800" />
-          </div>
+          <FormModal
+            kind="edit"
+            title="Update Glossary"
+            fetcherKey="edit-glossary"
+            schema={glossaryEditFormSchema}
+            defaultValues={{
+              id: glossary.id,
+              translations: glossary.translations || [],
+            }}
+            trigger={
+              <Button size="icon" variant="ghost">
+                <Icons.SquarePen className="h-6 w-6 text-slate-800" />
+              </Button>
+            }
+          >
+            <GlossaryEditForm id={glossary.id} />
+          </FormModal>
         )}
       </CardHeader>
       <CardContent className="flex-grow">
@@ -180,5 +206,58 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
         </div>
       </CardFooter>
     </Card>
+  );
+};
+
+const GlossaryEditForm = ({ id }: { id: string }) => {
+  const { fields } = useFieldArray({
+    name: 'translations',
+  });
+
+  return (
+    <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
+      <HiddenInput name="id" value={id} />
+      {fields.map((field, index) => (
+        <div key={field.id}>
+          {/* @ts-ignore */}
+          <Divider>{field.language.toUpperCase()}</Divider>
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput
+              required
+              label="Glossary"
+              name={`translations.${index}.glossary`}
+              description="The glossary of the translation."
+            />
+            <FormInput
+              required
+              label="Sutra Name"
+              name={`translations.${index}.sutraName`}
+              description="The sutra name of the translation."
+            />
+            <FormInput
+              required
+              label="Volume"
+              name={`translations.${index}.volume`}
+              description="The volume of the translation."
+            />
+            <FormInput
+              label="Origin Sutra Text"
+              name={`translations.${index}.originSutraText`}
+              description="The origin sutra text of the translation."
+            />
+            <FormInput
+              label="Target Sutra Text"
+              name={`translations.${index}.targetSutraText`}
+              description="The target sutra text of the translation."
+            />
+            <FormInput
+              label="Phonetic"
+              name={`translations.${index}.phonetic`}
+              description="The phonetic of the translation."
+            />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };

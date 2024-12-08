@@ -40,6 +40,7 @@ interface FormModalProps<TFormValues extends ZodSchema = ZodSchema> {
   mode?: Mode;
   // hidden input field, the indicate the kind of form
   kind?: string;
+  fetcherKey?: string;
 }
 
 export const FormModal = <T extends ZodSchema = ZodSchema>({
@@ -51,13 +52,14 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
   defaultValues,
   kind,
   mode = 'onSubmit',
+  fetcherKey = 'default',
 }: PropsWithChildren<FormModalProps<T>>) => {
   const form = useForm<typeof schema>({
     resolver: zodResolver(schema),
     mode,
     defaultValues,
   });
-  const fetcher = useFetcher<{ success: boolean; errors?: string[] }>();
+  const fetcher = useFetcher<{ success: boolean; errors?: string[] }>({ key: fetcherKey });
 
   const disabled = fetcher.state !== 'idle';
 
@@ -65,10 +67,11 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
 
   useEffect(() => {
     if (!open) {
+      form.reset(defaultValues);
       form.reset();
       form.clearErrors();
     }
-  }, [open, form]);
+  }, [open, form, defaultValues]);
 
   const { toast } = useToast();
 
@@ -87,11 +90,44 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
 
   const onSubmit = useCallback(
     (data: z.infer<typeof schema>) => {
-      const kindData = {
-        ...data,
-        kind,
-      };
-      fetcher.submit(kindData, { method: 'post' });
+      function hasNonPrimitive(obj: unknown) {
+        // Helper function to determine if a value is primitive
+        const isPrimitive = (value: unknown) => {
+          return value === null || (typeof value !== 'object' && typeof value !== 'function');
+        };
+
+        // Recursive function to traverse the object
+        function check(obj: unknown) {
+          if (!isPrimitive(obj)) {
+            // If it's a non-primitive (object, array, or function), return true
+            return true;
+          }
+
+          // If it's an object or array, iterate its keys
+          if (typeof obj === 'object' && obj !== null) {
+            for (const key in obj) {
+              if (check(obj[key as keyof typeof obj])) {
+                return true; // Stop if any nested property is non-primitive
+              }
+            }
+          }
+
+          return false;
+        }
+
+        return check(obj);
+      }
+
+      if (hasNonPrimitive(data)) {
+        const enhancedData = JSON.stringify(data);
+        const formData = {
+          kind: kind || '',
+          data: enhancedData,
+        };
+        fetcher.submit(formData, { method: 'post' });
+      } else {
+        fetcher.submit({ kind, ...data }, { method: 'post' });
+      }
     },
     [fetcher, kind],
   );
