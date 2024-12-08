@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState, type PropsWithChildren
 import { ZodError } from 'zod';
 
 import { type ReadGlossary } from '~/drizzle/schema';
-import { readGlossaries, updateGlossary } from '~/services';
+import { readGlossaries, updateGlossarySubscribers, updateGlossaryTranslations } from '~/services';
 
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
@@ -12,7 +12,7 @@ import { GlossaryList } from '../components/GlossaryList';
 import { Button, Input } from '../components/ui';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { searchGlossaries } from '../services/edge.only';
-import { glossaryFormSchema } from '../validations/glossary.validation';
+import { glossaryEditFormSchema, glossaryFormSchema } from '../validations/glossary.validation';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
@@ -48,14 +48,29 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return redirect('/login');
   }
   const formData = Object.fromEntries(await request.formData());
+  const kind = formData.kind;
   const bookmark = formData.bookmark;
   const glossaryId = formData.glossaryId as string;
   if (bookmark) {
-    await updateGlossary({
+    await updateGlossarySubscribers({
       id: glossaryId,
       subscribers: bookmark === 'true' ? 1 : -1,
     });
     return json({ success: true });
+  }
+
+  if (kind === 'edit') {
+    const data = JSON.parse(formData.data as string);
+    const validatedData = validatePayloadOrThrow({ schema: glossaryEditFormSchema, formData: data });
+    const validatedDataWithUpdatedBy = validatedData.translations.map((translation) => ({
+      ...translation,
+      updatedBy: user.id,
+    }));
+    await updateGlossaryTranslations({
+      id: validatedData.id,
+      translations: validatedDataWithUpdatedBy,
+    });
+    return json({ success: true, kind: 'edit' });
   }
 
   try {
@@ -103,6 +118,17 @@ export default function GlossaryIndex() {
 
   const fetcher = useFetcher<{ glossaries: ReadGlossary[]; page: number }>();
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  useEffect(() => {
+    setGlossariesState(
+      glossaries.map((glossary) => ({
+        ...glossary,
+        createdAt: new Date(glossary.createdAt),
+        updatedAt: new Date(glossary.updatedAt),
+        deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
+      })),
+    );
+  }, [glossaries]);
 
   useEffect(() => {
     if (fetcher.state === 'loading' || fetcher.state === 'submitting') {

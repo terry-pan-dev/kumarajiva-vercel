@@ -11,7 +11,7 @@ import { Icons } from '../components/icons';
 import { Badge, Button, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
 import { Divider } from '../components/ui/divider';
 import { glossaryEditFormSchema } from '../validations/glossary.validation';
-import { FormInput, FormModal } from './FormModal';
+import { FormInput, FormModal, HiddenInput } from './FormModal';
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
@@ -77,9 +77,9 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
             </Badge>
           </div> */}
           <h3 className="mb-2 truncate text-lg font-semibold text-primary sm:text-xl">{glossary.glossary}</h3>
-          {glossary.translations?.map((translation) => {
+          {glossary.translations?.map((translation, index) => {
             return (
-              <p key={translation.glossary} className="line-clamp-2 text-sm text-muted-foreground">
+              <p key={index} className="line-clamp-2 text-sm text-muted-foreground">
                 {translation.glossary}
               </p>
             );
@@ -96,17 +96,20 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
   const fetcher = useFetcher<{ success: boolean }>();
 
   let isBookmarked = useMemo(() => {
-    const result = subscribedGlossaries.includes(glossary.id);
-    return result;
+    if (glossary?.id) {
+      const result = subscribedGlossaries.includes(glossary.id);
+      return result;
+    }
+    return false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [glossary.id, subscribedGlossaries]);
+  }, [glossary, subscribedGlossaries]);
 
   isBookmarked = fetcher.formData ? fetcher.formData.get('bookmark') === 'true' : isBookmarked;
 
   useEffect(() => {
     const id = fetcher.formData?.get('glossaryId');
 
-    if (fetcher.formData && id === glossary.id) {
+    if (fetcher.formData && id === glossary?.id) {
       const result = fetcher.formData.get('bookmark') === 'true';
       const set = new Set(subscribedGlossaries);
       if (result) {
@@ -118,22 +121,25 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
       setSubscribedGlossaries(newSubscribedGlossaries);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher.formData, subscribedGlossaries, glossary.id]);
+  }, [fetcher.formData, subscribedGlossaries, glossary]);
 
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="flex-row items-center justify-between pb-0">
         <fetcher.Form method="post" action="/glossary?index&page=-1">
-          <input type="hidden" name="glossaryId" value={glossary.id} />
+          <input type="hidden" name="glossaryId" value={glossary?.id} />
           <button type="submit" name="bookmark" value={isBookmarked ? 'false' : 'true'}>
             <Icons.BookMark className={`h-6 w-6 ${isBookmarked ? 'fill-red-500 text-red-500' : 'text-slate-800'}`} />
           </button>
         </fetcher.Form>
         {showEdit && (
           <FormModal
-            title="Edit Glossary"
+            kind="edit"
+            title="Update Glossary"
+            fetcherKey="edit-glossary"
             schema={glossaryEditFormSchema}
             defaultValues={{
+              id: glossary.id,
               translations: glossary.translations || [],
             }}
             trigger={
@@ -142,7 +148,7 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
               </Button>
             }
           >
-            <GlossaryEditForm />
+            <GlossaryEditForm id={glossary.id} />
           </FormModal>
         )}
       </CardHeader>
@@ -203,13 +209,14 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
   );
 };
 
-const GlossaryEditForm = () => {
+const GlossaryEditForm = ({ id }: { id: string }) => {
   const { fields } = useFieldArray({
     name: 'translations',
   });
 
   return (
     <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
+      <HiddenInput name="id" value={id} />
       {fields.map((field, index) => (
         <div key={field.id}>
           {/* @ts-ignore */}

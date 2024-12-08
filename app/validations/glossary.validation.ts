@@ -23,6 +23,7 @@ export const glossaryFormSchema = z.object({
 });
 
 export const glossaryEditFormSchema = z.object({
+  id: z.string(),
   translations: z.array(
     z.object({
       glossary: z.string(),
@@ -31,6 +32,10 @@ export const glossaryEditFormSchema = z.object({
       volume: z.string(),
       originSutraText: z.string().nullish(),
       targetSutraText: z.string().nullish(),
+      author: z.string().nullish(),
+      updatedAt: z.string().default(new Date().toISOString()),
+      partOfSpeech: z.string().nullish(),
+      phonetic: z.string().nullish(),
     }),
   ),
 });

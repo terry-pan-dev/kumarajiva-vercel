@@ -7,6 +7,8 @@ import 'dotenv/config';
 import * as schema from '~/drizzle/schema';
 import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlossary } from '~/drizzle/tables';
 
+import algoliaClient from '../providers/algolia';
+
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -23,7 +25,6 @@ export const readGlossaries = async ({ page, limit = 10 }: Pagination): Promise<
     limit,
     offset: (page - 1) * limit,
     orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
-    // orderBy: [asc(glossariesTable.updatedAt)],
   });
 };
 
@@ -62,7 +63,7 @@ export const generateEmbedding = async <T extends string | string[]>(text: T): P
   return embeddings.data.map((embedding) => embedding.embedding) as ReturnType<T>;
 };
 
-export const updateGlossary = async (glossary: UpdateGlossary) => {
+export const updateGlossarySubscribers = async (glossary: UpdateGlossary) => {
   if (!glossary.id) {
     throw new Error('Glossary id is required');
   }
@@ -75,6 +76,30 @@ export const updateGlossary = async (glossary: UpdateGlossary) => {
       .where(eq(glossariesTable.id, glossary.id));
   }
   return dbClient.update(glossariesTable).set(glossary).where(eq(glossariesTable.id, glossary.id));
+};
+
+export const updateGlossaryTranslations = async ({
+  id,
+  translations,
+}: {
+  id: string;
+  translations: UpdateGlossary['translations'];
+}) => {
+  const glossary = await dbClient.query.glossariesTable.findFirst({ where: eq(glossariesTable.id, id) });
+  if (!glossary) {
+    throw new Error('Glossary not found');
+  }
+  const { searchId } = glossary;
+
+  if (searchId) {
+    await algoliaClient.partialUpdateObject({
+      indexName: 'glossaries',
+      objectID: searchId,
+      attributesToUpdate: { translations },
+    });
+  }
+
+  return dbClient.update(glossariesTable).set({ translations: translations }).where(eq(glossariesTable.id, id));
 };
 
 export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
