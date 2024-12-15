@@ -104,7 +104,6 @@ export default function TranslationRoll() {
     const firstNotSelectedNode = paragraphs.find((p) => !p.target);
     if (firstNotSelectedNode) {
       const node = document.getElementById(firstNotSelectedNode.id);
-      console.log(node);
       if (node) {
         setTimeout(() => {
           node.scrollIntoView({ behavior: 'smooth', block: 'center' });
