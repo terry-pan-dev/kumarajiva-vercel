@@ -431,7 +431,7 @@ export const Icons = {
   ol: ListOrdered,
   outdent: Outdent,
   paragraph: Pilcrow,
-  refresh: RotateCcw,
+  Refresh: RotateCcw,
   row: RectangleHorizontal,
   Search: Search,
   settings: Settings,

@@ -90,13 +90,13 @@ export default function TranslationRoll() {
 
   const labelRef = useRef<HTMLLabelElement>(null);
 
-  const [selectedParagraph, setSelectedParagraph] = useState<string | null>(null);
+  const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
 
   useEffect(() => {
-    if (selectedParagraph && labelRef.current) {
+    if (selectedParagraphIndex && labelRef.current) {
       labelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [selectedParagraph]);
+  }, [selectedParagraphIndex]);
 
   useEffect(() => {
     const firstNotSelectedNode = paragraphs.find((p) => !p.target);
@@ -108,24 +108,30 @@ export default function TranslationRoll() {
     }
   }, [paragraphs]);
 
-  const cleanedParagraphs = useMemo(() => {
+  const paragraphsWithHistory = useMemo(() => {
     return paragraphs.map((paragraph) => ({
       ...paragraph,
+      references: paragraph.references.map((reference) => ({
+        ...reference,
+        createdAt: new Date(reference.createdAt),
+        updatedAt: new Date(reference.updatedAt),
+        deletedAt: reference.deletedAt ? new Date(reference.deletedAt) : null,
+      })),
       histories: paragraph.histories.map((history) => ({ ...history, updatedAt: new Date(history.updatedAt) })),
     }));
   }, [paragraphs]);
 
-  const Paragraphs = cleanedParagraphs.map((paragraph) => (
+  const Paragraphs = paragraphsWithHistory.map((paragraph) => (
     <div key={paragraph.id} className="flex items-center gap-4 px-2">
       {paragraph?.target ? (
-        <div className={`${selectedParagraph ? 'flex flex-col' : 'grid grid-cols-2'} w-full gap-4`}>
+        <div className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-2'} w-full gap-4`}>
           <ContextMenuWrapper>
             <Paragraph isOrigin text={paragraph.origin} />
           </ContextMenuWrapper>
           <Label
             className="flex h-auto text-md font-normal"
-            onDoubleClick={() => setSelectedParagraph(paragraph.id)}
-            ref={selectedParagraph === paragraph.id ? labelRef : undefined}
+            onDoubleClick={() => setSelectedParagraphIndex(paragraph.id)}
+            ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
               <div className="relative h-full">
@@ -144,12 +150,12 @@ export default function TranslationRoll() {
           <RadioGroupItem
             id={paragraph.id}
             value={paragraph.id}
-            className={`${selectedParagraph === paragraph.id ? 'bg-primary' : ''}`}
+            className={`${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
           />
           <Label
             htmlFor={paragraph.id}
             className="w-full text-md font-normal"
-            ref={selectedParagraph === paragraph.id ? labelRef : undefined}
+            ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
               <Paragraph text={paragraph.origin} />
@@ -160,12 +166,14 @@ export default function TranslationRoll() {
     </div>
   ));
 
-  if (selectedParagraph) {
+  if (selectedParagraphIndex) {
+    const selectedParagraph = paragraphsWithHistory.find((p) => p.id === selectedParagraphIndex)!;
+
     return (
       <DragPanel>
         <LeftPanel>
           <ScrollArea className="h-full w-full pr-4">
-            <RadioGroup className="gap-4" onValueChange={setSelectedParagraph}>
+            <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
               {Paragraphs}
             </RadioGroup>
           </ScrollArea>
@@ -173,8 +181,7 @@ export default function TranslationRoll() {
         <ResizableHandle withHandle className="bg-yellow-600" />
         <RightPanel>
           <ScrollArea className="h-full w-full pr-4">
-            {/* TODO: make sure type safe, the problem is createdAt is date and string */}
-            <Workspace paragraph={paragraphs.find((p) => p.id === selectedParagraph) as unknown as IParagraph} />
+            <Workspace paragraph={selectedParagraph} />
           </ScrollArea>
         </RightPanel>
       </DragPanel>
@@ -183,7 +190,7 @@ export default function TranslationRoll() {
 
   return (
     <ScrollArea className="h-full px-2 lg:px-8">
-      <RadioGroup className="gap-4" onValueChange={setSelectedParagraph}>
+      <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
         {paragraphs.length ? (
           <>
             <p className="text-center text-2xl">{rollInfo?.sutra.title}</p>
@@ -201,8 +208,7 @@ export default function TranslationRoll() {
 }
 
 const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
-  const { id, origin, target, references, rollId } = paragraph;
-  console.log('paragraph', target);
+  const { id, origin, target, references } = paragraph;
   const fetcher = useFetcher<{ success: boolean }>();
 
   const form = useForm<z.infer<typeof paragraphActionSchema>>({
@@ -237,18 +243,24 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
   const [disabledEdit, setDisabledEdit] = useState(false);
 
   useEffect(() => {
-    if (form.getValues('paragraphId')) {
-      setDisabledEdit(false);
-    }
-    form.setValue('paragraphId', id);
     if (fetcher.data?.success && form.getValues('translation')) {
-      form.reset({
-        paragraphId: '',
-        translation: '',
-      });
+      form.reset(
+        {
+          paragraphId: '',
+          translation: '',
+        },
+        { keepDirty: true },
+      );
       setDisabledEdit(true);
     }
-  }, [fetcher, form, id, rollId]);
+  }, [fetcher, form]);
+
+  useEffect(() => {
+    if (form.getValues('paragraphId') !== id) {
+      setDisabledEdit(false);
+    }
+    form.setValue('paragraphId', id, { shouldDirty: true });
+  }, [form, id]);
 
   const onSubmit = (data: z.infer<typeof paragraphActionSchema>) => {
     fetcher.submit(data, { method: 'post' });
@@ -267,7 +279,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
   }, [textAreaRef, translation]);
 
   useEffect(() => {
-    if (target) {
+    if (target && form.getValues('translation') !== '') {
       form.setValue('translation', target);
     } else {
       form.setValue('translation', '');
@@ -307,7 +319,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
                   textAreaRef.current = e;
                 }}
               />
-              <Button type="submit" disabled={!isDirty}>
+              <Button type="submit" disabled={translation === '' || !isDirty}>
                 Save Translation
               </Button>
             </Can>
