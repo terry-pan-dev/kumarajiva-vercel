@@ -94,7 +94,9 @@ export default function TranslationRoll() {
 
   useEffect(() => {
     if (selectedParagraphIndex && labelRef.current) {
-      labelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => {
+        labelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     }
   }, [selectedParagraphIndex]);
 
@@ -103,7 +105,9 @@ export default function TranslationRoll() {
     if (firstNotSelectedNode) {
       const node = document.getElementById(firstNotSelectedNode.id);
       if (node) {
-        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
       }
     }
   }, [paragraphs]);
@@ -310,7 +314,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
             <input type="hidden" {...register('paragraphId')} />
             <Can I="Create" this="Paragraph">
               <Textarea
-                className="h-8"
+                className="h-8 text-md"
                 disabled={disabledEdit}
                 placeholder={disabledEdit ? 'Please select a new paragraph to edit.' : 'Type your translation here.'}
                 {...register('translation')}
@@ -390,25 +394,40 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
   const context = useOutletContext<{ user: ReadUser }>();
   const [translationResult, setTranslationResult] = useState<string>('');
   const textRef = useRef<string>('');
+  const abortController = new AbortController();
+  const req = new Request(
+    `/openai?origin=${text}&sourceLang=${context.user.originLang}&targetLang=${context.user.targetLang}`,
+    {
+      method: 'GET',
+      signal: abortController.signal,
+    },
+  );
 
   useEffect(() => {
     setTranslationResult('');
     textRef.current = '';
     const condition = true;
     const fetchStream = async () => {
-      const response = await fetch(
-        `/chat?origin=${text}&sourceLang=${context.user.originLang}&targetLang=${context.user.targetLang}`,
-      );
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
+      try {
+        const response = await fetch(req);
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
 
-      while (condition) {
-        if (reader) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value);
-          setTranslationResult((prev) => prev + chunk);
-          textRef.current += chunk;
+        while (condition) {
+          if (reader) {
+            const { done, value } = await reader.read();
+            if (done) {
+              break;
+            }
+            const chunk = decoder.decode(value);
+            setTranslationResult((prev) => prev + chunk);
+            textRef.current += chunk;
+          }
+        }
+      } catch (error) {
+        console.error(`error in openai loader: ${error}`);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.info('user aborted the request');
         }
       }
     };
@@ -417,7 +436,11 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
 
-  return <WorkspaceCard title={title} text={translationResult} />;
+  return (
+    <>
+      <WorkspaceCard title={title} text={translationResult} />
+    </>
+  );
 });
 
 interface WorkspaceCardProps {
