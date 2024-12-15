@@ -57,6 +57,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   //   onlineUsersForRollId[rollId] = [];
   //   return json({ onlineUsers: [] });
   // }
+  // console.log('online loader', request.signal);
+  // return json({ success: true });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {

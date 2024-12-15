@@ -94,7 +94,9 @@ export default function TranslationRoll() {
 
   useEffect(() => {
     if (selectedParagraphIndex && labelRef.current) {
-      labelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => {
+        labelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     }
   }, [selectedParagraphIndex]);
 
@@ -102,8 +104,11 @@ export default function TranslationRoll() {
     const firstNotSelectedNode = paragraphs.find((p) => !p.target);
     if (firstNotSelectedNode) {
       const node = document.getElementById(firstNotSelectedNode.id);
+      console.log(node);
       if (node) {
-        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
       }
     }
   }, [paragraphs]);
@@ -391,6 +396,13 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
   const [translationResult, setTranslationResult] = useState<string>('');
   const textRef = useRef<string>('');
   const abortController = new AbortController();
+  const req = new Request(
+    `/openai?origin=${text}&sourceLang=${context.user.originLang}&targetLang=${context.user.targetLang}`,
+    {
+      method: 'GET',
+      signal: abortController.signal,
+    },
+  );
 
   useEffect(() => {
     setTranslationResult('');
@@ -398,17 +410,16 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
     const condition = true;
     const fetchStream = async () => {
       try {
-        const response = await fetch(
-          `/openai?origin=${text}&sourceLang=${context.user.originLang}&targetLang=${context.user.targetLang}`,
-          { signal: abortController.signal },
-        );
+        const response = await fetch(req);
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
 
         while (condition) {
           if (reader) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              break;
+            }
             const chunk = decoder.decode(value);
             setTranslationResult((prev) => prev + chunk);
             textRef.current += chunk;
@@ -428,14 +439,6 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
 
   return (
     <>
-      <Button
-        onClick={() => {
-          console.log('aborted');
-          abortController.abort();
-        }}
-      >
-        Abort
-      </Button>
       <WorkspaceCard title={title} text={translationResult} />
     </>
   );

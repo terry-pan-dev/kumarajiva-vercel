@@ -24,7 +24,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const sourceLang = (url.searchParams.get('sourceLang') || 'chinese') as Lang;
   const targetLang = (url.searchParams.get('targetLang') || 'english') as Lang;
   console.log({ sourceLang, targetLang, content });
-  console.log(request.signal);
 
   if (!content?.trim()) {
     return;
