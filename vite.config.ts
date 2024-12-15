@@ -18,6 +18,7 @@ export default defineConfig({
     sentryVitePlugin({
       org: 'qubit-pi',
       project: 'javascript-remix',
+      telemetry: process.env.NODE_ENV === 'production',
     }),
   ],
 
