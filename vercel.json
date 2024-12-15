@@ -1,14 +1,4 @@
 {
     "regions": ["syd1"],
-    "buildCommand": "pnpm build && pnpm db:migrate",
-    "functions": {
-        "app/routes/_app.translation.$rollId.tsx": {
-            "memory": 3009,
-            "maxDuration": 15
-        },
-        "app/routes/_app.translation.tsx": {
-            "memory": 3009,
-            "maxDuration": 15
-        }
-    }
+    "buildCommand": "pnpm build && pnpm db:migrate"
 }
