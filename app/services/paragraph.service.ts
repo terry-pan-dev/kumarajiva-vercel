@@ -106,7 +106,7 @@ const queryParagraphs = (ids: string[], numberOfHits: number) => {
 };
 
 export const searchAlgolia = async (searchTerm: string): Promise<SearchResultListProps['results']> => {
-  const numberOfHits = 5;
+  const numberOfHits = 10;
   const paragraphsIndexExist = await algoliaClient.indexExists({ indexName: 'paragraphs' });
   const glossariesIndexExist = await algoliaClient.indexExists({ indexName: 'glossaries' });
   if (!paragraphsIndexExist && !glossariesIndexExist) {
