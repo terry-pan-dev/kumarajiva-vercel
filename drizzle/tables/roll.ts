@@ -34,5 +34,8 @@ export const rollsTableRelations = relations(rollsTable, ({ one, many }) => ({
 }));
 
 export type ReadRoll = typeof rollsTable.$inferSelect;
+export type ReadRollWithSutra = typeof rollsTable.$inferSelect & {
+  sutra: typeof sutrasTable.$inferSelect;
+};
 export type CreateRoll = typeof rollsTable.$inferInsert;
 export type UpdateRoll = Partial<CreateRoll>;

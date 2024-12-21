@@ -6,7 +6,7 @@ import * as schema from '~/drizzle/schema';
 
 import 'dotenv/config';
 
-import { rollsTable, type ReadRoll } from '~/drizzle/tables';
+import { type ReadRollWithSutra, rollsTable, type ReadRoll } from '~/drizzle/tables';
 
 const dbClient = drizzle(sql, { schema });
 
@@ -14,7 +14,7 @@ export const readRolls = async (): Promise<ReadRoll[]> => {
   return dbClient.query.rollsTable.findMany();
 };
 
-export const readRollById = async (rollId: string) => {
+export const readRollById = async (rollId: string): Promise<ReadRollWithSutra | undefined> => {
   return dbClient.query.rollsTable.findFirst({
     where: eq(rollsTable.id, rollId),
     with: {
