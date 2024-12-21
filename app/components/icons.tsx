@@ -370,6 +370,50 @@ const fileClock = (props: LucideProps) => (
   </svg>
 );
 
+const fileDocx = (props: LucideProps) => (
+  <svg
+    width="24"
+    height="24"
+    fill="none"
+    stroke-width="2"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+    className="lucide lucide-file-text"
+    {...props}
+  >
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M10 9H8" />
+    <path d="M16 13H8" />
+    <path d="M16 17H8" />
+  </svg>
+);
+
+const filePdf = (props: LucideProps) => (
+  <svg
+    width="24"
+    height="24"
+    fill="none"
+    stroke-width="2"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+    className="lucide lucide-file-text"
+    {...props}
+  >
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M10 9H8" />
+    <path d="M16 13H8" />
+    <path d="M16 17H8" />
+  </svg>
+);
+
 export const Icons = {
   Add: Plus,
   ChevronDown: ChevronDown,
@@ -377,7 +421,7 @@ export const Icons = {
   alignJustify: AlignJustify,
   alignLeft: AlignLeft,
   alignRight: AlignRight,
-  download: Download,
+  Download: Download,
   ArrowLeft: ArrowLeft,
   arrowRight: ArrowRight,
   arrowDown: ChevronDown,
@@ -411,6 +455,8 @@ export const Icons = {
   emoji: Smile,
   externalLink: ExternalLink,
   FileClock: fileClock,
+  FileDocx: fileDocx,
+  FilePdf: filePdf,
   h1: Heading1,
   h2: Heading2,
   h3: Heading3,
