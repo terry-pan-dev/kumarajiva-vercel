@@ -25,8 +25,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   let paragraphs: IParagraph[] = [];
   let rollInfo: ReadRollWithSutra | undefined = undefined;
   if (params.rollId) {
-    paragraphs = await readParagraphsByRollId({ rollId: params.rollId, user });
-    rollInfo = await readRollById(params.rollId);
+    [paragraphs, rollInfo] = await Promise.all([
+      readParagraphsByRollId({ rollId: params.rollId, user }),
+      readRollById(params.rollId),
+    ]);
   }
   return json({
     user,
@@ -40,6 +42,7 @@ export default function TranslationLayout() {
   const { user, users, paragraphs, rollInfo } = useLoaderData<typeof loader>();
   const params = useParams();
   const { downloadDocx } = useDownloadDocx();
+  console.log({ rollId: params.rollId, rollInfo });
   return (
     <div className="flex h-full flex-col gap-2 bg-secondary px-4">
       <div className="mt-2 text-xl font-semibold">Tripitaka</div>
