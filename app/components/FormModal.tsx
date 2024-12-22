@@ -91,28 +91,27 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
   const onSubmit = useCallback(
     (data: z.infer<typeof schema>) => {
       function hasNonPrimitive(obj: unknown) {
-        // Helper function to determine if a value is primitive
         const isPrimitive = (value: unknown) => {
           return value === null || (typeof value !== 'object' && typeof value !== 'function');
         };
 
-        // Recursive function to traverse the object
         function check(obj: unknown) {
-          if (!isPrimitive(obj)) {
-            // If it's a non-primitive (object, array, or function), return true
-            return true;
+          // If it's a primitive, return false immediately
+          if (isPrimitive(obj)) {
+            return false;
           }
 
-          // If it's an object or array, iterate its keys
+          // If it's an object or array, check all its values
           if (typeof obj === 'object' && obj !== null) {
             for (const key in obj) {
-              if (check(obj[key as keyof typeof obj])) {
-                return true; // Stop if any nested property is non-primitive
+              if (!isPrimitive(obj[key as keyof typeof obj])) {
+                return true; // Return true only if we find a non-primitive value
               }
             }
+            return false; // If all values were primitive, return false
           }
 
-          return false;
+          return true; // For functions or other non-primitive types
         }
 
         return check(obj);
