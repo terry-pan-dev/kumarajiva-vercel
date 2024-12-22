@@ -47,7 +47,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
             ))}
           </ScrollArea>
           <div className="w-1/2">
-            <ScrollArea ref={ref} className="h-[calc(100vh-10rem)] gap-4 pr-4">
+            <ScrollArea className="h-[calc(100vh-10rem)] gap-4 pr-4">
               <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
                 <ClientOnly fallback={<div>Loading...</div>}>
                   {() => <GlossaryDetail showEdit={showEdit} glossary={selectedGlossary} />}
