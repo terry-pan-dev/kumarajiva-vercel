@@ -120,17 +120,6 @@ export default function GlossaryIndex() {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
-    setGlossariesState(
-      glossaries.map((glossary) => ({
-        ...glossary,
-        createdAt: new Date(glossary.createdAt),
-        updatedAt: new Date(glossary.updatedAt),
-        deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
-      })),
-    );
-  }, [glossaries]);
-
-  useEffect(() => {
     if (fetcher.state === 'loading' || fetcher.state === 'submitting') {
       return;
     }
@@ -143,13 +132,19 @@ export default function GlossaryIndex() {
           deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
         })) || [];
       if (searchTerm && fetcher.data?.page === -1) {
-        setGlossariesState(newGlossaries);
+        setGlossariesState((prevItems) => {
+          const uniqueMap = new Map([...prevItems, ...newGlossaries].map((item) => [item.id, item]));
+          return Array.from(uniqueMap.values());
+        });
       }
       if (!searchTerm && fetcher.data?.page !== -1) {
         if (fetcher.data?.page === 1) {
           setGlossariesState(newGlossaries);
         } else {
-          setGlossariesState((prev) => [...prev, ...newGlossaries]);
+          setGlossariesState((prevItems) => {
+            const uniqueMap = new Map([...prevItems, ...newGlossaries].map((item) => [item.id, item]));
+            return Array.from(uniqueMap.values());
+          });
         }
       }
     }
@@ -247,7 +242,7 @@ const InfiniteScroller = React.forwardRef<HTMLDivElement, InfiniteScrollerProps>
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ref]);
 
   return <>{children}</>;
 });
