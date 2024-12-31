@@ -50,6 +50,13 @@
       "when": 1731926396608,
       "tag": "0007_change-uuid-to-text",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1735476320906,
+      "tag": "0008_system-config-table",
+      "breakpoints": true
     }
   ]
 }

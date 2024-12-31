@@ -7,3 +7,4 @@ export * from './user';
 export * from './glossary';
 export * from './enums';
 export * from './notification';
+export * from './systemConfig';

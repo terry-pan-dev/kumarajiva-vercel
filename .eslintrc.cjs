@@ -23,6 +23,11 @@ module.exports = {
       partitionByComment: true,
       type: 'line-length',
     },
+    'import/resolver': {
+      typescript: {
+        project: './tsconfig.json',
+      },
+    },
   },
   extends: ['@remix-run/eslint-config', '@remix-run/eslint-config/node'],
   plugins: ['perfectionist'],

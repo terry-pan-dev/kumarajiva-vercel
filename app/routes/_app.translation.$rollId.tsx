@@ -3,7 +3,7 @@ import { useFetcher, useLoaderData, useOutletContext, useRouteError } from '@rem
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
-import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown, Copy, Info } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 import { ZodError, type z } from 'zod';
@@ -12,6 +12,7 @@ import { Icons } from '~/components/icons';
 import { type ReadReference } from '~/drizzle/tables/reference';
 import { type ReadUser } from '~/drizzle/tables/user';
 
+import type { ReadGlossary } from '../../drizzle/schema';
 import type { ReadHistory } from '../../drizzle/tables/paragraph';
 
 import { assertAuthUser } from '../auth.server';
@@ -25,9 +26,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   RadioGroup,
   RadioGroupItem,
   ResizableHandle,
+  Separator,
   ResizablePanel,
   ResizablePanelGroup,
   ScrollArea,
@@ -336,6 +341,20 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
 
 const References = ({ references }: { references: ReadReference[] }) => {
   const [isOpen, setIsOpen] = React.useState(true);
+  const formContext = useFormContext();
+
+  const getButtons = (text: string) => {
+    return (
+      <Button
+        size="icon"
+        variant="ghost"
+        className="transition-transform duration-300 hover:scale-110"
+        onClick={() => formContext.setValue('translation', text, { shouldDirty: true })}
+      >
+        <Copy className="h-4 w-4" />
+      </Button>
+    );
+  };
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full gap-2">
       <div className="flex items-center justify-between space-x-4 px-4">
@@ -347,13 +366,24 @@ const References = ({ references }: { references: ReadReference[] }) => {
           </Button>
         </CollapsibleTrigger>
       </div>
-      {references.length ? <WorkspaceCard text={references[0].content} title={references[0].sutraName} /> : null}
+      {references.length ? (
+        <WorkspaceCard
+          text={references[0].content}
+          title={references[0].sutraName}
+          buttons={getButtons(references[0].content)}
+        />
+      ) : null}
       <CollapsibleContent className="gap-2">
         {references.length > 1
           ? references
               .slice(1)
               .map((reference) => (
-                <WorkspaceCard key={reference.id} text={reference.content} title={reference.sutraName} />
+                <WorkspaceCard
+                  key={reference.id}
+                  text={reference.content}
+                  title={reference.sutraName}
+                  buttons={getButtons(reference.content)}
+                />
               ))
           : null}
       </CollapsibleContent>
@@ -392,6 +422,9 @@ interface StreamCardProps {
 
 const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
   const context = useOutletContext<{ user: ReadUser }>();
+  const formContext = useFormContext();
+  const fetcher = useFetcher<{ success: boolean; glossaries: ReadGlossary[]; tokens: string[] }>();
+  const loading = fetcher.state === 'loading' || fetcher.state === 'submitting';
   const [translationResult, setTranslationResult] = useState<string>('');
   const textRef = useRef<string>('');
   const abortController = new AbortController();
@@ -402,6 +435,28 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
       signal: abortController.signal,
     },
   );
+
+  const [glossaries, setGlossaries] = useState<ReadGlossary[]>([]);
+  const [tokens, setTokens] = useState<string[]>([]);
+  useEffect(() => {
+    if (text) {
+      fetcher.load(`/tokenizer?content=${text}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
+  useEffect(() => {
+    if (fetcher.data?.success) {
+      const glossaries = fetcher.data.glossaries.map((glossary) => ({
+        ...glossary,
+        createdAt: new Date(glossary.createdAt),
+        updatedAt: new Date(glossary.updatedAt),
+        deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
+      }));
+      setGlossaries(glossaries);
+      setTokens(fetcher.data.tokens);
+    }
+  }, [fetcher.data]);
 
   useEffect(() => {
     setTranslationResult('');
@@ -438,7 +493,25 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
 
   return (
     <>
-      <WorkspaceCard title={title} text={translationResult} />
+      <WorkspaceCard
+        title={title}
+        text={translationResult}
+        buttons={
+          <>
+            {loading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : null}
+            <PromptGlossaryInfo tokens={tokens} loading={loading} originSutraText={text} glossaries={glossaries} />
+            <Button
+              size="icon"
+              variant="ghost"
+              disabled={loading}
+              className="transition-transform duration-300 hover:scale-110"
+              onClick={() => formContext.setValue('translation', translationResult, { shouldDirty: true })}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </>
+        }
+      />
     </>
   );
 });
@@ -446,24 +519,15 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
 interface WorkspaceCardProps {
   title: string;
   text: string;
+  buttons?: React.ReactNode | undefined;
 }
 
-const WorkspaceCard = ({ title, text }: WorkspaceCardProps) => {
-  const formContext = useFormContext();
+const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
   return (
     <div className="mt-4 flex flex-col justify-start rounded-xl bg-card-foreground p-4 shadow-lg">
       <div className="flex items-center justify-between">
         <div className="text-md font-medium">{title}</div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="transition-transform duration-300 hover:scale-110"
-            onClick={() => formContext.setValue('translation', text, { shouldDirty: true })}
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-        </div>
+        <div className="flex items-center gap-2">{buttons}</div>
       </div>
       <p className="text-md text-slate-500">{text}</p>
     </div>
@@ -565,6 +629,104 @@ export const ParagraphHistoryTimeline = ({ histories }: ParagraphHistoryTimeline
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+};
+
+const PromptGlossaryInfo = ({
+  glossaries,
+  originSutraText,
+  tokens,
+  loading,
+}: {
+  glossaries: ReadGlossary[];
+  originSutraText: string;
+  tokens: string[];
+  loading: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const tableData = glossaries.map((glossary) => ({
+    term: glossary.glossary,
+    definition: glossary.translations?.map((translation) => translation.glossary) || [],
+  }));
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button size="icon" variant="ghost" disabled={loading} className="h-8 w-8 rounded-full">
+          <Info className="h-4 w-4" />
+          <span className="sr-only">Open glossary</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" side={'right'} className="w-[450px] p-0">
+        <div className="rounded-t-lg bg-gray-100 p-4 dark:bg-gray-800">
+          <h3 className="text-lg font-semibold">Glossary Info</h3>
+          <p className="text-sm text-gray-500">(glossary maybe used in AI translation)</p>
+        </div>
+        <div className="p-4">
+          <HighlightedParagraph text={originSutraText} keywords={glossaries.map((glossary) => glossary.glossary)} />
+          <Separator className="my-4" />
+          {tokens?.length ? <p className="text-sm text-gray-500">Tokens: {tokens.join(', ')}</p> : null}
+          <Separator className="my-4" />
+          <TableData data={tableData} />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+interface HighlightedParagraphProps {
+  text: string;
+  keywords: string[];
+}
+
+const HighlightedParagraph: React.FC<HighlightedParagraphProps> = ({ text, keywords }) => {
+  const highlightText = (text: string, keywords: string[]) => {
+    let highlightedText = text;
+
+    // Sort keywords by length (longest first) to handle overlapping matches correctly
+    const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
+
+    sortedKeywords.forEach((keyword) => {
+      // Escape special regex characters and create word boundary for CJK characters
+      const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+
+      // Use positive lookbehind and lookahead for CJK word boundaries
+      const pattern = `(${escapedKeyword})`;
+      const regex = new RegExp(pattern, 'g');
+
+      highlightedText = highlightedText.replace(regex, '<span class="bg-yellow-200 dark:bg-yellow-800">$1</span>');
+    });
+
+    return <p dangerouslySetInnerHTML={{ __html: highlightedText }} />;
+  };
+
+  return <div className="mb-4">{highlightText(text, keywords)}</div>;
+};
+
+interface TableDataProps {
+  data: { term: string; definition: string[] }[];
+}
+const TableData: React.FC<TableDataProps> = ({ data }) => {
+  return (
+    <div className="overflow-hidden rounded-md border">
+      <div className="max-h-[300px] overflow-y-auto">
+        <table className="w-full border-collapse">
+          <tbody>
+            {data.map((row, index) => (
+              <tr key={index} className="border-b last:border-b-0">
+                <td className="border-r p-2">{row.term}</td>
+                <td className="p-2">
+                  <ul className="list-disc pl-5">
+                    {row.definition.map((item, itemIndex) => (
+                      <li key={itemIndex}>{item}</li>
+                    ))}
+                  </ul>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
