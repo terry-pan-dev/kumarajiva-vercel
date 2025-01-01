@@ -86,13 +86,20 @@ export function SideBarMenu({
           <Link
             to="/"
             aria-label="Logo"
-            className={cn('flex items-center', isOpen ? 'justify-start' : 'w-full justify-center')}
+            className={cn('flex items-center', isOpen ? 'w-full justify-start' : 'w-full justify-center')}
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-yellow-600 font-mono text-xl font-bold text-white">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-yellow-600 font-mono text-xl font-bold text-white">
               <img src={favicon} sizes="32x32" alt="home favicon" />
+              {navigation.state === 'loading' && !isOpen && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-yellow-600/80">
+                  <Icons.Loader className="h-5 w-5 animate-spin text-white" />
+                </div>
+              )}
             </div>
             {isOpen && <span className="ml-3 text-xl font-semibold text-white">Kumarajiva</span>}
-            {navigation.state === 'loading' && <Icons.Loader className="ml-auto h-5 w-5 animate-spin text-white" />}
+            {navigation.state === 'loading' && isOpen && (
+              <Icons.Loader className="ml-auto h-5 w-5 animate-spin text-white" />
+            )}
           </Link>
         </div>
 
