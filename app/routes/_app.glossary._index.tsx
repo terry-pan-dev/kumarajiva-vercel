@@ -185,13 +185,22 @@ const SearchBar = ({ fetcher, searchTerm, setSearchTerm }: SearchBarProps) => {
   return (
     <fetcher.Form method="get" action={`/glossary?index&searchTerm=${searchTerm}`}>
       <div className="flex w-full items-center space-x-2">
-        <Input
-          type="text"
-          name="searchTerm"
-          value={searchTerm}
-          placeholder="Glossary Term"
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="relative flex-1">
+          {(fetcher.state === 'loading' || fetcher.state === 'submitting') && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+            </div>
+          )}
+          <Input
+            type="text"
+            name="searchTerm"
+            value={searchTerm}
+            placeholder="Glossary Term"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            disabled={fetcher.state === 'loading' || fetcher.state === 'submitting'}
+            className={fetcher.state === 'loading' || fetcher.state === 'submitting' ? 'pr-10' : ''}
+          />
+        </div>
         <Button type="submit" className="w-20">
           Search
         </Button>
