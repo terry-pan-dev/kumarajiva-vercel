@@ -426,6 +426,7 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
   const fetcher = useFetcher<{ success: boolean; glossaries: ReadGlossary[]; tokens: string[] }>();
   const loading = fetcher.state === 'loading' || fetcher.state === 'submitting';
   const [translationResult, setTranslationResult] = useState<string>('');
+  const [refresh, setRefresh] = useState(false);
   const textRef = useRef<string>('');
   const abortController = new AbortController();
   const req = new Request(
@@ -487,9 +488,12 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
       }
     };
 
-    fetchStream();
+    if (refresh || text) {
+      fetchStream();
+      setRefresh(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text]);
+  }, [text, refresh]);
 
   return (
     <>
@@ -500,6 +504,9 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
           <>
             {loading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : null}
             <PromptGlossaryInfo tokens={tokens} loading={loading} originSutraText={text} glossaries={glossaries} />
+            <Button size="icon" variant="ghost" disabled={loading} onClick={() => setRefresh(true)}>
+              <Icons.Refresh className="h-4 w-4" />
+            </Button>
             <Button
               size="icon"
               variant="ghost"
@@ -527,7 +534,7 @@ const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
     <div className="mt-4 flex flex-col justify-start rounded-xl bg-card-foreground p-4 shadow-lg">
       <div className="flex items-center justify-between">
         <div className="text-md font-medium">{title}</div>
-        <div className="flex items-center gap-2">{buttons}</div>
+        <div className="flex items-center">{buttons}</div>
       </div>
       <p className="text-md text-slate-500">{text}</p>
     </div>
@@ -653,7 +660,7 @@ const PromptGlossaryInfo = ({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button size="icon" variant="ghost" disabled={loading} className="h-8 w-8 rounded-full">
+        <Button size="icon" variant="ghost" disabled={loading}>
           <Info className="h-4 w-4" />
           <span className="sr-only">Open glossary</span>
         </Button>
