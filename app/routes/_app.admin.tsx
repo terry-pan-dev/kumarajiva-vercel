@@ -2,6 +2,7 @@ import { Outlet, type MetaFunction } from '@remix-run/react';
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
 
 import { assertAuthUser } from '../auth.server';
+import { SideBarTrigger } from '../components/SideBarTrigger';
 import { Separator } from '../components/ui';
 import { Toaster } from '../components/ui/toaster';
 
@@ -16,10 +17,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function AdminLayout() {
   return (
-    <div className="flex h-screen flex-col gap-4 bg-secondary px-4">
-      <div className="h-2"></div>
-      <div className="text-2xl font-semibold">Administration</div>
-      <Separator className="bg-yellow-600" />
+    <div className="flex h-screen flex-col bg-secondary px-4">
+      <div className="my-2 flex h-10 items-center gap-2 text-xl font-semibold">
+        <SideBarTrigger />
+        Administration
+      </div>
+      <Separator className="mb-2 bg-yellow-600" />
       <Outlet />
       <Toaster />
     </div>
