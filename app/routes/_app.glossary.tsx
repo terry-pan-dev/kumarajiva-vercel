@@ -3,6 +3,7 @@ import { json, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix'
 
 import { assertAuthUser } from '../auth.server';
 import { FormInput, FormModal, FormTextarea } from '../components/FormModal';
+import { SideBarTrigger } from '../components/SideBarTrigger';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
 import { Toaster } from '../components/ui/toaster';
@@ -21,13 +22,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export default function GlossaryLayout() {
   const { user, users } = useLoaderData<typeof loader>();
   return (
-    <div className="flex h-auto min-h-screen flex-col gap-4 bg-secondary px-4">
-      <div className="h-1"></div>
+    <div className="flex h-auto min-h-screen flex-col bg-secondary px-4">
       <div className="flex items-center justify-between">
-        <div className="text-2xl font-semibold">Glossary</div>
-        <GlossaryCreateModal />
+        <div className="my-2 flex h-10 w-full items-center justify-between gap-2 text-xl font-semibold">
+          <div className="flex items-center gap-2">
+            <SideBarTrigger />
+            Glossary
+          </div>
+          <GlossaryCreateModal />
+        </div>
       </div>
-      <Separator className="bg-yellow-600" />
+      <Separator className="mb-4 bg-yellow-600" />
       <Outlet context={{ user, users }} />
       <Toaster />
     </div>

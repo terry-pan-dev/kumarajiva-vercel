@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from '~/components/ui';
 import { type UserRole } from '~/drizzle/tables/enums';
+import favicon from '~/images/favicon-32x32.png';
 import { cn } from '~/lib/utils';
 
 import { type ReadGlossary } from '../../drizzle/schema';
@@ -30,6 +31,7 @@ import { GlossaryDetail, GlossaryItem } from './GlossaryList';
 import { Icons } from './icons';
 import { ParagraphDetail, ParagraphItem } from './ParagraphList';
 import { useSearchContext } from './SearchContext';
+import { useSideBarMenuContext } from './SideBarMenuContext';
 
 const menuItems = [
   { icon: Home, label: 'Home', href: '/dashboard' },
@@ -56,6 +58,7 @@ export function SideBarMenu({
   const pathname = useLocation().pathname;
   const avatarFallback = userName.charAt(0).toUpperCase();
   const { setOpen, open } = useSearchContext();
+  const { isOpen } = useSideBarMenuContext();
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey && event.key === 'k') {
@@ -73,16 +76,27 @@ export function SideBarMenu({
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen w-14 flex-col items-center bg-primary px-2 shadow-md lg:w-64 lg:items-stretch lg:px-4">
-        <Link to="/" aria-label="Logo" className="flex items-center justify-center py-4 lg:justify-start">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-600 font-mono text-xl font-bold text-white">
-            K
-          </div>
-          <span className="ml-3 hidden text-2xl font-semibold text-white lg:inline">Kumarajiva</span>
-          {navigation.state === 'loading' && <Icons.Loader className="ml-auto h-5 w-5 animate-spin text-white" />}
-        </Link>
+      <div
+        className={cn(
+          'flex min-h-screen flex-col bg-primary shadow-md transition-all duration-300',
+          isOpen ? 'w-64 items-stretch px-4' : 'w-14 items-center px-2',
+        )}
+      >
+        <div className="relative flex w-full py-2">
+          <Link
+            to="/"
+            aria-label="Logo"
+            className={cn('flex items-center', isOpen ? 'justify-start' : 'w-full justify-center')}
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-yellow-600 font-mono text-xl font-bold text-white">
+              <img src={favicon} sizes="32x32" alt="home favicon" />
+            </div>
+            {isOpen && <span className="ml-3 text-xl font-semibold text-white">Kumarajiva</span>}
+            {navigation.state === 'loading' && <Icons.Loader className="ml-auto h-5 w-5 animate-spin text-white" />}
+          </Link>
+        </div>
 
-        <nav className="w-full flex-1 overflow-y-auto border-y border-yellow-600 pt-4 lg:px-0">
+        <nav className="flex w-full flex-1 flex-col gap-1 border-y border-yellow-600 py-4">
           {menuItems
             .filter((item) => {
               if (item.href.includes('admin') && userRole !== 'admin') {
@@ -100,8 +114,9 @@ export function SideBarMenu({
                     to={item.href}
                     aria-label={item.label}
                     className={cn(
-                      'mb-1 flex items-center justify-center px-3 py-3 text-md font-medium text-white lg:justify-start lg:px-6',
-                      'hover:bg-slate-200/50 hover:text-yellow-600 lg:hover:text-white',
+                      'flex items-center py-3 text-md font-medium text-white',
+                      isOpen ? 'justify-start px-6' : 'justify-center px-3',
+                      'hover:bg-slate-200/50 hover:text-yellow-600',
                       pathname.startsWith(item.href)
                         ? 'active rounded-md bg-slate-200 text-yellow-600'
                         : 'bg-transparent hover:rounded-md',
@@ -109,13 +124,13 @@ export function SideBarMenu({
                   >
                     {({ isActive }) => (
                       <>
-                        <item.icon className={cn('h-5 w-5 lg:mr-3', isActive && 'text-yellow-600')} />
-                        <span className="hidden lg:inline">{item.label}</span>
+                        <item.icon className={cn('h-5 w-5', isOpen && 'mr-3', isActive && 'text-yellow-600')} />
+                        {isOpen && <span>{item.label}</span>}
                       </>
                     )}
                   </NavLink>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="lg:hidden">
+                <TooltipContent side="right" className={cn(isOpen && 'hidden')}>
                   <p>{item.label}</p>
                 </TooltipContent>
               </Tooltip>
@@ -124,42 +139,49 @@ export function SideBarMenu({
             <TooltipTrigger asChild>
               <div
                 onClick={() => setOpen(true)}
-                className="mb-1 flex cursor-pointer items-center justify-center px-3 py-3 text-md font-medium text-white hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600 lg:justify-start lg:px-6 lg:hover:text-white"
+                className={cn(
+                  'flex cursor-pointer items-center py-3 text-md font-medium text-white',
+                  isOpen ? 'justify-start px-6' : 'justify-center px-3',
+                  'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                )}
               >
-                <Search className="h-5 w-5 lg:mr-3" />
-                <span className="hidden lg:inline">Search ⌘+K</span>
+                <Search className={cn('h-5 w-5', isOpen && 'mr-3')} />
+                {isOpen && <span>Search ⌘+K</span>}
               </div>
             </TooltipTrigger>
-
-            <TooltipContent side="right">
+            <TooltipContent side="right" className={cn(isOpen && 'hidden')}>
               <p>Search</p>
             </TooltipContent>
           </Tooltip>
         </nav>
 
-        <div className="mt-auto pt-2 md:py-2">
-          <div className="flex flex-col items-center justify-center gap-2 lg:flex-row lg:justify-between">
+        <div className="py-2">
+          <div
+            className={cn('flex items-center gap-2', isOpen ? 'flex-row justify-between' : 'flex-col justify-center')}
+          >
             <Link to="/settings" aria-label="settings" className="flex items-center">
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-10 w-10 rounded-md">
                 <AvatarImage alt="avatar" src={avatarSrc || ''} />
                 <AvatarFallback className="bg-yellow-600 text-white">{avatarFallback}</AvatarFallback>
               </Avatar>
-              <div className="ml-3 hidden max-w-28 lg:block">
-                <p className="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-white">
-                  {userRole.toUpperCase()}
-                </p>
-                <p className="overflow-hidden text-ellipsis whitespace-nowrap text-sm text-blue-200">{userEmail}</p>
-              </div>
+              {isOpen && (
+                <div className="ml-3 max-w-28">
+                  <p className="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-white">
+                    {userRole.toUpperCase()}
+                  </p>
+                  <p className="overflow-hidden text-ellipsis whitespace-nowrap text-sm text-blue-200">{userEmail}</p>
+                </div>
+              )}
             </Link>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Form method="post" action="/logout">
                   <button type="submit">
-                    <LogOut className="h-5 w-5 text-white" />
+                    <LogOut className="h-5 w-5 text-white hover:text-yellow-600" />
                   </button>
                 </Form>
               </TooltipTrigger>
-              <TooltipContent side="right">
+              <TooltipContent side="right" className={cn(isOpen && 'hidden')}>
                 <p>Logout</p>
               </TooltipContent>
             </Tooltip>

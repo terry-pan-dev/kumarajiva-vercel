@@ -6,6 +6,7 @@ import { type ReadRollWithSutra } from '../../drizzle/tables';
 import { assertAuthUser } from '../auth.server';
 import { BreadcrumbLine } from '../components/Breadcrumb';
 import { Icons } from '../components/icons';
+import { SideBarTrigger } from '../components/SideBarTrigger';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
 import { useDownloadDocx } from '../lib/hooks';
@@ -78,17 +79,29 @@ export default function TranslationLayout() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-2 bg-secondary px-4">
-      <div className="mt-2 text-xl font-semibold">Tripitaka</div>
-      <div className="flex items-center justify-between">
-        <BreadcrumbLine />
-        {params.rollId ? (
-          <Button size="icon" variant="ghost" onClick={handleDownload} disabled={fetcher.state !== 'idle'}>
-            <Icons.Download className="h-6 w-6 text-slate-800" />
-          </Button>
-        ) : null}
+    <div className="flex h-full flex-col bg-secondary px-4">
+      <div className="my-2 flex h-10 w-full items-center justify-between gap-8 text-xl font-semibold">
+        <div className="flex items-center gap-2">
+          <SideBarTrigger />
+          Tripitaka
+        </div>
+        <div className="flex w-full items-center justify-between">
+          {/* <SideBarTrigger /> */}
+          <BreadcrumbLine />
+          {params.rollId ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={handleDownload}
+              disabled={fetcher.state !== 'idle'}
+            >
+              <Icons.Download className="h-6 w-6 text-slate-800" />
+            </Button>
+          ) : null}
+        </div>
       </div>
-      <Separator className="bg-yellow-600" />
+      <Separator className="mb-2 bg-yellow-600" />
       <Outlet context={{ user, users }} />
     </div>
   );

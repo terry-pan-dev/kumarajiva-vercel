@@ -414,8 +414,49 @@ const filePdf = (props: LucideProps) => (
   </svg>
 );
 
+const rightOpen = (props: LucideProps) => (
+  <svg
+    width="24"
+    height="24"
+    fill="none"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="lucide lucide-panel-right-open"
+    {...props}
+  >
+    <rect x="3" y="3" rx="2" width="18" height="18" />
+    <path d="M15 3v18" />
+    <path d="m10 15-3-3 3-3" />
+  </svg>
+);
+
+const leftOpen = (props: LucideProps) => (
+  <svg
+    width="24"
+    height="24"
+    fill="none"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+    className="lucide lucide-panel-left-open"
+    {...props}
+  >
+    <rect x="3" y="3" rx="2" width="18" height="18" />
+    <path d="M9 3v18" />
+    <path d="m14 9 3 3-3 3" />
+  </svg>
+);
+
 export const Icons = {
   Add: Plus,
+  PanelRightOpen: rightOpen,
+  PanelLeftOpen: leftOpen,
   ChevronDown: ChevronDown,
   alignCenter: AlignCenter,
   alignJustify: AlignJustify,

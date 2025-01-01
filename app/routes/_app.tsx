@@ -10,6 +10,7 @@ import { AbilityContext, defineAbilityFor } from '../authorisation';
 import { BannerStack } from '../components/BannerStack';
 import { SearchProvider } from '../components/SearchContext';
 import { SideBarMenu } from '../components/SideBarMenu';
+import { SideBarMenuContextProvider } from '../components/SideBarMenuContext';
 import { readActiveNotifications } from '../services/notification.service';
 import { readUsers } from '../services/user.service';
 
@@ -60,7 +61,7 @@ export default function AppLayout() {
   return (
     <AbilityContext.Provider value={ability}>
       <SearchProvider allUsers={allUsers}>
-        <div>
+        <SideBarMenuContextProvider>
           <BannerStack banners={notifications} onDismiss={handleDismiss} />
           <div className="flex h-screen">
             <SideBarMenu avatarSrc={avatar} userRole={user.role} userEmail={user.email} userName={user.username} />
@@ -68,7 +69,7 @@ export default function AppLayout() {
               <Outlet />
             </main>
           </div>
-        </div>
+        </SideBarMenuContextProvider>
         <ClientOnly>{() => <SettingLoader />}</ClientOnly>
       </SearchProvider>
     </AbilityContext.Provider>
