@@ -25,6 +25,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const searchTerm = searchParams.get('searchTerm') || '';
 
     if (searchTerm) {
+      console.log('searchTerm', searchTerm);
       const glossaries = await searchGlossaries(searchTerm);
       return json({ success: true, glossaries, page: -1 });
     }
@@ -133,7 +134,7 @@ export default function GlossaryIndex() {
         })) || [];
       if (searchTerm && fetcher.data?.page === -1) {
         setGlossariesState((prevItems) => {
-          const uniqueMap = new Map([...prevItems, ...newGlossaries].map((item) => [item.id, item]));
+          const uniqueMap = new Map([...newGlossaries].map((item) => [item.id, item]));
           return Array.from(uniqueMap.values());
         });
       }
