@@ -1,4 +1,4 @@
-import { Outlet, useFetcher, useLoaderData } from '@remix-run/react';
+import { Outlet, useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { useEffect, useMemo } from 'react';
@@ -8,6 +8,7 @@ import { type ReadUser } from '../../drizzle/schema';
 import { assertAuthUser } from '../auth.server';
 import { AbilityContext, defineAbilityFor } from '../authorisation';
 import { BannerStack } from '../components/BannerStack';
+import { ErrorInfo } from '../components/ErrorInfo';
 import { SearchProvider } from '../components/SearchContext';
 import { SideBarMenu } from '../components/SideBarMenu';
 import { SideBarMenuContextProvider } from '../components/SideBarMenuContext';
@@ -34,6 +35,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return json({ user, users, avatar, notifications: dismissedNotifications });
 };
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  return <ErrorInfo error={error} />;
+}
 
 export default function AppLayout() {
   const { user, users, avatar, notifications } = useLoaderData<typeof loader>();

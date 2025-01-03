@@ -2,7 +2,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Form, Link, NavLink, useFetcher, useLocation, useNavigation } from '@remix-run/react';
 import { useDebounce } from '@uidotdev/usehooks';
 import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { match } from 'ts-pattern';
 
@@ -213,7 +213,9 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
   const { search, setSearch } = useSearchContext();
   const fetcher = useFetcher<{ search: SearchResultListProps['results']; success: boolean }>({ key: 'search' });
   const debouncedSearch = useDebounce(search, 500);
+  const lastQuery = useRef<string>('');
   const [filter, setFilter] = useState<'Glossary' | 'Paragraph' | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<[number, 'Glossary' | 'Paragraph' | null]>([0, null]);
 
   const filteredResults = useMemo(() => {
     const result =
@@ -224,6 +226,7 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
         deletedAt: item.deletedAt ? new Date(item.deletedAt) : null,
       })) || [];
     if (filter) {
+      setSelectedIndex([0, null]);
       const filtered = result.filter((item) => item.type === filter);
       return filtered;
     }
@@ -233,14 +236,13 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
   useEffect(() => {
     if (debouncedSearch.length > 1) {
       const query = filter ? `/search?query=${debouncedSearch}&type=${filter}` : `/search?query=${debouncedSearch}`;
-      console.log({ filter, length: filteredResults.length, query });
-      if (filteredResults.length && filter) {
-        return;
+      if (query !== lastQuery.current) {
+        fetcher.load(query);
+        lastQuery.current = query;
       }
-      fetcher.load(query);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, filter]);
+  }, [debouncedSearch, filter, filteredResults]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -300,7 +302,11 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
               {debouncedSearch.length > 0 && fetcher.state === 'idle' && filteredResults?.length > 0 && (
                 <div className="h-full bg-secondary">
                   <div className="h-2"></div>
-                  <SearchResultList results={filteredResults} />
+                  <SearchResultList
+                    results={filteredResults}
+                    selectedIndex={selectedIndex}
+                    setSelectedIndex={setSelectedIndex}
+                  />
                 </div>
               )}
             </div>
@@ -368,11 +374,11 @@ const InputWithRightSegments = ({ onFilterClick, isLoading, setValue, value, ...
 };
 
 export interface SearchResultListProps {
+  setSelectedIndex: (index: [number, 'Glossary' | 'Paragraph' | null]) => void;
+  selectedIndex: [number, 'Glossary' | 'Paragraph' | null];
   results: ((ReadGlossary & { type: 'Glossary' }) | (ParagraphSearchResult[number] & { type: 'Paragraph' }))[];
 }
-const SearchResultList = ({ results }: SearchResultListProps) => {
-  const [selectedIndex, setSelectedIndex] = useState<[number, 'Glossary' | 'Paragraph' | null]>([0, null]);
-
+const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchResultListProps) => {
   const selectedResult = useMemo(() => {
     console.log({ selectedIndex, results });
     if (results.length > 0) {
