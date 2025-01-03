@@ -1,4 +1,6 @@
-import { json, type LoaderFunctionArgs } from '@vercel/remix';
+import type { LoaderFunctionArgs } from '@vercel/remix';
+
+import { json } from '@vercel/remix';
 
 import { searchAlgolia } from '../services/paragraph.service';
 
