@@ -270,10 +270,7 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
     <ClientOnly fallback={<div className="h-0 w-0">Loading...</div>}>
       {() => (
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent
-            showClose={false}
-            className="top-[10%] max-w-2xl translate-y-0 bg-secondary p-0.5 lg:max-w-4xl"
-          >
+          <DialogContent showClose={false} className="top-[5%] max-w-2xl translate-y-0 bg-secondary p-0.5 lg:max-w-4xl">
             <VisuallyHidden>
               <DialogHeader>
                 <DialogTitle>Search</DialogTitle>
@@ -391,8 +388,8 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
     return [];
   }, [selectedIndex, results]);
   return (
-    <div className="flex gap-1 lg:gap-4">
-      <ScrollArea className="h-[calc(100vh-15rem)] w-1/2 gap-4 pr-4">
+    <div className="flex h-[calc(100vh-10rem)] gap-1 lg:gap-4">
+      <ScrollArea className="w-1/2 gap-4 pr-4">
         {results.map((result, index) => (
           <div
             key={result.id}
@@ -403,7 +400,7 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
           </div>
         ))}
       </ScrollArea>
-      <div className="w-1/2">
+      <ScrollArea className="w-1/2 gap-4 pr-4">
         <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
           <ClientOnly fallback={<div>Loading...</div>}>
             {() =>
@@ -421,7 +418,7 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
             }
           </ClientOnly>
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 };
