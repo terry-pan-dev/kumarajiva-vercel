@@ -1,7 +1,9 @@
+import type { SearchQuery } from '@algolia/client-search';
+
 import { sql as postgresql } from '@vercel/postgres';
 import { and, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import 'dotenv/config';
+import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -105,26 +107,46 @@ const queryParagraphs = (ids: string[], numberOfHits: number) => {
     .limit(numberOfHits);
 };
 
-export const searchAlgolia = async (searchTerm: string): Promise<SearchResultListProps['results']> => {
+export const searchAlgolia = async ({
+  searchTerm,
+  searchType,
+}: {
+  searchTerm: string;
+  searchType?: 'Glossary' | 'Paragraph' | null;
+}): Promise<SearchResultListProps['results']> => {
   const numberOfHits = 10;
   const paragraphsIndexExist = await algoliaClient.indexExists({ indexName: 'paragraphs' });
   const glossariesIndexExist = await algoliaClient.indexExists({ indexName: 'glossaries' });
   if (!paragraphsIndexExist && !glossariesIndexExist) {
     return [];
   }
+  let searchQuery: SearchQuery[] = [];
+  if (searchType === 'Paragraph') {
+    searchQuery.push({
+      indexName: 'paragraphs',
+      query: searchTerm,
+      hitsPerPage: numberOfHits,
+    });
+  } else if (searchType === 'Glossary') {
+    searchQuery.push({
+      indexName: 'glossaries',
+      query: searchTerm,
+      hitsPerPage: numberOfHits,
+    });
+  } else {
+    searchQuery.push({
+      indexName: 'paragraphs',
+      query: searchTerm,
+      hitsPerPage: numberOfHits,
+    });
+    searchQuery.push({
+      indexName: 'glossaries',
+      query: searchTerm,
+      hitsPerPage: numberOfHits,
+    });
+  }
   const { results } = await algoliaClient.search<ReadParagraph>({
-    requests: [
-      {
-        indexName: 'paragraphs',
-        query: searchTerm,
-        hitsPerPage: numberOfHits,
-      },
-      {
-        indexName: 'glossaries',
-        query: searchTerm,
-        hitsPerPage: numberOfHits,
-      },
-    ],
+    requests: searchQuery,
   });
 
   let ids: string[] = [];

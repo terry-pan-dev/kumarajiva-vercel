@@ -27,7 +27,7 @@ export default function ContextMenuWrapper({ children }: PropsWithChildren) {
     const handleSelectionChange = () => {
       const selection = document.getSelection();
       if (selection && selection.toString().length > 0) {
-        setSelectedText(selection.toString().trim());
+        setSelectedText(selection.toString().trim().slice(0, 50));
       }
     };
 

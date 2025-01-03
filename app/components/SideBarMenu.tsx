@@ -4,6 +4,7 @@ import { useDebounce } from '@uidotdev/usehooks';
 import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
+import { match } from 'ts-pattern';
 
 import {
   Avatar,
@@ -15,6 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
+  RadioGroupItem,
+  RadioGroup,
   ScrollArea,
   Tooltip,
   TooltipContent,
@@ -209,13 +213,34 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
   const { search, setSearch } = useSearchContext();
   const fetcher = useFetcher<{ search: SearchResultListProps['results']; success: boolean }>({ key: 'search' });
   const debouncedSearch = useDebounce(search, 500);
+  const [filter, setFilter] = useState<'Glossary' | 'Paragraph' | null>(null);
+
+  const filteredResults = useMemo(() => {
+    const result =
+      fetcher.data?.search.map((item) => ({
+        ...item,
+        createdAt: new Date(item.createdAt),
+        updatedAt: new Date(item.updatedAt),
+        deletedAt: item.deletedAt ? new Date(item.deletedAt) : null,
+      })) || [];
+    if (filter) {
+      const filtered = result.filter((item) => item.type === filter);
+      return filtered;
+    }
+    return result;
+  }, [fetcher.data, filter]);
 
   useEffect(() => {
     if (debouncedSearch.length > 1) {
-      fetcher.load(`/search?query=${debouncedSearch}`);
+      const query = filter ? `/search?query=${debouncedSearch}&type=${filter}` : `/search?query=${debouncedSearch}`;
+      console.log({ filter, length: filteredResults.length, query });
+      if (filteredResults.length && filter) {
+        return;
+      }
+      fetcher.load(query);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filter]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -230,20 +255,10 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filteredResults = useMemo(() => {
-    return (
-      fetcher.data?.search.map((item) => ({
-        ...item,
-        createdAt: new Date(item.createdAt),
-        updatedAt: new Date(item.updatedAt),
-        deletedAt: item.deletedAt ? new Date(item.deletedAt) : null,
-      })) || []
-    );
-  }, [fetcher.data]);
-
   useEffect(() => {
     if (!open) {
       setSearch('');
+      setFilter(null);
       fetcher.load(`/search?query=${''}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,17 +280,16 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
             </VisuallyHidden>
             <div className="flex flex-col">
               <div className="flex items-center rounded-md bg-white">
-                <Input
+                <InputWithRightSegments
                   autoFocus
                   type="text"
                   value={search}
-                  placeholder="Type to search..."
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-xl border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                  setValue={setSearch}
+                  onFilterClick={setFilter}
+                  placeholder="Type to search...(max 50 characters)"
+                  isLoading={fetcher.state === 'loading' || fetcher.state === 'submitting'}
+                  className="w-full rounded-xl border-none text-md focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
-                {(fetcher.state === 'loading' || fetcher.state === 'submitting') && (
-                  <Icons.Loader className="ml-auto mr-1 h-5 w-5 animate-spin text-slate-500" />
-                )}
               </div>
               {debouncedSearch.length > 0 && filteredResults?.length === 0 && fetcher.data?.success && (
                 <div className="h-full bg-secondary">
@@ -297,23 +311,78 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
   );
 };
 
+interface InputWithIconsProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  onFilterClick: (filter: 'Paragraph' | 'Glossary' | null) => void;
+  value: string;
+  setValue: (value: string) => void;
+  isLoading?: boolean;
+}
+const InputWithRightSegments = ({ onFilterClick, isLoading, setValue, value, ...props }: InputWithIconsProps) => {
+  const handleFilterClick = (filter: 'Paragraph' | 'Glossary' | 'Both') => {
+    console.log('filter', { filter });
+    if (filter === 'Both') {
+      onFilterClick(null);
+    } else {
+      onFilterClick(filter);
+    }
+  };
+
+  return (
+    <div className="relative w-full">
+      <RadioGroup
+        defaultValue="Both"
+        className="flex flex-wrap justify-start gap-4 p-1"
+        onValueChange={(value) => handleFilterClick(value as 'Paragraph' | 'Glossary' | 'Both')}
+      >
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem id="glossary" value="Glossary" />
+          <Label htmlFor="glossary" className="cursor-pointer text-sm font-medium">
+            Glossary
+          </Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem id="sutra" value="Paragraph" />
+          <Label htmlFor="sutra" className="cursor-pointer text-sm font-medium">
+            Sutra
+          </Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem id="both" value={'Both'} />
+          <Label htmlFor="both" className="cursor-pointer text-sm font-medium">
+            Both
+          </Label>
+        </div>
+      </RadioGroup>
+      <div>
+        <Input {...props} value={value} type="search" maxLength={50} onChange={(e) => setValue(e.target.value)} />
+        <div className="absolute inset-y-0 right-0 flex items-center">
+          {isLoading && (
+            <div className="flex aspect-square h-full items-center justify-center">
+              <Icons.Loader className="h-4 w-4 animate-spin" />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export interface SearchResultListProps {
   results: ((ReadGlossary & { type: 'Glossary' }) | (ParagraphSearchResult[number] & { type: 'Paragraph' }))[];
 }
 const SearchResultList = ({ results }: SearchResultListProps) => {
-  const [selectedIndex, setSelectedIndex] = useState<[number, 'Glossary' | 'Paragraph']>([0, 'Glossary']);
+  const [selectedIndex, setSelectedIndex] = useState<[number, 'Glossary' | 'Paragraph' | null]>([0, null]);
 
-  useEffect(() => {
+  const selectedResult = useMemo(() => {
+    console.log({ selectedIndex, results });
     if (results.length > 0) {
-      setSelectedIndex([0, results[0].type]);
+      if (selectedIndex[1]) {
+        return results[selectedIndex[0]] as ParagraphSearchResult[number] | ReadGlossary;
+      } else {
+        return results[0] as ParagraphSearchResult[number] | ReadGlossary;
+      }
     }
-  }, [results]);
-
-  const selectedGlossary = useMemo(() => {
-    return results[selectedIndex[0]] as ReadGlossary;
-  }, [selectedIndex, results]);
-  const selectedParagraph = useMemo(() => {
-    return results[selectedIndex[0]] as ParagraphSearchResult[number];
+    return [];
   }, [selectedIndex, results]);
   return (
     <div className="flex gap-1 lg:gap-4">
@@ -332,11 +401,17 @@ const SearchResultList = ({ results }: SearchResultListProps) => {
         <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
           <ClientOnly fallback={<div>Loading...</div>}>
             {() =>
-              selectedIndex[1] === 'Glossary' ? (
-                <GlossaryDetail showEdit={false} glossary={selectedGlossary} />
-              ) : (
-                <ParagraphDetail paragraph={selectedParagraph} />
-              )
+              match(selectedIndex[1])
+                .with('Glossary', () => <GlossaryDetail showEdit={false} glossary={selectedResult as ReadGlossary} />)
+                .with('Paragraph', () => (
+                  <ParagraphDetail paragraph={selectedResult as ParagraphSearchResult[number]} />
+                ))
+                .otherwise(() =>
+                  match(results[0])
+                    .with({ type: 'Glossary' }, (glossary) => <GlossaryDetail showEdit={false} glossary={glossary} />)
+                    .with({ type: 'Paragraph' }, (paragraph) => <ParagraphDetail paragraph={paragraph} />)
+                    .otherwise(() => null),
+                )
             }
           </ClientOnly>
         </div>
