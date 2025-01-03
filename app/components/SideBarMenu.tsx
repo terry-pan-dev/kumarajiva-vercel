@@ -280,7 +280,7 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
                 <DialogDescription>Search for a term in the glossary, reference, or translation.</DialogDescription>
               </DialogHeader>
             </VisuallyHidden>
-            <div className="flex flex-col">
+            <div className="flex flex-col overflow-hidden">
               <div className="flex items-center rounded-md bg-white">
                 <InputWithRightSegments
                   autoFocus
@@ -392,7 +392,7 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
   }, [selectedIndex, results]);
   return (
     <div className="flex gap-1 lg:gap-4">
-      <ScrollArea className="h-[calc(100vh-10rem)] w-1/2 gap-4 pr-4">
+      <ScrollArea className="h-[calc(100vh-15rem)] w-1/2 gap-4 pr-4">
         {results.map((result, index) => (
           <div
             key={result.id}
