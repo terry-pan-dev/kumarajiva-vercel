@@ -23,3 +23,4 @@ export * from './slider';
 export * from './alert';
 export * from './hover-card';
 export * from './popover';
+export * from './switch';
