@@ -15,8 +15,8 @@ process.env.NODE_ENV === 'production' &&
         useMatches,
       }),
       Sentry.replayIntegration({
-        maskAllText: true,
-        blockAllMedia: true,
+        maskAllText: false,
+        blockAllMedia: false,
       }),
     ],
 
