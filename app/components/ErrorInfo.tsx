@@ -1,8 +1,8 @@
 import { isRouteErrorResponse, Link } from '@remix-run/react';
+import * as Sentry from '@sentry/remix';
 import { AlertTriangle, Bug } from 'lucide-react';
 
 import { Icons } from './icons';
-
 interface ErrorBoundaryProps {
   error: unknown;
 }
@@ -11,6 +11,8 @@ export const ErrorInfo = ({ error }: ErrorBoundaryProps) => {
   let errorHeading = 'Oops! Something went wrong';
   let errorMessage = 'An unexpected error occurred. Please try again later.';
   let errorStatusCode = 500;
+
+  Sentry.captureException(error);
 
   if (isRouteErrorResponse(error)) {
     errorHeading = `${error.status} ${error.statusText}`;

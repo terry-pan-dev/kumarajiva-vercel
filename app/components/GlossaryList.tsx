@@ -42,7 +42,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
                 onClick={() => setSelectedIndex(index)}
                 className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
               >
-                <GlossaryItem key={glossary.id} glossary={glossary} />
+                <GlossaryItem glossary={glossary} />
               </div>
             ))}
           </ScrollArea>
