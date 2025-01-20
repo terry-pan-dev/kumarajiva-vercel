@@ -160,9 +160,9 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
           {glossary.phonetic && <h2 className="font-mono text-md text-secondary-foreground">({glossary.phonetic})</h2>}
         </div>
 
-        {glossary.translations?.map((translation) => {
+        {glossary.translations?.map((translation, index) => {
           return (
-            <div key={translation.glossary}>
+            <div key={`${glossary.id}-${index}`}>
               <Divider>{translation.language.toUpperCase()}</Divider>
               <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
                 {translation.sutraName} | {translation.volume}
