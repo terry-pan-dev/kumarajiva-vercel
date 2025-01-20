@@ -6,4 +6,8 @@ if (process.env.NODE_ENV === 'production') {
     tracesSampleRate: 1,
     autoInstrumentRemix: true,
   });
+  Sentry.replayIntegration({
+    maskAllText: false,
+    maskAllInputs: false,
+  });
 }
