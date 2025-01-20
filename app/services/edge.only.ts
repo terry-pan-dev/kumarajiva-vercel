@@ -19,6 +19,7 @@ export const searchGlossaries = async (searchTerm: string, limit = 5): Promise<R
       {
         indexName: 'glossaries',
         query: searchTerm.trim(),
+        hitsPerPage: limit,
       },
     ],
   });
