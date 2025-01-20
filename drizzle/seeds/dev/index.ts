@@ -88,6 +88,40 @@ const main = async () => {
   }));
   await dbClient.insert(schema.glossariesTable).values(glossariesWithSearchId).onConflictDoNothing();
   console.log('seeding glossaries table done');
+  // const glossaries = JSON.parse(fs.readFileSync('drizzle/seeds/dev/glossary.json', 'utf8')) as schema.ReadGlossary[];
+
+  // // split glossaries into 1000 chunks
+  // const chunks = _.chunk(glossaries, 1000);
+  // for (const chunk of chunks) {
+  //   const glossariesResponse = await algoliaClient.saveObjects({
+  //     indexName: 'glossaries',
+  //     objects: chunk.map((glossary) => ({
+  //       id: glossary.id,
+  //       // @ts-ignore
+  //       phonetic: glossary.phoneticSearchable,
+  //       glossary: glossary.glossary,
+  //       translations: glossary.translations?.map((translation) => ({
+  //         // @ts-ignore
+  //         glossary: translation.glossarySearchable,
+  //         language: translation.language,
+  //       })),
+  //     })),
+  //   });
+  //   const glossariesWithSearchId = chunk.map((glossary, index) => ({
+  //     ...glossary,
+  //     searchId: glossariesResponse[0].objectIDs[index],
+  //   }));
+  //   const result = await dbClient
+  //     .insert(schema.glossariesTable)
+  //     .values(glossariesWithSearchId)
+  //     .onConflictDoNothing()
+  //     .returning({ glossary: schema.glossariesTable.glossary });
+  //   if (result.length !== chunk.length) {
+  //     console.log({ chunkLength: chunk.length, resultLength: result.length });
+  //   }
+  //   // sleep for 1 second
+  //   await new Promise((resolve) => setTimeout(resolve, 1000));
+  // }
 };
 
 main();
