@@ -25,7 +25,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
     const selectedGlossary = useMemo(() => {
-      return glossaries[selectedIndex];
+      return glossaries[selectedIndex ?? 0];
     }, [glossaries, selectedIndex]);
 
     if (!glossaries.length) {
@@ -49,9 +49,13 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
           <div className="w-1/2">
             <ScrollArea className="h-[calc(100vh-10rem)] gap-4 pr-4">
               <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
-                <ClientOnly fallback={<div>Loading...</div>}>
-                  {() => <GlossaryDetail showEdit={showEdit} glossary={selectedGlossary} />}
-                </ClientOnly>
+                {selectedGlossary ? (
+                  <ClientOnly fallback={<div>Loading...</div>}>
+                    {() => <GlossaryDetail showEdit={showEdit} glossary={selectedGlossary} />}
+                  </ClientOnly>
+                ) : (
+                  <div>Loading...</div>
+                )}
               </div>
             </ScrollArea>
           </div>
@@ -141,7 +145,7 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
             fetcherKey="edit-glossary"
             schema={glossaryEditFormSchema}
             defaultValues={{
-              id: glossary.id,
+              id: glossary?.id,
               translations: glossary.translations || [],
             }}
             trigger={
