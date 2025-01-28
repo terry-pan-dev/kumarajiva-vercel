@@ -148,6 +148,8 @@ export default function GlossaryIndex() {
           });
         }
       }
+    } else if (fetcher.data?.glossaries.length === 0 && searchTerm) {
+      setGlossariesState([]);
     }
   }, [fetcher.data, fetcher.state, searchTerm, fetcher.data?.page, page, glossaries]);
 
@@ -165,13 +167,19 @@ export default function GlossaryIndex() {
     <div>
       <SearchBar fetcher={fetcher} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       <div className="h-4" />
-      <InfiniteScroller
-        loadNext={loadNext}
-        ref={glossaryListRef}
-        loading={fetcher.state === 'loading' || fetcher.state === 'submitting'}
-      >
-        <GlossaryList ref={glossaryListRef} glossaries={glossariesState} />
-      </InfiniteScroller>
+      {glossariesState.length > 0 ? (
+        <InfiniteScroller
+          loadNext={loadNext}
+          ref={glossaryListRef}
+          loading={fetcher.state === 'loading' || fetcher.state === 'submitting'}
+        >
+          <GlossaryList ref={glossaryListRef} glossaries={glossariesState} />
+        </InfiniteScroller>
+      ) : (
+        <div className="flex h-full items-center justify-center">
+          <div className="text-lg font-bold">No glossary found</div>
+        </div>
+      )}
     </div>
   );
 }
