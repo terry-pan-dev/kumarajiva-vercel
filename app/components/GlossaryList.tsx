@@ -36,15 +36,19 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
       return (
         <div className="flex gap-1 lg:gap-4">
           <ScrollArea ref={ref} className="h-[calc(100vh-10rem)] w-1/2 gap-4 pr-4">
-            {glossaries.map((glossary, index) => (
-              <div
-                key={glossary.id}
-                onClick={() => setSelectedIndex(index)}
-                className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
-              >
-                <GlossaryItem glossary={glossary} />
-              </div>
-            ))}
+            {glossaries.length > 0 ? (
+              glossaries.map((glossary, index) => (
+                <div
+                  key={glossary.id}
+                  onClick={() => setSelectedIndex(index)}
+                  className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+                >
+                  <GlossaryItem glossary={glossary} />
+                </div>
+              ))
+            ) : (
+              <div>No glossaries found</div>
+            )}
           </ScrollArea>
           <div className="w-1/2">
             <ScrollArea className="h-[calc(100vh-10rem)] gap-4 pr-4">
@@ -54,7 +58,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
                     {() => <GlossaryDetail showEdit={showEdit} glossary={selectedGlossary} />}
                   </ClientOnly>
                 ) : (
-                  <div>Loading...</div>
+                  <div>No glossary selected</div>
                 )}
               </div>
             </ScrollArea>
