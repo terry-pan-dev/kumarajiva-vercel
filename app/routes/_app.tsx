@@ -22,7 +22,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
   const allUsers = await readUsers();
 
-  const avatar = allUsers.find((u) => u.id === user?.id)?.avatar;
   const users = allUsers.map((u) => ({
     id: u.id,
     username: u.username,
@@ -33,7 +32,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const notifications = await readActiveNotifications();
   const dismissedNotifications = notifications.filter((n) => !n.dismissedBy?.includes(user.id));
 
-  return json({ user, users, avatar, notifications: dismissedNotifications });
+  return json({ user, users, avatar: user.avatar, notifications: dismissedNotifications });
 };
 
 export function ErrorBoundary() {

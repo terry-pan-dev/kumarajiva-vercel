@@ -90,7 +90,7 @@ export const assertAuthUser = async (request: LoaderFunctionArgs['request']) => 
 
   return {
     ...prevUser,
-    avatar: '',
+    avatar: latestUser?.avatar,
     password: '',
   };
 };
