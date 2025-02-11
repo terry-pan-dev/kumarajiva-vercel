@@ -40,6 +40,7 @@ import {
 } from '../components/ui';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '../components/ui/hover-card';
 import { useToast } from '../hooks/use-toast';
+import { useScreenSize } from '../lib/hooks/useScreenSizeHook';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { readParagraphsByRollId, upsertParagraph, type IParagraph } from '../services/paragraph.service';
 import { readRollById } from '../services/roll.service';
@@ -133,7 +134,7 @@ export default function TranslationRoll() {
   const Paragraphs = paragraphsWithHistory.map((paragraph) => (
     <div key={paragraph.id} className="flex items-center gap-4 px-2">
       {paragraph?.target ? (
-        <div className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-2'} w-full gap-4`}>
+        <div className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-4`}>
           <ContextMenuWrapper>
             <Paragraph isOrigin text={paragraph.origin} />
           </ContextMenuWrapper>
@@ -159,7 +160,7 @@ export default function TranslationRoll() {
           <RadioGroupItem
             id={paragraph.id}
             value={paragraph.id}
-            className={`${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
+            className={`h-3 w-3 lg:h-4 lg:w-4 ${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
           />
           <Label
             htmlFor={paragraph.id}
@@ -181,15 +182,15 @@ export default function TranslationRoll() {
     return (
       <DragPanel>
         <LeftPanel>
-          <ScrollArea className="h-full w-full pr-4">
+          <ScrollArea className="h-full w-full lg:pr-4">
             <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
               {Paragraphs}
             </RadioGroup>
           </ScrollArea>
         </LeftPanel>
-        <ResizableHandle withHandle className="bg-yellow-600" />
+        <ResizableHandle withHandle className="my-2 bg-yellow-600 lg:my-0" />
         <RightPanel>
-          <ScrollArea className="h-full w-full pr-4">
+          <ScrollArea className="h-full w-full lg:pr-4">
             <Workspace paragraph={selectedParagraph} />
           </ScrollArea>
         </RightPanel>
@@ -202,8 +203,8 @@ export default function TranslationRoll() {
       <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
         {paragraphs.length ? (
           <>
-            <p className="text-center text-2xl">{rollInfo?.sutra.title}</p>
-            <p className="text-center text-lg">{rollInfo?.title}</p>
+            <p className="text-center text-lg lg:text-2xl">{rollInfo?.sutra.title}</p>
+            <p className="text-center text-md lg:text-lg">{rollInfo?.title}</p>
           </>
         ) : null}
         {paragraphs.length ? (
@@ -402,14 +403,18 @@ const LeftPanel = ({ children }: PropsWithChildren) => {
 const RightPanel = ({ children }: PropsWithChildren) => {
   return (
     <ResizablePanel minSize={40} defaultSize={50}>
-      <div className="flex h-full items-center justify-center pb-2 pl-8">{children}</div>
+      <div className="flex h-full items-center justify-center pb-2 lg:pl-8">{children}</div>
     </ResizablePanel>
   );
 };
 
 const DragPanel = ({ children }: PropsWithChildren) => {
+  const isSmallScreen = useScreenSize();
   return (
-    <ResizablePanelGroup direction="horizontal" className="w-full rounded-lg">
+    <ResizablePanelGroup
+      className="flex w-full rounded-lg lg:flex-row"
+      direction={isSmallScreen ? 'vertical' : 'horizontal'}
+    >
       {children}
     </ResizablePanelGroup>
   );
@@ -608,8 +613,8 @@ export const ParagraphHistoryTimeline = ({ histories }: ParagraphHistoryTimeline
                   <span className="text-md text-slate-500">{history.updatedAt.toLocaleString()}</span>
                   <span className="text-md font-medium">{user?.username || 'Unknown user'}</span>
                   <pre className="mt-1 whitespace-pre-wrap text-sm">
-                    <div className="grid grid-cols-2 gap-4 rounded bg-slate-50 p-2">
-                      <div className="max-w-lg border-r border-slate-200 pr-4">
+                    <div className="grid-col-1 grid gap-4 rounded bg-slate-50 p-2 lg:grid-cols-2">
+                      <div className="max-w-md border-r border-slate-200 pr-4 lg:max-w-lg">
                         {diffs.map((diff, i) => (
                           <span
                             key={`old-${i}`}

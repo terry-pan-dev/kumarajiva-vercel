@@ -144,7 +144,7 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
           >
             {trigger}
           </DialogTrigger>
-          <DialogContent className="max-w-2xl lg:max-w-4xl" aria-describedby="form-modal-description">
+          <DialogContent className="lg:max-w-4xl" aria-describedby="form-modal-description">
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
               <DialogDescription className="hidden">{description || 'form modal'}</DialogDescription>
@@ -154,7 +154,7 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
               <fetcher.Form method="post" onSubmit={form.handleSubmit(onSubmit)}>
                 <div>{children}</div>
                 <div className="h-4" />
-                <DialogFooter>
+                <DialogFooter className="gap-2">
                   <DialogClose asChild>
                     <Button type="button" variant="secondary" disabled={disabled} onClick={() => setOpen(false)}>
                       Close

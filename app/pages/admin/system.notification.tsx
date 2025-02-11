@@ -10,15 +10,15 @@ export const SystemNotification = ({ banners }: { banners: BannerType[] }) => {
   const fetcher = useFetcher();
 
   return (
-    <div className="px-4 py-12 sm:px-6 lg:px-8">
+    <div className="sm:px-6 lg:px-4 lg:py-12">
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 rounded-lg bg-white p-6 shadow-sm">
-          <h1 className="mb-6 text-2xl font-bold text-gray-900">Banner Management</h1>
+          <h1 className="mb-6 text-lg font-bold text-gray-900 lg:text-2xl">Banner Management</h1>
           <AdminBannerForm />
         </div>
 
         <div className="rounded-lg bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-xl font-semibold text-gray-900">Active Banners</h2>
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 lg:text-xl">Active Banners</h2>
           <div className="space-y-4">
             {banners.map((banner) => (
               <div key={banner.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
@@ -47,7 +47,7 @@ export const SystemNotification = ({ banners }: { banners: BannerType[] }) => {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center">
                   <fetcher.Form method="post">
                     <input name="kind" type="hidden" value="toggle-banner" />
                     <input type="hidden" name="bannerId" value={banner.id} />

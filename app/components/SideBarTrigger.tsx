@@ -1,3 +1,4 @@
+import { useScreenSize } from '../lib/hooks/useScreenSizeHook';
 import { cn } from '../lib/utils';
 import { Icons } from './icons';
 import { useSideBarMenuContext } from './SideBarMenuContext';
@@ -8,6 +9,10 @@ interface SideBarTriggerProps {
 
 export function SideBarTrigger({ className }: SideBarTriggerProps) {
   const { isOpen, setIsOpen } = useSideBarMenuContext();
+  const isSmallScreen = useScreenSize();
+  if (isSmallScreen) {
+    return null;
+  }
 
   return (
     <button

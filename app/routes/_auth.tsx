@@ -19,7 +19,7 @@ export default function Auth() {
           <nav className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-200">Kumarajiva</h2>
           </nav>
-          <div className="body mx-8 mt-20">
+          <div className="body mx-2 mt-2 lg:mx-8 lg:mt-20">
             <div className="items-center justify-between md:flex">
               <div className="mr-auto w-full md:w-1/2" style={{ textShadow: '0 20px 50px hsla(0,0%,0%,8)' }}>
                 <div className="flex flex-row justify-center gap-4">
@@ -95,7 +95,7 @@ export const TextGenerateEffect = ({
   return (
     <div className={cn('font-bold', className)}>
       <div className="mt-4">
-        <div className="font-huninn text-5xl font-bold leading-snug tracking-wide text-black [writing-mode:vertical-rl] dark:text-white">
+        <div className="font-huninn text-3xl font-bold leading-snug tracking-wide text-black [writing-mode:vertical-rl] dark:text-white lg:text-5xl">
           {renderWords()}
         </div>
       </div>

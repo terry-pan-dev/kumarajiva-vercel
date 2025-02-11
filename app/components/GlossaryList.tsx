@@ -34,24 +34,9 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
 
     if (glossaries.length) {
       return (
-        <div className="flex gap-1 lg:gap-4">
-          <ScrollArea ref={ref} className="h-[calc(100vh-10rem)] w-1/2 gap-4 pr-4">
-            {glossaries.length > 0 ? (
-              glossaries.map((glossary, index) => (
-                <div
-                  key={glossary.id}
-                  onClick={() => setSelectedIndex(index)}
-                  className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
-                >
-                  <GlossaryItem glossary={glossary} />
-                </div>
-              ))
-            ) : (
-              <div>No glossaries found</div>
-            )}
-          </ScrollArea>
-          <div className="w-1/2">
-            <ScrollArea className="h-[calc(100vh-10rem)] gap-4 pr-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
+          <div className="order-1 h-[calc(50vh-5rem)] w-full lg:order-2 lg:h-[calc(100vh-10rem)] lg:w-1/2">
+            <ScrollArea className="h-full lg:pr-4">
               <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
                 {selectedGlossary ? (
                   <ClientOnly fallback={<div>Loading...</div>}>
@@ -61,6 +46,23 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
                   <div>No glossary selected</div>
                 )}
               </div>
+            </ScrollArea>
+          </div>
+          <div className="order-2 h-[calc(50vh-5rem)] w-full lg:order-1 lg:h-[calc(100vh-10rem)] lg:w-1/2">
+            <ScrollArea ref={ref} className="h-full lg:pr-4">
+              {glossaries.length > 0 ? (
+                glossaries.map((glossary, index) => (
+                  <div
+                    key={glossary.id}
+                    onClick={() => setSelectedIndex(index)}
+                    className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+                  >
+                    <GlossaryItem glossary={glossary} />
+                  </div>
+                ))
+              ) : (
+                <div>No glossaries found</div>
+              )}
             </ScrollArea>
           </div>
         </div>
@@ -135,7 +137,7 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
 
   return (
     <Card className="flex h-full flex-col">
-      <CardHeader className="flex-row items-center justify-between pb-0">
+      <CardHeader className="flex-row items-center justify-between p-2 pb-0 lg:p-6">
         <fetcher.Form method="post" action="/glossary?index&page=-1">
           <input type="hidden" name="glossaryId" value={glossary?.id} />
           <button type="submit" name="bookmark" value={isBookmarked ? 'false' : 'true'}>
@@ -162,16 +164,16 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
           </FormModal>
         )}
       </CardHeader>
-      <CardContent className="flex-grow">
+      <CardContent className="flex-grow px-2 lg:px-6">
         <div className="my-2 flex flex-col items-start gap-2 lg:flex-row lg:items-end lg:justify-start">
-          <h2 className="text-3xl font-semibold tracking-tight text-primary">{glossary.glossary}</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-primary lg:text-3xl">{glossary.glossary}</h2>
           {glossary.phonetic && <h2 className="font-mono text-md text-secondary-foreground">({glossary.phonetic})</h2>}
         </div>
 
         {glossary.translations?.map((translation, index) => {
           return (
             <div key={`${glossary.id}-${index}`}>
-              <Divider>{translation.language.toUpperCase()}</Divider>
+              <Divider className="py-1 lg:py-3">{translation.language.toUpperCase()}</Divider>
               <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
                 {translation.sutraName} | {translation.volume}
               </Badge>
@@ -182,7 +184,9 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
                 </div>
               )}
               <Spacer />
-              <h2 className="mb-2 text-2xl font-semibold tracking-tight text-primary">{translation.glossary}</h2>
+              <h2 className="mb-2 text-xl font-semibold tracking-tight text-primary lg:text-2xl">
+                {translation.glossary}
+              </h2>
               {translation.targetSutraText && (
                 <div className="flex items-center gap-2">
                   <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
@@ -194,26 +198,26 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
         })}
       </CardContent>
       <Separator className="px-2" />
-      <CardFooter className="flex-col items-center justify-between pt-6 text-sm text-muted-foreground lg:flex-row">
+      <CardFooter className="flex items-center justify-between p-2 text-sm text-muted-foreground lg:flex-row lg:justify-around lg:p-6 lg:pt-6">
         <div className="flex items-center gap-2 rounded-lg border-2 border-gray-500 px-2 py-1">
           <span className="text-xs font-medium text-muted-foreground">CBETA</span>
           <span className="text-xs font-medium text-muted-foreground">|</span>
           <span className="text-xs font-bold text-muted-foreground">{glossary.cbetaFrequency}</span>
         </div>
-        <div className="flex flex-col gap-2 md:flex-row">
-          <div className="flex items-center gap-2">
-            <Icons.LineChart className="h-4 w-4" />
-            <span>{glossary.subscribers}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Icons.User className="h-4 w-4" />
-            <span>{glossary.author || glossary.updatedBy}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Icons.Clock className="h-4 w-4" />
-            <span>{glossary.updatedAt.toLocaleDateString()}</span>
-          </div>
+        {/* <div className="flex flex-col gap-2 md:flex-row"> */}
+        <div className="flex items-center gap-2">
+          <Icons.LineChart className="h-4 w-4" />
+          <span>{glossary.subscribers}</span>
         </div>
+        <div className="flex items-center gap-2">
+          <Icons.User className="h-4 w-4" />
+          <span>{glossary.author || glossary.updatedBy}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Icons.Clock className="h-4 w-4" />
+          <span>{glossary.updatedAt.toLocaleDateString()}</span>
+        </div>
+        {/* </div> */}
       </CardFooter>
     </Card>
   );
