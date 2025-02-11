@@ -1,6 +1,7 @@
 import { Outlet } from '@remix-run/react';
 import { motion, stagger, useAnimate } from 'framer-motion';
 import { useEffect } from 'react';
+import { ClientOnly } from 'remix-utils/client-only';
 
 import { cn } from '~/lib/utils';
 
@@ -11,7 +12,7 @@ export default function Auth() {
       <header
         className="h-full bg-cover"
         style={{
-          backgroundImage: "url('https://ik.imagekit.io/q5edmtudmz/peter-lloyd-680526-unsplash_TYZn4kayG.jpg')",
+          backgroundImage: 'url(https://ik.imagekit.io/q5edmtudmz/peter-lloyd-680526-unsplash_TYZn4kayG.jpg)',
         }}
       >
         <div className="content px-8 py-2">
@@ -22,7 +23,9 @@ export default function Auth() {
             <div className="items-center justify-between md:flex">
               <div className="mr-auto w-full md:w-1/2" style={{ textShadow: '0 20px 50px hsla(0,0%,0%,8)' }}>
                 <div className="flex flex-row justify-center gap-4">
-                  <TextGenerateEffect paragraph={paragraph} />
+                  <ClientOnly fallback={<div>Loading...</div>}>
+                    {() => <TextGenerateEffect paragraph={paragraph} />}
+                  </ClientOnly>
                 </div>
               </div>
               <div className="mt-6 w-full md:max-w-md">
