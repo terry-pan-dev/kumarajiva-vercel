@@ -387,20 +387,10 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
     }
     return [];
   }, [selectedIndex, results]);
+
   return (
-    <div className="flex h-[calc(100vh-10rem)] gap-1 lg:gap-4">
-      <ScrollArea className="w-1/2 gap-4 pr-4">
-        {results.map((result, index) => (
-          <div
-            key={result.id}
-            onClick={() => setSelectedIndex([index, result.type])}
-            className={`mb-2 ${selectedIndex[0] === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
-          >
-            {result.type === 'Glossary' ? <GlossaryItem glossary={result} /> : <ParagraphItem paragraph={result} />}
-          </div>
-        ))}
-      </ScrollArea>
-      <ScrollArea className="w-1/2 gap-4 pr-4">
+    <div className="flex h-[calc(100vh-10rem)] flex-col gap-4 px-2 lg:flex-row lg:gap-4">
+      <ScrollArea className="order-1 h-1/2 w-full lg:order-2 lg:h-full lg:w-1/2 lg:pr-4">
         <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
           <ClientOnly fallback={<div>Loading...</div>}>
             {() =>
@@ -418,6 +408,17 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
             }
           </ClientOnly>
         </div>
+      </ScrollArea>
+      <ScrollArea className="order-2 h-1/2 w-full lg:order-1 lg:h-full lg:w-1/2 lg:pr-4">
+        {results.map((result, index) => (
+          <div
+            key={result.id}
+            onClick={() => setSelectedIndex([index, result.type])}
+            className={`mb-2 ${selectedIndex[0] === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+          >
+            {result.type === 'Glossary' ? <GlossaryItem glossary={result} /> : <ParagraphItem paragraph={result} />}
+          </div>
+        ))}
       </ScrollArea>
     </div>
   );

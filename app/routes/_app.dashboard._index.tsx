@@ -1,13 +1,13 @@
 export default function DashboardIndexRoute() {
   return (
-    <div className="mx-auto max-w-6xl rounded-lg bg-gray-200 p-8 shadow-lg">
-      <h1 className="mb-4 text-center text-3xl font-bold">
+    <div className="mx-auto max-w-6xl rounded-lg bg-gray-200 p-4 shadow-lg lg:p-8">
+      <h1 className="mb-4 text-center text-xl font-bold lg:text-3xl">
         The Eight Guidelines for Translators and Volunteers
         <br />
         譯經八項基本守則
       </h1>
 
-      <ol className="list-inside list-decimal space-y-2 text-lg">
+      <ol className="list-inside list-decimal space-y-2 text-md lg:text-xl">
         <li>Translators and volunteers must free themselves from the motives of personal fame and reputation.</li>
         <li>Translators and volunteers must cultivate an attitude free from arrogance and conceit.</li>
         <li>Translators and volunteers must refrain from aggrandizing themselves and denigrating others.</li>
@@ -30,7 +30,7 @@ export default function DashboardIndexRoute() {
         </li>
       </ol>
 
-      <ol className="mt-4 list-inside list-decimal space-y-2 text-left text-lg">
+      <ol className="mt-4 list-inside list-decimal space-y-2 text-left text-md lg:text-xl">
         <li>從事翻譯工作者不得拘有個人的名利。</li>
         <li>從事翻譯工作者不得自高自慢，必須以虛懷謙恭的態度來工作。</li>
         <li>從事翻譯工作者不得自增貶彼。</li>

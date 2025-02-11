@@ -81,7 +81,7 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
   return (
     <FormProvider {...form}>
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-2 gap-4 bg-white p-4">
+        <div className="grid grid-cols-1 gap-4 bg-white p-4 lg:grid-cols-2">
           <input type="hidden" {...form.register('id')} value={user.id} />
           <div className="space-y-2">
             <label htmlFor={`username`} className="text-sm font-medium">

@@ -45,7 +45,7 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function SettingsIndex() {
   return (
     <Tabs className="w-full" defaultValue="glossary">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid h-full w-full grid-cols-1 lg:grid-cols-4">
         <TabsTrigger value="glossary">Glossary Subscriptions</TabsTrigger>
         <TabsTrigger value="font-settings">Font Settings</TabsTrigger>
         <TabsTrigger value="user-settings">User Settings</TabsTrigger>
@@ -106,7 +106,7 @@ function AvatarEditPage() {
   return (
     <Card className="mx-auto w-full max-w-md text-foreground">
       <CardHeader>
-        <CardTitle>Edit Your Avatar</CardTitle>
+        <CardTitle className="text-lg">Edit Your Avatar</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex justify-center">
@@ -207,7 +207,7 @@ export function FontSizePreference() {
   return (
     <Card className="mx-auto w-full max-w-md bg-white text-foreground dark:bg-gray-950">
       <CardHeader>
-        <CardTitle>Font Size Preferences</CardTitle>
+        <CardTitle className="text-lg">Font Size Preferences</CardTitle>
         <CardDescription>Adjust the font size to your liking</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

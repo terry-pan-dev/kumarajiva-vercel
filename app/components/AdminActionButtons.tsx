@@ -95,7 +95,7 @@ export default function AdminActionButtons({ teams }: { teams: ReadTeam[] }) {
 
 const AddTeamForm = () => {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <FormInput required name="name" label="Team Name" description="The name of the team." />
       <FormInput required name="alias" label="Team Alias" description="The alias of the team." />
     </div>
@@ -117,7 +117,7 @@ const AddUserForm = ({ teams }: { teams: ReadTeam[] }) => {
   }));
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 gap-1 lg:grid-cols-2 lg:gap-4">
       <FormInput required name="username" label="User Name" description="The name of the user." />
       <FormInput required name="email" label="Email" description="The email of the user." />
       <FormSelect required label="Team" name="teamId" options={teamOptions} description="The team of the user." />

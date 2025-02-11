@@ -103,11 +103,16 @@ export default function TranslationIndex() {
       key={sutra.id}
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.3 }}
-      className="m-2 cursor-pointer rounded-lg shadow-md"
+      className={`m-2 cursor-pointer rounded-lg shadow-md`}
     >
       {sutra.children ? (
         <div onClick={() => setSutraId(sutra.id)}>
-          <TranslationCard title={sutra.title} subtitle={sutra.category} translator={sutra.translator} />
+          <TranslationCard
+            title={sutra.title}
+            subtitle={sutra.category}
+            translator={sutra.translator}
+            isSelected={sutraId === sutra.id}
+          />
         </div>
       ) : (
         <FormModal
@@ -191,15 +196,14 @@ export default function TranslationIndex() {
       initial={false}
       transition={{ duration: 0.5 }}
       animate={{ flexDirection: sutraId ? 'row' : 'column' }}
-      className={`flex ${sutraId ? 'flex-row' : 'items-center'}`}
+      className={`flex ${sutraId ? 'flex-row' : 'items-center justify-center'}`}
     >
       <motion.div
-        className="flex flex-col"
         transition={{ duration: 0.3 }}
         animate={{
-          width: sutraId ? '50%' : '50%',
           height: sutraId ? 'auto' : '100%',
         }}
+        className="w-full flex-1 flex-col items-center justify-start lg:w-1/2"
       >
         {Sutras}
       </motion.div>
