@@ -70,7 +70,7 @@ export const ErrorBoundary = () => {
 
 export default function LoginFormRoute() {
   return (
-    <div className="mx-auto w-full rounded-lg bg-white p-4 shadow-input dark:bg-black md:rounded-2xl md:p-8 lg:max-w-md">
+    <div className="mx-auto h-full w-full rounded-lg bg-white p-4 shadow-input dark:bg-black md:rounded-2xl md:p-8 lg:max-w-md">
       <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-200">Welcome to Kumarajiva</h2>
       <p className="mt-2 max-w-sm text-sm text-neutral-600 dark:text-neutral-300">
         Kumarajiva is a internal use tool. Login if you can, otherwise ask admin to invite you.
