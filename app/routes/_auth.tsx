@@ -6,7 +6,7 @@ import { ClientOnly } from 'remix-utils/client-only';
 export default function Auth() {
   const paragraph = '若人欲了知，三世一切佛，应观法界性，一切唯心造';
   return (
-    <div className="h-[100dhv]">
+    <div className="h-[100dhv] lg:h-screen">
       <header
         className="h-full bg-cover"
         style={{
