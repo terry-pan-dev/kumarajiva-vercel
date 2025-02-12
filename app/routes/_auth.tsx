@@ -6,7 +6,7 @@ import { ClientOnly } from 'remix-utils/client-only';
 export default function Auth() {
   const paragraph = '若人欲了知，三世一切佛，应观法界性，一切唯心造';
   return (
-    <div className="h-screen">
+    <div className="h-[100dhv]">
       <header
         className="h-full bg-cover"
         style={{
@@ -26,7 +26,7 @@ export default function Auth() {
                   </ClientOnly>
                 </div>
               </div>
-              <div className="mt-6 w-full md:max-w-md">
+              <div className="mb-8 mt-6 w-full md:max-w-md lg:mt-6">
                 <Outlet />
               </div>
             </div>
@@ -91,7 +91,7 @@ export const TextGenerateEffect = ({
   };
 
   return (
-    <div className="font-huninn text-3xl font-bold leading-snug tracking-wide text-black [writing-mode:vertical-rl] dark:text-white lg:text-5xl">
+    <div className="font-huninn text-2xl font-bold leading-snug tracking-wide text-black [writing-mode:vertical-rl] dark:text-white lg:text-5xl">
       {renderWords()}
     </div>
   );
