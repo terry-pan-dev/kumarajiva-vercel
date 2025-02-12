@@ -3,8 +3,6 @@ import { motion, stagger, useAnimate } from 'framer-motion';
 import { useEffect } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { cn } from '~/lib/utils';
-
 export default function Auth() {
   const paragraph = '若人欲了知，三世一切佛，应观法界性，一切唯心造';
   return (
@@ -93,12 +91,8 @@ export const TextGenerateEffect = ({
   };
 
   return (
-    <div className={cn('font-bold', className)}>
-      <div className="mt-4">
-        <div className="font-huninn text-3xl font-bold leading-snug tracking-wide text-black [writing-mode:vertical-rl] dark:text-white lg:text-5xl">
-          {renderWords()}
-        </div>
-      </div>
+    <div className="font-huninn text-3xl font-bold leading-snug tracking-wide text-black [writing-mode:vertical-rl] dark:text-white lg:text-5xl">
+      {renderWords()}
     </div>
   );
 };
