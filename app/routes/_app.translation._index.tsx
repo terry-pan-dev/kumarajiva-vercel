@@ -200,10 +200,10 @@ export default function TranslationIndex() {
     >
       <motion.div
         transition={{ duration: 0.3 }}
-        className="w-1/2 flex-col items-center justify-start"
         animate={{
           height: sutraId ? 'auto' : '100%',
         }}
+        className={`flex-col items-center justify-start ${sutraId ? 'w-1/2' : 'w-full'}`}
       >
         {Sutras}
       </motion.div>
