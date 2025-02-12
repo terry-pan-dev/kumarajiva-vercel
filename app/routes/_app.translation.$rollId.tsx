@@ -199,7 +199,7 @@ export default function TranslationRoll() {
   }
 
   return (
-    <ScrollArea className="h-full px-2 lg:px-8">
+    <ScrollArea className="h-full px-0 lg:px-8">
       <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
         {paragraphs.length ? (
           <>
@@ -658,6 +658,7 @@ const PromptGlossaryInfo = ({
   loading: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const isSmallScreen = useScreenSize();
   const tableData = glossaries.map((glossary) => ({
     term: glossary.glossary,
     definition: glossary.translations?.map((translation) => translation.glossary) || [],
@@ -670,12 +671,16 @@ const PromptGlossaryInfo = ({
           <span className="sr-only">Open glossary</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" side={'right'} className="w-[450px] p-0">
+      <PopoverContent
+        className="w-full p-0 lg:w-[450px]"
+        align={isSmallScreen ? 'end' : 'start'}
+        side={isSmallScreen ? 'bottom' : 'right'}
+      >
         <div className="rounded-t-lg bg-gray-100 p-4 dark:bg-gray-800">
-          <h3 className="text-lg font-semibold">Glossary Info</h3>
+          <h3 className="text-md font-semibold lg:text-lg">Glossary Info</h3>
           <p className="text-sm text-gray-500">(glossary maybe used in AI translation)</p>
         </div>
-        <div className="p-4">
+        <div className="max-w-sm p-4 lg:max-w-full">
           <HighlightedParagraph text={originSutraText} keywords={glossaries.map((glossary) => glossary.glossary)} />
           <Separator className="my-4" />
           {tokens?.length ? <p className="text-sm text-gray-500">Tokens: {tokens.join(', ')}</p> : null}
