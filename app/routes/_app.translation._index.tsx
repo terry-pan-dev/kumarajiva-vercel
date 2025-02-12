@@ -156,7 +156,7 @@ export default function TranslationIndex() {
       transition={{ duration: 0.3 }}
       exit={{ opacity: 0, x: '100%' }}
       initial={{ opacity: 0, x: '100%' }}
-      className="cursor-pointer rounded-lg shadow-md"
+      className="mb-2 cursor-pointer rounded-lg shadow-md"
     >
       {roll.children ? (
         <Link to={`/translation/${roll.id}`}>
@@ -200,21 +200,21 @@ export default function TranslationIndex() {
     >
       <motion.div
         transition={{ duration: 0.3 }}
+        className="w-full flex-col items-center justify-start lg:w-1/2"
         animate={{
           height: sutraId ? 'auto' : '100%',
         }}
-        className="w-full flex-1 flex-col items-center justify-start lg:w-1/2"
       >
         {Sutras}
       </motion.div>
       <AnimatePresence>
         {sutraId && (
           <motion.div
+            className="m-2 w-1/2"
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
             exit={{ opacity: 0, x: '100%' }}
             initial={{ opacity: 0, x: '100%' }}
-            className="m-2 flex w-1/2 flex-col gap-4"
           >
             {Rolls}
           </motion.div>

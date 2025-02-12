@@ -318,7 +318,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
         <fetcher.Form method="post" className="mt-auto" onSubmit={handleSubmit(onSubmit)}>
           <div className="mt-auto grid w-full gap-2">
             <input type="hidden" {...register('paragraphId')} />
-            <Can I="Create" this="Paragraph">
+            <Can I="Read" this="Paragraph">
               <Textarea
                 className="h-8 text-md"
                 disabled={disabledEdit}

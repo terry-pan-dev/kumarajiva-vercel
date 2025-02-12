@@ -79,7 +79,7 @@ export default function TranslationLayout() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-secondary px-2 lg:px-4">
+    <div className="flex h-full w-full flex-col bg-secondary px-2 lg:px-4">
       <div className="my-2 flex h-10 w-full items-center justify-between gap-8 text-xl font-semibold">
         <div className="flex h-10 items-center gap-2">
           <SideBarTrigger />
