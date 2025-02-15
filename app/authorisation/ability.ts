@@ -31,9 +31,9 @@ export const defineAbilityFor = (user: ReadUser) => {
     user.role === 'editor' ||
     user.role === 'leader' ||
     user.role === 'manager' ||
-    user.role === 'assistant' ||
-    user.role === 'reader'
+    user.role === 'assistant'
   ) {
+    can('Read', 'Glossary');
     can('Create', 'Glossary');
     can('Update', 'Glossary');
   }

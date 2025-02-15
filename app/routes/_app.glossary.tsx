@@ -2,6 +2,7 @@ import { Outlet, useLoaderData } from '@remix-run/react';
 import { json, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 
 import { assertAuthUser } from '../auth.server';
+import { Can } from '../authorisation';
 import { FormInput, FormModal, FormTextarea } from '../components/FormModal';
 import { SideBarTrigger } from '../components/SideBarTrigger';
 import { Button } from '../components/ui/button';
@@ -29,7 +30,9 @@ export default function GlossaryLayout() {
             <SideBarTrigger />
             Glossary
           </div>
-          <GlossaryCreateModal />
+          <Can I="Read" this="Glossary">
+            <GlossaryCreateModal />
+          </Can>
         </div>
       </div>
       <Separator className="mb-4 bg-yellow-600" />

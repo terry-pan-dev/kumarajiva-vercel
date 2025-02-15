@@ -96,6 +96,8 @@ export default function TranslationRoll() {
 
   const labelRef = useRef<HTMLLabelElement>(null);
 
+  const context = useOutletContext<{ user: ReadUser }>();
+
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
 
   useEffect(() => {
@@ -160,6 +162,7 @@ export default function TranslationRoll() {
           <RadioGroupItem
             id={paragraph.id}
             value={paragraph.id}
+            disabled={context.user.role === 'reader'}
             className={`h-3 w-3 lg:h-4 lg:w-4 ${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
           />
           <Label
