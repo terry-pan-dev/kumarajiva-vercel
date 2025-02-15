@@ -7,6 +7,7 @@ import { ClientOnly } from 'remix-utils/client-only';
 
 import { type ReadGlossary } from '~/drizzle/tables';
 
+import { Can } from '../authorisation';
 import { Icons } from '../components/icons';
 import { Badge, Button, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
 import { Divider } from '../components/ui/divider';
@@ -145,23 +146,25 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
           </button>
         </fetcher.Form>
         {showEdit && (
-          <FormModal
-            kind="edit"
-            title="Update Glossary"
-            fetcherKey="edit-glossary"
-            schema={glossaryEditFormSchema}
-            defaultValues={{
-              id: glossary?.id,
-              translations: glossary.translations || [],
-            }}
-            trigger={
-              <Button size="icon" variant="ghost">
-                <Icons.SquarePen className="h-6 w-6 text-slate-800" />
-              </Button>
-            }
-          >
-            <GlossaryEditForm id={glossary.id} />
-          </FormModal>
+          <Can I="Read" this="Glossary">
+            <FormModal
+              kind="edit"
+              title="Update Glossary"
+              fetcherKey="edit-glossary"
+              schema={glossaryEditFormSchema}
+              defaultValues={{
+                id: glossary?.id,
+                translations: glossary.translations || [],
+              }}
+              trigger={
+                <Button size="icon" variant="ghost">
+                  <Icons.SquarePen className="h-6 w-6 text-slate-800" />
+                </Button>
+              }
+            >
+              <GlossaryEditForm id={glossary.id} />
+            </FormModal>
+          </Can>
         )}
       </CardHeader>
       <CardContent className="flex-grow px-2 lg:px-6">
