@@ -27,6 +27,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (searchTerm) {
       console.log('searchTerm', searchTerm);
       const glossaries = await searchGlossaries(searchTerm);
+      console.log('glossaries', glossaries);
       return json({ success: true, glossaries, page: -1 });
     }
 
