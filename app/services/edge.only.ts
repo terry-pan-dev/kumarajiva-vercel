@@ -27,7 +27,14 @@ export const searchGlossaries = async (searchTerm: string, limit = 5): Promise<R
     if ('hits' in results[0]) {
       console.log('results', results[0]);
       const ids = results[0].hits.map((hit) => hit.id);
-      return dbClient.select().from(glossariesTable).where(inArray(glossariesTable.id, ids)).limit(limit);
+      console.log('ids', ids);
+      const dbResults = await dbClient
+        .select()
+        .from(glossariesTable)
+        .where(inArray(glossariesTable.id, ids))
+        .limit(limit);
+      console.log('dbResults', dbResults);
+      return dbResults;
     }
   }
   return [];
