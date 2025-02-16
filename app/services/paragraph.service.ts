@@ -7,7 +7,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ReadHistory, CreateParagraph, ReadParagraph, ReadReference } from '~/drizzle/schema';
+import type { ReadHistory, CreateParagraph, ReadParagraph, ReadReference, ReadGlossary } from '~/drizzle/schema';
 
 import { glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
 import * as schema from '~/drizzle/schema';
@@ -157,7 +157,11 @@ export const searchAlgolia = async ({
         if (result.index === 'paragraphs') {
           ids = result.hits.map((hit) => hit.id);
           const paragraphs = await queryParagraphs(ids, numberOfHits);
-          searchResults.push(...paragraphs?.map((p) => ({ ...p, type: 'Paragraph' as const })));
+          // reorder the results based on the ids and filter out undefined values
+          const reorderedResults = ids
+            .map((id) => paragraphs?.find((p) => p.id === id))
+            .filter((result) => result !== undefined); // Type guard to ensure result is ReadParagraph
+          searchResults.push(...reorderedResults?.map((p) => ({ ...p, type: 'Paragraph' as const })));
         }
         if (result.index === 'glossaries') {
           ids = result.hits.map((hit) => hit.id);
@@ -166,7 +170,11 @@ export const searchAlgolia = async ({
             .from(glossariesTable)
             .where(inArray(glossariesTable.id, ids))
             .limit(numberOfHits);
-          searchResults.push(...glossaries?.map((g) => ({ ...g, type: 'Glossary' as const })));
+          // reorder the results based on the ids and filter out undefined values
+          const reorderedResults = ids
+            .map((id) => glossaries?.find((g) => g.id === id))
+            .filter((result): result is ReadGlossary => result !== undefined); // Type guard to ensure result is ReadGlossary
+          searchResults.push(...reorderedResults?.map((g) => ({ ...g, type: 'Glossary' as const })));
         }
       }
     }
