@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy, Info } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
+import Markdown from 'react-markdown';
 import { ZodError, type z } from 'zod';
 
 import { Icons } from '~/components/icons';
@@ -429,21 +430,12 @@ interface StreamCardProps {
 }
 
 const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
-  const context = useOutletContext<{ user: ReadUser }>();
   const formContext = useFormContext();
   const fetcher = useFetcher<{ success: boolean; glossaries: ReadGlossary[]; tokens: string[] }>();
   const loading = fetcher.state === 'loading' || fetcher.state === 'submitting';
   const [translationResult, setTranslationResult] = useState<string>('');
   const [refresh, setRefresh] = useState(false);
   const textRef = useRef<string>('');
-  const abortController = new AbortController();
-  const req = new Request(
-    `/openai?origin=${text}&sourceLang=${context.user.originLang}&targetLang=${context.user.targetLang}`,
-    {
-      method: 'GET',
-      signal: abortController.signal,
-    },
-  );
 
   const [glossaries, setGlossaries] = useState<ReadGlossary[]>([]);
   const [tokens, setTokens] = useState<string[]>([]);
@@ -471,6 +463,19 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
     setTranslationResult('');
     textRef.current = '';
     const condition = true;
+    const req = new Request(`/openai`, {
+      method: 'POST',
+      body: JSON.stringify({
+        origin: text,
+        glossaries: glossaries.reduce(
+          (acc, glossary) => {
+            acc[glossary.glossary] = glossary.translations?.map((translation) => translation.glossary) || [];
+            return acc;
+          },
+          {} as Record<string, string[]>,
+        ),
+      }),
+    });
     const fetchStream = async () => {
       try {
         const response = await fetch(req);
@@ -497,11 +502,13 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
     };
 
     if (refresh || text) {
-      fetchStream();
+      if (tokens.length || glossaries.length) {
+        fetchStream();
+      }
       setRefresh(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, refresh]);
+  }, [text, refresh, glossaries, tokens]);
 
   return (
     <>
@@ -544,7 +551,19 @@ const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
         <div className="text-md font-medium">{title}</div>
         <div className="flex items-center">{buttons}</div>
       </div>
-      <p className="text-md text-slate-500">{text}</p>
+      <Markdown
+        components={{
+          h3(props) {
+            return <h3 className="text-md font-semibold" {...props} />;
+          },
+          p(props) {
+            return <p className="text-md text-slate-500" {...props} />;
+          },
+        }}
+      >
+        {text}
+      </Markdown>
+      {/* <p className="text-md text-slate-500">{text}</p> */}
     </div>
   );
 };
