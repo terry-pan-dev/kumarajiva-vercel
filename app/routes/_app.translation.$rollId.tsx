@@ -4,8 +4,9 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy, Info } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
+import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren, useCallback } from 'react';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
+import Markdown from 'react-markdown';
 import { ZodError, type z } from 'zod';
 
 import { Icons } from '~/components/icons';
@@ -429,21 +430,12 @@ interface StreamCardProps {
 }
 
 const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
-  const context = useOutletContext<{ user: ReadUser }>();
   const formContext = useFormContext();
   const fetcher = useFetcher<{ success: boolean; glossaries: ReadGlossary[]; tokens: string[] }>();
   const loading = fetcher.state === 'loading' || fetcher.state === 'submitting';
   const [translationResult, setTranslationResult] = useState<string>('');
   const [refresh, setRefresh] = useState(false);
   const textRef = useRef<string>('');
-  const abortController = new AbortController();
-  const req = new Request(
-    `/openai?origin=${text}&sourceLang=${context.user.originLang}&targetLang=${context.user.targetLang}`,
-    {
-      method: 'GET',
-      signal: abortController.signal,
-    },
-  );
 
   const [glossaries, setGlossaries] = useState<ReadGlossary[]>([]);
   const [tokens, setTokens] = useState<string[]>([]);
@@ -467,41 +459,87 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
     }
   }, [fetcher.data]);
 
+  // Add AbortController ref to manage request lifecycle
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup function to abort ongoing requests
+  const cleanupStream = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount or text change
+  useEffect(() => {
+    return () => cleanupStream();
+  }, [cleanupStream]);
+
   useEffect(() => {
     setTranslationResult('');
     textRef.current = '';
-    const condition = true;
+
+    // Clean up previous stream before starting new one
+    cleanupStream();
+
     const fetchStream = async () => {
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined = undefined;
       try {
+        // Create new AbortController for this request
+        abortControllerRef.current = new AbortController();
+
+        const req = new Request(`/openai`, {
+          method: 'POST',
+          body: JSON.stringify({
+            origin: text,
+            glossaries: glossaries.reduce(
+              (acc, glossary) => {
+                acc[glossary.glossary] = glossary.translations?.map((translation) => translation.glossary) || [];
+                return acc;
+              },
+              {} as Record<string, string[]>,
+            ),
+          }),
+          // Add signal to request
+          signal: abortControllerRef.current.signal,
+        });
+
         const response = await fetch(req);
-        const reader = response.body?.getReader();
+        reader = response.body?.getReader();
         const decoder = new TextDecoder();
 
-        while (condition) {
-          if (reader) {
-            const { done, value } = await reader.read();
-            if (done) {
-              break;
-            }
-            const chunk = decoder.decode(value);
-            setTranslationResult((prev) => prev + chunk);
-            textRef.current += chunk;
+        while (true) {
+          if (!reader) break;
+
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // Check if request was aborted
+          if (abortControllerRef.current?.signal.aborted) {
+            throw new Error('Stream aborted');
           }
+
+          const chunk = decoder.decode(value);
+          setTranslationResult((prev) => prev + chunk);
+          textRef.current += chunk;
         }
       } catch (error) {
         console.error(`error in openai loader: ${error}`);
         if (error instanceof Error && error.name === 'AbortError') {
-          console.info('user aborted the request');
+          console.info('Stream aborted by user');
+        }
+      } finally {
+        if (reader) {
+          reader.releaseLock();
         }
       }
     };
 
-    if (refresh || text) {
+    if ((refresh || text) && (tokens.length || glossaries.length)) {
       fetchStream();
-      setRefresh(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, refresh]);
+    setRefresh(false);
+  }, [text, refresh, glossaries, tokens, cleanupStream]);
 
   return (
     <>
@@ -544,7 +582,19 @@ const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
         <div className="text-md font-medium">{title}</div>
         <div className="flex items-center">{buttons}</div>
       </div>
-      <p className="text-md text-slate-500">{text}</p>
+      <Markdown
+        components={{
+          h3(props) {
+            return <h3 className="text-md font-semibold" {...props} />;
+          },
+          p(props) {
+            return <p className="text-md text-slate-500" {...props} />;
+          },
+        }}
+      >
+        {text}
+      </Markdown>
+      {/* <p className="text-md text-slate-500">{text}</p> */}
     </div>
   );
 };
