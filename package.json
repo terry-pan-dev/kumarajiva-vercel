@@ -6,6 +6,8 @@
   "scripts": {
     "build": "remix vite:build",
     "dev": "dotenv -e .env -- remix vite:dev",
+    "mastra:dev": "mastra dev --dir ./mastra",
+    "mastra:build": "mastra build --dir ./mastra/index.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --no-error-on-unmatched-pattern --max-warnings=1 --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "db:push": "dotenv -e .env -- drizzle-kit push",
@@ -23,11 +25,14 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.5",
+    "@ai-sdk/openai": "^1.3.4",
     "@algolia/client-search": "^5.12.0",
     "@anthropic-ai/sdk": "^0.33.1",
     "@casl/ability": "^6.7.2",
     "@casl/react": "^4.0.0",
     "@hookform/resolvers": "^3.9.0",
+    "@mastra/core": "^0.7.0",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-avatar": "^1.1.1",
     "@radix-ui/react-collapsible": "^1.1.1",
@@ -87,7 +92,7 @@
     "tailwindcss-animate": "^1.0.7",
     "ts-pattern": "^5.5.0",
     "uuid": "^11.0.2",
-    "zod": "^3.23.8"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.3.1",
@@ -107,6 +112,7 @@
     "eslint-plugin-prettier": "^5.2.1",
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
+    "mastra": "^0.4.4",
     "papaparse": "^5.4.1",
     "postcss": "^8.4.38",
     "prettier": "^3.3.3",

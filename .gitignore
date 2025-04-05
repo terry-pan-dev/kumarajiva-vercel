@@ -4,9 +4,11 @@ node_modules
 .env
 .vercel
 .env.local
+.env.development
 .env.prod
 /scripts
 /drizzle/seeds/prod
 
 # Sentry Config File
 .env.sentry-build-plugin
+.mastra/

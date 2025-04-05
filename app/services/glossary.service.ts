@@ -28,7 +28,7 @@ export const readGlossaries = async ({ page, limit = 10 }: Pagination): Promise<
   });
 };
 
-export const getGlossariesByGivenGlossaries = async (glossaries: string[]) => {
+export const getGlossariesByGivenGlossaries = async (glossaries: string[]): Promise<ReadGlossary[]> => {
   return dbClient.query.glossariesTable.findMany({
     where: inArray(glossariesTable.glossary, glossaries),
   });
