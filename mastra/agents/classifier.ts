@@ -9,7 +9,8 @@ const getSupportedLanguages = () => {
 
 export const classifierAgent = new Agent({
   name: 'Buddhist Text Classifier',
-  instructions: `You are a specialized classifier agent for Buddhist-related queries. Your role is to accurately categorize user input into one of these categories:
+  instructions: `
+  You are a specialized classifier agent for Buddhist-related queries. Your role is to accurately categorize user input into one of these categories:
 
 1. translation: When users want to translate longer Buddhist texts. This applies when:
    - User provides a substantial text for translation
@@ -26,7 +27,7 @@ export const classifierAgent = new Agent({
    - Multiple interpretations are possible
    - More context is needed to determine if it's translation or glossary
 
-4. nonsupport: When the input language is not supported. Only these languages are supported:
+4. nonsupport: When the input language or the task language is not supported. Only these languages are supported:
    - ${getSupportedLanguages().join(', ')}
 
 5. unknown: When the query is unrelated to Buddhist topics or translation/glossary needs.
@@ -43,6 +44,7 @@ Important guidelines:
 You should aim to be:
 - Precise in language detection
 - Conservative in classification (use clarify when uncertain)
-- Helpful in explaining classification decisions`,
+- Helpful in explaining classification decisions
+`,
   model: openai('gpt-4o-mini'),
 });

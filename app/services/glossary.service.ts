@@ -113,3 +113,23 @@ export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>)
     ...glossary,
   });
 };
+
+export const createGlossaryAndIndexInAlgolia = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
+  const response = await algoliaClient.saveObject({
+    indexName: 'glossaries',
+    body: {
+      id: glossary.id,
+      phonetic: glossary.phonetic,
+      glossary: glossary.glossary,
+      translations: glossary.translations?.map((translation) => ({
+        glossary: translation.glossary,
+        language: translation.language,
+      })),
+    },
+  });
+  const savedGlossary = await dbClient.insert(glossariesTable).values({
+    ...glossary,
+    searchId: response.objectID,
+  });
+  return savedGlossary;
+};

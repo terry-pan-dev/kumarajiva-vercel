@@ -47,13 +47,13 @@ const transformStep = new Step({
       .describe('The category of the text'),
   }),
   outputSchema: z.object({
-    cleanedText: z.string().describe('The cleaned text'),
+    result: z.string().describe('The result of the cleaned text'),
   }),
   execute: async ({ context }) => {
     const initialPrompt = context?.triggerData.inputText;
     const result = await transformerAgent.generate(initialPrompt, {
       output: z.object({
-        cleanedText: z.string().describe('The cleaned text'),
+        result: z.string().describe('The cleaned text'),
       }),
     });
     return result.object;
@@ -67,12 +67,12 @@ const translateStep = new Step({
     cleanedText: z.string().describe('The cleaned text'),
   }),
   outputSchema: z.object({
-    outputText: z.string().describe('The translated text'),
-    reasoning: z.string().describe('The reasoning of the translation'),
+    result: z.string().describe('The translated text'),
+    reasoning: z.string().describe('If you have any notes or explanations about specific translation choices,'),
   }),
   execute: async ({ context }) => {
-    const { cleanedText } = context?.getStepResult<{
-      cleanedText: string;
+    const { result } = context?.getStepResult<{
+      result: string;
     }>('transformStep');
     const language = `
     <languages>
@@ -81,9 +81,8 @@ const translateStep = new Step({
     `;
     const prompt = `
     <text>
-    ${cleanedText}
+    ${result}
     </text>`;
-
     const response = await translatorAgent.generate(
       [
         {
@@ -96,15 +95,18 @@ const translateStep = new Step({
         },
       ],
       {
-        experimental_output: z.object({
-          outputText: z.string().describe('The translated text'),
-          reasoning: z.string().describe('The reasoning of the translation'),
-        }),
         maxSteps: 3,
         toolChoice: 'auto',
+        experimental_output: z.object({
+          result: z.string().describe('The translated text'),
+          reasoning: z
+            .string()
+            .describe(
+              'The reasoning of the translation, you should include the evidence of the glossary search. If you have any notes or explanations about specific translation choices, you should include them in the reasoning as well.',
+            ),
+        }),
       },
     );
-    console.log('response', response.object);
     return response.object;
   },
 });
@@ -113,12 +115,16 @@ const glossaryStep = new Step({
   id: 'glossaryStep',
   description: 'Search internal Glossary',
   inputSchema: z.object({
-    cleanedText: z.string().describe('The cleaned text to search glossary'),
+    result: z.string().describe('The returned glossary result'),
+  }),
+  outputSchema: z.object({
+    result: z.string().describe('The summary of the glossary search'),
+    reasoning: z.string().describe('The evidence of the glossary search'),
   }),
   execute: async ({ context }) => {
     const languages = context?.triggerData.languages ?? 'chinese, english';
-    const result = context?.getStepResult<{ cleanedText: string }>('transformStep');
-    console.log('glossaryStep input', { languages, text: result.cleanedText });
+    const transformedText = context?.getStepResult<{ result: string }>('transformStep');
+    console.log(`glossaryStep, languages: "${languages}", text: "${transformedText.result}"`);
     const response = await glossaryFinderAgent.generate(
       [
         {
@@ -127,52 +133,51 @@ const glossaryStep = new Step({
         },
         {
           role: 'user',
-          content: result.cleanedText,
+          content: transformedText.result,
         },
       ],
       {
-        maxSteps: 3,
+        maxSteps: 5,
         toolChoice: 'auto',
+        experimental_output: z.object({
+          result: z.string().describe('The summary of the glossary search'),
+          reasoning: z.string().describe('The evidence of the glossary search'),
+        }),
       },
     );
-    console.log('glossaryStep response', response.text);
-    return response.text;
+    return response.object;
   },
 });
 
 const clarificationStep = new Step({
   id: 'clarificationStep',
   description: 'Clarify the text',
-  inputSchema: z.object({
-    inputText: z.string().describe('The text to clarify'),
-  }),
-  outputSchema: z.string().describe('The clarified text'),
   execute: async ({ context }) => {
-    return 'please clarify your question';
+    // return a stream of text
+    return {
+      result:
+        'please clarify your question, try to be more specific. For example, "I want to translate A to B", "I want to search glossary A"',
+    };
   },
 });
 
 const nonsupportStep = new Step({
   id: 'nonsupportStep',
   description: 'The text is not supported',
-  inputSchema: z.object({
-    inputText: z.string().describe('The text to clarify'),
-  }),
-  outputSchema: z.string().describe('The nonsupport text'),
   execute: async ({ context }) => {
-    return 'The query language is not supported';
+    return {
+      result: 'The query language is not supported',
+    };
   },
 });
 
 const unknownStep = new Step({
   id: 'unknownStep',
   description: 'The text is unknown',
-  inputSchema: z.object({
-    inputText: z.string().describe('The text to clarify'),
-  }),
-  outputSchema: z.string().describe('The unknown text'),
   execute: async ({ context }) => {
-    return 'We only support translation, search glossary';
+    return {
+      result: 'We only support translation and glossary search',
+    };
   },
 });
 

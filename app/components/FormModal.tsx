@@ -238,7 +238,7 @@ export function FormSelect({ name, label, required = false, description, options
   );
 }
 
-export function FormTextarea({ name, label, required = false, description }: FormInputProps) {
+export function FormTextarea({ name, label, required = false, description, placeholder }: FormInputProps) {
   const {
     register,
     formState: { errors },
@@ -246,7 +246,7 @@ export function FormTextarea({ name, label, required = false, description }: For
 
   return (
     <BaseFormField name={name} label={label} errors={errors} required={required} description={description}>
-      <Textarea placeholder={label} {...register(name)} />
+      <Textarea placeholder={placeholder || label} {...register(name)} />
     </BaseFormField>
   );
 }

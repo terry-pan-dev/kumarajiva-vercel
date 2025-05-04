@@ -1,19 +1,55 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
 
-import { searchGlossaries } from '../../app/services/edge.only';
+import type { ReadGlossary } from '../../drizzle/tables';
+
+import algoliaClient from '../../app/providers/algolia';
 
 export const glossarySearcherTool = createTool({
   id: 'glossary_searcher',
   description: 'Search the glossary from the database',
   inputSchema: z.object({
-    text: z.string().describe('The text to search the glossary'),
+    tokens: z.array(z.string()).describe('The tokens or glossaries to search the glossary'),
   }),
   execute: async ({ context }) => {
-    const searchTerm = context.text;
-    console.log('glossary_searcher started, term:', searchTerm);
-    const result = await searchGlossaries(searchTerm, 5);
-    console.log('glossary_searcher result', result);
-    return result;
+    const tokens = context.tokens;
+    console.log('glossary_searcher started, term:', tokens);
+    const glossaries: ReadGlossary[] = [];
+    // I have to slice the tokens to 50 per batch
+    const batchSize = 50;
+    const batches = [];
+    for (let i = 0; i < tokens.length; i += batchSize) {
+      batches.push(tokens.slice(i, i + batchSize));
+    }
+    const multiSearchQueryBatches = batches.map((batch) => {
+      return batch?.map((token) => ({
+        indexName: 'glossaries',
+        query: token,
+        hitsPerPage: 1,
+      }));
+    });
+    console.log('multiSearchQueryBatches', multiSearchQueryBatches);
+    const indexExist = await algoliaClient.indexExists({ indexName: 'glossaries' });
+    if (!indexExist) {
+      return [];
+    }
+    for await (const batch of multiSearchQueryBatches) {
+      const { results } = await algoliaClient.search<ReadGlossary>({
+        requests: batch,
+      });
+      if (results.length) {
+        results.forEach((result) => {
+          if ('hits' in result) {
+            result.hits.forEach((hit) => {
+              const { _highlightResult, ...rest } = hit;
+              console.log('hit', rest);
+              glossaries.push(rest);
+            });
+          }
+        });
+      }
+      console.log('glossary_searcher result', results?.length);
+    }
+    return glossaries;
   },
 });

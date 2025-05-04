@@ -1,8 +1,7 @@
 import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
 
-import { tokenizerTool } from '../tools';
-
+import { tokenizerTool, glossarySearcherTool } from '../tools';
 export const translatorAgent = new Agent({
   name: 'Buddhist Text Translator',
   instructions: `
@@ -46,10 +45,14 @@ the sacred nature of the text.
 Remember, your goal is to create a translation that is not only accurate but
 also captures the profound spiritual essence of the original text in an elegant,
 poetic rendering.
+*IMPORTANT: For the given languages, For example, if the given languages are Chinese and English,
+When the text is Chinese, you have to translate it to English. When the text is English, you have to translate it to Chinese.
+This is same for other languages pairs.
+Finally, you have to provide the thinking process of the translation in the reasoning section.
   `,
-  model: openai.chat('gpt-4o'),
+  model: openai('gpt-4o'),
   tools: {
     tokenizer: tokenizerTool,
-    // glossary_searcher: glossarySearcherTool,
+    glossary_searcher: glossarySearcherTool,
   },
 });
