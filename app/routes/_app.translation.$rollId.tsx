@@ -222,7 +222,7 @@ export default function TranslationRoll() {
 }
 
 const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
-  const { id, origin, target, references } = paragraph;
+  const { id, origin, target, references, rollId } = paragraph;
   const fetcher = useFetcher<{ success: boolean }>();
 
   const form = useForm<z.infer<typeof paragraphActionSchema>>({
@@ -314,7 +314,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
             <Paragraph text={origin} title="Origin" />
           </ContextMenuWrapper>
           <ContextMenuWrapper>
-            <OpenAIStreamCard text={origin} title="OpenAI" />
+            <OpenAIStreamCard originId={id} text={origin} title="OpenAI" rollId={rollId} />
           </ContextMenuWrapper>
         </motion.div>
         <References references={references} />
@@ -427,9 +427,11 @@ const DragPanel = ({ children }: PropsWithChildren) => {
 interface StreamCardProps {
   text: string;
   title: string;
+  originId: string;
+  rollId: string;
 }
 
-const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
+const OpenAIStreamCard = React.memo(({ text, title, originId, rollId }: StreamCardProps) => {
   const formContext = useFormContext();
   const fetcher = useFetcher<{ success: boolean; glossaries: ReadGlossary[]; tokens: string[] }>();
   const loading = fetcher.state === 'loading' || fetcher.state === 'submitting';
@@ -499,6 +501,8 @@ const OpenAIStreamCard = React.memo(({ text, title }: StreamCardProps) => {
               },
               {} as Record<string, string[]>,
             ),
+            originId,
+            rollId,
           }),
           // Add signal to request
           signal: abortControllerRef.current.signal,
