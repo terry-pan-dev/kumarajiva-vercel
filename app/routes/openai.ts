@@ -32,7 +32,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const content = body.origin;
   const sourceLang = user.originLang;
   const targetLang = user.targetLang;
-  console.log({ sourceLang, targetLang, content });
+  const originId = body.originId;
+  const rollId = body.rollId;
+  console.log({ sourceLang, targetLang, content, originId, rollId });
 
   if (!content?.trim()) {
     return;
@@ -108,6 +110,7 @@ poetic ${targetLang} rendering.
       {
         model: 'gpt-4-0613',
         stream: true,
+        temperature: 0.3,
         messages: [
           {
             role: 'system',

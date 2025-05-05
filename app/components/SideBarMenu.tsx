@@ -1,7 +1,7 @@
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Form, Link, NavLink, useFetcher, useLocation, useNavigation } from '@remix-run/react';
 import { useDebounce } from '@uidotdev/usehooks';
-import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet } from 'lucide-react';
+import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet, MessageSquare } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { match } from 'ts-pattern';
@@ -42,6 +42,7 @@ const menuItems = [
   { icon: Book, label: 'Translation', href: '/translation' },
   { icon: Sheet, label: 'Glossary', href: '/glossary' },
   { icon: BookCopy, label: 'Reference', href: '/reference' },
+  { icon: MessageSquare, label: 'Assistant', href: '/assistant' },
   { icon: Cog, label: 'Admin', href: '/admin' },
 ];
 
