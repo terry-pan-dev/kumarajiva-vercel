@@ -15,7 +15,6 @@ export const glossarySearcherTool = createTool({
     const tokens = context.tokens;
     console.log('glossary_searcher started, term:', tokens);
     const glossaries: ReadGlossary[] = [];
-    // I have to slice the tokens to 50 per batch
     const batchSize = 50;
     const batches = [];
     for (let i = 0; i < tokens.length; i += batchSize) {
@@ -29,7 +28,6 @@ export const glossarySearcherTool = createTool({
         removeStopWords: true,
       }));
     });
-    console.log('multiSearchQueryBatches', multiSearchQueryBatches);
     const indexExist = await algoliaClient.indexExists({ indexName: 'glossaries' });
     if (!indexExist) {
       return [];

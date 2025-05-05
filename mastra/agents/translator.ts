@@ -48,7 +48,8 @@ poetic rendering.
 *IMPORTANT: For the given languages, For example, if the given languages are Chinese and English,
 When the text is Chinese, you have to translate it to English. When the text is English, you have to translate it to Chinese.
 This is same for other languages pairs.
-Finally, you have to provide the thinking process of the translation in the reasoning section.
+Finally, you have to provide the thinking process of the translation or any notes,
+explanations about specific translation choices, include in the reasoning section.
   `,
   model: openai('gpt-4o'),
   tools: {

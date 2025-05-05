@@ -35,16 +35,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   const body = await request.json();
-  const message = body.message;
+  // message should be trimmed if more than 150 characters
+  const message = body.message.trim().slice(0, 150);
 
   const languages = `${user.originLang},${user.targetLang}`;
 
   const { runId, start } = await mastra.getWorkflow('assistantWorkflow').createRun();
-  console.log({ runId, languages, message });
+  const threadId = crypto.randomUUID();
+  console.log({ runId, languages, message, userId: user.id, threadId });
   const { results } = await start({
     triggerData: {
       languages,
       inputText: message,
+      threadId,
+      resourceId: user.id,
     },
   });
 

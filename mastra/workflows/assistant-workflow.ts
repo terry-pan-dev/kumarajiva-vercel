@@ -11,6 +11,8 @@ export const assistantWorkflow = new Workflow({
   triggerSchema: z.object({
     languages: z.string().describe('The languages that the user understands'),
     inputText: z.string().describe('The text to translate'),
+    resourceId: z.string().describe('The id of the user'),
+    threadId: z.string().describe('The id of the thread'),
   }),
 });
 
@@ -26,6 +28,8 @@ const classifyStep = new Step({
   execute: async ({ context }) => {
     const text = context?.getStepResult<{ inputText: string }>('trigger');
     const result = await classifierAgent.generate(text.inputText, {
+      resourceId: context?.triggerData.resourceId,
+      threadId: context?.triggerData.threadId,
       output: z
         .object({
           category: z
@@ -52,6 +56,8 @@ const transformStep = new Step({
   execute: async ({ context }) => {
     const initialPrompt = context?.triggerData.inputText;
     const result = await transformerAgent.generate(initialPrompt, {
+      resourceId: context?.triggerData.resourceId,
+      threadId: context?.triggerData.threadId,
       output: z.object({
         result: z.string().describe('The cleaned text'),
       }),
@@ -95,6 +101,8 @@ const translateStep = new Step({
         },
       ],
       {
+        resourceId: context?.triggerData.resourceId,
+        threadId: context?.triggerData.threadId,
         maxSteps: 3,
         toolChoice: 'auto',
         experimental_output: z.object({
@@ -137,6 +145,8 @@ const glossaryStep = new Step({
         },
       ],
       {
+        resourceId: context?.triggerData.resourceId,
+        threadId: context?.triggerData.threadId,
         maxSteps: 5,
         toolChoice: 'auto',
         experimental_output: z.object({
