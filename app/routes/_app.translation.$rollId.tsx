@@ -313,32 +313,32 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
           <ContextMenuWrapper>
             <Paragraph text={origin} title="Origin" />
           </ContextMenuWrapper>
-          <ContextMenuWrapper>
-            <OpenAIStreamCard originId={id} text={origin} title="OpenAI" rollId={rollId} />
-          </ContextMenuWrapper>
+          <fetcher.Form method="post" className="mt-4" onSubmit={handleSubmit(onSubmit)}>
+            <div className="mt-auto grid w-full gap-2">
+              <input type="hidden" {...register('paragraphId')} />
+              <Can I="Read" this="Paragraph">
+                <Textarea
+                  className="h-8 text-md"
+                  disabled={disabledEdit}
+                  placeholder={disabledEdit ? 'Please select a new paragraph to edit.' : 'Type your translation here.'}
+                  {...register('translation')}
+                  ref={(e) => {
+                    register('translation').ref(e);
+                    textAreaRef.current = e;
+                  }}
+                />
+                <Button type="submit" disabled={translation === '' || !isDirty}>
+                  Save Translation
+                </Button>
+              </Can>
+            </div>
+          </fetcher.Form>
         </motion.div>
         <References references={references} />
+        <ContextMenuWrapper>
+          <OpenAIStreamCard originId={id} text={origin} rollId={rollId} title="AI Translation" />
+        </ContextMenuWrapper>
         <div className="flex-grow"></div>
-        <fetcher.Form method="post" className="mt-auto" onSubmit={handleSubmit(onSubmit)}>
-          <div className="mt-auto grid w-full gap-2">
-            <input type="hidden" {...register('paragraphId')} />
-            <Can I="Read" this="Paragraph">
-              <Textarea
-                className="h-8 text-md"
-                disabled={disabledEdit}
-                placeholder={disabledEdit ? 'Please select a new paragraph to edit.' : 'Type your translation here.'}
-                {...register('translation')}
-                ref={(e) => {
-                  register('translation').ref(e);
-                  textAreaRef.current = e;
-                }}
-              />
-              <Button type="submit" disabled={translation === '' || !isDirty}>
-                Save Translation
-              </Button>
-            </Can>
-          </div>
-        </fetcher.Form>
       </div>
     </FormProvider>
   );
