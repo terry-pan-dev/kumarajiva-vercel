@@ -13,6 +13,7 @@ export const tokenizerTool = createTool({
     tokens: z.array(z.string()).describe('The tokenized text'),
   }),
   execute: async ({ context }) => {
+    console.log('tokenizer input text: ', context.text);
     return {
       tokens: await tokenizer(context.text),
     };

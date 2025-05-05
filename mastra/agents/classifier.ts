@@ -21,6 +21,7 @@ export const classifierAgent = new Agent({
    - User provides a single term or short phrase
    - User explicitly asks about the meaning of specific Buddhist terminology
    - Query is focused on understanding specific concepts
+   - There is no punctuation in the query
 
 3. clarification: When the intent needs clarification. This applies when:
    - The text length is moderate and purpose is unclear

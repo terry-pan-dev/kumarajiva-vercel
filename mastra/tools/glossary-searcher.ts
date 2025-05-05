@@ -26,6 +26,7 @@ export const glossarySearcherTool = createTool({
         indexName: 'glossaries',
         query: token,
         hitsPerPage: 1,
+        removeStopWords: true,
       }));
     });
     console.log('multiSearchQueryBatches', multiSearchQueryBatches);

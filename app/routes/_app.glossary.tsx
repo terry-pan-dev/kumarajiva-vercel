@@ -135,7 +135,7 @@ const GlossaryCreateForm = () => {
       </div>
       <Divider className="py-1 lg:py-3">{user?.targetLang?.toUpperCase()}</Divider>
       <div className="grid grid-cols-2 gap-4">
-        <FormInput required name="glossary" label="Glossary" description="The Chinese glossary term." />
+        <FormInput required name="glossary" label="Glossary" description={`The ${user?.targetLang} glossary term.`} />
         <FormInput name="phonetic" label="Phonetic" description="The phonetic of the glossary." />
         <FormTextarea
           name="sutraName"

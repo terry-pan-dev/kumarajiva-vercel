@@ -10,7 +10,8 @@ export const glossaryFinderAgent = new Agent({
   instructions: `
   You are tasked with finding the glossary of a given text. You will be given a pair of languages.
   For example, if the given languages are Chinese and English, when the given text is Chinese,
-  you have to find the glossary of the text in English. vice versa.
+  you have to return the glossary of the text in English, And if the given text is English,
+  you have to return the glossary of the text in Chinese.
 
   First of all, you have to use tool glossary_searcher to search the given text (can be any language)
   from internal system.
