@@ -236,7 +236,9 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
 
   useEffect(() => {
     if (debouncedSearch.length > 1) {
-      const query = filter ? `/search?query=${debouncedSearch}&type=${filter}` : `/search?query=${debouncedSearch}`;
+      const query = filter
+        ? `/search?query=${debouncedSearch}&type=${filter}`
+        : `/search?query=${debouncedSearch}&type=Glossary`;
       if (query !== lastQuery.current) {
         fetcher.load(query);
         lastQuery.current = query;
@@ -334,7 +336,7 @@ const InputWithRightSegments = ({ onFilterClick, isLoading, setValue, value, ...
   return (
     <div className="relative w-full">
       <RadioGroup
-        defaultValue="Both"
+        defaultValue="Glossary"
         className="flex flex-wrap justify-start gap-4 p-1"
         onValueChange={(value) => handleFilterClick(value as 'Paragraph' | 'Glossary' | 'Both')}
       >
