@@ -51,6 +51,10 @@ import {
 import { readRollById } from '../services/roll.service';
 import { paragraphActionSchema } from '../validations/paragraph.validation';
 
+export const config = {
+  memory: 3009,
+};
+
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) {
