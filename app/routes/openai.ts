@@ -102,8 +102,6 @@ also captures the profound spiritual essence of the original text in an elegant,
 poetic ${targetLang} rendering.
   `;
 
-  console.log({ prompt });
-
   const encoder = new TextEncoder();
   try {
     const chunks = await client.chat.completions.create(
@@ -115,79 +113,6 @@ poetic ${targetLang} rendering.
           {
             role: 'system',
             content: prompt.trim(),
-          },
-          {
-            role: 'user',
-            content: '「諸佛子！彼金剛寶聚香水海外，次有香水海，名：崇飾寶埤堄；世界種，名：秀出寶幢。',
-          },
-          {
-            role: 'assistant',
-            content:
-              'Disciples of the Buddha! Beyond the fragrant sea, Gathering of Vajra Jewels, lies the next fragrant sea named Exalted Adornment of Jewel Parapets. The world seed within is called Exquisite Jewel Banners.',
-          },
-          {
-            role: 'user',
-            content: '於此世界種最上方，有世界，名：華幢海；佛號：無盡變化妙慧雲。',
-          },
-          {
-            role: 'assistant',
-            content:
-              'On the highest level of this world seed is a world system named Sea of Flower Banners. The Buddha there is named Cloud of Endless Transformations and Wondrous Wisdom. 	',
-          },
-          {
-            role: 'user',
-            content: '此上與娑婆世界齊等，有世界，名：瑠璃輪普莊嚴；佛號：須彌燈。',
-          },
-          {
-            role: 'assistant',
-            content:
-              'Above this, on the same level as the Saha world system, lies a world system named Vaiḍūrya Wheel of Universal Splendor. The Buddha there is named Sumeru Lamp. ',
-          },
-          {
-            role: 'user',
-            content: '此上過十佛剎微塵數世界，與金剛幢世界齊等，有世界，名：莊嚴相；佛號：超勝大光明。',
-          },
-          {
-            role: 'assistant',
-            content:
-              'Above this and passing through world systems as many as particles of dust in ten Buddha lands, on the same level as, the world system named Vajra Banner, lies a world system named Sublime Appearance. The Buddha there is called Transcending Great Radiance.	 	 	 	',
-          },
-          {
-            role: 'user',
-            content: '此中最下方，有世界，名：妙勝藏；佛號：最勝功德慧。',
-          },
-          {
-            role: 'assistant',
-            content:
-              'At its very bottom lies a world system named Wondrously Supreme Treasury. The Buddha there is named Wisdom of Supreme Merit and Virtue.',
-          },
-          {
-            role: 'user',
-            content:
-              '如是等不可說佛剎微塵數香水海，其最近輪圍山香水海，名：出帝青寶；世界種，名：周遍無差別，以一切菩薩震吼聲為體。',
-          },
-          {
-            role: 'assistant',
-            content:
-              'Fragrant seas such as these are as numerous as dust particles in an ineffable number of Buddha lands. The fragrant sea closest to the Ring of Mountains is named Emergence of Indranila Gems; the world seed within is called Everywhere Free of Differences, and it is composed of Bodhisattvas’ thunderous roars.',
-          },
-          {
-            role: 'user',
-            content: '次有香水海，名：可愛摩尼珠充滿遍照；世界種，名：普吼聲……。',
-          },
-          {
-            role: 'assistant',
-            content:
-              'Next is a fragrant sea named Brimming with Delightful Mani Pearls Shining Everywhere. The world seed within is called All-Pervading Roar.',
-          },
-          {
-            role: 'user',
-            content: '次有香水海，名：大光遍照；世界種，名：帝青炬光明。',
-          },
-          {
-            role: 'assistant',
-            content:
-              'Next is a fragrant sea named Blazing Light Shining Everywhere. The world seed within is called Indranila Torchlight. ',
           },
           {
             role: 'user',

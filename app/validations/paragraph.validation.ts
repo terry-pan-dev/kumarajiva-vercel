@@ -7,4 +7,5 @@ export const paragraphActionSchema = z.object({
     })
     .uuid(),
   translation: z.string().min(1, { message: 'Translation is required' }),
+  kind: z.enum(['update', 'insert']),
 });

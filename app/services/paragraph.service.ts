@@ -24,6 +24,7 @@ export interface IParagraph {
   target: string | null;
   references: ReadReference[];
   histories: ReadHistory[];
+  targetId?: string;
 }
 
 export const readParagraphsByRollId = async ({
@@ -55,6 +56,7 @@ export const readParagraphsByRollId = async ({
     origin: paragraph.content,
     target: paragraph.children?.content,
     histories: paragraph.children?.history || [],
+    targetId: paragraph.children?.id,
   }));
 
   return result;
@@ -182,71 +184,66 @@ export const searchAlgolia = async ({
   return searchResults;
 };
 
-export const upsertParagraph = async (paragraph: CreateParagraph) => {
-  const { parentId, rollId } = paragraph;
-  if (!rollId) {
-    throw new Error('Roll id is required');
-  }
-  const roll = await dbClient.query.rollsTable.findFirst({
-    where: (rolls, { eq }) => eq(rolls.id, rollId),
-    with: {
-      children: true,
-    },
+export const updateParagraph = async ({ id, newContent }: { id: string; newContent: string }) => {
+  const originParagraph = await dbClient.query.paragraphsTable.findFirst({
+    where: (paragraphs, { eq }) => eq(paragraphs.id, id),
   });
-  if (!roll?.children) {
-    throw new Error('Roll has no children');
+  if (!originParagraph) {
+    throw new Error('Paragraph not found');
   }
-  if (!parentId) {
-    throw new Error('Parent id is required');
+
+  if (originParagraph.searchId) {
+    console.log('updating algolia', originParagraph.searchId);
+    algoliaClient.partialUpdateObject({
+      indexName: 'paragraphs',
+      objectID: originParagraph.searchId,
+      attributesToUpdate: {
+        content: newContent,
+      },
+    });
   }
+  const result = await dbClient
+    .update(paragraphsTable)
+    .set({
+      content: newContent,
+    })
+    .where(eq(paragraphsTable.id, originParagraph.id));
+
+  return result;
+};
+
+export const insertParagraph = async ({
+  parentId,
+  newParagraph,
+}: {
+  parentId: string;
+  newParagraph: CreateParagraph;
+}) => {
   const originParagraph = await dbClient.query.paragraphsTable.findFirst({
     where: (paragraphs, { eq }) => eq(paragraphs.id, parentId),
     with: {
       children: true,
     },
   });
-
-  if (originParagraph?.children) {
-    if (originParagraph.children.searchId) {
-      await algoliaClient.partialUpdateObject({
-        indexName: 'paragraphs',
-        objectID: originParagraph.children.searchId,
-        attributesToUpdate: {
-          content: paragraph.content,
-        },
-      });
-    }
-
-    const result = await dbClient
-      .update(paragraphsTable)
-      .set({
-        ...paragraph,
-        rollId: roll.children.id,
-      })
-      .where(eq(paragraphsTable.id, originParagraph.children.id));
-
-    return result;
+  if (!originParagraph) {
+    throw new Error('Paragraph not found');
   }
-
   const paragraphId = uuidv4();
-  console.log({ paragraphId });
-  // TODO: remove this after testing
-  const savedSearchResult = !['decb3798-76b5-424a-b83a-b9fdde6a7f53', '9b5ad45f-9cdc-46a1-8d22-9683137b7df3'].includes(
-    paragraph.rollId,
-  )
-    ? await algoliaClient.saveObject({
-        indexName: 'paragraphs',
-        body: { ...paragraph, id: paragraphId },
-      })
-    : { objectID: null };
+  const objectId = uuidv4();
+  console.log({ paragraphId, objectId });
+
+  algoliaClient.saveObject({
+    indexName: 'paragraphs',
+    body: { ...newParagraph, id: paragraphId, objectID: objectId },
+  });
   const result = await dbClient
     .insert(paragraphsTable)
     .values({
       id: paragraphId,
-      ...paragraph,
+      ...newParagraph,
       order: originParagraph?.order,
-      rollId: roll?.children.id,
-      searchId: savedSearchResult.objectID,
+      rollId: originParagraph?.rollId,
+      searchId: objectId,
     })
     .returning({ id: paragraphsTable.id });
 

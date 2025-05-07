@@ -39,11 +39,15 @@ import {
   ScrollArea,
   Textarea,
 } from '../components/ui';
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '../components/ui/hover-card';
 import { useToast } from '../hooks/use-toast';
 import { useScreenSize } from '../lib/hooks/useScreenSizeHook';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
-import { readParagraphsByRollId, upsertParagraph, type IParagraph } from '../services/paragraph.service';
+import {
+  insertParagraph,
+  readParagraphsByRollId,
+  updateParagraph,
+  type IParagraph,
+} from '../services/paragraph.service';
 import { readRollById } from '../services/roll.service';
 import { paragraphActionSchema } from '../validations/paragraph.validation';
 
@@ -53,8 +57,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     return redirect('/login');
   }
   const { rollId } = params;
-  const paragraphs = await readParagraphsByRollId({ rollId: rollId as string, user });
-  const rollInfo = await readRollById(rollId as string);
+  console.time('readParagraphsByRollId');
+  const [paragraphs, rollInfo] = await Promise.all([
+    readParagraphsByRollId({ rollId: rollId as string, user }),
+    readRollById(rollId as string),
+  ]);
+  console.timeEnd('readParagraphsByRollId');
 
   return json({ success: true, paragraphs: paragraphs ?? [], rollInfo });
 }
@@ -69,14 +77,30 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   try {
     const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
-    await upsertParagraph({
-      content: result.translation,
-      rollId: rollId as string,
-      parentId: result.paragraphId,
-      createdBy: user.id,
-      updatedBy: user.id,
-      language: user.targetLang,
-    });
+    console.log({ result });
+    if (result.kind === 'insert') {
+      console.time('insertParagraph');
+      await insertParagraph({
+        parentId: result.paragraphId,
+        newParagraph: {
+          content: result.translation,
+          rollId: rollId as string,
+          createdBy: user.id,
+          updatedBy: user.id,
+          parentId: result.paragraphId,
+          language: user.targetLang,
+        },
+      });
+      console.timeEnd('insertParagraph');
+    }
+    if (result.kind === 'update') {
+      console.time('updateParagraph');
+      await updateParagraph({
+        id: result.paragraphId,
+        newContent: result.translation,
+      });
+      console.timeEnd('updateParagraph');
+    }
   } catch (error) {
     console.log({ error });
     if (error instanceof ZodError) {
@@ -95,6 +119,7 @@ export function ErrorBoundary() {
 export default function TranslationRoll() {
   const { paragraphs, rollInfo } = useLoaderData<typeof loader>();
 
+  const divRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLLabelElement>(null);
 
   const context = useOutletContext<{ user: ReadUser }>();
@@ -102,8 +127,9 @@ export default function TranslationRoll() {
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
 
   useEffect(() => {
-    if (selectedParagraphIndex && labelRef.current) {
+    if (selectedParagraphIndex && (divRef.current || labelRef.current)) {
       setTimeout(() => {
+        divRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         labelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
     }
@@ -139,12 +165,12 @@ export default function TranslationRoll() {
       {paragraph?.target ? (
         <div className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-4`}>
           <ContextMenuWrapper>
-            <Paragraph isOrigin text={paragraph.origin} />
+            <Paragraph isOrigin text={paragraph.origin} isSelected={selectedParagraphIndex === paragraph.id} />
           </ContextMenuWrapper>
-          <Label
+          <div
             className="flex h-auto text-md font-normal"
             onDoubleClick={() => setSelectedParagraphIndex(paragraph.id)}
-            ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
+            ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
           >
             <ContextMenuWrapper>
               <div className="relative h-full">
@@ -152,7 +178,7 @@ export default function TranslationRoll() {
                 <ParagraphHistory histories={paragraph.histories} />
               </div>
             </ContextMenuWrapper>
-          </Label>
+          </div>
         </div>
       ) : (
         <motion.div
@@ -172,7 +198,7 @@ export default function TranslationRoll() {
             ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
-              <Paragraph text={paragraph.origin} />
+              <Paragraph text={paragraph.origin} isSelected={selectedParagraphIndex === paragraph.id} />
             </ContextMenuWrapper>
           </Label>
         </motion.div>
@@ -180,9 +206,14 @@ export default function TranslationRoll() {
     </div>
   ));
 
-  if (selectedParagraphIndex) {
-    const selectedParagraph = paragraphsWithHistory.find((p) => p.id === selectedParagraphIndex)!;
+  const selectedParagraph = useMemo(() => {
+    if (selectedParagraphIndex) {
+      return paragraphsWithHistory.find((p) => p.id === selectedParagraphIndex)!;
+    }
+    return null;
+  }, [selectedParagraphIndex, paragraphsWithHistory]);
 
+  if (selectedParagraph) {
     return (
       <DragPanel>
         <LeftPanel>
@@ -222,15 +253,17 @@ export default function TranslationRoll() {
 }
 
 const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
-  const { id, origin, target, references, rollId } = paragraph;
+  const { id, origin, target, references, rollId, targetId } = paragraph;
   const fetcher = useFetcher<{ success: boolean }>();
 
   const form = useForm<z.infer<typeof paragraphActionSchema>>({
     resolver: zodResolver(paragraphActionSchema),
     mode: 'onSubmit',
+    // Notice, the default values only set once, if current UI does not unmount
     defaultValues: {
       translation: target || '',
-      paragraphId: id,
+      paragraphId: target ? targetId : id,
+      kind: target ? 'update' : 'insert',
     },
   });
 
@@ -258,23 +291,36 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
 
   useEffect(() => {
     if (fetcher.data?.success && form.getValues('translation')) {
+      toast({
+        variant: 'default',
+        title: `Translation ${targetId ? 'updated' : 'created'}`,
+        position: 'top-right',
+        description: `Translation ${targetId ? 'updated' : 'created'} successfully`,
+      });
       form.reset(
         {
           paragraphId: '',
           translation: '',
+          kind: targetId ? 'update' : 'insert',
         },
         { keepDirty: true },
       );
       setDisabledEdit(true);
     }
-  }, [fetcher, form]);
+  }, [fetcher.data, targetId, form, toast]);
 
   useEffect(() => {
     if (form.getValues('paragraphId') !== id) {
       setDisabledEdit(false);
     }
-    form.setValue('paragraphId', id, { shouldDirty: true });
-  }, [form, id]);
+    if (targetId) {
+      form.setValue('paragraphId', targetId, { shouldDirty: true });
+      form.setValue('kind', 'update', { shouldDirty: true });
+    } else {
+      form.setValue('paragraphId', id, { shouldDirty: true });
+      form.setValue('kind', 'insert', { shouldDirty: true });
+    }
+  }, [form, id, targetId]);
 
   const onSubmit = (data: z.infer<typeof paragraphActionSchema>) => {
     fetcher.submit(data, { method: 'post' });
@@ -284,21 +330,23 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
   const translation = watch('translation');
 
   useEffect(() => {
-    if (textAreaRef.current) {
-      textAreaRef.current.style.height = '0px';
-      const scrollHeight = textAreaRef.current.scrollHeight + 10;
-
-      textAreaRef.current.style.height = scrollHeight + 'px';
-    }
-  }, [textAreaRef, translation]);
-
-  useEffect(() => {
-    if (target && form.getValues('translation') !== '') {
+    if (target && form.getValues('translation') === '' && !disabledEdit) {
       form.setValue('translation', target);
     } else {
       form.setValue('translation', '');
     }
-  }, [target, form]);
+  }, [target, form, id, disabledEdit]);
+
+  useEffect(() => {
+    const textarea = textAreaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+
+      const scrollHeight = textarea.scrollHeight;
+
+      textarea.style.height = `${scrollHeight + 10}px`;
+    }
+  }, [translation]);
 
   return (
     <FormProvider {...form}>
@@ -315,7 +363,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
           </ContextMenuWrapper>
           <fetcher.Form method="post" className="mt-4" onSubmit={handleSubmit(onSubmit)}>
             <div className="mt-auto grid w-full gap-2">
-              <input type="hidden" {...register('paragraphId')} />
+              {/* <input type="hidden" {...register('paragraphId')} /> */}
               <Can I="Read" this="Paragraph">
                 <Textarea
                   className="h-8 text-md"
@@ -336,7 +384,13 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
         </motion.div>
         <References references={references} />
         <ContextMenuWrapper>
-          <OpenAIStreamCard originId={id} text={origin} rollId={rollId} title="AI Translation" />
+          <OpenAIStreamCard
+            originId={id}
+            text={origin}
+            rollId={rollId}
+            title="AI Translation"
+            disabled={disabledEdit}
+          />
         </ContextMenuWrapper>
         <div className="flex-grow"></div>
       </div>
@@ -429,9 +483,10 @@ interface StreamCardProps {
   title: string;
   originId: string;
   rollId: string;
+  disabled: boolean;
 }
 
-const OpenAIStreamCard = React.memo(({ text, title, originId, rollId }: StreamCardProps) => {
+const OpenAIStreamCard = React.memo(({ text, title, originId, rollId, disabled }: StreamCardProps) => {
   const formContext = useFormContext();
   const fetcher = useFetcher<{ success: boolean; glossaries: ReadGlossary[]; tokens: string[] }>();
   const loading = fetcher.state === 'loading' || fetcher.state === 'submitting';
@@ -539,11 +594,11 @@ const OpenAIStreamCard = React.memo(({ text, title, originId, rollId }: StreamCa
       }
     };
 
-    if ((refresh || text) && (tokens.length || glossaries.length)) {
+    if ((refresh || text) && (tokens.length || glossaries.length) && !disabled) {
       fetchStream();
     }
     setRefresh(false);
-  }, [text, refresh, glossaries, tokens, cleanupStream]);
+  }, [text, refresh, glossaries, tokens, cleanupStream, disabled]);
 
   return (
     <>
@@ -605,7 +660,7 @@ const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
 
 export const ParagraphHistory = ({ histories }: { histories: ReadHistory[] }) => {
   return histories.length ? (
-    <div className="absolute right-1 top-1">
+    <div className="absolute left-1 top-4">
       <ParagraphHistoryPopover>
         <ParagraphHistoryTimeline histories={histories} />
       </ParagraphHistoryPopover>
@@ -614,15 +669,31 @@ export const ParagraphHistory = ({ histories }: { histories: ReadHistory[] }) =>
 };
 
 export const ParagraphHistoryPopover = ({ children }: PropsWithChildren) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
   return (
-    <HoverCard>
-      <HoverCardTrigger asChild>
-        <Button variant="link" className="h-6 w-6 p-0">
+    <Popover modal={true} open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="link"
+          className="h-6 w-6 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(true); // Manually open since we are stopping propagation
+          }}
+        >
           <Icons.FileClock className="h-4 w-4" />
         </Button>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-full max-w-xl lg:max-w-3xl">{children}</HoverCardContent>
-    </HoverCard>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-full max-w-xl lg:max-w-3xl"
+        onPointerDownOutside={(event) => {
+          setIsOpen(false);
+        }}
+      >
+        {children}
+      </PopoverContent>
+    </Popover>
   );
 };
 
