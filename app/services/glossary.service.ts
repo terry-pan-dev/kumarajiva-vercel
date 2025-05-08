@@ -133,3 +133,49 @@ export const createGlossaryAndIndexInAlgolia = async (glossary: Omit<CreateGloss
   });
   return savedGlossary;
 };
+
+export const searchGlossaries = async (tokens: string[]) => {
+  const glossaries: ReadGlossary[] = [];
+  const batchSize = 50;
+  const batches = [];
+  for (let i = 0; i < tokens.length; i += batchSize) {
+    batches.push(tokens.slice(i, i + batchSize));
+  }
+  const multiSearchQueryBatches = batches.map((batch) => {
+    return batch?.map((token) => ({
+      indexName: 'glossaries',
+      query: token,
+      hitsPerPage: 1,
+      removeStopWords: true,
+    }));
+  });
+  const indexExist = await algoliaClient.indexExists({ indexName: 'glossaries' });
+  if (!indexExist) {
+    return [];
+  }
+  for await (const batch of multiSearchQueryBatches) {
+    const { results } = await algoliaClient.search<ReadGlossary>({
+      requests: batch,
+    });
+    if (results.length) {
+      results.forEach((result) => {
+        if ('hits' in result) {
+          result.hits.forEach((hit) => {
+            const { _highlightResult, ...rest } = hit;
+            glossaries.push(rest);
+          });
+        }
+      });
+    }
+    console.log('glossary_searcher result', results?.length);
+  }
+  return glossaries.reduce(
+    (acc, glossary) => {
+      if (glossary.glossary) {
+        acc[glossary.glossary] = glossary.translations?.map((t) => t.glossary) ?? [];
+      }
+      return acc;
+    },
+    {} as Record<string, string[]>,
+  );
+};

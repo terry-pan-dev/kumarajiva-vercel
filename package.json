@@ -78,7 +78,7 @@
     "isbot": "^4",
     "lodash": "^4.17.21",
     "lucide-react": "^0.452.0",
-    "openai": "^4.67.3",
+    "openai": "^4.97.0",
     "react": "^18.2.0",
     "react-avatar-editor": "14.0.0-beta.5",
     "react-dom": "^18.2.0",
