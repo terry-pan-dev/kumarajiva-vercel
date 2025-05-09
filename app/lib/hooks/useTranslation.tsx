@@ -1,8 +1,8 @@
-import { useFetcher } from '@remix-run/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-export const useTranslation = <T,>(target: string | null) => {
-  const fetcher = useFetcher<T>();
+export const useTranslation = ({ originId, target }: { originId: string; target: string | null }) => {
+  const previousOriginId = useRef<string>(originId);
+  // const fetcher = useFetcher<T>();
   const [translation, setTranslation] = useState(target || '');
 
   const pasteTranslation = useCallback((text: string) => {
@@ -13,25 +13,29 @@ export const useTranslation = <T,>(target: string | null) => {
     setTranslation('');
   }, []);
 
-  const isLoading = fetcher.state === 'submitting' || fetcher.state === 'loading';
-
   const [disabledEdit, setDisabledEdit] = useState(false);
 
+  // Be careful modifying this logic in this effect
   useEffect(() => {
     if (!translation && target) {
       setDisabledEdit(true);
     }
-    if (!translation && !target) {
+    if ((!translation && !target) || previousOriginId.current !== originId) {
       setDisabledEdit(false);
     }
-  }, [translation, target]);
+    if (target && previousOriginId.current !== originId) {
+      setTranslation(target);
+    }
+  }, [translation, target, originId]);
+
+  useEffect(() => {
+    previousOriginId.current = originId;
+  }, [originId]);
 
   return {
     translation,
     pasteTranslation,
     cleanTranslation,
-    isLoading,
     disabledEdit,
-    fetcher,
   };
 };

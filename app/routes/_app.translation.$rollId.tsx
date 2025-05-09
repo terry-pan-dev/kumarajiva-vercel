@@ -1,4 +1,4 @@
-import { useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
+import { Form, useActionData, useLoaderData, useNavigation, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
@@ -64,12 +64,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     return redirect('/login');
   }
   const { rollId } = params;
-  console.time('readParagraphsByRollId');
   const [paragraphs, rollInfo] = await Promise.all([
     readParagraphsByRollId({ rollId: rollId as string, user }),
     readRollById(rollId as string),
   ]);
-  console.timeEnd('readParagraphsByRollId');
 
   return json({ success: true, paragraphs: paragraphs ?? [], rollInfo });
 }
@@ -99,7 +97,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         },
       });
       console.timeEnd('insertParagraph');
-      return json({ success: true, message: 'Paragraph created successfully' });
+      return json({ success: true, message: 'Paragraph created successfully', kind: 'insert' });
     }
     if (result.kind === 'update') {
       console.time('updateParagraph');
@@ -108,7 +106,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         newContent: result.translation,
       });
       console.timeEnd('updateParagraph');
-      return json({ success: true, message: 'Paragraph updated successfully' });
+      return json({ success: true, message: 'Paragraph updated successfully', kind: 'update' });
     }
   } catch (error) {
     console.log({ error });
@@ -122,6 +120,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TranslationRoll() {
   const { paragraphs, rollInfo } = useLoaderData<typeof loader>();
+  const actionData = useActionData<{ success: boolean; message: string; kind: 'insert' | 'update' }>();
 
   const divRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLLabelElement>(null);
@@ -129,27 +128,6 @@ export default function TranslationRoll() {
   const context = useOutletContext<{ user: ReadUser }>();
 
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (selectedParagraphIndex && (divRef.current || labelRef.current)) {
-      setTimeout(() => {
-        divRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        labelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    }
-  }, [selectedParagraphIndex]);
-
-  useEffect(() => {
-    const firstNotSelectedNode = paragraphs.find((p) => !p.target);
-    if (firstNotSelectedNode) {
-      const node = document.getElementById(firstNotSelectedNode.id);
-      if (node) {
-        setTimeout(() => {
-          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-      }
-    }
-  }, [paragraphs]);
 
   const paragraphsWithHistory = useMemo(() => {
     return paragraphs.map((paragraph) => ({
@@ -163,6 +141,34 @@ export default function TranslationRoll() {
       histories: paragraph.histories.map((history) => ({ ...history, updatedAt: new Date(history.updatedAt) })),
     }));
   }, [paragraphs]);
+
+  const selectedParagraph = useMemo(() => {
+    if (selectedParagraphIndex) {
+      return paragraphsWithHistory.find((p) => p.id === selectedParagraphIndex)!;
+    }
+    return null;
+  }, [selectedParagraphIndex, paragraphsWithHistory]);
+
+  useEffect(() => {
+    if (selectedParagraphIndex && (divRef.current || labelRef.current) && actionData?.kind !== 'update') {
+      setTimeout(() => {
+        divRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        labelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [selectedParagraphIndex, actionData]);
+
+  useEffect(() => {
+    const firstNotSelectedNode = paragraphs.find((p) => !p.target);
+    if (firstNotSelectedNode) {
+      const node = document.getElementById(firstNotSelectedNode.id);
+      if (node && actionData?.kind !== 'update') {
+        setTimeout(() => {
+          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+    }
+  }, [paragraphs, actionData]);
 
   const Paragraphs = paragraphsWithHistory.map((paragraph) => (
     <div key={paragraph.id} className="flex items-center gap-4 px-2">
@@ -178,7 +184,10 @@ export default function TranslationRoll() {
           >
             <ContextMenuWrapper>
               <div className="relative h-full">
-                <Paragraph text={paragraph.target} />
+                <Paragraph
+                  text={paragraph.target}
+                  isUpdate={selectedParagraphIndex === paragraph.id && actionData?.kind === 'update'}
+                />
                 <ParagraphHistory histories={paragraph.histories} />
               </div>
             </ContextMenuWrapper>
@@ -209,13 +218,6 @@ export default function TranslationRoll() {
       )}
     </div>
   ));
-
-  const selectedParagraph = useMemo(() => {
-    if (selectedParagraphIndex) {
-      return paragraphsWithHistory.find((p) => p.id === selectedParagraphIndex)!;
-    }
-    return null;
-  }, [selectedParagraphIndex, paragraphsWithHistory]);
 
   if (selectedParagraph) {
     return (
@@ -259,40 +261,40 @@ export default function TranslationRoll() {
 const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
   const { id, origin, target, references, rollId, targetId } = paragraph;
 
-  const { translation, pasteTranslation, isLoading, disabledEdit, fetcher, cleanTranslation } = useTranslation<{
+  const { translation, pasteTranslation, disabledEdit, cleanTranslation } = useTranslation({ originId: id, target });
+
+  const actionData = useActionData<{
     success: boolean;
     message: string;
+    kind: 'insert' | 'update';
     errors: ZodError['errors'];
-  }>(target);
+  }>();
+
+  const navigation = useNavigation();
+
+  const isLoading = navigation.state === 'submitting' || navigation.state === 'loading';
+  console.log({ isLoading, state: navigation.state });
 
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!fetcher.data) return;
-    if (fetcher.data?.success) {
+    if (!actionData) return;
+    if (actionData.success) {
       toast({
         variant: 'default',
-        title: fetcher.data.message,
+        title: actionData.message,
         position: 'top-right',
-        description: fetcher.data.message,
+        description: actionData.message,
       });
     } else {
       toast({
         variant: 'error',
         title: 'Oops!',
         position: 'top-right',
-        description: fetcher.data.errors?.map((error) => error.message).join(', '),
+        description: actionData.errors?.map((error) => error.message).join(', '),
       });
     }
-  }, [fetcher.data, toast]);
-
-  const onSubmit = () => {
-    fetcher.submit(
-      { translation, paragraphId: targetId || id, kind: targetId ? 'update' : 'insert' },
-      { method: 'post' },
-    );
-    cleanTranslation();
-  };
+  }, [actionData, toast]);
 
   const textAreaRef = useTextAreaAutoHeight(translation);
 
@@ -308,10 +310,13 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
         <ContextMenuWrapper>
           <Paragraph text={origin} title="Origin" />
         </ContextMenuWrapper>
-        <fetcher.Form method="post" className="mt-4">
+        <Form method="post" className="mt-4" onSubmit={() => cleanTranslation()}>
           <div className="mt-auto grid w-full gap-2">
+            <input type="hidden" name="paragraphId" value={targetId || id} />
+            <input name="kind" type="hidden" value={targetId ? 'update' : 'insert'} />
             <Can I="Read" this="Paragraph">
               <Textarea
+                name="translation"
                 value={translation}
                 className="h-8 text-md"
                 disabled={isLoading || disabledEdit}
@@ -325,12 +330,12 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
                     : 'Type your translation here.'
                 }
               />
-              <Button type="submit" onClick={onSubmit} disabled={translation === '' || isLoading}>
+              <Button type="submit" disabled={translation === '' || isLoading}>
                 {isLoading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Save Translation'}
               </Button>
             </Can>
           </div>
-        </fetcher.Form>
+        </Form>
       </motion.div>
       <References references={references} pasteTranslation={pasteTranslation} />
       <ContextMenuWrapper>
@@ -341,7 +346,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
           title="AI Translation"
           disabled={disabledEdit}
           pasteTranslation={pasteTranslation}
-          interrupt={fetcher.state === 'submitting'}
+          interrupt={navigation.state === 'submitting'}
         />
       </ContextMenuWrapper>
       <div className="flex-grow"></div>
@@ -470,6 +475,7 @@ const OpenAIStreamCard = React.memo(
     useEffect(() => {
       if (interrupt) {
         abortControllerRef.current?.abort();
+        setLoading(false);
       }
     }, [interrupt]);
 
