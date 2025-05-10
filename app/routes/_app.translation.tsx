@@ -9,6 +9,7 @@ import { Icons } from '../components/icons';
 import { SideBarTrigger } from '../components/SideBarTrigger';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
+import { Toaster } from '../components/ui/toaster';
 import { useDownloadDocx } from '../lib/hooks';
 import { readUsers } from '../services';
 import { type IParagraph, readParagraphsByRollId } from '../services/paragraph.service';
@@ -103,6 +104,7 @@ export default function TranslationLayout() {
       </div>
       <Separator className="mb-2 bg-yellow-600" />
       <Outlet context={{ user, users }} />
+      <Toaster />
     </div>
   );
 }

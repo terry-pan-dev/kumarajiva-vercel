@@ -1,19 +1,16 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useFetcher, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
+import { Form, useActionData, useLoaderData, useNavigation, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
-import { ChevronsDownUp, ChevronsUpDown, Copy, Info } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren, useCallback } from 'react';
-import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 import Markdown from 'react-markdown';
-import { ZodError, type z } from 'zod';
+import { ZodError } from 'zod';
 
 import { Icons } from '~/components/icons';
 import { type ReadReference } from '~/drizzle/tables/reference';
 import { type ReadUser } from '~/drizzle/tables/user';
 
-import type { ReadGlossary } from '../../drizzle/schema';
 import type { ReadHistory } from '../../drizzle/tables/paragraph';
 
 import { assertAuthUser } from '../auth.server';
@@ -33,19 +30,33 @@ import {
   RadioGroup,
   RadioGroupItem,
   ResizableHandle,
-  Separator,
   ResizablePanel,
   ResizablePanelGroup,
   ScrollArea,
   Textarea,
 } from '../components/ui';
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '../components/ui/hover-card';
 import { useToast } from '../hooks/use-toast';
 import { useScreenSize } from '../lib/hooks/useScreenSizeHook';
+import { useTextAreaAutoHeight } from '../lib/hooks/useTextAreaAutoHeight';
+import { useTranslation } from '../lib/hooks/useTranslation';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
-import { readParagraphsByRollId, upsertParagraph, type IParagraph } from '../services/paragraph.service';
+import {
+  insertParagraph,
+  readParagraphsByRollId,
+  updateParagraph,
+  type IParagraph,
+} from '../services/paragraph.service';
 import { readRollById } from '../services/roll.service';
 import { paragraphActionSchema } from '../validations/paragraph.validation';
+
+export const config = {
+  memory: 3009,
+};
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  return <ErrorInfo error={error} />;
+}
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
@@ -53,8 +64,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     return redirect('/login');
   }
   const { rollId } = params;
-  const paragraphs = await readParagraphsByRollId({ rollId: rollId as string, user });
-  const rollInfo = await readRollById(rollId as string);
+  const [paragraphs, rollInfo] = await Promise.all([
+    readParagraphsByRollId({ rollId: rollId as string, user }),
+    readRollById(rollId as string),
+  ]);
 
   return json({ success: true, paragraphs: paragraphs ?? [], rollInfo });
 }
@@ -69,57 +82,52 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   try {
     const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
-    await upsertParagraph({
-      content: result.translation,
-      rollId: rollId as string,
-      parentId: result.paragraphId,
-      createdBy: user.id,
-      updatedBy: user.id,
-      language: user.targetLang,
-    });
+    console.log({ result });
+    if (result.kind === 'insert') {
+      console.time('insertParagraph');
+      await insertParagraph({
+        parentId: result.paragraphId,
+        newParagraph: {
+          content: result.translation,
+          rollId: rollId as string,
+          createdBy: user.id,
+          updatedBy: user.id,
+          parentId: result.paragraphId,
+          language: user.targetLang,
+        },
+      });
+      console.timeEnd('insertParagraph');
+      return json({ success: true, message: 'Paragraph created successfully', kind: 'insert', id: result.paragraphId });
+    }
+    if (result.kind === 'update') {
+      console.time('updateParagraph');
+      await updateParagraph({
+        id: result.paragraphId,
+        newContent: result.translation,
+      });
+      console.timeEnd('updateParagraph');
+      return json({ success: true, message: 'Paragraph updated successfully', kind: 'update', id: result.paragraphId });
+    }
   } catch (error) {
     console.log({ error });
     if (error instanceof ZodError) {
-      return json({ success: false, errors: error.message }, { status: 400 });
+      return json({ success: false, errors: error.errors }, { status: 400 });
     }
     throw new Error('Failed to create paragraph');
   }
   return json({ success: true, paragraphs: [] });
 }
 
-export function ErrorBoundary() {
-  const error = useRouteError();
-
-  return <ErrorInfo error={error} />;
-}
 export default function TranslationRoll() {
   const { paragraphs, rollInfo } = useLoaderData<typeof loader>();
+  const actionData = useActionData<{ success: boolean; message: string; kind: 'insert' | 'update'; id: string }>();
 
+  const divRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLLabelElement>(null);
 
   const context = useOutletContext<{ user: ReadUser }>();
 
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (selectedParagraphIndex && labelRef.current) {
-      setTimeout(() => {
-        labelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    }
-  }, [selectedParagraphIndex]);
-
-  useEffect(() => {
-    const firstNotSelectedNode = paragraphs.find((p) => !p.target);
-    if (firstNotSelectedNode) {
-      const node = document.getElementById(firstNotSelectedNode.id);
-      if (node) {
-        setTimeout(() => {
-          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-      }
-    }
-  }, [paragraphs]);
 
   const paragraphsWithHistory = useMemo(() => {
     return paragraphs.map((paragraph) => ({
@@ -134,25 +142,61 @@ export default function TranslationRoll() {
     }));
   }, [paragraphs]);
 
+  const selectedParagraph = useMemo(() => {
+    if (selectedParagraphIndex) {
+      return paragraphsWithHistory.find((p) => p.id === selectedParagraphIndex)!;
+    }
+    return null;
+  }, [selectedParagraphIndex, paragraphsWithHistory]);
+
+  useEffect(() => {
+    if (selectedParagraphIndex && (divRef.current || labelRef.current) && actionData?.kind !== 'update') {
+      setTimeout(() => {
+        divRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        labelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [selectedParagraphIndex, actionData]);
+
+  useEffect(() => {
+    const firstNotSelectedNode = paragraphs.find((p) => !p.target);
+    if (firstNotSelectedNode) {
+      const node = document.getElementById(firstNotSelectedNode.id);
+      if (node && actionData?.kind !== 'update') {
+        setTimeout(() => {
+          node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+    }
+  }, [paragraphs, actionData]);
+
   const Paragraphs = paragraphsWithHistory.map((paragraph) => (
     <div key={paragraph.id} className="flex items-center gap-4 px-2">
       {paragraph?.target ? (
         <div className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-4`}>
           <ContextMenuWrapper>
-            <Paragraph isOrigin text={paragraph.origin} />
+            <Paragraph isOrigin text={paragraph.origin} isSelected={selectedParagraphIndex === paragraph.id} />
           </ContextMenuWrapper>
-          <Label
+          <div
             className="flex h-auto text-md font-normal"
             onDoubleClick={() => setSelectedParagraphIndex(paragraph.id)}
-            ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
+            ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
           >
             <ContextMenuWrapper>
               <div className="relative h-full">
-                <Paragraph text={paragraph.target} />
+                <Paragraph
+                  text={paragraph.target}
+                  isUpdate={
+                    (selectedParagraphIndex === paragraph.id &&
+                      actionData?.kind === 'update' &&
+                      actionData.id === paragraph.targetId) ||
+                    (actionData?.kind === 'insert' && actionData.id === paragraph.id)
+                  }
+                />
                 <ParagraphHistory histories={paragraph.histories} />
               </div>
             </ContextMenuWrapper>
-          </Label>
+          </div>
         </div>
       ) : (
         <motion.div
@@ -172,7 +216,7 @@ export default function TranslationRoll() {
             ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
-              <Paragraph text={paragraph.origin} />
+              <Paragraph text={paragraph.origin} isSelected={selectedParagraphIndex === paragraph.id} />
             </ContextMenuWrapper>
           </Label>
         </motion.div>
@@ -180,9 +224,7 @@ export default function TranslationRoll() {
     </div>
   ));
 
-  if (selectedParagraphIndex) {
-    const selectedParagraph = paragraphsWithHistory.find((p) => p.id === selectedParagraphIndex)!;
-
+  if (selectedParagraph) {
     return (
       <DragPanel>
         <LeftPanel>
@@ -222,139 +264,117 @@ export default function TranslationRoll() {
 }
 
 const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
-  const { id, origin, target, references, rollId } = paragraph;
-  const fetcher = useFetcher<{ success: boolean }>();
+  const { id, origin, target, references, rollId, targetId } = paragraph;
 
-  const form = useForm<z.infer<typeof paragraphActionSchema>>({
-    resolver: zodResolver(paragraphActionSchema),
-    mode: 'onSubmit',
-    defaultValues: {
-      translation: target || '',
-      paragraphId: id,
-    },
-  });
+  const { translation, pasteTranslation, disabledEdit, cleanTranslation } = useTranslation({ originId: id, target });
 
-  const {
-    register,
-    formState: { errors, isDirty },
-    handleSubmit,
-    watch,
-  } = form;
+  const actionData = useActionData<{
+    success: boolean;
+    message: string;
+    kind: 'insert' | 'update';
+    errors: ZodError['errors'];
+  }>();
+
+  const navigation = useNavigation();
+
+  const isLoading = navigation.state === 'submitting' || navigation.state === 'loading';
+  console.log({ isLoading, state: navigation.state });
 
   const { toast } = useToast();
 
   useEffect(() => {
-    if (errors.translation || errors.paragraphId) {
+    if (!actionData) return;
+    if (actionData.success) {
       toast({
-        variant: errors.translation?.message ? 'warning' : errors.paragraphId?.message ? 'error' : 'default',
+        variant: 'default',
+        title: actionData.message,
+        position: 'top-right',
+        description: actionData.message,
+      });
+    } else {
+      toast({
+        variant: 'error',
         title: 'Oops!',
         position: 'top-right',
-        description: errors.translation?.message || errors.paragraphId?.message,
+        description: actionData.errors?.map((error) => error.message).join(', '),
       });
     }
-  }, [errors, toast]);
+  }, [actionData, toast]);
 
-  const [disabledEdit, setDisabledEdit] = useState(false);
-
-  useEffect(() => {
-    if (fetcher.data?.success && form.getValues('translation')) {
-      form.reset(
-        {
-          paragraphId: '',
-          translation: '',
-        },
-        { keepDirty: true },
-      );
-      setDisabledEdit(true);
-    }
-  }, [fetcher, form]);
-
-  useEffect(() => {
-    if (form.getValues('paragraphId') !== id) {
-      setDisabledEdit(false);
-    }
-    form.setValue('paragraphId', id, { shouldDirty: true });
-  }, [form, id]);
-
-  const onSubmit = (data: z.infer<typeof paragraphActionSchema>) => {
-    fetcher.submit(data, { method: 'post' });
-  };
-
-  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
-  const translation = watch('translation');
-
-  useEffect(() => {
-    if (textAreaRef.current) {
-      textAreaRef.current.style.height = '0px';
-      const scrollHeight = textAreaRef.current.scrollHeight + 10;
-
-      textAreaRef.current.style.height = scrollHeight + 'px';
-    }
-  }, [textAreaRef, translation]);
-
-  useEffect(() => {
-    if (target && form.getValues('translation') !== '') {
-      form.setValue('translation', target);
-    } else {
-      form.setValue('translation', '');
-    }
-  }, [target, form]);
+  const textAreaRef = useTextAreaAutoHeight(translation);
 
   return (
-    <FormProvider {...form}>
-      <div className="flex h-full flex-col justify-start gap-4 px-1">
-        <motion.div
-          className="flex flex-col"
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          exit={{ opacity: 0, x: '100%' }}
-          initial={{ opacity: 0, x: '100%' }}
-        >
-          <ContextMenuWrapper>
-            <Paragraph text={origin} title="Origin" />
-          </ContextMenuWrapper>
-          <fetcher.Form method="post" className="mt-4" onSubmit={handleSubmit(onSubmit)}>
-            <div className="mt-auto grid w-full gap-2">
-              <input type="hidden" {...register('paragraphId')} />
-              <Can I="Read" this="Paragraph">
-                <Textarea
-                  className="h-8 text-md"
-                  disabled={disabledEdit}
-                  placeholder={disabledEdit ? 'Please select a new paragraph to edit.' : 'Type your translation here.'}
-                  {...register('translation')}
-                  ref={(e) => {
-                    register('translation').ref(e);
-                    textAreaRef.current = e;
-                  }}
-                />
-                <Button type="submit" disabled={translation === '' || !isDirty}>
-                  Save Translation
-                </Button>
-              </Can>
-            </div>
-          </fetcher.Form>
-        </motion.div>
-        <References references={references} />
+    <div className="flex h-full flex-col justify-start gap-4 px-1">
+      <motion.div
+        className="flex flex-col"
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        exit={{ opacity: 0, x: '100%' }}
+        initial={{ opacity: 0, x: '100%' }}
+      >
         <ContextMenuWrapper>
-          <OpenAIStreamCard originId={id} text={origin} rollId={rollId} title="AI Translation" />
+          <Paragraph text={origin} title="Origin" />
         </ContextMenuWrapper>
-        <div className="flex-grow"></div>
-      </div>
-    </FormProvider>
+        <Form method="post" className="mt-4" onSubmit={() => cleanTranslation()}>
+          <div className="mt-auto grid w-full gap-2">
+            <input type="hidden" name="paragraphId" value={targetId || id} />
+            <input name="kind" type="hidden" value={targetId ? 'update' : 'insert'} />
+            <Can I="Read" this="Paragraph">
+              <Textarea
+                name="translation"
+                value={translation}
+                className="h-8 text-md"
+                disabled={isLoading || disabledEdit}
+                onChange={(e) => pasteTranslation(e.target.value)}
+                ref={(e) => {
+                  textAreaRef.current = e;
+                }}
+                placeholder={
+                  disabledEdit
+                    ? 'Please select a new paragraph to edit or double click translated paragraph.'
+                    : 'Type your translation here.'
+                }
+              />
+              <Button type="submit" disabled={translation === '' || isLoading}>
+                {isLoading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Save Translation'}
+              </Button>
+            </Can>
+          </div>
+        </Form>
+      </motion.div>
+      <References references={references} pasteTranslation={pasteTranslation} />
+      <ContextMenuWrapper>
+        <OpenAIStreamCard
+          originId={id}
+          text={origin}
+          rollId={rollId}
+          title="AI Translation"
+          disabled={disabledEdit}
+          pasteTranslation={pasteTranslation}
+          interrupt={navigation.state === 'submitting'}
+        />
+      </ContextMenuWrapper>
+      <div className="flex-grow"></div>
+    </div>
   );
 };
 
-const References = ({ references }: { references: ReadReference[] }) => {
+const References = ({
+  references,
+  pasteTranslation,
+}: {
+  references: ReadReference[];
+  pasteTranslation: (text: string) => void;
+}) => {
   const [isOpen, setIsOpen] = React.useState(true);
-  const formContext = useFormContext();
 
   const getButtons = (text: string) => {
     return (
       <Button
         size="icon"
         variant="ghost"
+        onClick={() => pasteTranslation(text)}
         className="transition-transform duration-300 hover:scale-110"
-        onClick={() => formContext.setValue('translation', text, { shouldDirty: true })}
       >
         <Copy className="h-4 w-4" />
       </Button>
@@ -429,149 +449,133 @@ interface StreamCardProps {
   title: string;
   originId: string;
   rollId: string;
+  disabled: boolean;
+  interrupt: boolean;
+  pasteTranslation: (text: string) => void;
 }
 
-const OpenAIStreamCard = React.memo(({ text, title, originId, rollId }: StreamCardProps) => {
-  const formContext = useFormContext();
-  const fetcher = useFetcher<{ success: boolean; glossaries: ReadGlossary[]; tokens: string[] }>();
-  const loading = fetcher.state === 'loading' || fetcher.state === 'submitting';
-  const [translationResult, setTranslationResult] = useState<string>('');
-  const [refresh, setRefresh] = useState(false);
-  const textRef = useRef<string>('');
+const OpenAIStreamCard = React.memo(
+  ({ text, title, originId, rollId, disabled, pasteTranslation, interrupt }: StreamCardProps) => {
+    const [translationResult, setTranslationResult] = useState<string>('');
+    const [refresh, setRefresh] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const textRef = useRef<string>('');
 
-  const [glossaries, setGlossaries] = useState<ReadGlossary[]>([]);
-  const [tokens, setTokens] = useState<string[]>([]);
-  useEffect(() => {
-    if (text) {
-      fetcher.load(`/tokenizer?content=${text}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text]);
+    // Add AbortController ref to manage request lifecycle
+    const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (fetcher.data?.success) {
-      const glossaries = fetcher.data.glossaries.map((glossary) => ({
-        ...glossary,
-        createdAt: new Date(glossary.createdAt),
-        updatedAt: new Date(glossary.updatedAt),
-        deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
-      }));
-      setGlossaries(glossaries);
-      setTokens(fetcher.data.tokens);
-    }
-  }, [fetcher.data]);
-
-  // Add AbortController ref to manage request lifecycle
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Cleanup function to abort ongoing requests
-  const cleanupStream = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-  }, []);
-
-  // Cleanup on unmount or text change
-  useEffect(() => {
-    return () => cleanupStream();
-  }, [cleanupStream]);
-
-  useEffect(() => {
-    setTranslationResult('');
-    textRef.current = '';
-
-    // Clean up previous stream before starting new one
-    cleanupStream();
-
-    const fetchStream = async () => {
-      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined = undefined;
-      try {
-        // Create new AbortController for this request
-        abortControllerRef.current = new AbortController();
-
-        const req = new Request(`/openai`, {
-          method: 'POST',
-          body: JSON.stringify({
-            origin: text,
-            glossaries: glossaries.reduce(
-              (acc, glossary) => {
-                acc[glossary.glossary] = glossary.translations?.map((translation) => translation.glossary) || [];
-                return acc;
-              },
-              {} as Record<string, string[]>,
-            ),
-            originId,
-            rollId,
-          }),
-          // Add signal to request
-          signal: abortControllerRef.current.signal,
-        });
-
-        const response = await fetch(req);
-        reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-          if (!reader) break;
-
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          // Check if request was aborted
-          if (abortControllerRef.current?.signal.aborted) {
-            throw new Error('Stream aborted');
-          }
-
-          const chunk = decoder.decode(value);
-          setTranslationResult((prev) => prev + chunk);
-          textRef.current += chunk;
-        }
-      } catch (error) {
-        console.error(`error in openai loader: ${error}`);
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.info('Stream aborted by user');
-        }
-      } finally {
-        if (reader) {
-          reader.releaseLock();
-        }
+    // Cleanup function to abort ongoing requests
+    const cleanupStream = useCallback(() => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
-    };
+    }, []);
 
-    if ((refresh || text) && (tokens.length || glossaries.length)) {
-      fetchStream();
-    }
-    setRefresh(false);
-  }, [text, refresh, glossaries, tokens, cleanupStream]);
+    // Cleanup on unmount or text change
+    useEffect(() => {
+      return () => cleanupStream();
+    }, [cleanupStream]);
 
-  return (
-    <>
-      <WorkspaceCard
-        title={title}
-        text={translationResult}
-        buttons={
-          <>
-            {loading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : null}
-            <PromptGlossaryInfo tokens={tokens} loading={loading} originSutraText={text} glossaries={glossaries} />
-            <Button size="icon" variant="ghost" disabled={loading} onClick={() => setRefresh(true)}>
-              <Icons.Refresh className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              disabled={loading}
-              className="transition-transform duration-300 hover:scale-110"
-              onClick={() => formContext.setValue('translation', translationResult, { shouldDirty: true })}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </>
+    useEffect(() => {
+      if (interrupt) {
+        abortControllerRef.current?.abort();
+        setLoading(false);
+      }
+    }, [interrupt]);
+
+    useEffect(() => {
+      setTranslationResult('');
+      textRef.current = '';
+
+      // Clean up previous stream before starting new one
+      cleanupStream();
+
+      const fetchStream = async () => {
+        let reader: ReadableStreamDefaultReader<Uint8Array> | undefined = undefined;
+        try {
+          // Create new AbortController for this request
+          abortControllerRef.current = new AbortController();
+
+          const req = new Request(`/openai`, {
+            method: 'POST',
+            body: JSON.stringify({
+              origin: text,
+              originId,
+              rollId,
+            }),
+            // Add signal to request
+            signal: abortControllerRef.current.signal,
+          });
+
+          const response = await fetch(req);
+          reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+
+          while (true) {
+            if (!reader) break;
+
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            // Check if request was aborted
+            if (abortControllerRef.current?.signal.aborted) {
+              throw new Error('Stream aborted');
+            }
+
+            const chunk = decoder.decode(value);
+            setTranslationResult((prev) => prev + chunk);
+            textRef.current += chunk;
+          }
+        } catch (error) {
+          console.error(`error in openai loader: ${error}`);
+          if (error instanceof Error && error.name === 'AbortError') {
+            console.info('Stream aborted by user');
+          }
+        } finally {
+          if (reader) {
+            reader.releaseLock();
+            setLoading(false);
+          }
         }
-      />
-    </>
-  );
-});
+      };
+
+      if ((refresh || text) && !disabled) {
+        setLoading(true);
+        abortControllerRef.current?.abort();
+        fetchStream();
+      }
+      setRefresh(false);
+    }, [text, refresh, cleanupStream, disabled]);
+
+    return (
+      <>
+        <WorkspaceCard
+          title={title}
+          text={translationResult}
+          buttons={
+            <>
+              {loading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : null}
+              {/* <PromptGlossaryInfo tokens={tokens} loading={loading} originSutraText={text} glossaries={glossaries} /> */}
+              <Button size="icon" variant="ghost" disabled={loading} onClick={() => setRefresh(true)}>
+                <Icons.Refresh className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled={loading}
+                onClick={() => pasteTranslation(translationResult)}
+                className="transition-transform duration-300 hover:scale-110"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </>
+          }
+        />
+      </>
+    );
+  },
+);
 
 interface WorkspaceCardProps {
   title: string;
@@ -594,18 +598,20 @@ const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
           p(props) {
             return <p className="text-md text-slate-500" {...props} />;
           },
+          code(props) {
+            return <span className="rounded bg-yellow-200 px-1" {...props} />;
+          },
         }}
       >
         {text}
       </Markdown>
-      {/* <p className="text-md text-slate-500">{text}</p> */}
     </div>
   );
 };
 
 export const ParagraphHistory = ({ histories }: { histories: ReadHistory[] }) => {
   return histories.length ? (
-    <div className="absolute right-1 top-1">
+    <div className="absolute left-1 top-4">
       <ParagraphHistoryPopover>
         <ParagraphHistoryTimeline histories={histories} />
       </ParagraphHistoryPopover>
@@ -614,15 +620,31 @@ export const ParagraphHistory = ({ histories }: { histories: ReadHistory[] }) =>
 };
 
 export const ParagraphHistoryPopover = ({ children }: PropsWithChildren) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
   return (
-    <HoverCard>
-      <HoverCardTrigger asChild>
-        <Button variant="link" className="h-6 w-6 p-0">
+    <Popover modal={true} open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="link"
+          className="h-6 w-6 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(true); // Manually open since we are stopping propagation
+          }}
+        >
           <Icons.FileClock className="h-4 w-4" />
         </Button>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-full max-w-xl lg:max-w-3xl">{children}</HoverCardContent>
-    </HoverCard>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-full max-w-xl lg:max-w-3xl"
+        onPointerDownOutside={(event) => {
+          setIsOpen(false);
+        }}
+      >
+        {children}
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -703,105 +725,31 @@ export const ParagraphHistoryTimeline = ({ histories }: ParagraphHistoryTimeline
   );
 };
 
-const PromptGlossaryInfo = ({
-  glossaries,
-  originSutraText,
-  tokens,
-  loading,
-}: {
-  glossaries: ReadGlossary[];
-  originSutraText: string;
-  tokens: string[];
-  loading: boolean;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const isSmallScreen = useScreenSize();
-  const tableData = glossaries.map((glossary) => ({
-    term: glossary.glossary,
-    definition: glossary.translations?.map((translation) => translation.glossary) || [],
-  }));
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button size="icon" variant="ghost" disabled={loading}>
-          <Info className="h-4 w-4" />
-          <span className="sr-only">Open glossary</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-full p-0 lg:w-[450px]"
-        align={isSmallScreen ? 'end' : 'start'}
-        side={isSmallScreen ? 'bottom' : 'right'}
-      >
-        <div className="rounded-t-lg bg-gray-100 p-4 dark:bg-gray-800">
-          <h3 className="text-md font-semibold lg:text-lg">Glossary Info</h3>
-          <p className="text-sm text-gray-500">(glossary maybe used in AI translation)</p>
-        </div>
-        <div className="max-w-sm p-4 lg:max-w-full">
-          <HighlightedParagraph text={originSutraText} keywords={glossaries.map((glossary) => glossary.glossary)} />
-          <Separator className="my-4" />
-          {tokens?.length ? <p className="text-sm text-gray-500">Tokens: {tokens.join(', ')}</p> : null}
-          <Separator className="my-4" />
-          <TableData data={tableData} />
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-};
+// interface HighlightedParagraphProps {
+//   text: string;
+//   keywords: string[];
+// }
 
-interface HighlightedParagraphProps {
-  text: string;
-  keywords: string[];
-}
+// const HighlightedParagraph: React.FC<HighlightedParagraphProps> = ({ text, keywords }) => {
+//   const highlightText = (text: string, keywords: string[]) => {
+//     let highlightedText = text;
 
-const HighlightedParagraph: React.FC<HighlightedParagraphProps> = ({ text, keywords }) => {
-  const highlightText = (text: string, keywords: string[]) => {
-    let highlightedText = text;
+//     // Sort keywords by length (longest first) to handle overlapping matches correctly
+//     const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
 
-    // Sort keywords by length (longest first) to handle overlapping matches correctly
-    const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
+//     sortedKeywords.forEach((keyword) => {
+//       // Escape special regex characters and create word boundary for CJK characters
+//       const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
 
-    sortedKeywords.forEach((keyword) => {
-      // Escape special regex characters and create word boundary for CJK characters
-      const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+//       // Use positive lookbehind and lookahead for CJK word boundaries
+//       const pattern = `(${escapedKeyword})`;
+//       const regex = new RegExp(pattern, 'g');
 
-      // Use positive lookbehind and lookahead for CJK word boundaries
-      const pattern = `(${escapedKeyword})`;
-      const regex = new RegExp(pattern, 'g');
+//       highlightedText = highlightedText.replace(regex, '<span class="bg-yellow-200 dark:bg-yellow-800">$1</span>');
+//     });
 
-      highlightedText = highlightedText.replace(regex, '<span class="bg-yellow-200 dark:bg-yellow-800">$1</span>');
-    });
+//     return <p dangerouslySetInnerHTML={{ __html: highlightedText }} />;
+//   };
 
-    return <p dangerouslySetInnerHTML={{ __html: highlightedText }} />;
-  };
-
-  return <div className="mb-4">{highlightText(text, keywords)}</div>;
-};
-
-interface TableDataProps {
-  data: { term: string; definition: string[] }[];
-}
-const TableData: React.FC<TableDataProps> = ({ data }) => {
-  return (
-    <div className="overflow-hidden rounded-md border">
-      <div className="max-h-[300px] overflow-y-auto">
-        <table className="w-full border-collapse">
-          <tbody>
-            {data.map((row, index) => (
-              <tr key={index} className="border-b last:border-b-0">
-                <td className="border-r p-2">{row.term}</td>
-                <td className="p-2">
-                  <ul className="list-disc pl-5">
-                    {row.definition.map((item, itemIndex) => (
-                      <li key={itemIndex}>{item}</li>
-                    ))}
-                  </ul>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
+//   return <div className="mb-4">{highlightText(text, keywords)}</div>;
+// };

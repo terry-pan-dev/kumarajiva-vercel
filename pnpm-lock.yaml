@@ -168,8 +168,8 @@ importers:
         specifier: ^0.452.0
         version: 0.452.0(react@18.3.1)
       openai:
-        specifier: ^4.67.3
-        version: 4.67.3(encoding@0.1.13)(zod@3.24.2)
+        specifier: ^4.97.0
+        version: 4.97.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.8))(zod@3.24.2)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -6978,12 +6978,15 @@ packages:
     resolution: {integrity: sha512-NeaCX6WW2L8cRCSqy3bInlo5ojjQqu2fD3D+9W5qb5irwxhEyWKXeH2vZ8W9r6VxaMPUan+4/7NDwZMtouZxEw==}
     os: [win32, darwin, linux]
 
-  openai@4.67.3:
-    resolution: {integrity: sha512-HT2tZgjLgRqbLQNKmYtjdF/4TQuiBvg1oGvTDhwpSEQzxo6/oM1us8VQ53vBK2BiKvCxFuq6gKGG70qfwrNhKg==}
+  openai@4.97.0:
+    resolution: {integrity: sha512-LRoiy0zvEf819ZUEJhgfV8PfsE8G5WpQi4AwA1uCV8SKvvtXQkoWUFkepD6plqyJQRghy2+AEPQ07FrJFKHZ9Q==}
     hasBin: true
     peerDependencies:
+      ws: ^8.18.0
       zod: ^3.23.8
     peerDependenciesMeta:
+      ws:
+        optional: true
       zod:
         optional: true
 
@@ -13180,7 +13183,7 @@ snapshots:
 
   '@types/connect@3.4.36':
     dependencies:
-      '@types/node': 22.7.5
+      '@types/node': 22.10.2
 
   '@types/connect@3.4.38':
     dependencies:
@@ -13234,7 +13237,7 @@ snapshots:
 
   '@types/mysql@2.15.26':
     dependencies:
-      '@types/node': 22.7.5
+      '@types/node': 22.10.2
 
   '@types/node-fetch@2.6.11':
     dependencies:
@@ -13275,7 +13278,7 @@ snapshots:
 
   '@types/pg@8.6.1':
     dependencies:
-      '@types/node': 22.7.5
+      '@types/node': 22.10.2
       pg-protocol: 1.7.0
       pg-types: 2.2.0
 
@@ -13302,7 +13305,7 @@ snapshots:
 
   '@types/tedious@4.0.14':
     dependencies:
-      '@types/node': 22.7.5
+      '@types/node': 22.10.2
 
   '@types/unist@2.0.11': {}
 
@@ -16803,7 +16806,7 @@ snapshots:
       onnxruntime-common: 1.21.0
       tar: 7.4.3
 
-  openai@4.67.3(encoding@0.1.13)(zod@3.24.2):
+  openai@4.97.0(encoding@0.1.13)(ws@8.18.0(bufferutil@4.0.8))(zod@3.24.2):
     dependencies:
       '@types/node': 18.19.55
       '@types/node-fetch': 2.6.11
@@ -16813,6 +16816,7 @@ snapshots:
       formdata-node: 4.4.1
       node-fetch: 2.7.0(encoding@0.1.13)
     optionalDependencies:
+      ws: 8.18.0(bufferutil@4.0.8)
       zod: 3.24.2
     transitivePeerDependencies:
       - encoding
