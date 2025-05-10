@@ -97,7 +97,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         },
       });
       console.timeEnd('insertParagraph');
-      return json({ success: true, message: 'Paragraph created successfully', kind: 'insert' });
+      return json({ success: true, message: 'Paragraph created successfully', kind: 'insert', id: result.paragraphId });
     }
     if (result.kind === 'update') {
       console.time('updateParagraph');
@@ -106,7 +106,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         newContent: result.translation,
       });
       console.timeEnd('updateParagraph');
-      return json({ success: true, message: 'Paragraph updated successfully', kind: 'update' });
+      return json({ success: true, message: 'Paragraph updated successfully', kind: 'update', id: result.paragraphId });
     }
   } catch (error) {
     console.log({ error });
@@ -120,7 +120,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 export default function TranslationRoll() {
   const { paragraphs, rollInfo } = useLoaderData<typeof loader>();
-  const actionData = useActionData<{ success: boolean; message: string; kind: 'insert' | 'update' }>();
+  const actionData = useActionData<{ success: boolean; message: string; kind: 'insert' | 'update'; id: string }>();
 
   const divRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLLabelElement>(null);
@@ -186,7 +186,12 @@ export default function TranslationRoll() {
               <div className="relative h-full">
                 <Paragraph
                   text={paragraph.target}
-                  isUpdate={selectedParagraphIndex === paragraph.id && actionData?.kind === 'update'}
+                  isUpdate={
+                    (selectedParagraphIndex === paragraph.id &&
+                      actionData?.kind === 'update' &&
+                      actionData.id === paragraph.targetId) ||
+                    (actionData?.kind === 'insert' && actionData.id === paragraph.id)
+                  }
                 />
                 <ParagraphHistory histories={paragraph.histories} />
               </div>
@@ -593,11 +598,13 @@ const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
           p(props) {
             return <p className="text-md text-slate-500" {...props} />;
           },
+          code(props) {
+            return <span className="rounded bg-yellow-200 px-1" {...props} />;
+          },
         }}
       >
         {text}
       </Markdown>
-      {/* <p className="text-md text-slate-500">{text}</p> */}
     </div>
   );
 };
