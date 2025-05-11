@@ -193,18 +193,18 @@ export const updateParagraph = async ({
   newContent: string;
   updatedBy: string;
 }) => {
-  const originParagraph = await dbClient.query.paragraphsTable.findFirst({
+  const existingParagraph = await dbClient.query.paragraphsTable.findFirst({
     where: (paragraphs, { eq }) => eq(paragraphs.id, id),
   });
-  if (!originParagraph) {
+  if (!existingParagraph) {
     throw new Error('Paragraph not found');
   }
 
-  if (originParagraph.searchId) {
-    console.log('updating algolia', originParagraph.searchId);
-    algoliaClient.partialUpdateObject({
+  if (existingParagraph.searchId) {
+    console.log('updating algolia', existingParagraph.searchId);
+    await algoliaClient.partialUpdateObject({
       indexName: 'paragraphs',
-      objectID: originParagraph.searchId,
+      objectID: existingParagraph.searchId,
       attributesToUpdate: {
         content: newContent,
         updatedBy,
@@ -217,7 +217,7 @@ export const updateParagraph = async ({
       content: newContent,
       updatedBy,
     })
-    .where(eq(paragraphsTable.id, originParagraph.id));
+    .where(eq(paragraphsTable.id, existingParagraph.id));
 
   return result;
 };
@@ -242,7 +242,7 @@ export const insertParagraph = async ({
   const objectId = uuidv4();
   console.log({ paragraphId, objectId });
 
-  algoliaClient.saveObject({
+  await algoliaClient.saveObject({
     indexName: 'paragraphs',
     body: { ...newParagraph, id: paragraphId, objectID: objectId },
   });
