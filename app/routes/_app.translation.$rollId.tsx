@@ -104,6 +104,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       await updateParagraph({
         id: result.paragraphId,
         newContent: result.translation,
+        updatedBy: user.id,
       });
       console.timeEnd('updateParagraph');
       return json({ success: true, message: 'Paragraph updated successfully', kind: 'update', id: result.paragraphId });
