@@ -184,7 +184,15 @@ export const searchAlgolia = async ({
   return searchResults;
 };
 
-export const updateParagraph = async ({ id, newContent }: { id: string; newContent: string }) => {
+export const updateParagraph = async ({
+  id,
+  newContent,
+  updatedBy,
+}: {
+  id: string;
+  newContent: string;
+  updatedBy: string;
+}) => {
   const originParagraph = await dbClient.query.paragraphsTable.findFirst({
     where: (paragraphs, { eq }) => eq(paragraphs.id, id),
   });
@@ -199,6 +207,7 @@ export const updateParagraph = async ({ id, newContent }: { id: string; newConte
       objectID: originParagraph.searchId,
       attributesToUpdate: {
         content: newContent,
+        updatedBy,
       },
     });
   }
@@ -206,6 +215,7 @@ export const updateParagraph = async ({ id, newContent }: { id: string; newConte
     .update(paragraphsTable)
     .set({
       content: newContent,
+      updatedBy,
     })
     .where(eq(paragraphsTable.id, originParagraph.id));
 
