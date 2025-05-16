@@ -40,7 +40,7 @@ export default function ReferenceRoll() {
   const Paragraphs = paragraphs.map((paragraph) => {
     return (
       <div key={paragraph.id}>
-        <Paragraph isOrigin key={paragraph.id} text={paragraph.content} />
+        <Paragraph isOrigin id={paragraph.id} key={paragraph.id} text={paragraph.content} />
         <div className="h-2" />
         <div className="flex flex-col justify-between gap-2">
           {paragraph.references.map((reference) => (

@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import { type AnyPgColumn, timestamp, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
+import { commentsTable } from './comment';
 import { langEnum } from './enums';
 import { referencesTable } from './reference';
 import { rollsTable } from './roll';
@@ -56,6 +57,7 @@ export const paragraphsTableRelations = relations(paragraphsTable, ({ many, one 
   }),
   history: many(paragraphsHistoryTable),
   references: many(referencesTable),
+  comments: many(commentsTable),
 }));
 
 export type CreateParagraph = typeof paragraphsTable.$inferInsert;

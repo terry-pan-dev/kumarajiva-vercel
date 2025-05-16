@@ -7,9 +7,18 @@ import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { ReadHistory, CreateParagraph, ReadParagraph, ReadReference, ReadGlossary } from '~/drizzle/schema';
+import type {
+  ReadHistory,
+  CreateParagraph,
+  ReadParagraph,
+  ReadReference,
+  ReadGlossary,
+  CreateComment,
+  ReadComment,
+  UpdateComment,
+} from '~/drizzle/schema';
 
-import { glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
+import { commentsTable, glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
 import * as schema from '~/drizzle/schema';
 
 import { type SearchResultListProps } from '../components/SideBarMenu';
@@ -24,6 +33,8 @@ export interface IParagraph {
   target: string | null;
   references: ReadReference[];
   histories: ReadHistory[];
+  originComments: ReadComment[];
+  targetComments: ReadComment[];
   targetId?: string;
 }
 
@@ -42,10 +53,16 @@ export const readParagraphsByRollId = async ({
           history: {
             orderBy: (history, { desc }) => [desc(history.updatedAt)],
           },
+          comments: {
+            where: (comments, { eq }) => eq(comments.resolved, false),
+          },
         },
       },
       references: {
         orderBy: (references, { asc }) => [asc(references.order)],
+      },
+      comments: {
+        where: (comments, { eq }) => eq(comments.resolved, false),
       },
     },
     orderBy: (paragraphs, { asc }) => [asc(paragraphs.number), asc(paragraphs.order)],
@@ -56,6 +73,8 @@ export const readParagraphsByRollId = async ({
     origin: paragraph.content,
     target: paragraph.children?.content,
     histories: paragraph.children?.history || [],
+    originComments: paragraph.comments || [],
+    targetComments: paragraph.children?.comments || [],
     targetId: paragraph.children?.id,
   }));
 
@@ -257,5 +276,36 @@ export const insertParagraph = async ({
     })
     .returning({ id: paragraphsTable.id });
 
+  return result;
+};
+
+export const createComment = async (newComment: CreateComment) => {
+  const result = await dbClient.insert(commentsTable).values({
+    ...newComment,
+  });
+  return result;
+};
+
+export const updateComment = async ({
+  id,
+  messages,
+  resolved,
+  updatedBy,
+}: Required<Pick<UpdateComment, 'id' | 'messages' | 'resolved' | 'updatedBy'>>) => {
+  const existingComment = await dbClient.query.commentsTable.findFirst({
+    where: (comments, { eq }) => eq(comments.id, id),
+  });
+  if (!existingComment) {
+    throw new Error('Comment not found');
+  }
+  const newMessages = [...(existingComment.messages || []), ...(messages || [])];
+  const result = await dbClient
+    .update(commentsTable)
+    .set({
+      messages: newMessages,
+      resolved: resolved,
+      updatedBy: updatedBy,
+    })
+    .where(eq(commentsTable.id, id));
   return result;
 };

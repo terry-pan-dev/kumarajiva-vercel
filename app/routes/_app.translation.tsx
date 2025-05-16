@@ -27,7 +27,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const allUsers = await readUsers();
   return json({
     user,
-    users: allUsers.map((user) => ({ id: user.id, username: user.username, email: user.email })),
+    users: allUsers.map((user) => ({ id: user.id, username: user.username, email: user.email, avatar: user.avatar })),
   });
 };
 

@@ -181,7 +181,7 @@ export function SideBarMenu({
                   <p className="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-white">
                     {userRole.toUpperCase()}
                   </p>
-                  <p className="overflow-hidden text-ellipsis whitespace-nowrap text-sm text-blue-200">{userEmail}</p>
+                  <p className="overflow-hidden text-ellipsis whitespace-nowrap text-sm text-slate-200">{userEmail}</p>
                 </div>
               )}
             </Link>

@@ -11,7 +11,7 @@ interface RollInfo {
 
 export const useDownloadDocx = () => {
   const downloadDocx = async (
-    paragraphs: Omit<IParagraph, 'references' | 'histories'>[],
+    paragraphs: Omit<IParagraph, 'references' | 'histories' | 'originComments' | 'targetComments'>[],
     rollInfo: RollInfo,
     fileName: string = 'translation.docx',
   ) => {

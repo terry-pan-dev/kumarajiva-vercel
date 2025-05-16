@@ -24,3 +24,5 @@ export * from './alert';
 export * from './hover-card';
 export * from './popover';
 export * from './switch';
+export * from './sheet';
+export * from './divider';
