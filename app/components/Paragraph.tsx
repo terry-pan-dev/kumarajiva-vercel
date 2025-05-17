@@ -200,7 +200,7 @@ export const CommentWorkspace = ({
           {userName}
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className="flex w-full max-w-md flex-col">
+      <SheetContent side="left" className="flex w-full max-w-md flex-col border-r-2 border-yellow-600">
         <SheetHeader>
           <SheetTitle>Comment Thread</SheetTitle>
           <SheetDescription className="hidden">Comments</SheetDescription>
