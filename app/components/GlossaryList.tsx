@@ -5,14 +5,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { type ReadGlossary } from '~/drizzle/tables';
+import { langEnum, type ReadGlossary } from '~/drizzle/tables';
 
 import { Can } from '../authorisation';
 import { Icons } from '../components/icons';
 import { Badge, Button, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
 import { Divider } from '../components/ui/divider';
-import { glossaryEditFormSchema } from '../validations/glossary.validation';
-import { FormInput, FormModal, HiddenInput } from './FormModal';
+import { glossaryEditFormSchema, glossaryInsertFormSchema } from '../validations/glossary.validation';
+import { FormInput, FormModal, FormSelect, HiddenInput } from './FormModal';
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
@@ -35,8 +35,8 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
 
     if (glossaries.length) {
       return (
-        <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
-          <div className="order-1 h-[calc(50vh-5rem)] w-full lg:order-2 lg:h-[calc(100vh-10rem)] lg:w-1/2">
+        <div className="flex flex-col gap-4 pb-0 lg:flex-row lg:gap-4">
+          <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-11rem)] lg:w-1/2">
             <ScrollArea className="h-full lg:pr-4">
               <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
                 {selectedGlossary ? (
@@ -49,7 +49,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
               </div>
             </ScrollArea>
           </div>
-          <div className="order-2 h-[calc(50vh-5rem)] w-full lg:order-1 lg:h-[calc(100vh-10rem)] lg:w-1/2">
+          <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-11rem)] lg:w-1/2">
             <ScrollArea ref={ref} className="h-full lg:pr-4">
               {glossaries.length > 0 ? (
                 glossaries.map((glossary, index) => (
@@ -104,7 +104,7 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
   );
 }
 
-export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGlossary; showEdit?: boolean }) => {
+export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadGlossary; showEdit?: boolean }) => {
   const [subscribedGlossaries, setSubscribedGlossaries] = useLocalStorage<string[]>('subscribedGlossaries', []);
   const fetcher = useFetcher<{ success: boolean }>();
 
@@ -147,23 +147,42 @@ export const GlossaryDetail = ({ glossary, showEdit = true }: { glossary: ReadGl
         </fetcher.Form>
         {showEdit && (
           <Can I="Read" this="Glossary">
-            <FormModal
-              kind="edit"
-              title="Update Glossary"
-              fetcherKey="edit-glossary"
-              schema={glossaryEditFormSchema}
-              defaultValues={{
-                id: glossary?.id,
-                translations: glossary.translations || [],
-              }}
-              trigger={
-                <Button size="icon" variant="ghost">
-                  <Icons.SquarePen className="h-6 w-6 text-slate-800" />
-                </Button>
-              }
-            >
-              <GlossaryEditForm id={glossary.id} />
-            </FormModal>
+            <div className="flex gap-2">
+              <FormModal
+                kind="edit"
+                title="Update Glossary"
+                fetcherKey="edit-glossary"
+                schema={glossaryEditFormSchema}
+                trigger={
+                  <Button size="icon" variant="ghost">
+                    <Icons.SquarePen className="h-6 w-6 text-slate-800" />
+                  </Button>
+                }
+                defaultValues={{
+                  id: glossary?.id,
+                  glossary: glossary.glossary,
+                  author: glossary.author || '',
+                  cbetaFrequency: glossary.cbetaFrequency || '',
+                  phonetic: glossary.phonetic || '',
+                  translations: glossary.translations || [],
+                }}
+              >
+                <GlossaryEditForm id={glossary.id} />
+              </FormModal>
+              <FormModal
+                kind="insert"
+                title="Add New Glossary"
+                fetcherKey="insert-glossary"
+                schema={glossaryInsertFormSchema}
+                trigger={
+                  <Button size="icon" variant="ghost">
+                    <Icons.SquarePlus className="h-6 w-6 text-slate-800" />
+                  </Button>
+                }
+              >
+                <GlossaryInsertForm id={glossary.id} />
+              </FormModal>
+            </div>
           </Can>
         )}
       </CardHeader>
@@ -230,10 +249,16 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
   const { fields } = useFieldArray({
     name: 'translations',
   });
-
   return (
     <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
       <HiddenInput name="id" value={id} />
+      <Divider>CHINESE</Divider>
+      <div className="grid grid-cols-2 gap-4">
+        <FormInput disabled={true} label="Glossary" name={`glossary`} description="The glossary of Chinese." />
+        <FormInput label="Phonetic" name={`phonetic`} description="The phonetic of the glossary." />
+        <FormInput label="Author" name={`author`} description="The author of the glossary." />
+        <FormInput label="CBETA Frequency" name={`cbetaFrequency`} description="The cbeta frequency of the glossary." />
+      </div>
       {fields.map((field, index) => (
         <div key={field.id}>
           {/* @ts-ignore */}
@@ -243,38 +268,92 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
               required
               label="Glossary"
               name={`translations.${index}.glossary`}
-              description="The glossary of the translation."
+              description="The glossary of the glossary."
             />
             <FormInput
               required
               label="Sutra Name"
               name={`translations.${index}.sutraName`}
-              description="The sutra name of the translation."
+              description="The sutra name of the glossary."
             />
             <FormInput
               required
               label="Volume"
               name={`translations.${index}.volume`}
-              description="The volume of the translation."
+              description="The volume of the glossary."
             />
             <FormInput
               label="Origin Sutra Text"
               name={`translations.${index}.originSutraText`}
-              description="The origin sutra text of the translation."
+              description="The origin sutra text of the glossary."
             />
             <FormInput
               label="Target Sutra Text"
               name={`translations.${index}.targetSutraText`}
-              description="The target sutra text of the translation."
+              description="The target sutra text of the glossary."
             />
             <FormInput
               label="Phonetic"
               name={`translations.${index}.phonetic`}
-              description="The phonetic of the translation."
+              description="The phonetic of the glossary."
             />
           </div>
         </div>
       ))}
+    </div>
+  );
+};
+
+const GlossaryInsertForm = ({ id }: { id: string }) => {
+  const languageOptions = langEnum.enumValues
+    .filter((language) => language !== 'chinese')
+    .map((language) => ({
+      label: language,
+      value: language,
+    }));
+
+  return (
+    <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
+      <HiddenInput name="id" value={id} />
+      <div className="grid grid-cols-2 gap-4">
+        <FormSelect
+          required
+          name="language"
+          label="Language"
+          options={languageOptions}
+          description="The language of the glossary."
+        />
+        <FormInput required label="Glossary" name={`glossary`} description="The glossary you want to insert." />
+        <FormInput
+          label="Sutra Name"
+          name={'sutraName'}
+          placeholder="佛教常用詞(default)"
+          description="The sutra name of the glossary."
+        />
+        <FormInput
+          label="Volume"
+          name={'volume'}
+          placeholder="unknown(default)"
+          description="The volume of the glossary."
+        />
+        <FormInput
+          name={'originSutraText'}
+          label="Origin Sutra Text"
+          description="The origin sutra text of the glossary."
+        />
+        <FormInput
+          name={'targetSutraText'}
+          label="Target Sutra Text"
+          description="The target sutra text of the glossary."
+        />
+        <FormInput label="Phonetic" name={`phonetic`} description="The phonetic of the glossary." />
+        <FormInput
+          label="Author"
+          name={`author`}
+          placeholder="翻譯團隊(default)"
+          description="The author of the glossary."
+        />
+      </div>
     </div>
   );
 };

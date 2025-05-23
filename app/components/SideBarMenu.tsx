@@ -398,13 +398,13 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
           <ClientOnly fallback={<div>Loading...</div>}>
             {() =>
               match(selectedIndex[1])
-                .with('Glossary', () => <GlossaryDetail showEdit={false} glossary={selectedResult as ReadGlossary} />)
+                .with('Glossary', () => <GlossaryDetail glossary={selectedResult as ReadGlossary} />)
                 .with('Paragraph', () => (
                   <ParagraphDetail paragraph={selectedResult as ParagraphSearchResult[number]} />
                 ))
                 .otherwise(() =>
                   match(results[0])
-                    .with({ type: 'Glossary' }, (glossary) => <GlossaryDetail showEdit={false} glossary={glossary} />)
+                    .with({ type: 'Glossary' }, (glossary) => <GlossaryDetail glossary={glossary} />)
                     .with({ type: 'Paragraph' }, (paragraph) => <ParagraphDetail paragraph={paragraph} />)
                     .otherwise(() => null),
                 )
