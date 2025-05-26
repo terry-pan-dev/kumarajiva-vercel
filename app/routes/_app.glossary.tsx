@@ -137,7 +137,7 @@ const GlossaryCreateForm = () => {
     <div
       className="px-2 transition-[height] duration-300"
       style={{
-        height: anyAccordionOpen ? '80vh' : '35vh',
+        height: anyAccordionOpen ? '80vh' : '45vh',
         overflowY: 'auto',
       }}
     >

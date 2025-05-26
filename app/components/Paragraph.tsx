@@ -286,7 +286,10 @@ export const Paragraph = ({
   isUpdate = false,
   comments = [],
 }: ParagraphProps) => {
-  const { users } = useOutletContext<{ users: { id: string; username: string; email: string }[] }>();
+  const { users, user } = useOutletContext<{
+    users: { id: string; username: string; email: string }[];
+    user: { id: string; username: string; email: string; role: string };
+  }>();
 
   return (
     <div
@@ -297,7 +300,7 @@ export const Paragraph = ({
           : `${isOrigin ? 'bg-card' : 'bg-card-foreground'} px-6 py-4 shadow-lg`
       } ${isUpdate ? 'animate-[pulse_1s_ease-in-out_1]' : ''}`}
     >
-      {comments && comments.length > 0 && (
+      {user.role !== 'reader' && comments.length > 0 && (
         <div className="absolute right-0 top-2 z-10 flex translate-x-4 flex-col gap-1">
           {comments.map((comment) => (
             <CommentAvatar users={users} key={comment.id} comment={comment} />

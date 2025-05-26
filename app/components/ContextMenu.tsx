@@ -1,5 +1,6 @@
 import { useEffect, useState, type PropsWithChildren } from 'react';
 
+import { Can } from '../authorisation/can';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -65,14 +66,16 @@ export default function ContextMenuWrapper({ children }: PropsWithChildren) {
           Search Glossary
           <ContextMenuShortcut>⌘K</ContextMenuShortcut>
         </ContextMenuItem>
-        <ContextMenuItem
-          disabled={!selectedText}
-          onClick={handleAddComment}
-          className="flex cursor-pointer items-center"
-        >
-          <Icons.CommentAdd className="mr-2 h-4 w-4" />
-          Add Comments
-        </ContextMenuItem>
+        <Can I="Create" this="Comment">
+          <ContextMenuItem
+            disabled={!selectedText}
+            onClick={handleAddComment}
+            className="flex cursor-pointer items-center"
+          >
+            <Icons.CommentAdd className="mr-2 h-4 w-4" />
+            Add Comments
+          </ContextMenuItem>
+        </Can>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => window.history.back()}>
           Back

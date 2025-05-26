@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { type ReadRollWithSutra } from '../../drizzle/tables';
 import { assertAuthUser } from '../auth.server';
+import { Can } from '../authorisation/can';
 import { BreadcrumbLine } from '../components/Breadcrumb';
 import { Icons } from '../components/icons';
 import { SideBarTrigger } from '../components/SideBarTrigger';
@@ -90,15 +91,17 @@ export default function TranslationLayout() {
           {/* <SideBarTrigger /> */}
           <BreadcrumbLine />
           {params.rollId ? (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={handleDownload}
-              disabled={fetcher.state !== 'idle'}
-            >
-              <Icons.Download className="h-6 w-6 text-slate-800" />
-            </Button>
+            <Can I="Download" this="Paragraph">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={handleDownload}
+                disabled={fetcher.state !== 'idle'}
+              >
+                <Icons.Download className="h-6 w-6 text-slate-800" />
+              </Button>
+            </Can>
           ) : null}
         </div>
       </div>

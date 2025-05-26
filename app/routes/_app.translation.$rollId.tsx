@@ -187,7 +187,7 @@ export default function TranslationRoll() {
   const divRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLLabelElement>(null);
 
-  const context = useOutletContext<{ user: ReadUser }>();
+  const { user } = useOutletContext<{ user: ReadUser }>();
 
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
 
@@ -261,8 +261,8 @@ export default function TranslationRoll() {
           </ContextMenuWrapper>
           <div
             className="flex h-auto text-md font-normal"
-            onDoubleClick={() => setSelectedParagraphIndex(paragraph.id)}
             ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
+            onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}
           >
             <ContextMenuWrapper>
               <div className="relative h-full">
@@ -277,7 +277,9 @@ export default function TranslationRoll() {
                     (actionData?.kind === 'insert' && actionData.id === paragraph.id)
                   }
                 />
-                <ParagraphHistory histories={paragraph.histories} />
+                <Can I="Read" this="History">
+                  <ParagraphHistory histories={paragraph.histories} />
+                </Can>
               </div>
             </ContextMenuWrapper>
           </div>
@@ -291,7 +293,7 @@ export default function TranslationRoll() {
           <RadioGroupItem
             id={paragraph.id}
             value={paragraph.id}
-            disabled={context.user.role === 'reader'}
+            disabled={user.role === 'reader'}
             className={`h-3 w-3 lg:h-4 lg:w-4 ${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
           />
           <Label
