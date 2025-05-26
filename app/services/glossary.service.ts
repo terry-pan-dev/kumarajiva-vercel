@@ -155,7 +155,7 @@ export const updateGlossaryTranslations = async ({
 
   console.log(toUpdate);
 
-  return dbClient
+  return await dbClient
     .update(glossariesTable)
     .set({
       ...toUpdate,
