@@ -84,11 +84,6 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
     <Card className="w-full cursor-pointer transition-all duration-300 ease-in-out hover:shadow-md">
       <CardContent className="flex items-center space-x-4 p-4 sm:p-6">
         <div className="min-w-0 flex-1">
-          {/* <div className="mb-1 flex items-center">
-            <Badge variant="default" className="mr-2 font-mono text-xs font-medium">
-              {glossary.sutraName}
-            </Badge>
-          </div> */}
           <h3 className="mb-2 truncate text-lg font-semibold text-primary sm:text-xl">{glossary.glossary}</h3>
           {glossary.translations?.map((translation, index) => {
             return (
@@ -146,8 +141,8 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
           </button>
         </fetcher.Form>
         {showEdit && (
-          <Can I="Read" this="Glossary">
-            <div className="flex gap-2">
+          <div className="flex gap-2">
+            <Can I="Update" this="Glossary">
               <FormModal
                 kind="edit"
                 title="Update Glossary"
@@ -169,6 +164,8 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
               >
                 <GlossaryEditForm id={glossary.id} />
               </FormModal>
+            </Can>
+            <Can I="Create" this="Glossary">
               <FormModal
                 kind="insert"
                 title="Add New Glossary"
@@ -182,8 +179,8 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
               >
                 <GlossaryInsertForm id={glossary.id} />
               </FormModal>
-            </div>
-          </Can>
+            </Can>
+          </div>
         )}
       </CardHeader>
       <CardContent className="flex-grow px-2 lg:px-6">
@@ -330,12 +327,7 @@ const GlossaryInsertForm = ({ id }: { id: string }) => {
           placeholder="佛教常用詞(default)"
           description="The sutra name of the glossary."
         />
-        <FormInput
-          label="Volume"
-          name={'volume'}
-          placeholder="unknown(default)"
-          description="The volume of the glossary."
-        />
+        <FormInput label="Volume" name={'volume'} placeholder="-(default)" description="The volume of the glossary." />
         <FormInput
           name={'originSutraText'}
           label="Origin Sutra Text"

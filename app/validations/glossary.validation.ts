@@ -73,7 +73,7 @@ export const glossaryInsertFormSchema = z.object({
   glossary: z.string(),
   language: z.enum(langEnum.enumValues),
   sutraName: z.string().transform((val) => (val.length > 0 ? val : '佛教常用詞')),
-  volume: z.string().transform((val) => (val.length > 0 ? val : 'unknown')),
+  volume: z.string().transform((val) => (val.length > 0 ? val : '-')),
   originSutraText: z.string().nullish(),
   targetSutraText: z.string().nullish(),
   author: z.string().transform((val) => (val.length > 0 ? val : '翻譯團隊')),

@@ -2,7 +2,7 @@ import { AbilityBuilder, PureAbility } from '@casl/ability';
 
 import { type ReadUser } from '~/drizzle/schema';
 
-type Actions = 'Create' | 'Read' | 'Update' | 'Delete';
+type Actions = 'Create' | 'Read' | 'Update' | 'Delete' | 'Download';
 type Subjects = 'Administration' | 'Sutra' | 'Paragraph' | 'Reference' | 'Translation' | 'Glossary';
 
 export const defineAbilityFor = (user: ReadUser) => {
@@ -26,16 +26,12 @@ export const defineAbilityFor = (user: ReadUser) => {
   if (user.role === 'admin' || user.role === 'editor' || user.role === 'manager' || user.role === 'leader') {
     can('Read', 'Translation');
   }
-  if (
-    user.role === 'admin' ||
-    user.role === 'editor' ||
-    user.role === 'leader' ||
-    user.role === 'manager' ||
-    user.role === 'assistant'
-  ) {
-    can('Read', 'Glossary');
-    can('Create', 'Glossary');
+  if (user.role === 'admin' || user.role === 'editor' || user.role === 'leader') {
     can('Update', 'Glossary');
+  }
+  if (user.role === 'admin') {
+    can('Create', 'Glossary');
+    can('Download', 'Glossary');
   }
   return build();
 };

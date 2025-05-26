@@ -234,3 +234,10 @@ export const searchGlossaries = async (tokens: string[]) => {
     {} as Record<string, string[]>,
   );
 };
+
+export const getAllGlossaries = async (): Promise<ReadGlossary[]> => {
+  const glossaries = await dbClient.query.glossariesTable.findMany({
+    orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
+  });
+  return glossaries;
+};

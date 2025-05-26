@@ -1,7 +1,10 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from '@vercel/remix';
+import type { PropsWithChildren } from 'react';
 
-import { Outlet, redirect, useLoaderData } from '@remix-run/react';
+import { Link, Outlet, redirect, useLoaderData, useNavigation } from '@remix-run/react';
 import { json } from '@vercel/remix';
+import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { CreateGlossary } from '../../drizzle/schema';
@@ -9,6 +12,7 @@ import type { CreateGlossary } from '../../drizzle/schema';
 import { assertAuthUser } from '../auth.server';
 import { Can } from '../authorisation';
 import { FormInput, FormModal, FormTextarea } from '../components/FormModal';
+import { Icons } from '../components/icons';
 import { SideBarTrigger } from '../components/SideBarTrigger';
 import { Button } from '../components/ui/button';
 import { Divider } from '../components/ui/divider';
@@ -32,13 +36,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
+
   const formData = Object.fromEntries(await request.formData());
   const validatedData = validatePayloadOrThrow({ schema: glossaryFormSchema, formData });
   const isGlossaryExist = await getGlossariesByGivenGlossaries([validatedData.glossaryChinese]);
   console.log(isGlossaryExist);
   if (isGlossaryExist.length > 0) {
     return json(
-      { errors: [{ glossaryChinese: 'This term already exists, please search glossary by this term' }] },
+      { errors: [{ glossaryChinese: 'This term already exists, please search glossary by this term first' }] },
       { status: 400 },
     );
   }
@@ -55,7 +60,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         glossary: validatedData.glossary,
         language: user.targetLang || 'english',
         sutraName: validatedData.sutraName || '佛教常用詞',
-        volume: validatedData.volume || 'unknown',
+        volume: validatedData.volume || '-',
         updatedBy: user.id,
         updatedAt: new Date().toISOString(),
         originSutraText: validatedData.sutraText || '',
@@ -74,6 +79,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function GlossaryLayout() {
   const { user, users } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
+  const isDownloading = navigation.state === 'loading' || navigation.state === 'submitting';
   return (
     <div className="flex h-auto min-h-screen flex-col bg-secondary px-2 lg:px-4">
       <div className="flex items-center justify-between">
@@ -82,9 +89,20 @@ export default function GlossaryLayout() {
             <SideBarTrigger />
             Glossary
           </div>
-          <Can I="Read" this="Glossary">
-            <GlossaryCreateModal />
-          </Can>
+          <div className="flex items-center gap-2">
+            <Can I="Download" this="Glossary">
+              <Link reloadDocument to="/glossary/download" download="glossary.csv">
+                {isDownloading ? (
+                  <Icons.Loader className="h-5 w-5 animate-spin text-white" />
+                ) : (
+                  <Icons.Download className="h-6 w-6 text-slate-800" />
+                )}
+              </Link>
+            </Can>
+            <Can I="Update" this="Glossary">
+              <GlossaryCreateModal />
+            </Can>
+          </div>
         </div>
       </div>
       <Separator className="mb-4 bg-yellow-600" />
@@ -98,66 +116,124 @@ const GlossaryCreateModal = () => {
   return (
     <FormModal
       schema={glossaryFormSchema}
-      title="Create Glossary For Chinese Root"
+      title="Create Glossary For Chinese And English"
       trigger={
         <Button className="w-20" variant="default">
           New
         </Button>
       }
     >
-      <div className="h-[calc(100vh-10rem)] overflow-y-auto px-2">
-        <GlossaryCreateForm />
-      </div>
+      <GlossaryCreateForm />
     </FormModal>
   );
 };
 
 const GlossaryCreateForm = () => {
   const { user } = useLoaderData<typeof loader>();
+  const [chineseAccordionOpen, setChineseAccordionOpen] = useState(false);
+  const [targetLangAccordionOpen, setTargetLangAccordionOpen] = useState(false);
+  const anyAccordionOpen = chineseAccordionOpen || targetLangAccordionOpen;
   return (
-    <div>
+    <div
+      className="px-2 transition-[height] duration-300"
+      style={{
+        height: anyAccordionOpen ? '80vh' : '35vh',
+        overflowY: 'auto',
+      }}
+    >
       <div className="grid grid-cols-2 gap-4">
         <FormInput required label="Glossary" name="glossaryChinese" description="The Chinese glossary term." />
         <FormInput required label="Phonetic" name="phoneticChinese" description="The phonetic of the glossary term." />
-        <FormTextarea label="Sutra Text" name="sutraTextChinese" description="The text of the sutra." />
-        <FormTextarea label="Volume" name="volumeChinese" description="The volume of the sutra." />
-        <FormTextarea
-          label="CBETA Frequency"
-          name="cbetaFrequencyChinese"
-          description="The frequency of the sutra in CBETA."
-        />
-        <FormTextarea label="Author" name="authorChinese" description="The author of the glossary." />
-        <FormTextarea
-          label="Discussion"
-          name="discussionChinese"
-          description="Any additional discussion about the glossary."
-        />
+        <div className="col-span-2">
+          <CustomAccordion onToggle={setChineseAccordionOpen} title="Optional Fields For Chinese">
+            <div className="grid grid-cols-2 gap-4">
+              <FormTextarea label="Sutra Text" name="sutraTextChinese" description="The text of the sutra." />
+              <FormTextarea label="Volume" name="volumeChinese" description="The volume of the sutra." />
+              <FormTextarea
+                label="CBETA Frequency"
+                name="cbetaFrequencyChinese"
+                description="The frequency of the sutra in CBETA."
+              />
+              <FormTextarea label="Author" name="authorChinese" description="The author of the glossary." />
+              <FormTextarea
+                label="Discussion"
+                name="discussionChinese"
+                description="Any additional discussion about the glossary."
+              />
+            </div>
+          </CustomAccordion>
+        </div>
       </div>
-      <Divider className="py-1 lg:py-3">{user?.targetLang?.toUpperCase()}</Divider>
-      <div className="grid grid-cols-2 gap-4">
+      <Divider className="my-4 lg:py-3">
+        <span className="text-md">{user?.targetLang?.toUpperCase()}</span>
+      </Divider>
+      <div className="grid grid-cols-1 gap-4">
         <FormInput required name="glossary" label="Glossary" description={`The ${user?.targetLang} glossary term.`} />
-        <FormInput name="phonetic" label="Phonetic" description="The phonetic of the glossary." />
-        <FormTextarea
-          name="sutraName"
-          label="Sutra Name"
-          placeholder="佛教常用詞(default)"
-          description="The name of the sutra."
-        />
-        <FormTextarea name="partOfSpeech" label="Part of Speech" description="The part of speech of the glossary." />
-        <FormTextarea name="sutraText" label="Sutra Text" description="The text of the sutra." />
-        <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
-        <FormTextarea
-          name="cbetaFrequency"
-          label="CBETA Frequency"
-          description="The frequency of the sutra in CBETA."
-        />
-        <FormTextarea name="author" label="Author" description="The author of the glossary." />
-        <FormTextarea
-          name="discussion"
-          label="Discussion"
-          description="Any additional discussion about the glossary."
-        />
+        <CustomAccordion
+          onToggle={setTargetLangAccordionOpen}
+          title={`Optional Fields For ${user?.targetLang?.charAt(0).toUpperCase()}${user?.targetLang?.slice(1)}`}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput name="phonetic" label="Phonetic" description="The phonetic of the glossary." />
+            <FormInput
+              name="sutraName"
+              label="Sutra Name"
+              placeholder="佛教常用詞(default)"
+              description="The name of the sutra."
+            />
+            <FormTextarea
+              name="partOfSpeech"
+              label="Part of Speech"
+              description="The part of speech of the glossary."
+            />
+            <FormTextarea name="sutraText" label="Sutra Text" description="The text of the sutra." />
+            <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
+            <FormTextarea
+              name="cbetaFrequency"
+              label="CBETA Frequency"
+              description="The frequency of the sutra in CBETA."
+            />
+            <FormTextarea name="author" label="Author" description="The author of the glossary." />
+            <FormTextarea
+              name="discussion"
+              label="Discussion"
+              description="Any additional discussion about the glossary."
+            />
+          </div>
+        </CustomAccordion>
       </div>
     </div>
   );
-};
+}; // or any icon library
+
+export function CustomAccordion({
+  title = 'More Details',
+  children,
+  onToggle,
+}: PropsWithChildren<{ title?: string; onToggle?: (open: boolean) => void }>) {
+  const [open, setOpen] = useState(false);
+
+  const handleToggle = () => {
+    setOpen((o) => {
+      const newOpen = !o;
+      if (onToggle) onToggle(newOpen);
+      return newOpen;
+    });
+  };
+
+  return (
+    <div className="mx-auto w-full bg-white">
+      <button type="button" onClick={handleToggle} className="flex w-full flex-col items-center focus:outline-none">
+        <div className="flex w-full items-center">
+          <div className="flex-1 border-t border-dashed border-blue-600" />
+          <span className="mx-4 whitespace-nowrap text-center text-sm font-semibold">{title}</span>
+          <div className="flex-1 border-t border-dashed border-blue-600" />
+        </div>
+        <div className="flex w-full justify-center">
+          <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {open && <div className="mt-4">{children}</div>}
+    </div>
+  );
+}
