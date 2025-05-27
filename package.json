@@ -22,7 +22,8 @@
     "read-glossary": "tsx scripts/read-glossary.ts",
     "read-paragraph": "tsx scripts/read-paragraph.ts",
     "transformation": "tsx scripts/transformation.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "playwright:codegen": "playwright codegen http://localhost:3000"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.5",
@@ -98,6 +99,7 @@
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.3.1",
+    "@playwright/test": "^1.52.0",
     "@remix-run/dev": "2.10.0",
     "@remix-run/eslint-config": "2.10.0",
     "@types/bcryptjs": "^2.4.6",
