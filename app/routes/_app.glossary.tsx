@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from '@vercel/remix';
 import type { PropsWithChildren } from 'react';
 
-import { Link, Outlet, redirect, useLoaderData, useNavigation } from '@remix-run/react';
+import { Link, Outlet, redirect, useLoaderData } from '@remix-run/react';
 import { json } from '@vercel/remix';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
@@ -79,8 +79,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function GlossaryLayout() {
   const { user, users } = useLoaderData<typeof loader>();
-  const navigation = useNavigation();
-  const isDownloading = navigation.state === 'loading' || navigation.state === 'submitting';
   return (
     <div className="flex h-auto min-h-screen flex-col bg-secondary px-2 lg:px-4">
       <div className="flex items-center justify-between">
@@ -92,11 +90,7 @@ export default function GlossaryLayout() {
           <div className="flex items-center gap-2">
             <Can I="Download" this="Glossary">
               <Link reloadDocument to="/glossary/download" download="glossary.csv">
-                {isDownloading ? (
-                  <Icons.Loader className="h-5 w-5 animate-spin text-white" />
-                ) : (
-                  <Icons.Download className="h-6 w-6 text-slate-800" />
-                )}
+                <Icons.Download className="h-6 w-6 text-slate-800" />
               </Link>
             </Can>
             <Can I="Update" this="Glossary">
