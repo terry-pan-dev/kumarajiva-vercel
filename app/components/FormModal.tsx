@@ -180,6 +180,7 @@ interface FormInputProps {
   required?: boolean;
   description?: string;
   placeholder?: string;
+  disabled?: boolean;
   options?: {
     label: string;
     value: string;
@@ -195,7 +196,15 @@ export function HiddenInput({ name, value }: { name: string; value: string }) {
   return <input hidden type="hidden" value={value} {...register(name)} />;
 }
 
-export function FormInput({ name, label, type = 'text', required = false, description, placeholder }: FormInputProps) {
+export function FormInput({
+  name,
+  label,
+  type = 'text',
+  required = false,
+  description,
+  placeholder,
+  disabled = false,
+}: FormInputProps) {
   const {
     register,
     formState: { errors },
@@ -203,7 +212,7 @@ export function FormInput({ name, label, type = 'text', required = false, descri
 
   return (
     <BaseFormField name={name} label={label} errors={errors} required={required} description={description}>
-      <Input id={name} type={type} placeholder={placeholder} {...register(name)} />
+      <Input id={name} type={type} placeholder={placeholder} {...register(name)} disabled={disabled} />
     </BaseFormField>
   );
 }

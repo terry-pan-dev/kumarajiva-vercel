@@ -22,7 +22,8 @@
     "read-glossary": "tsx scripts/read-glossary.ts",
     "read-paragraph": "tsx scripts/read-paragraph.ts",
     "transformation": "tsx scripts/transformation.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "playwright:codegen": "playwright codegen http://localhost:3000"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.5",
@@ -72,7 +73,7 @@
     "diff": "^7.0.0",
     "docx": "^9.1.0",
     "dotenv": "^16.4.5",
-    "drizzle-orm": "^0.34.1",
+    "drizzle-orm": "^0.43.1",
     "framer-motion": "^11.11.8",
     "highlight-words": "^2.0.0",
     "isbot": "^4",
@@ -98,6 +99,7 @@
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.3.1",
+    "@playwright/test": "^1.52.0",
     "@remix-run/dev": "2.10.0",
     "@remix-run/eslint-config": "2.10.0",
     "@types/bcryptjs": "^2.4.6",
@@ -108,7 +110,7 @@
     "@types/react-dom": "^18.2.7",
     "@types/react-highlight-words": "^0.20.0",
     "dotenv-cli": "^7.4.2",
-    "drizzle-kit": "^0.25.0",
+    "drizzle-kit": "^0.31.1",
     "eslint": "^8.38.0",
     "eslint-plugin-perfectionist": "^4.1.2",
     "eslint-plugin-prettier": "^5.2.1",

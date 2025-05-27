@@ -8,3 +8,4 @@ export * from './glossary';
 export * from './enums';
 export * from './notification';
 export * from './systemConfig';
+export * from './comment';

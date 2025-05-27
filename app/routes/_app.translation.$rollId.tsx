@@ -3,8 +3,9 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
 import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren, useCallback, Fragment } from 'react';
 import Markdown from 'react-markdown';
+import { ClientOnly } from 'remix-utils/client-only';
 import { ZodError } from 'zod';
 
 import { Icons } from '~/components/icons';
@@ -15,6 +16,7 @@ import type { ReadHistory } from '../../drizzle/tables/paragraph';
 
 import { assertAuthUser } from '../auth.server';
 import { Can } from '../authorisation';
+import { useCommentContext } from '../components/CommentContext';
 import ContextMenuWrapper from '../components/ContextMenu';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { Paragraph } from '../components/Paragraph';
@@ -23,6 +25,13 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Label,
   Popover,
   PopoverContent,
@@ -41,13 +50,19 @@ import { useTextAreaAutoHeight } from '../lib/hooks/useTextAreaAutoHeight';
 import { useTranslation } from '../lib/hooks/useTranslation';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import {
+  createComment,
   insertParagraph,
   readParagraphsByRollId,
+  updateComment,
   updateParagraph,
   type IParagraph,
 } from '../services/paragraph.service';
 import { readRollById } from '../services/roll.service';
-import { paragraphActionSchema } from '../validations/paragraph.validation';
+import {
+  createCommentActionSchema,
+  paragraphActionSchema,
+  updateCommentActionSchema,
+} from '../validations/paragraph.validation';
 
 export const config = {
   memory: 3009,
@@ -79,7 +94,53 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return redirect('/login');
   }
   const formData = Object.fromEntries(await request.formData());
+  const kind = formData['kind'];
+  if (kind === 'createComment') {
+    try {
+      const result = validatePayloadOrThrow({ schema: createCommentActionSchema, formData });
+      await createComment({
+        rollId: rollId as string,
+        paragraphId: result.paragraphId,
+        selectedText: result.selectedText,
+        messages: [
+          {
+            text: result.comment,
+            userId: user.id,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        createdBy: user.id,
+        updatedBy: user.id,
+      });
+      return json({ success: true, message: 'Comment added successfully', kind: 'createComment' });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return json({ success: false, errors: error.errors }, { status: 400 });
+      }
+    }
+  }
 
+  if (kind === 'updateComment') {
+    try {
+      console.log({ formData });
+      const result = validatePayloadOrThrow({ schema: updateCommentActionSchema, formData });
+      console.log({ result });
+      await updateComment({
+        id: result.commentId,
+        messages: result.message
+          ? [{ text: result.message, userId: user.id, createdAt: new Date().toISOString() }]
+          : [],
+        resolved: result.resolved,
+        updatedBy: user.id,
+      });
+      return json({ success: true, message: 'Comment updated successfully', kind: 'updateComment' });
+    } catch (error) {
+      console.log({ error });
+      if (error instanceof ZodError) {
+        return json({ success: false, errors: error.errors }, { status: 400 });
+      }
+    }
+  }
   try {
     const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
     console.log({ result });
@@ -126,7 +187,7 @@ export default function TranslationRoll() {
   const divRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLLabelElement>(null);
 
-  const context = useOutletContext<{ user: ReadUser }>();
+  const { user } = useOutletContext<{ user: ReadUser }>();
 
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
 
@@ -140,6 +201,18 @@ export default function TranslationRoll() {
         deletedAt: reference.deletedAt ? new Date(reference.deletedAt) : null,
       })),
       histories: paragraph.histories.map((history) => ({ ...history, updatedAt: new Date(history.updatedAt) })),
+      originComments: paragraph.originComments.map((comment) => ({
+        ...comment,
+        createdAt: new Date(comment.createdAt),
+        updatedAt: new Date(comment.updatedAt),
+        deletedAt: comment.deletedAt ? new Date(comment.deletedAt) : null,
+      })),
+      targetComments: paragraph.targetComments.map((comment) => ({
+        ...comment,
+        createdAt: new Date(comment.createdAt),
+        updatedAt: new Date(comment.updatedAt),
+        deletedAt: comment.deletedAt ? new Date(comment.deletedAt) : null,
+      })),
     }));
   }, [paragraphs]);
 
@@ -172,21 +245,31 @@ export default function TranslationRoll() {
   }, [paragraphs, actionData]);
 
   const Paragraphs = paragraphsWithHistory.map((paragraph) => (
-    <div key={paragraph.id} className="flex items-center gap-4 px-2">
+    <div key={paragraph.id} className="flex items-center gap-6 px-4">
       {paragraph?.target ? (
-        <div className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-4`}>
+        <div
+          className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-6 px-2`}
+        >
           <ContextMenuWrapper>
-            <Paragraph isOrigin text={paragraph.origin} isSelected={selectedParagraphIndex === paragraph.id} />
+            <Paragraph
+              isOrigin
+              id={paragraph.id}
+              text={paragraph.origin}
+              comments={paragraph.originComments}
+              isSelected={selectedParagraphIndex === paragraph.id}
+            />
           </ContextMenuWrapper>
           <div
             className="flex h-auto text-md font-normal"
-            onDoubleClick={() => setSelectedParagraphIndex(paragraph.id)}
             ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
+            onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}
           >
             <ContextMenuWrapper>
               <div className="relative h-full">
                 <Paragraph
                   text={paragraph.target}
+                  id={paragraph.targetId!}
+                  comments={paragraph.targetComments}
                   isUpdate={
                     (selectedParagraphIndex === paragraph.id &&
                       actionData?.kind === 'update' &&
@@ -194,7 +277,9 @@ export default function TranslationRoll() {
                     (actionData?.kind === 'insert' && actionData.id === paragraph.id)
                   }
                 />
-                <ParagraphHistory histories={paragraph.histories} />
+                <Can I="Read" this="History">
+                  <ParagraphHistory histories={paragraph.histories} />
+                </Can>
               </div>
             </ContextMenuWrapper>
           </div>
@@ -208,7 +293,7 @@ export default function TranslationRoll() {
           <RadioGroupItem
             id={paragraph.id}
             value={paragraph.id}
-            disabled={context.user.role === 'reader'}
+            disabled={user.role === 'reader'}
             className={`h-3 w-3 lg:h-4 lg:w-4 ${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
           />
           <Label
@@ -217,7 +302,12 @@ export default function TranslationRoll() {
             ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
-              <Paragraph text={paragraph.origin} isSelected={selectedParagraphIndex === paragraph.id} />
+              <Paragraph
+                id={paragraph.id}
+                text={paragraph.origin}
+                comments={paragraph.originComments}
+                isSelected={selectedParagraphIndex === paragraph.id}
+              />
             </ContextMenuWrapper>
           </Label>
         </motion.div>
@@ -227,42 +317,202 @@ export default function TranslationRoll() {
 
   if (selectedParagraph) {
     return (
-      <DragPanel>
-        <LeftPanel>
-          <ScrollArea className="h-full w-full lg:pr-4">
-            <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
-              {Paragraphs}
-            </RadioGroup>
-          </ScrollArea>
-        </LeftPanel>
-        <ResizableHandle withHandle className="my-2 bg-yellow-600 lg:my-0" />
-        <RightPanel>
-          <ScrollArea className="h-full w-full lg:pr-4">
-            <Workspace paragraph={selectedParagraph} />
-          </ScrollArea>
-        </RightPanel>
-      </DragPanel>
+      <Fragment>
+        <DragPanel>
+          <LeftPanel>
+            <ScrollArea className="h-full w-full lg:pr-4">
+              <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
+                {Paragraphs}
+              </RadioGroup>
+            </ScrollArea>
+          </LeftPanel>
+          <ResizableHandle withHandle className="my-2 bg-yellow-600 lg:my-0" />
+          <RightPanel>
+            <ScrollArea className="h-full w-full lg:pr-4">
+              <Workspace paragraph={selectedParagraph} />
+            </ScrollArea>
+          </RightPanel>
+        </DragPanel>
+        <CommentModal />
+      </Fragment>
     );
   }
 
   return (
-    <ScrollArea className="h-full px-0 lg:px-8">
-      <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
-        {paragraphs.length ? (
-          <>
-            <p className="text-center text-lg lg:text-2xl">{rollInfo?.sutra.title}</p>
-            <p className="text-center text-md lg:text-lg">{rollInfo?.title}</p>
-          </>
-        ) : null}
-        {paragraphs.length ? (
-          Paragraphs
-        ) : (
-          <div className="text-center text-lg">We are preparing paragraphs for you...</div>
-        )}
-      </RadioGroup>
-    </ScrollArea>
+    <Fragment>
+      <ScrollArea className="h-full px-0 lg:px-4">
+        <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
+          {paragraphs.length ? (
+            <>
+              <p className="text-center text-lg lg:text-2xl">{rollInfo?.sutra.title}</p>
+              <p className="text-center text-md lg:text-lg">{rollInfo?.title}</p>
+            </>
+          ) : null}
+          {paragraphs.length ? (
+            Paragraphs
+          ) : (
+            <div className="text-center text-lg">We are preparing paragraphs for you...</div>
+          )}
+        </RadioGroup>
+      </ScrollArea>
+      <CommentModal />
+    </Fragment>
   );
 }
+
+const CommentModal = () => {
+  const { openModal, setOpenModal } = useCommentContext();
+  const [open, setOpen] = useState(false);
+  const [comment, setComment] = useState('');
+  const [paragraphId, setParagraphId] = useState<string | undefined>(undefined);
+  const [selectedText, setSelectedText] = useState<string>('');
+  const actionData = useActionData<{
+    success: boolean;
+    message: string;
+    kind: 'createComment';
+    errors: ZodError['errors'];
+  }>();
+  const navigation = useNavigation();
+  const isLoading = navigation.state === 'submitting' || navigation.state === 'loading';
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!actionData) return;
+    if (!actionData?.success) {
+      toast({
+        variant: 'error',
+        title: 'Oops!',
+        position: 'top-right',
+        description: actionData?.errors?.map((error) => error.message).join(', '),
+      });
+    }
+    if (actionData?.success) {
+      toast({
+        variant: 'default',
+        title: actionData.message,
+        position: 'top-right',
+      });
+      setOpen(false);
+      setComment('');
+      setOpenModal(false);
+    }
+  }, [actionData, toast, setOpenModal]);
+
+  useEffect(() => {
+    if (openModal) {
+      setOpen(true);
+    }
+  }, [openModal]);
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = document.getSelection();
+      if (selection && selection.toString().length > 0) {
+        // Find the closest parent element with a data-id attribute
+        let element = selection.anchorNode as Element;
+        while (element && element.nodeType !== Node.ELEMENT_NODE) {
+          element = element.parentNode as Element;
+        }
+
+        // Find closest parent with data-id
+        while (element && !element.getAttribute('data-id')) {
+          element = element.parentNode as Element;
+        }
+
+        if (element) {
+          const id = element.getAttribute('data-id');
+          if (id) {
+            setParagraphId(id);
+          }
+        }
+      }
+
+      if (selection && selection.toString().length > 0 && selection.anchorNode) {
+        const selectedText = selection.toString().trim();
+
+        // Only proceed if we have a text node
+        if (selection.anchorNode.nodeType === Node.TEXT_NODE) {
+          const nodeText = selection.anchorNode.textContent || '';
+
+          // Get the actual start and end positions in the text node
+          const start = Math.min(selection.anchorOffset, selection.focusOffset);
+          const end = Math.max(selection.anchorOffset, selection.focusOffset);
+
+          // Account for potential trimming in the selected text
+          const trimmedLeftCount = selection.toString().length - selection.toString().trimStart().length;
+          const actualStart = start + trimmedLeftCount;
+          const actualEnd = end - (selection.toString().length - selectedText.length - trimmedLeftCount);
+
+          // Create new text with backticks around the selected portion
+          const newText = nodeText.substring(0, actualStart) + '`' + selectedText + '`' + nodeText.substring(actualEnd);
+
+          setSelectedText(newText);
+        } else {
+          // If not a text node, just use the selected text
+          setSelectedText(selectedText);
+        }
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, []);
+
+  return (
+    <ClientOnly fallback={<div>Loading...</div>}>
+      {() => (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="lg:max-w-4xl" aria-describedby="form-modal-description">
+            <DialogHeader>
+              <DialogTitle>Add Comment</DialogTitle>
+              <DialogDescription className="hidden">Comment</DialogDescription>
+            </DialogHeader>
+            <Markdown
+              components={{
+                code: ({ node, ...props }) => (
+                  <code {...props} className="bg-yellow-200">
+                    {props.children}
+                  </code>
+                ),
+              }}
+            >
+              {selectedText}
+            </Markdown>
+            <Form method="post">
+              <input type="hidden" name="paragraphId" value={paragraphId} />
+              <input name="kind" type="hidden" value="createComment" />
+              <input type="hidden" name="selectedText" value={selectedText} />
+              <Textarea name="comment" value={comment} onChange={(e) => setComment(e.target.value)} />
+              <div className="h-4" />
+              <DialogFooter className="gap-2">
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={isLoading}
+                    onClick={() => {
+                      setOpen(false);
+                      setOpenModal(false);
+                    }}
+                  >
+                    Close
+                  </Button>
+                </DialogClose>
+                <Button type="submit" disabled={isLoading || comment === ''}>
+                  Save
+                </Button>
+              </DialogFooter>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      )}
+    </ClientOnly>
+  );
+};
 
 const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
   const { id, origin, target, references, rollId, targetId } = paragraph;
@@ -279,7 +529,6 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
   const navigation = useNavigation();
 
   const isLoading = navigation.state === 'submitting' || navigation.state === 'loading';
-  console.log({ isLoading, state: navigation.state });
 
   const { toast } = useToast();
 
@@ -314,7 +563,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
         initial={{ opacity: 0, x: '100%' }}
       >
         <ContextMenuWrapper>
-          <Paragraph text={origin} title="Origin" />
+          <Paragraph id={id} text={origin} title="Origin" />
         </ContextMenuWrapper>
         <Form method="post" className="mt-4" onSubmit={() => cleanTranslation()}>
           <div className="mt-auto grid w-full gap-2">
@@ -725,32 +974,3 @@ export const ParagraphHistoryTimeline = ({ histories }: ParagraphHistoryTimeline
     </div>
   );
 };
-
-// interface HighlightedParagraphProps {
-//   text: string;
-//   keywords: string[];
-// }
-
-// const HighlightedParagraph: React.FC<HighlightedParagraphProps> = ({ text, keywords }) => {
-//   const highlightText = (text: string, keywords: string[]) => {
-//     let highlightedText = text;
-
-//     // Sort keywords by length (longest first) to handle overlapping matches correctly
-//     const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
-
-//     sortedKeywords.forEach((keyword) => {
-//       // Escape special regex characters and create word boundary for CJK characters
-//       const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-
-//       // Use positive lookbehind and lookahead for CJK word boundaries
-//       const pattern = `(${escapedKeyword})`;
-//       const regex = new RegExp(pattern, 'g');
-
-//       highlightedText = highlightedText.replace(regex, '<span class="bg-yellow-200 dark:bg-yellow-800">$1</span>');
-//     });
-
-//     return <p dangerouslySetInnerHTML={{ __html: highlightedText }} />;
-//   };
-
-//   return <div className="mb-4">{highlightText(text, keywords)}</div>;
-// };

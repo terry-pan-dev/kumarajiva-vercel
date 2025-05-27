@@ -1,5 +1,6 @@
 import { useEffect, useState, type PropsWithChildren } from 'react';
 
+import { Can } from '../authorisation/can';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -8,26 +9,33 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from '../components/ui/context-menu';
+import { useCommentContext } from './CommentContext';
 import { Icons } from './icons';
 import { useSearchContext } from './SearchContext';
 
 export default function ContextMenuWrapper({ children }: PropsWithChildren) {
   const [selectedText, setSelectedText] = useState('');
   const { setOpen, setSearch } = useSearchContext(); // Add this line
+  const { setOpenModal } = useCommentContext();
 
   const handleSearch = () => {
     if (selectedText) {
       setOpen(true);
-      setSearch(selectedText);
+      setSearch(selectedText.slice(0, 50));
     }
+  };
+
+  const handleAddComment = () => {
+    setOpenModal(true);
   };
 
   // Handle text selection
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = document.getSelection();
-      if (selection && selection.toString().length > 0) {
-        setSelectedText(selection.toString().trim().slice(0, 50));
+      if (selection && selection.toString().length > 0 && selection.anchorNode) {
+        const selectedText = selection.toString().trim();
+        setSelectedText(selectedText);
       }
     };
 
@@ -58,6 +66,16 @@ export default function ContextMenuWrapper({ children }: PropsWithChildren) {
           Search Glossary
           <ContextMenuShortcut>⌘K</ContextMenuShortcut>
         </ContextMenuItem>
+        <Can I="Create" this="Comment">
+          <ContextMenuItem
+            disabled={!selectedText}
+            onClick={handleAddComment}
+            className="flex cursor-pointer items-center"
+          >
+            <Icons.CommentAdd className="mr-2 h-4 w-4" />
+            Add Comments
+          </ContextMenuItem>
+        </Can>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => window.history.back()}>
           Back

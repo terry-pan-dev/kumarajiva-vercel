@@ -42,3 +42,13 @@ export const createTargetRoll = async ({
     ...targetRoll,
   });
 };
+
+export const readRollWithComments = async () => {
+  return dbClient.query.commentsTable.findMany({
+    where: (comments, { eq }) => eq(comments.resolved, false),
+    with: {
+      roll: true,
+      paragraph: true,
+    },
+  });
+};

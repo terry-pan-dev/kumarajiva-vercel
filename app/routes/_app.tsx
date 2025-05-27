@@ -8,6 +8,7 @@ import { type ReadUser } from '../../drizzle/schema';
 import { assertAuthUser } from '../auth.server';
 import { AbilityContext, defineAbilityFor } from '../authorisation';
 import { BannerStack } from '../components/BannerStack';
+import { CommentProvider } from '../components/CommentContext';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { SearchProvider } from '../components/SearchContext';
 import { SideBarMenu } from '../components/SideBarMenu';
@@ -67,16 +68,18 @@ export default function AppLayout() {
   return (
     <AbilityContext.Provider value={ability}>
       <SearchProvider allUsers={allUsers}>
-        <SideBarMenuContextProvider>
-          <BannerStack banners={notifications} onDismiss={handleDismiss} />
-          <div className="flex h-screen">
-            <SideBarMenu avatarSrc={avatar} userRole={user.role} userEmail={user.email} userName={user.username} />
-            <main className="flex-1 overflow-y-auto bg-secondary">
-              <Outlet />
-            </main>
-          </div>
-        </SideBarMenuContextProvider>
-        <ClientOnly>{() => <SettingLoader />}</ClientOnly>
+        <CommentProvider>
+          <SideBarMenuContextProvider>
+            <BannerStack banners={notifications} onDismiss={handleDismiss} />
+            <div className="flex h-screen">
+              <SideBarMenu avatarSrc={avatar} userRole={user.role} userEmail={user.email} userName={user.username} />
+              <main className="flex-1 overflow-y-auto bg-secondary">
+                <Outlet />
+              </main>
+            </div>
+          </SideBarMenuContextProvider>
+          <ClientOnly>{() => <SettingLoader />}</ClientOnly>
+        </CommentProvider>
       </SearchProvider>
     </AbilityContext.Provider>
   );

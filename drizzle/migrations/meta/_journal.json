@@ -57,6 +57,20 @@
       "when": 1735476320906,
       "tag": "0008_system-config-table",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1747216639614,
+      "tag": "0009_add-comments-table",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1747218275351,
+      "tag": "0010_add-resolved-to-comments-table",
+      "breakpoints": true
     }
   ]
 }

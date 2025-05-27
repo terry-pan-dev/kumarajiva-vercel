@@ -20,12 +20,29 @@ export type Pagination = {
   limit?: number;
 };
 
-export const readGlossaries = async ({ page, limit = 10 }: Pagination): Promise<Omit<ReadGlossary, 'similarity'>[]> => {
-  return dbClient.query.glossariesTable.findMany({
-    limit,
-    offset: (page - 1) * limit,
-    orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
-  });
+export const readGlossaries = async ({
+  page,
+  limit = 10,
+}: Pagination): Promise<{
+  glossaries: Omit<ReadGlossary, 'similarity'>[];
+  totalPages: number;
+}> => {
+  const [glossaries, totalCount] = await Promise.all([
+    dbClient.query.glossariesTable.findMany({
+      limit,
+      offset: (page - 1) * limit,
+      orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
+    }),
+    dbClient
+      .select({ count: sql<number>`count(*)` })
+      .from(glossariesTable)
+      .then((result) => result[0].count),
+  ]);
+
+  return {
+    glossaries,
+    totalPages: Math.ceil(totalCount / limit),
+  };
 };
 
 export const getGlossariesByGivenGlossaries = async (glossaries: string[]): Promise<ReadGlossary[]> => {
@@ -86,10 +103,20 @@ export const updateGlossarySubscribers = async (glossary: UpdateGlossary) => {
 
 export const updateGlossaryTranslations = async ({
   id,
-  translations,
+  phonetic,
+  author,
+  cbetaFrequency,
+  translations = [],
+  updatedBy,
+  isNewInsert = false,
 }: {
   id: string;
+  phonetic: string | null;
+  author: string | null;
+  cbetaFrequency: string | null;
   translations: UpdateGlossary['translations'];
+  updatedBy: string | null;
+  isNewInsert?: boolean;
 }) => {
   const glossary = await dbClient.query.glossariesTable.findFirst({ where: eq(glossariesTable.id, id) });
   if (!glossary) {
@@ -97,15 +124,43 @@ export const updateGlossaryTranslations = async ({
   }
   const { searchId } = glossary;
 
+  let newTranslations = [...(translations ?? [])];
+  if (isNewInsert) {
+    newTranslations = [...(glossary.translations ?? []), ...(translations ?? [])];
+  }
+  const translationsToSearch = newTranslations?.map((translation) => ({
+    glossary: translation.glossary,
+    language: translation.language,
+    phonetic: translation.phonetic ?? undefined,
+  }));
+
   if (searchId) {
     await algoliaClient.partialUpdateObject({
       indexName: 'glossaries',
       objectID: searchId,
-      attributesToUpdate: { translations },
+      attributesToUpdate: {
+        translations: translationsToSearch,
+        phonetic: phonetic ? phonetic.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : undefined,
+      },
     });
   }
 
-  return dbClient.update(glossariesTable).set({ translations: translations }).where(eq(glossariesTable.id, id));
+  const toUpdate = {
+    translations: newTranslations,
+    phonetic: phonetic ?? undefined,
+    author: author ?? undefined,
+    cbetaFrequency: cbetaFrequency ?? undefined,
+    updatedBy: updatedBy ?? undefined,
+  };
+
+  console.log(toUpdate);
+
+  return await dbClient
+    .update(glossariesTable)
+    .set({
+      ...toUpdate,
+    })
+    .where(eq(glossariesTable.id, id));
 };
 
 export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
@@ -178,4 +233,11 @@ export const searchGlossaries = async (tokens: string[]) => {
     },
     {} as Record<string, string[]>,
   );
+};
+
+export const getAllGlossaries = async (): Promise<ReadGlossary[]> => {
+  const glossaries = await dbClient.query.glossariesTable.findMany({
+    orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
+  });
+  return glossaries;
 };
