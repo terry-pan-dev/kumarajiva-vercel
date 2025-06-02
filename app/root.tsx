@@ -45,7 +45,7 @@ export function Layout() {
         <ScrollRestoration />
         <Scripts />
         <script src="https://cdn.jsdelivr.net/npm/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js" />
-        <Analytics />
+        <Analytics mode="production" />
       </body>
     </html>
   );

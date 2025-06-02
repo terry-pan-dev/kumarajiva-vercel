@@ -22,26 +22,9 @@ export const glossaryFormSchema = z.object({
     message: 'Glossary must be at least 1 characters.',
   }),
   sutraText: z.string().optional(),
-  sutraName: z
-    .string()
-    .refine(
-      (val) => {
-        if (val.length > 0) {
-          return chineseRegex.test(val);
-        } else {
-          return true;
-        }
-      },
-      {
-        message: 'Sutra Name only accept chinese',
-      },
-    )
-    .optional()
-    .default('佛教常用詞'),
+  sutraName: z.string().optional().default('佛教常用詞'),
   volume: z.string().optional(),
-  cbetaFrequency: z.string().optional(),
   author: z.string().optional(),
-  discussion: z.string().optional(),
   partOfSpeech: z.string().optional(),
   phonetic: z.string().optional(),
 });
@@ -49,9 +32,10 @@ export const glossaryFormSchema = z.object({
 export const glossaryEditFormSchema = z.object({
   id: z.string(),
   glossary: z.string(),
+  phonetic: z.string(),
   author: z.string().nullish(),
   cbetaFrequency: z.string().nullish(),
-  phonetic: z.string().nullish(),
+  discussion: z.string().nullish(),
   translations: z.array(
     z.object({
       glossary: z.string(),

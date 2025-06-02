@@ -94,7 +94,7 @@ export function SideBarMenu({
             className={cn('flex items-center', isOpen ? 'w-full justify-start' : 'w-full justify-center')}
           >
             <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-yellow-600 font-mono text-xl font-bold text-white">
-              <img src={favicon} sizes="32x32" alt="home favicon" />
+              <img width={32} height={32} src={favicon} sizes="32x32" alt="home favicon" />
               {navigation.state === 'loading' && !isOpen && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-full bg-yellow-600/80">
                   <Icons.Loader className="h-5 w-5 animate-spin text-white" />
@@ -174,7 +174,7 @@ export function SideBarMenu({
             <Link to="/settings" aria-label="settings" className="flex items-center">
               <Avatar className="h-10 w-10 rounded-md">
                 <AvatarImage alt="avatar" src={avatarSrc || ''} />
-                <AvatarFallback className="bg-yellow-600 text-white">{avatarFallback}</AvatarFallback>
+                <AvatarFallback className="rounded-md bg-yellow-600 text-white">{avatarFallback}</AvatarFallback>
               </Avatar>
               {isOpen && (
                 <div className="ml-3 max-w-28">

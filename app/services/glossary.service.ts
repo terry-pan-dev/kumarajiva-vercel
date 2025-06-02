@@ -31,7 +31,11 @@ export const readGlossaries = async ({
     dbClient.query.glossariesTable.findMany({
       limit,
       offset: (page - 1) * limit,
-      orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
+      orderBy: (glossaries, { desc }) => [
+        desc(glossaries.updatedAt),
+        desc(glossaries.createdAt),
+        desc(glossaries.glossary),
+      ],
     }),
     dbClient
       .select({ count: sql<number>`count(*)` })
@@ -107,6 +111,7 @@ export const updateGlossaryTranslations = async ({
   author,
   cbetaFrequency,
   translations = [],
+  discussion,
   updatedBy,
   isNewInsert = false,
 }: {
@@ -114,6 +119,7 @@ export const updateGlossaryTranslations = async ({
   phonetic: string | null;
   author: string | null;
   cbetaFrequency: string | null;
+  discussion: string | null;
   translations: UpdateGlossary['translations'];
   updatedBy: string | null;
   isNewInsert?: boolean;
@@ -151,6 +157,7 @@ export const updateGlossaryTranslations = async ({
     author: author ?? undefined,
     cbetaFrequency: cbetaFrequency ?? undefined,
     updatedBy: updatedBy ?? undefined,
+    discussion: discussion ?? undefined,
   };
 
   console.log(toUpdate);
@@ -240,4 +247,17 @@ export const getAllGlossaries = async (): Promise<ReadGlossary[]> => {
     orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
   });
   return glossaries;
+};
+
+export const deleteGlossariesByUserId = async (userId: string) => {
+  const glossaries = await dbClient.query.glossariesTable.findMany({
+    where: eq(glossariesTable.createdBy, userId),
+  });
+
+  const glossaryIds = glossaries.map((glossary) => glossary.id);
+  await algoliaClient.deleteObjects({
+    indexName: 'glossaries',
+    objectIDs: glossaryIds,
+  });
+  return await dbClient.delete(glossariesTable).where(eq(glossariesTable.createdBy, userId));
 };

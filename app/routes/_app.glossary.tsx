@@ -4,7 +4,9 @@ import type { PropsWithChildren } from 'react';
 import { Link, Outlet, redirect, useLoaderData } from '@remix-run/react';
 import { json } from '@vercel/remix';
 import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { pinyin } from 'pinyin-pro';
+import { useCallback, useState } from 'react';
+import { useFormContext } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { CreateGlossary } from '../../drizzle/schema';
@@ -127,6 +129,19 @@ const GlossaryCreateForm = () => {
   const [chineseAccordionOpen, setChineseAccordionOpen] = useState(false);
   const [targetLangAccordionOpen, setTargetLangAccordionOpen] = useState(false);
   const anyAccordionOpen = chineseAccordionOpen || targetLangAccordionOpen;
+  const { watch, setValue } = useFormContext();
+  const glossaryChinese = watch('glossaryChinese');
+  const phoneticChinese = watch('phoneticChinese');
+  const handleGlossaryChineseOnBlur = useCallback(() => {
+    if (glossaryChinese && !phoneticChinese) {
+      // Example: Transform glossaryChinese to phonetic (replace with your logic, e.g., pinyin)
+      const phoneticValue = pinyin(glossaryChinese); // Placeholder logic
+      setValue('phoneticChinese', phoneticValue, {
+        shouldValidate: true, // Trigger validation
+        shouldDirty: true, // Mark field as dirty
+      });
+    }
+  }, [glossaryChinese, phoneticChinese, setValue]);
   return (
     <div
       className="px-2 transition-[height] duration-300"
@@ -136,7 +151,13 @@ const GlossaryCreateForm = () => {
       }}
     >
       <div className="grid grid-cols-2 gap-4">
-        <FormInput required label="Glossary" name="glossaryChinese" description="The Chinese glossary term." />
+        <FormInput
+          required
+          name="glossaryChinese"
+          label="Glossary Chinese"
+          onBlur={handleGlossaryChineseOnBlur}
+          description="The Chinese glossary term."
+        />
         <FormInput required label="Phonetic" name="phoneticChinese" description="The phonetic of the glossary term." />
         <div className="col-span-2">
           <CustomAccordion onToggle={setChineseAccordionOpen} title="Optional Fields For Chinese">
@@ -149,11 +170,13 @@ const GlossaryCreateForm = () => {
                 description="The frequency of the sutra in CBETA."
               />
               <FormTextarea label="Author" name="authorChinese" description="The author of the glossary." />
-              <FormTextarea
-                label="Discussion"
-                name="discussionChinese"
-                description="Any additional discussion about the glossary."
-              />
+              <span className="col-span-2">
+                <FormTextarea
+                  label="Discussion"
+                  name="discussionChinese"
+                  description="Any additional discussion about the glossary."
+                />
+              </span>
             </div>
           </CustomAccordion>
         </div>
@@ -162,7 +185,12 @@ const GlossaryCreateForm = () => {
         <span className="text-md">{user?.targetLang?.toUpperCase()}</span>
       </Divider>
       <div className="grid grid-cols-1 gap-4">
-        <FormInput required name="glossary" label="Glossary" description={`The ${user?.targetLang} glossary term.`} />
+        <FormInput
+          required
+          name="glossary"
+          label="Glossary English"
+          description={`The ${user?.targetLang} glossary term.`}
+        />
         <CustomAccordion
           onToggle={setTargetLangAccordionOpen}
           title={`Optional Fields For ${user?.targetLang?.charAt(0).toUpperCase()}${user?.targetLang?.slice(1)}`}
@@ -182,17 +210,7 @@ const GlossaryCreateForm = () => {
             />
             <FormTextarea name="sutraText" label="Sutra Text" description="The text of the sutra." />
             <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
-            <FormTextarea
-              name="cbetaFrequency"
-              label="CBETA Frequency"
-              description="The frequency of the sutra in CBETA."
-            />
             <FormTextarea name="author" label="Author" description="The author of the glossary." />
-            <FormTextarea
-              name="discussion"
-              label="Discussion"
-              description="Any additional discussion about the glossary."
-            />
           </div>
         </CustomAccordion>
       </div>
@@ -217,7 +235,12 @@ export function CustomAccordion({
 
   return (
     <div className="mx-auto w-full bg-white">
-      <button type="button" onClick={handleToggle} className="flex w-full flex-col items-center focus:outline-none">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={handleToggle}
+        className="flex w-full flex-col items-center focus:outline-none"
+      >
         <div className="flex w-full items-center">
           <div className="flex-1 border-t border-dashed border-blue-600" />
           <span className="mx-4 whitespace-nowrap text-center text-sm font-semibold">{title}</span>
@@ -227,7 +250,11 @@ export function CustomAccordion({
           <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </div>
       </button>
-      {open && <div className="mt-4">{children}</div>}
+      {open && (
+        <div className="mt-4" aria-hidden={!open}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }

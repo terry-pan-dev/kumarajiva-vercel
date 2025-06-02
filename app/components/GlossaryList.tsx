@@ -9,10 +9,23 @@ import { langEnum, type ReadGlossary } from '~/drizzle/tables';
 
 import { Can } from '../authorisation';
 import { Icons } from '../components/icons';
-import { Badge, Button, Card, CardContent, CardFooter, CardHeader, ScrollArea, Separator } from '../components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  ScrollArea,
+  Separator,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '../components/ui';
 import { Divider } from '../components/ui/divider';
 import { glossaryEditFormSchema, glossaryInsertFormSchema } from '../validations/glossary.validation';
-import { FormInput, FormModal, FormSelect, HiddenInput } from './FormModal';
+import { FormInput, FormModal, FormSelect, FormTextarea, HiddenInput } from './FormModal';
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
@@ -51,19 +64,21 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
           </div>
           <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-11rem)] lg:w-1/2">
             <ScrollArea ref={ref} className="h-full lg:pr-4">
-              {glossaries.length > 0 ? (
-                glossaries.map((glossary, index) => (
-                  <div
-                    key={glossary.id}
-                    onClick={() => setSelectedIndex(index)}
-                    className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
-                  >
-                    <GlossaryItem glossary={glossary} />
-                  </div>
-                ))
-              ) : (
-                <div>No glossaries found</div>
-              )}
+              <ul>
+                {glossaries.length > 0 ? (
+                  glossaries.map((glossary, index) => (
+                    <li
+                      key={glossary.id}
+                      onClick={() => setSelectedIndex(index)}
+                      className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+                    >
+                      <GlossaryItem glossary={glossary} />
+                    </li>
+                  ))
+                ) : (
+                  <div>No glossaries found</div>
+                )}
+              </ul>
             </ScrollArea>
           </div>
         </div>
@@ -132,113 +147,140 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
   }, [fetcher.formData, subscribedGlossaries, glossary]);
 
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader className="flex-row items-center justify-between p-2 pb-0 lg:p-6">
-        <fetcher.Form method="post" action="/glossary?index&page=-1">
-          <input type="hidden" name="glossaryId" value={glossary?.id} />
-          <button type="submit" name="bookmark" value={isBookmarked ? 'false' : 'true'}>
-            <Icons.BookMark className={`h-6 w-6 ${isBookmarked ? 'fill-red-500 text-red-500' : 'text-slate-800'}`} />
-          </button>
-        </fetcher.Form>
-        {showEdit && (
-          <div className="flex gap-2">
-            <Can I="Update" this="Glossary">
-              <FormModal
-                kind="edit"
-                title="Update Glossary"
-                fetcherKey="edit-glossary"
-                schema={glossaryEditFormSchema}
-                trigger={
-                  <Button size="icon" variant="ghost">
-                    <Icons.SquarePen className="h-6 w-6 text-slate-800" />
-                  </Button>
-                }
-                defaultValues={{
-                  id: glossary?.id,
-                  glossary: glossary.glossary,
-                  author: glossary.author || '',
-                  cbetaFrequency: glossary.cbetaFrequency || '',
-                  phonetic: glossary.phonetic || '',
-                  translations: glossary.translations || [],
-                }}
-              >
-                <GlossaryEditForm id={glossary.id} />
-              </FormModal>
-            </Can>
-            <Can I="Create" this="Glossary">
-              <FormModal
-                kind="insert"
-                title="Add New Glossary"
-                fetcherKey="insert-glossary"
-                schema={glossaryInsertFormSchema}
-                trigger={
-                  <Button size="icon" variant="ghost">
-                    <Icons.SquarePlus className="h-6 w-6 text-slate-800" />
-                  </Button>
-                }
-              >
-                <GlossaryInsertForm id={glossary.id} />
-              </FormModal>
-            </Can>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="flex-grow px-2 lg:px-6">
-        <div className="my-2 flex flex-col items-start gap-2 lg:flex-row lg:items-end lg:justify-start">
-          <h2 className="text-xl font-semibold tracking-tight text-primary lg:text-3xl">{glossary.glossary}</h2>
-          {glossary.phonetic && <h2 className="font-mono text-md text-secondary-foreground">({glossary.phonetic})</h2>}
-        </div>
-
-        {glossary.translations?.map((translation, index) => {
-          return (
-            <div key={`${glossary.id}-${index}`}>
-              <Divider className="py-1 lg:py-3">{translation.language.toUpperCase()}</Divider>
-              <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
-                {translation.sutraName} | {translation.volume}
-              </Badge>
-              {translation.originSutraText && (
-                <div className="flex items-center gap-2">
-                  <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
-                  <h3 className="text-sm font-medium text-muted-foreground">{translation.originSutraText}</h3>
-                </div>
-              )}
-              <Spacer />
-              <h2 className="mb-2 text-xl font-semibold tracking-tight text-primary lg:text-2xl">
-                {translation.glossary}
-              </h2>
-              {translation.targetSutraText && (
-                <div className="flex items-center gap-2">
-                  <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
-                  <h3 className="text-sm font-medium text-muted-foreground">{translation.targetSutraText}</h3>
-                </div>
-              )}
+    <TooltipProvider>
+      <Card className="flex h-full flex-col">
+        <CardHeader className="flex-row items-center justify-between px-2 py-4">
+          <fetcher.Form method="post" action="/glossary?index&page=-1">
+            <input type="hidden" name="glossaryId" value={glossary?.id} />
+            <button
+              type="submit"
+              name="bookmark"
+              aria-label="bookmark-glossary"
+              value={isBookmarked ? 'false' : 'true'}
+            >
+              <Icons.BookMark
+                className={`ml-1 h-6 w-6 ${isBookmarked ? 'fill-red-500 text-red-500' : 'text-slate-800'}`}
+              />
+            </button>
+          </fetcher.Form>
+          {showEdit && (
+            <div className="flex">
+              <Can I="Update" this="Glossary">
+                <FormModal
+                  kind="edit"
+                  title="Update Glossary"
+                  fetcherKey="edit-glossary"
+                  schema={glossaryEditFormSchema}
+                  trigger={
+                    <Button size="icon" variant="ghost" aria-label="edit-glossary">
+                      <Icons.SquarePen className="h-6 w-6 text-slate-800" />
+                    </Button>
+                  }
+                  defaultValues={{
+                    id: glossary?.id,
+                    glossary: glossary.glossary,
+                    author: glossary.author || '',
+                    cbetaFrequency: glossary.cbetaFrequency || '',
+                    phonetic: glossary.phonetic || '',
+                    translations: glossary.translations || [],
+                    discussion: glossary.discussion || '',
+                  }}
+                >
+                  <GlossaryEditForm id={glossary.id} />
+                </FormModal>
+              </Can>
+              <Can I="Create" this="Glossary">
+                <FormModal
+                  kind="insert"
+                  title="Add New Glossary"
+                  fetcherKey="insert-glossary"
+                  schema={glossaryInsertFormSchema}
+                  trigger={
+                    <Button size="icon" variant="ghost" aria-label="add-glossary">
+                      <Icons.SquarePlus className="h-6 w-6 text-slate-800" />
+                    </Button>
+                  }
+                >
+                  <GlossaryInsertForm id={glossary.id} />
+                </FormModal>
+              </Can>
             </div>
-          );
-        })}
-      </CardContent>
-      <Separator className="px-2" />
-      <CardFooter className="flex items-center justify-between p-2 text-sm text-muted-foreground lg:flex-row lg:justify-around lg:p-6 lg:pt-6">
-        <div className="flex items-center gap-2 rounded-lg border-2 border-gray-500 px-2 py-1">
-          <span className="text-xs font-medium text-muted-foreground">CBETA</span>
-          <span className="text-xs font-medium text-muted-foreground">|</span>
-          <span className="text-xs font-bold text-muted-foreground">{glossary.cbetaFrequency}</span>
-        </div>
-        {/* <div className="flex flex-col gap-2 md:flex-row"> */}
-        <div className="flex items-center gap-2">
-          <Icons.LineChart className="h-4 w-4" />
-          <span>{glossary.subscribers}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Icons.User className="h-4 w-4" />
-          <span>{glossary.author || glossary.updatedBy}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Icons.Clock className="h-4 w-4" />
-          <span>{glossary.updatedAt.toLocaleDateString()}</span>
-        </div>
-        {/* </div> */}
-      </CardFooter>
-    </Card>
+          )}
+        </CardHeader>
+        <CardContent className="flex-grow px-4">
+          <div className="my-2 flex items-end justify-start gap-2">
+            <h2 className="text-xl font-semibold tracking-tight text-primary lg:text-3xl">{glossary.glossary}</h2>
+            {glossary.phonetic && (
+              <h2 className="font-mono text-md text-secondary-foreground">({glossary.phonetic})</h2>
+            )}
+            <div className="ml-auto" />
+            {glossary.discussion && (
+              <Tooltip>
+                <span className="inline-block align-middle">
+                  <TooltipTrigger aria-label="discussion">
+                    <Icons.Discussion className="h-6 w-6 text-primary" />
+                  </TooltipTrigger>
+                </span>
+                <TooltipContent side="right" role="tooltip" aria-label="discussion tooltip">
+                  <p>{glossary.discussion}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+
+          {glossary.translations?.map((translation, index) => {
+            return (
+              <div key={`${glossary.id}-${index}`}>
+                <Divider className="py-1 lg:py-3">{translation.language.toUpperCase()}</Divider>
+                <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
+                  {translation.sutraName} | {translation.volume}
+                </Badge>
+                {translation.originSutraText && (
+                  <div className="flex items-center gap-2">
+                    <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
+                    <h3 className="text-sm font-medium text-muted-foreground">{translation.originSutraText}</h3>
+                  </div>
+                )}
+                <Spacer />
+                <h2 className="mb-2 text-xl font-semibold tracking-tight text-primary lg:text-2xl">
+                  {translation.glossary}
+                </h2>
+                {translation.targetSutraText && (
+                  <div className="flex items-center gap-2">
+                    <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
+                    <h3 className="text-sm font-medium text-muted-foreground">{translation.targetSutraText}</h3>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+        <Separator className="px-2" />
+        <CardFooter className="flex items-center justify-between p-2 text-sm text-muted-foreground lg:flex-row lg:justify-around lg:p-6 lg:pt-6">
+          <div className="flex items-center gap-2 rounded-lg border-2 border-gray-500 px-2 py-1">
+            <span className="text-xs font-medium text-muted-foreground">CBETA</span>
+            <span className="text-xs font-medium text-muted-foreground">|</span>
+            <span title="cbeta-frequency" className="text-xs font-bold text-muted-foreground">
+              {glossary.cbetaFrequency}
+            </span>
+          </div>
+          {/* <div className="flex flex-col gap-2 md:flex-row"> */}
+          <div className="flex items-center gap-2">
+            <Icons.LineChart className="h-4 w-4" />
+            <span title="subscribers">{glossary.subscribers}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Icons.User className="h-4 w-4" />
+            <span title="author">{glossary.author || glossary.updatedBy}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Icons.Clock className="h-4 w-4" />
+            <span title="updated-at">{glossary.updatedAt.toLocaleDateString()}</span>
+          </div>
+          {/* </div> */}
+        </CardFooter>
+      </Card>
+    </TooltipProvider>
   );
 };
 
@@ -251,10 +293,13 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
       <HiddenInput name="id" value={id} />
       <Divider>CHINESE</Divider>
       <div className="grid grid-cols-2 gap-4">
-        <FormInput disabled={true} label="Glossary" name={`glossary`} description="The glossary of Chinese." />
-        <FormInput label="Phonetic" name={`phonetic`} description="The phonetic of the glossary." />
+        <FormInput required disabled={true} label="Glossary" name={`glossary`} description="The glossary of Chinese." />
+        <FormInput required label="Phonetic" name={`phonetic`} description="The phonetic of the glossary." />
         <FormInput label="Author" name={`author`} description="The author of the glossary." />
         <FormInput label="CBETA Frequency" name={`cbetaFrequency`} description="The cbeta frequency of the glossary." />
+        <span className="col-span-2">
+          <FormTextarea label="Discussion" name={`discussion`} description="The discussion of the glossary." />
+        </span>
       </div>
       {fields.map((field, index) => (
         <div key={field.id}>
@@ -294,6 +339,12 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
               name={`translations.${index}.phonetic`}
               description="The phonetic of the glossary."
             />
+            <FormInput
+              label="Part of Speech"
+              name={`translations.${index}.partOfSpeech`}
+              description="The part of speech of the glossary."
+            />
+            <FormInput label="Author" name={`translations.${index}.author`} description="The author of the glossary." />
           </div>
         </div>
       ))}
