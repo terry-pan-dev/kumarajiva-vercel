@@ -24,9 +24,15 @@ import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { createGlossaryAndIndexInAlgolia, getGlossariesByGivenGlossaries } from '../services/glossary.service';
 import { readUsers } from '../services/user.service';
 import { glossaryFormSchema } from '../validations/glossary.validation';
+
+export const config = {
+  memory: 3009,
+};
+
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
 };
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   const users = await readUsers();
