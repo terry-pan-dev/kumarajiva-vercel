@@ -26,6 +26,10 @@ import {
   glossaryInsertFormSchema,
 } from '../validations/glossary.validation';
 
+export const config = {
+  memory: 3009,
+};
+
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
 };
