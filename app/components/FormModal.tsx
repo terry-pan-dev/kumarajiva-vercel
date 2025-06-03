@@ -185,6 +185,7 @@ interface FormInputProps {
     label: string;
     value: string;
   }[];
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 interface BaseFormFieldProps extends FormInputProps {
@@ -204,6 +205,7 @@ export function FormInput({
   description,
   placeholder,
   disabled = false,
+  onBlur,
 }: FormInputProps) {
   const {
     register,
@@ -212,7 +214,7 @@ export function FormInput({
 
   return (
     <BaseFormField name={name} label={label} errors={errors} required={required} description={description}>
-      <Input id={name} type={type} placeholder={placeholder} {...register(name)} disabled={disabled} />
+      <Input id={name} type={type} placeholder={placeholder} {...register(name)} onBlur={onBlur} disabled={disabled} />
     </BaseFormField>
   );
 }
@@ -270,7 +272,7 @@ function BaseFormField({
 }: PropsWithChildren<BaseFormFieldProps>) {
   return (
     <FormItem>
-      <FormLabel>
+      <FormLabel htmlFor={name}>
         {label}
         {required && <span className="text-red-600">*</span>}
       </FormLabel>

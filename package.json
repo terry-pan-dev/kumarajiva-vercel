@@ -23,7 +23,9 @@
     "read-paragraph": "tsx scripts/read-paragraph.ts",
     "transformation": "tsx scripts/transformation.ts",
     "prepare": "husky",
-    "playwright:codegen": "playwright codegen http://localhost:3000"
+    "playwright:codegen": "playwright codegen http://localhost:3002",
+    "playwright:test:headed": "playwright test --headed",
+    "playwright:teardown": "playwright test global.teardown.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.5",
@@ -80,6 +82,7 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.452.0",
     "openai": "^4.97.0",
+    "pinyin-pro": "^3.26.0",
     "react": "^18.2.0",
     "react-avatar-editor": "14.0.0-beta.5",
     "react-dom": "^18.2.0",
@@ -134,7 +137,7 @@
     ]
   },
   "engines": {
-    "node": ">=20.16.0"
+    "node": ">=22.14.0"
   },
   "packageManager": "pnpm@9.7.0"
 }

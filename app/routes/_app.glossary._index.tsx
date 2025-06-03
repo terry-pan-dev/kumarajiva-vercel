@@ -83,6 +83,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       cbetaFrequency,
       updatedBy: phonetic || author || cbetaFrequency ? user.id : null,
       translations: validatedDataWithUpdatedBy,
+      discussion: validatedData.discussion ?? null,
     });
     return json({ success: true, kind: 'edit' });
   }
@@ -102,6 +103,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       author: null,
       cbetaFrequency: null,
       updatedBy: null,
+      discussion: null,
     });
     return json({ success: true, kind: 'insert' });
   }
@@ -189,7 +191,7 @@ const SearchBar = ({ searchTerm, setSearchTerm }: SearchBarProps) => {
             </div>
           )}
           <Input
-            type="text"
+            type="search"
             name="searchTerm"
             value={searchTerm}
             disabled={isLoading}
