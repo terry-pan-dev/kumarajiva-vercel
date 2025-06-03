@@ -1,7 +1,7 @@
 import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { ChevronRight } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 
@@ -146,6 +146,47 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.formData, subscribedGlossaries, glossary]);
 
+  const highlightKeyword = useCallback(({ text, keyword }: { text?: string | null; keyword: string }) => {
+    if (!text) {
+      return null;
+    }
+    // Escape special regex characters in the keyword
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Create regex with global flag and optional case insensitive flag
+    const regex = new RegExp(escapedKeyword, 'gi');
+
+    // Split text by the keyword while preserving the keyword
+    const parts = text.split(regex);
+    const matches = text.match(regex) || [];
+
+    // If no matches found, return original text
+    if (matches.length === 0) {
+      return <>{text}</>;
+    }
+
+    // Build the highlighted JSX
+    const result: React.ReactNode[] = [];
+
+    for (let i = 0; i < parts.length; i++) {
+      // Add the text part
+      if (parts[i]) {
+        result.push(parts[i]);
+      }
+
+      // Add the highlighted keyword if there's a match
+      if (i < matches.length) {
+        result.push(
+          <mark key={`highlight-${i}`} className="bg-transparent font-semibold text-yellow-600">
+            {matches[i]}
+          </mark>,
+        );
+      }
+    }
+
+    return <>{result}</>;
+  }, []);
+
   return (
     <TooltipProvider>
       <Card className="flex h-full flex-col">
@@ -229,26 +270,31 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
           </div>
 
           {glossary.translations?.map((translation, index) => {
+            const originSutraText = highlightKeyword({ text: translation.originSutraText, keyword: glossary.glossary });
+            const targetSutraText = highlightKeyword({
+              text: translation.targetSutraText,
+              keyword: translation.glossary,
+            });
             return (
               <div key={`${glossary.id}-${index}`}>
-                <Divider className="py-1 lg:py-3">{translation.language.toUpperCase()}</Divider>
+                <Divider className="py-1 text-primary lg:py-3">{translation.language.toUpperCase()}</Divider>
                 <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
                   {translation.sutraName} | {translation.volume}
                 </Badge>
-                {translation.originSutraText && (
+                {originSutraText && (
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
-                    <h3 className="text-sm font-medium text-muted-foreground">{translation.originSutraText}</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground">{originSutraText}</h3>
                   </div>
                 )}
                 <Spacer />
                 <h2 className="mb-2 text-xl font-semibold tracking-tight text-primary lg:text-2xl">
                   {translation.glossary}
                 </h2>
-                {translation.targetSutraText && (
+                {targetSutraText && (
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
-                    <h3 className="text-sm font-medium text-muted-foreground">{translation.targetSutraText}</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground">{targetSutraText}</h3>
                   </div>
                 )}
               </div>
@@ -325,19 +371,19 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
               description="The volume of the glossary."
             />
             <FormInput
+              label="Phonetic"
+              name={`translations.${index}.phonetic`}
+              description="The phonetic of the glossary."
+            />
+            <FormTextarea
               label="Origin Sutra Text"
               name={`translations.${index}.originSutraText`}
               description="The origin sutra text of the glossary."
             />
-            <FormInput
+            <FormTextarea
               label="Target Sutra Text"
               name={`translations.${index}.targetSutraText`}
               description="The target sutra text of the glossary."
-            />
-            <FormInput
-              label="Phonetic"
-              name={`translations.${index}.phonetic`}
-              description="The phonetic of the glossary."
             />
             <FormInput
               label="Part of Speech"
