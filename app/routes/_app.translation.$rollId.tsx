@@ -415,11 +415,11 @@ const CommentModal = () => {
         }
 
         // Find closest parent with data-id
-        while (element && !element.getAttribute('data-id')) {
+        while (element && element.nodeType === Node.ELEMENT_NODE && !element.getAttribute('data-id')) {
           element = element.parentNode as Element;
         }
 
-        if (element) {
+        if (element && element.nodeType === Node.ELEMENT_NODE) {
           const id = element.getAttribute('data-id');
           if (id) {
             setParagraphId(id);
