@@ -380,7 +380,6 @@ export interface SearchResultListProps {
 }
 const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchResultListProps) => {
   const selectedResult = useMemo(() => {
-    console.log({ selectedIndex, results });
     if (results.length > 0) {
       if (selectedIndex[1]) {
         return results[selectedIndex[0]] as ParagraphSearchResult[number] | ReadGlossary;
