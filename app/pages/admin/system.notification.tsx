@@ -10,9 +10,9 @@ export const SystemNotification = ({ banners }: { banners: BannerType[] }) => {
   const fetcher = useFetcher();
 
   return (
-    <div className="sm:px-6 lg:px-4 lg:py-12">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8 rounded-lg bg-white p-6 shadow-sm">
+    <div className="lg:p-6">
+      <div className="mx-auto w-full lg:space-y-6">
+        <div className="rounded-lg bg-white p-6 shadow-sm">
           <h1 className="mb-6 text-lg font-bold text-gray-900 lg:text-2xl">Banner Management</h1>
           <AdminBannerForm />
         </div>

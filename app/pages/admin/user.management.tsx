@@ -29,9 +29,9 @@ export const AdminManagement = ({ users, teams }: { users: ReadUser[]; teams: Re
   }));
 
   return (
-    <div>
+    <div className="lg:p-6">
       <AdminActionButtons teams={cleanedTeams} />
-      <div className="mx-auto w-full lg:space-y-6 lg:p-6">
+      <div className="mx-auto w-full lg:space-y-6">
         <Accordion collapsible type="single" className="w-full">
           {users.map((user) => (
             <AccordionItem key={user.id} value={user.id}>

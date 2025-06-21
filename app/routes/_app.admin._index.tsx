@@ -160,15 +160,21 @@ export default function AdminIndex() {
 
   return (
     <Tabs className="w-full" defaultValue="user-management">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="user-management">Users</TabsTrigger>
         <TabsTrigger value="system-notifications">Notifications</TabsTrigger>
+        <TabsTrigger value="upload">Upload</TabsTrigger>
       </TabsList>
-      <TabsContent value="user-management">
+      <TabsContent value="user-management" className="h-[calc(100vh-8rem)] overflow-y-auto">
         <AdminManagement users={cleanedUsers} teams={cleanedTeams} />
       </TabsContent>
-      <TabsContent value="system-notifications">
+      <TabsContent value="system-notifications" className="h-[calc(100vh-8rem)] overflow-y-auto">
         <SystemNotification banners={cleanedNotifications} />
+      </TabsContent>
+      <TabsContent value="upload" className="h-[calc(100vh-8rem)] overflow-y-auto">
+        <div className="p-4">
+          <p>Upload functionality will be implemented here.</p>
+        </div>
       </TabsContent>
     </Tabs>
   );
