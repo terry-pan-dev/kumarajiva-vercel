@@ -9,6 +9,7 @@ import { ClientOnly } from 'remix-utils/client-only';
 import { ZodError } from 'zod';
 
 import { Icons } from '~/components/icons';
+import { Checkbox } from '~/components/ui/checkbox';
 import { type ReadReference } from '~/drizzle/tables/reference';
 import { type ReadUser } from '~/drizzle/tables/user';
 
@@ -45,6 +46,7 @@ import {
   Textarea,
 } from '../components/ui';
 import { useToast } from '../hooks/use-toast';
+import { useDownloadDocx } from '../lib/hooks';
 import { useScreenSize } from '../lib/hooks/useScreenSizeHook';
 import { useTextAreaAutoHeight } from '../lib/hooks/useTextAreaAutoHeight';
 import { useTranslation } from '../lib/hooks/useTranslation';
@@ -187,9 +189,35 @@ export default function TranslationRoll() {
   const divRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLLabelElement>(null);
 
-  const { user } = useOutletContext<{ user: ReadUser }>();
+  const {
+    user,
+    portionDownloadMode,
+    selectedParagraphIds,
+    setSelectedParagraphIds,
+    triggerPortionDownload,
+    setTriggerPortionDownload,
+    setPortionDownloadMode,
+  } = useOutletContext<{
+    user: ReadUser;
+    portionDownloadMode: boolean;
+    selectedParagraphIds: string[];
+    setSelectedParagraphIds: (ids: string[]) => void;
+    triggerPortionDownload: boolean;
+    setTriggerPortionDownload: (trigger: boolean) => void;
+    setPortionDownloadMode: (mode: boolean) => void;
+  }>();
+
+  const { downloadDocx } = useDownloadDocx();
 
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
+
+  const handleParagraphSelect = (paragraphId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedParagraphIds([...selectedParagraphIds, paragraphId]);
+    } else {
+      setSelectedParagraphIds(selectedParagraphIds.filter((id) => id !== paragraphId));
+    }
+  };
 
   const paragraphsWithHistory = useMemo(() => {
     return paragraphs.map((paragraph) => ({
@@ -215,6 +243,31 @@ export default function TranslationRoll() {
       })),
     }));
   }, [paragraphs]);
+
+  const handleDownloadSelected = useCallback(async () => {
+    if (selectedParagraphIds.length === 0 || !rollInfo) return;
+
+    const selectedParagraphs = paragraphsWithHistory.filter((p) => selectedParagraphIds.includes(p.id));
+    await downloadDocx(selectedParagraphs, rollInfo);
+
+    // Reset selections and exit portion download mode after download
+    setSelectedParagraphIds([]);
+    setPortionDownloadMode(false);
+  }, [
+    selectedParagraphIds,
+    paragraphsWithHistory,
+    rollInfo,
+    downloadDocx,
+    setSelectedParagraphIds,
+    setPortionDownloadMode,
+  ]);
+
+  useEffect(() => {
+    if (triggerPortionDownload) {
+      handleDownloadSelected();
+      setTriggerPortionDownload(false);
+    }
+  }, [triggerPortionDownload, handleDownloadSelected, setTriggerPortionDownload]);
 
   const selectedParagraph = useMemo(() => {
     if (selectedParagraphIndex) {
@@ -247,70 +300,106 @@ export default function TranslationRoll() {
   const Paragraphs = paragraphsWithHistory.map((paragraph) => (
     <div key={paragraph.id} className="flex items-center gap-6 px-4">
       {paragraph?.target ? (
-        <div
-          className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-6 px-2`}
-        >
-          <ContextMenuWrapper>
-            <Paragraph
-              isOrigin
-              id={paragraph.id}
-              text={paragraph.origin}
-              comments={paragraph.originComments}
-              isSelected={selectedParagraphIndex === paragraph.id}
+        <>
+          {portionDownloadMode && (
+            <Checkbox
+              className="shrink-0"
+              checked={selectedParagraphIds.includes(paragraph.id)}
+              onCheckedChange={(checked) => handleParagraphSelect(paragraph.id, checked as boolean)}
             />
-          </ContextMenuWrapper>
+          )}
           <div
-            className="flex h-auto text-md font-normal"
-            ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
-            onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}
+            className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-6 px-2`}
           >
-            <ContextMenuWrapper>
-              <div className="relative h-full">
+            <div
+              className={portionDownloadMode ? 'cursor-pointer' : ''}
+              onClick={
+                portionDownloadMode
+                  ? () => handleParagraphSelect(paragraph.id, !selectedParagraphIds.includes(paragraph.id))
+                  : undefined
+              }
+            >
+              <ContextMenuWrapper>
                 <Paragraph
-                  text={paragraph.target}
-                  id={paragraph.targetId!}
-                  comments={paragraph.targetComments}
-                  isUpdate={
-                    (selectedParagraphIndex === paragraph.id &&
-                      actionData?.kind === 'update' &&
-                      actionData.id === paragraph.targetId) ||
-                    (actionData?.kind === 'insert' && actionData.id === paragraph.id)
-                  }
+                  isOrigin
+                  id={paragraph.id}
+                  text={paragraph.origin}
+                  comments={paragraph.originComments}
+                  isSelected={selectedParagraphIndex === paragraph.id}
                 />
-                <Can I="Read" this="History">
-                  <ParagraphHistory histories={paragraph.histories} />
-                </Can>
-              </div>
-            </ContextMenuWrapper>
+              </ContextMenuWrapper>
+            </div>
+            <div
+              className="flex h-auto text-md font-normal"
+              ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
+              onDoubleClick={() =>
+                !portionDownloadMode && user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)
+              }
+            >
+              <ContextMenuWrapper>
+                <div className="relative h-full">
+                  <Paragraph
+                    text={paragraph.target}
+                    id={paragraph.targetId!}
+                    comments={paragraph.targetComments}
+                    isUpdate={
+                      (selectedParagraphIndex === paragraph.id &&
+                        actionData?.kind === 'update' &&
+                        actionData.id === paragraph.targetId) ||
+                      (actionData?.kind === 'insert' && actionData.id === paragraph.id)
+                    }
+                  />
+                  <Can I="Read" this="History">
+                    <ParagraphHistory histories={paragraph.histories} />
+                  </Can>
+                </div>
+              </ContextMenuWrapper>
+            </div>
           </div>
-        </div>
+        </>
       ) : (
-        <motion.div
-          whileHover={{ scale: 1.01 }}
-          transition={{ duration: 0.3 }}
-          className="flex w-full items-center gap-2"
-        >
-          <RadioGroupItem
-            id={paragraph.id}
-            value={paragraph.id}
-            disabled={user.role === 'reader'}
-            className={`h-3 w-3 lg:h-4 lg:w-4 ${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
-          />
-          <Label
-            htmlFor={paragraph.id}
-            className="w-full text-md font-normal"
-            ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
+        <>
+          {portionDownloadMode && (
+            <Checkbox
+              className="shrink-0"
+              checked={selectedParagraphIds.includes(paragraph.id)}
+              onCheckedChange={(checked) => handleParagraphSelect(paragraph.id, checked as boolean)}
+            />
+          )}
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            transition={{ duration: 0.3 }}
+            className={`flex w-full items-center gap-2 ${portionDownloadMode ? 'cursor-pointer' : ''}`}
+            onClick={
+              portionDownloadMode
+                ? () => handleParagraphSelect(paragraph.id, !selectedParagraphIds.includes(paragraph.id))
+                : undefined
+            }
           >
-            <ContextMenuWrapper>
-              <Paragraph
+            {!portionDownloadMode && (
+              <RadioGroupItem
                 id={paragraph.id}
-                text={paragraph.origin}
-                comments={paragraph.originComments}
-                isSelected={selectedParagraphIndex === paragraph.id}
+                value={paragraph.id}
+                disabled={user.role === 'reader'}
+                className={`h-3 w-3 lg:h-4 lg:w-4 ${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
               />
-            </ContextMenuWrapper>
-          </Label>
-        </motion.div>
+            )}
+            <Label
+              htmlFor={paragraph.id}
+              ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
+              className={`w-full text-md font-normal ${portionDownloadMode ? 'cursor-pointer' : ''}`}
+            >
+              <ContextMenuWrapper>
+                <Paragraph
+                  id={paragraph.id}
+                  text={paragraph.origin}
+                  comments={paragraph.originComments}
+                  isSelected={selectedParagraphIndex === paragraph.id}
+                />
+              </ContextMenuWrapper>
+            </Label>
+          </motion.div>
+        </>
       )}
     </div>
   ));

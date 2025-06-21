@@ -9,6 +9,12 @@ import { BreadcrumbLine } from '../components/Breadcrumb';
 import { Icons } from '../components/icons';
 import { SideBarTrigger } from '../components/SideBarTrigger';
 import { Button } from '../components/ui/button';
+import {
+  DropdownMenuItem,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 import { Separator } from '../components/ui/separator';
 import { Toaster } from '../components/ui/toaster';
 import { useDownloadDocx } from '../lib/hooks';
@@ -60,6 +66,9 @@ export default function TranslationLayout() {
   const params = useParams();
   const { downloadDocx } = useDownloadDocx();
   const [isDownload, setIsDownload] = useState(false);
+  const [portionDownloadMode, setPortionDownloadMode] = useState(false);
+  const [selectedParagraphIds, setSelectedParagraphIds] = useState<string[]>([]);
+  const [triggerPortionDownload, setTriggerPortionDownload] = useState(false);
 
   useEffect(() => {
     if (fetcher.data && fetcher.data.paragraphs.length && fetcher.data.rollInfo && isDownload) {
@@ -92,22 +101,102 @@ export default function TranslationLayout() {
           <BreadcrumbLine />
           {params.rollId ? (
             <Can I="Download" this="Paragraph">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6"
-                onClick={handleDownload}
-                disabled={fetcher.state !== 'idle'}
-              >
-                <Icons.Download className="h-6 w-6 text-slate-800" />
-              </Button>
+              <DownloadButton
+                loading={fetcher.state !== 'idle'}
+                handleFullDownload={handleDownload}
+                portionDownloadMode={portionDownloadMode}
+                selectedCount={selectedParagraphIds.length}
+                setPortionDownloadMode={setPortionDownloadMode}
+                onResetSelection={() => setSelectedParagraphIds([])}
+                onTriggerDownload={() => setTriggerPortionDownload(true)}
+              />
             </Can>
           ) : null}
         </div>
       </div>
       <Separator className="mb-2 bg-yellow-600" />
-      <Outlet context={{ user, users }} />
+      <Outlet
+        context={{
+          user,
+          users,
+          portionDownloadMode,
+          selectedParagraphIds,
+          setSelectedParagraphIds,
+          triggerPortionDownload,
+          setTriggerPortionDownload,
+          setPortionDownloadMode,
+        }}
+      />
       <Toaster />
     </div>
   );
 }
+
+const DownloadButton = ({
+  handleFullDownload,
+  loading,
+  portionDownloadMode,
+  setPortionDownloadMode,
+  selectedCount,
+  onResetSelection,
+  onTriggerDownload,
+}: {
+  handleFullDownload: () => void;
+  loading: boolean;
+  portionDownloadMode: boolean;
+  setPortionDownloadMode: (mode: boolean) => void;
+  selectedCount: number;
+  onResetSelection: () => void;
+  onTriggerDownload: () => void;
+}) => {
+  if (portionDownloadMode && selectedCount > 0) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-slate-600">{selectedCount} selected</span>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            onResetSelection();
+            setPortionDownloadMode(false);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button size="sm" className="bg-primary" onClick={onTriggerDownload}>
+          <Icons.Download className="mr-1 h-4 w-4" />
+          Download Selected
+        </Button>
+      </div>
+    );
+  }
+
+  if (portionDownloadMode) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-slate-600">Select paragraphs to download</span>
+        <Button size="sm" variant="outline" onClick={() => setPortionDownloadMode(false)}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <Icons.Download className="h-6 w-6 text-slate-800" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right">
+        <DropdownMenuItem>
+          <button disabled={loading} onClick={handleFullDownload}>
+            Full Download
+          </button>
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          <button onClick={() => setPortionDownloadMode(true)}>Portion Download</button>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
