@@ -1,7 +1,6 @@
-import { Form, Link, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
+import { Form, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import React, { useMemo, useRef, useState } from 'react';
-import { ClientOnly } from 'remix-utils/client-only';
 import { ZodError } from 'zod';
 
 import { readGlossaries, updateGlossarySubscribers, updateGlossaryTranslations } from '~/services';
@@ -9,15 +8,8 @@ import { readGlossaries, updateGlossarySubscribers, updateGlossaryTranslations }
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { GlossaryList } from '../components/GlossaryList';
+import { UrlPaginationControls } from '../components/PaginationControls';
 import { Button, Input } from '../components/ui';
-import {
-  Pagination,
-  PaginationPrevious,
-  PaginationItem,
-  PaginationContent,
-  PaginationNext,
-  PaginationEllipsis,
-} from '../components/ui/pagination';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { searchGlossaries } from '../services/edge.only';
 import {
@@ -141,7 +133,7 @@ export function ErrorBoundary() {
 }
 
 export default function GlossaryIndex() {
-  const { glossaries } = useLoaderData<typeof loader>();
+  const { glossaries, page, totalPages } = useLoaderData<typeof loader>();
 
   const glossariesState = useMemo(() => {
     return glossaries.map((glossary) => ({
@@ -164,7 +156,7 @@ export default function GlossaryIndex() {
         <>
           <GlossaryList ref={glossaryListRef} glossaries={glossariesState} />
           <div className="h-4" role="presentation" />
-          <PaginationControls />
+          <UrlPaginationControls totalPages={totalPages} currentPage={Number(page)} />
         </>
       ) : (
         <div className="flex h-full items-center justify-center">
@@ -206,80 +198,5 @@ const SearchBar = ({ searchTerm, setSearchTerm }: SearchBarProps) => {
         </Button>
       </div>
     </Form>
-  );
-};
-
-const PaginationControls = () => {
-  const { page, totalPages } = useLoaderData<typeof loader>();
-  const currentPage = Number(page);
-
-  const getPages = () => {
-    const pages = [];
-    if (totalPages <= 6) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-      return pages;
-    }
-    if (currentPage === 1 || currentPage === 2) {
-      pages.push(1, 2, 3);
-      if (totalPages > 4) pages.push('ellipsis');
-      pages.push(totalPages);
-    } else if (currentPage === 3) {
-      pages.push(1, 2, 3, 4, 'ellipsis', totalPages);
-    } else if (currentPage === 4) {
-      pages.push(1, 'ellipsis', 3, 4, 5, 'ellipsis', totalPages);
-    } else if (currentPage > 4 && currentPage < totalPages - 2) {
-      pages.push(1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', totalPages);
-    } else {
-      // Near the end
-      pages.push(1, 'ellipsis');
-      for (let i = totalPages - 2; i <= totalPages; i++) pages.push(i);
-    }
-    return pages;
-  };
-
-  const pages = getPages();
-
-  return (
-    <ClientOnly fallback={<div className="h-10" />}>
-      {() => (
-        <Pagination>
-          <PaginationContent className="h-10">
-            <PaginationItem>
-              {currentPage === 1 ? (
-                <span className="pointer-events-none select-none opacity-50">
-                  <PaginationPrevious to={'#'}>Previous</PaginationPrevious>
-                </span>
-              ) : (
-                <PaginationPrevious to={`?page=${currentPage - 1}`} />
-              )}
-            </PaginationItem>
-            {pages.map((p, idx) => (
-              <PaginationItem key={idx}>
-                {p === 'ellipsis' ? (
-                  <span className="flex items-center justify-center rounded py-1 text-muted-foreground">
-                    <PaginationEllipsis />
-                  </span>
-                ) : p === currentPage ? (
-                  <span className="rounded border px-2 py-1 text-muted-foreground">{p}</span>
-                ) : (
-                  <Link className="mx-1" to={`?page=${p}`}>
-                    {p}
-                  </Link>
-                )}
-              </PaginationItem>
-            ))}
-            <PaginationItem>
-              {currentPage >= totalPages ? (
-                <span className="pointer-events-none select-none opacity-50">
-                  <PaginationNext to={'#'}>Next</PaginationNext>
-                </span>
-              ) : (
-                <PaginationNext to={`?page=${currentPage + 1}`} />
-              )}
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
-    </ClientOnly>
   );
 };
