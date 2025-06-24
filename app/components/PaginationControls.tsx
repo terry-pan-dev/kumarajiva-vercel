@@ -10,23 +10,25 @@ import {
   PaginationPrevious,
 } from './ui/pagination';
 
-interface PaginationControlsProps {
+interface BasePaginationProps {
   currentPage: number;
   totalPages: number;
   className?: string;
+}
+
+interface UrlPaginationProps extends BasePaginationProps {
   // For URL-based pagination (Remix routes)
   onPageChange?: never;
   basePath?: string;
 }
 
-interface CallbackPaginationControlsProps {
-  currentPage: number;
-  totalPages: number;
-  className?: string;
+interface CallbackPaginationProps extends BasePaginationProps {
   // For callback-based pagination (state management)
   onPageChange: (page: number) => void;
   basePath?: never;
 }
+
+type PaginationControlsProps = UrlPaginationProps | CallbackPaginationProps;
 
 const generatePages = (currentPage: number, totalPages: number) => {
   const pages = [];
@@ -52,83 +54,72 @@ const generatePages = (currentPage: number, totalPages: number) => {
   return pages;
 };
 
-// URL-based pagination for Remix routes
-export function UrlPaginationControls({
-  currentPage,
-  totalPages,
-  basePath = '',
-  className = 'h-10',
-}: PaginationControlsProps) {
+export function PaginationControls({ currentPage, totalPages, className = 'h-10', ...props }: PaginationControlsProps) {
   const pages = generatePages(currentPage, totalPages);
+  const isUrlBased = !('onPageChange' in props);
+  const basePath = isUrlBased ? props.basePath || '' : '';
+  const onPageChange = !isUrlBased ? props.onPageChange : undefined;
 
-  return (
-    <ClientOnly fallback={<div className={className} />}>
-      {() => (
-        <Pagination>
-          <PaginationContent className={className}>
-            <PaginationItem>
-              {currentPage === 1 ? (
-                <span className="pointer-events-none select-none opacity-50">
-                  <PaginationPrevious to={'#'}>Previous</PaginationPrevious>
-                </span>
-              ) : (
-                <PaginationPrevious to={`${basePath}?page=${currentPage - 1}`} />
-              )}
-            </PaginationItem>
-            {pages.map((p, idx) => (
-              <PaginationItem key={idx}>
-                {p === 'ellipsis' ? (
-                  <span className="flex items-center justify-center rounded py-1 text-muted-foreground">
-                    <PaginationEllipsis />
-                  </span>
-                ) : p === currentPage ? (
-                  <span className="rounded border px-2 py-1 text-muted-foreground">{p}</span>
-                ) : (
-                  <Link className="mx-1" to={`${basePath}?page=${p}`}>
-                    {p}
-                  </Link>
-                )}
-              </PaginationItem>
-            ))}
-            <PaginationItem>
-              {currentPage >= totalPages ? (
-                <span className="pointer-events-none select-none opacity-50">
-                  <PaginationNext to={'#'}>Next</PaginationNext>
-                </span>
-              ) : (
-                <PaginationNext to={`${basePath}?page=${currentPage + 1}`} />
-              )}
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
-    </ClientOnly>
-  );
-}
+  const renderPageButton = (page: number) => {
+    if (isUrlBased) {
+      return (
+        <Link className="mx-1" to={`${basePath}?page=${page}`}>
+          {page}
+        </Link>
+      );
+    } else {
+      return (
+        <button onClick={() => onPageChange?.(page)} className="mx-1 rounded px-2 py-1 hover:bg-muted">
+          {page}
+        </button>
+      );
+    }
+  };
 
-// Callback-based pagination for state management
-export function CallbackPaginationControls({
-  currentPage,
-  totalPages,
-  onPageChange,
-  className = 'h-8',
-}: CallbackPaginationControlsProps) {
-  const pages = generatePages(currentPage, totalPages);
+  const renderPreviousButton = () => {
+    if (currentPage === 1) {
+      return (
+        <span className="pointer-events-none select-none opacity-50">
+          <PaginationPrevious to="#">Previous</PaginationPrevious>
+        </span>
+      );
+    }
 
-  return (
+    if (isUrlBased) {
+      return <PaginationPrevious to={`${basePath}?page=${currentPage - 1}`} />;
+    } else {
+      return (
+        <button onClick={() => onPageChange?.(currentPage - 1)}>
+          <PaginationPrevious to="#">Previous</PaginationPrevious>
+        </button>
+      );
+    }
+  };
+
+  const renderNextButton = () => {
+    if (currentPage >= totalPages) {
+      return (
+        <span className="pointer-events-none select-none opacity-50">
+          <PaginationNext to="#">Next</PaginationNext>
+        </span>
+      );
+    }
+
+    if (isUrlBased) {
+      return <PaginationNext to={`${basePath}?page=${currentPage + 1}`} />;
+    } else {
+      return (
+        <button onClick={() => onPageChange?.(currentPage + 1)}>
+          <PaginationNext to="#">Next</PaginationNext>
+        </button>
+      );
+    }
+  };
+
+  const paginationContent = (
     <Pagination>
       <PaginationContent className={className}>
-        <PaginationItem>
-          {currentPage === 1 ? (
-            <span className="pointer-events-none select-none opacity-50">
-              <PaginationPrevious to="#">Previous</PaginationPrevious>
-            </span>
-          ) : (
-            <button onClick={() => onPageChange(currentPage - 1)}>
-              <PaginationPrevious to="#">Previous</PaginationPrevious>
-            </button>
-          )}
-        </PaginationItem>
+        <PaginationItem>{renderPreviousButton()}</PaginationItem>
         {pages.map((p, idx) => (
           <PaginationItem key={idx}>
             {p === 'ellipsis' ? (
@@ -138,24 +129,23 @@ export function CallbackPaginationControls({
             ) : p === currentPage ? (
               <span className="rounded border px-2 py-1 text-muted-foreground">{p}</span>
             ) : (
-              <button onClick={() => onPageChange(p as number)} className="mx-1 rounded px-2 py-1 hover:bg-muted">
-                {p}
-              </button>
+              renderPageButton(p as number)
             )}
           </PaginationItem>
         ))}
-        <PaginationItem>
-          {currentPage >= totalPages ? (
-            <span className="pointer-events-none select-none opacity-50">
-              <PaginationNext to="#">Next</PaginationNext>
-            </span>
-          ) : (
-            <button onClick={() => onPageChange(currentPage + 1)}>
-              <PaginationNext to="#">Next</PaginationNext>
-            </button>
-          )}
-        </PaginationItem>
+        <PaginationItem>{renderNextButton()}</PaginationItem>
       </PaginationContent>
     </Pagination>
   );
+
+  // Only wrap in ClientOnly for URL-based pagination (Remix routes need SSR handling)
+  if (isUrlBased) {
+    return <ClientOnly fallback={<div className={className} />}>{() => paginationContent}</ClientOnly>;
+  }
+
+  return paginationContent;
 }
+
+// Export legacy components for backward compatibility
+export const UrlPaginationControls = PaginationControls;
+export const CallbackPaginationControls = PaginationControls;
