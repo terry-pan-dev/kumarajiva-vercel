@@ -7,9 +7,9 @@ import { ZodError } from 'zod';
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { UploadTab } from '../components/UploadTab';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { SystemNotification } from '../pages/admin/system.notification';
+import { UploadManagement } from '../pages/admin/upload.management';
 import { AdminManagement } from '../pages/admin/user.management';
 import {
   createNotification,
@@ -222,7 +222,7 @@ export default function AdminIndex() {
         </div>
       </TabsContent>
       <TabsContent value="upload">
-        <UploadTab
+        <UploadManagement
           totalPages={totalPages}
           currentPage={currentPage}
           onPageChange={setCurrentPage}

@@ -1,17 +1,17 @@
-import { GlossaryList } from './GlossaryList';
-import { Icons } from './icons';
-import { Button } from './ui';
+import { GlossaryList } from '~/components/GlossaryList';
+import { Icons } from '~/components/icons';
+import { Button } from '~/components/ui';
 import {
   Pagination,
-  PaginationPrevious,
-  PaginationItem,
   PaginationContent,
-  PaginationNext,
   PaginationEllipsis,
-} from './ui/pagination';
-import UploadActionButtons from './UploadActionButtons';
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '~/components/ui/pagination';
+import UploadActionButtons from '~/components/UploadActionButtons';
 
-interface UploadTabProps {
+interface UploadManagementProps {
   uploadResults: Record<string, any>[];
   currentPage: number;
   totalPages: number;
@@ -99,7 +99,7 @@ const UploadResultsPagination = ({ currentPage, totalPages, onPageChange }: Uplo
   );
 };
 
-export function UploadTab({
+export function UploadManagement({
   uploadResults,
   currentPage,
   totalPages,
@@ -107,7 +107,7 @@ export function UploadTab({
   onGlossaryUpload,
   onUploadResults,
   onPageChange,
-}: UploadTabProps) {
+}: UploadManagementProps) {
   if (uploadResults.length === 0) {
     return (
       <>
