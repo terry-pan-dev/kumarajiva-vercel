@@ -885,6 +885,7 @@ const OpenAIStreamCard = React.memo(
         fetchStream();
       }
       setRefresh(false);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [text, refresh, cleanupStream, disabled]);
 
     return (

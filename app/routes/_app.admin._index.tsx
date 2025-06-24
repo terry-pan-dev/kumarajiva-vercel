@@ -1,12 +1,13 @@
 import { useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import bcrypt from 'bcryptjs';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ZodError } from 'zod';
 
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { UploadTab } from '../components/UploadTab';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { SystemNotification } from '../pages/admin/system.notification';
 import { AdminManagement } from '../pages/admin/user.management';
@@ -124,6 +125,10 @@ export const ErrorBoundary = () => {
 
 export default function AdminIndex() {
   const { users, teams, notifications } = useLoaderData<typeof loader>();
+  const [uploadResults, setUploadResults] = useState<Record<string, any>[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const cleanedUsers = useMemo(
     () =>
       users.map((user) => ({
@@ -158,6 +163,47 @@ export default function AdminIndex() {
     [notifications],
   );
 
+  // Format upload results for GlossaryList component
+  const formattedUploadResults = useMemo(() => {
+    return uploadResults.map((result, index) => ({
+      ...result,
+      id: result.id || `temp-${index}`,
+      createdBy: result.createdBy || 'upload-user',
+      updatedBy: result.updatedBy || 'upload-user',
+      searchId: result.searchId || null,
+      createdAt: result.createdAt ? new Date(result.createdAt) : new Date(),
+      updatedAt: result.updatedAt ? new Date(result.updatedAt) : new Date(),
+      deletedAt: result.deletedAt ? new Date(result.deletedAt) : null,
+      discussion: result.discussion || null,
+      glossary: result.glossary || '',
+      phonetic: result.phonetic || null,
+      english: result.english || null,
+      phoneticSearchable: result.phoneticSearchable || null,
+      englishGlossarySearchable: result.englishGlossarySearchable || null,
+      translations: result.translations || null,
+      subscribers: result.subscribers || null,
+      author: result.author || null,
+      cbetaFrequency: result.cbetaFrequency || null,
+    }));
+  }, [uploadResults]);
+
+  // Pagination for upload results
+  const totalPages = Math.ceil(uploadResults.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedResults = formattedUploadResults.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleGlossaryUpload = (results: Record<string, any>[]) => {
+    setUploadResults(results);
+    setCurrentPage(1); // Reset to first page when new data is uploaded
+  };
+
+  const handleUploadResults = () => {
+    // TODO: Implement actual upload functionality
+    console.log('Uploading results:', uploadResults);
+    // For now, just show a placeholder action
+    alert(`Ready to upload ${uploadResults.length} glossary entries to the database.`);
+  };
+
   return (
     <Tabs className="w-full" defaultValue="user-management">
       <TabsList className="grid w-full grid-cols-3">
@@ -165,16 +211,26 @@ export default function AdminIndex() {
         <TabsTrigger value="system-notifications">Notifications</TabsTrigger>
         <TabsTrigger value="upload">Upload</TabsTrigger>
       </TabsList>
-      <TabsContent value="user-management" className="h-[calc(100vh-8rem)] overflow-y-auto">
-        <AdminManagement users={cleanedUsers} teams={cleanedTeams} />
-      </TabsContent>
-      <TabsContent value="system-notifications" className="h-[calc(100vh-8rem)] overflow-y-auto">
-        <SystemNotification banners={cleanedNotifications} />
-      </TabsContent>
-      <TabsContent value="upload" className="h-[calc(100vh-8rem)] overflow-y-auto">
-        <div className="p-4">
-          <p>Upload functionality will be implemented here.</p>
+      <TabsContent value="user-management">
+        <div className="overflow-y-auto">
+          <AdminManagement users={cleanedUsers} teams={cleanedTeams} />
         </div>
+      </TabsContent>
+      <TabsContent value="system-notifications">
+        <div className="max-h-[calc(100vh-8rem)] overflow-y-auto">
+          <SystemNotification banners={cleanedNotifications} />
+        </div>
+      </TabsContent>
+      <TabsContent value="upload">
+        <UploadTab
+          totalPages={totalPages}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          uploadResults={uploadResults}
+          paginatedResults={paginatedResults}
+          onUploadResults={handleUploadResults}
+          onGlossaryUpload={handleGlossaryUpload}
+        />
       </TabsContent>
     </Tabs>
   );

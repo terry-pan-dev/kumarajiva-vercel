@@ -29,7 +29,7 @@ export const AdminManagement = ({ users, teams }: { users: ReadUser[]; teams: Re
   }));
 
   return (
-    <div className="lg:p-6">
+    <div>
       <AdminActionButtons teams={cleanedTeams} />
       <div className="mx-auto w-full lg:space-y-6">
         <Accordion collapsible type="single" className="w-full">

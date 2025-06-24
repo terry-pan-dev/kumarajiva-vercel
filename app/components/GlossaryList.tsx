@@ -49,7 +49,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
     if (glossaries.length) {
       return (
         <div className="flex flex-col gap-4 pb-0 lg:flex-row lg:gap-4">
-          <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-11rem)] lg:w-1/2">
+          <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-12rem)] lg:w-1/2">
             <ScrollArea className="h-full lg:pr-4">
               <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
                 {selectedGlossary ? (
@@ -62,7 +62,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
               </div>
             </ScrollArea>
           </div>
-          <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-11rem)] lg:w-1/2">
+          <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-12rem)] lg:w-1/2">
             <ScrollArea ref={ref} className="h-full lg:pr-4">
               <ul>
                 {glossaries.length > 0 ? (
@@ -191,19 +191,21 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
     <TooltipProvider>
       <Card className="flex h-full flex-col">
         <CardHeader className="flex-row items-center justify-between px-2 py-4">
-          <fetcher.Form method="post" action="/glossary?index&page=-1">
-            <input type="hidden" name="glossaryId" value={glossary?.id} />
-            <button
-              type="submit"
-              name="bookmark"
-              aria-label="bookmark-glossary"
-              value={isBookmarked ? 'false' : 'true'}
-            >
-              <Icons.BookMark
-                className={`ml-1 h-6 w-6 ${isBookmarked ? 'fill-red-500 text-red-500' : 'text-slate-800'}`}
-              />
-            </button>
-          </fetcher.Form>
+          {showEdit && (
+            <fetcher.Form method="post" action="/glossary?index&page=-1">
+              <input type="hidden" name="glossaryId" value={glossary?.id} />
+              <button
+                type="submit"
+                name="bookmark"
+                aria-label="bookmark-glossary"
+                value={isBookmarked ? 'false' : 'true'}
+              >
+                <Icons.BookMark
+                  className={`ml-1 h-6 w-6 ${isBookmarked ? 'fill-red-500 text-red-500' : 'text-slate-800'}`}
+                />
+              </button>
+            </fetcher.Form>
+          )}
           {showEdit && (
             <div className="flex">
               <Can I="Update" this="Glossary">

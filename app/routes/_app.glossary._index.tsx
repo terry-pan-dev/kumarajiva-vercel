@@ -163,6 +163,7 @@ export default function GlossaryIndex() {
       {glossariesState.length > 0 ? (
         <>
           <GlossaryList ref={glossaryListRef} glossaries={glossariesState} />
+          <div className="h-4" role="presentation" />
           <PaginationControls />
         </>
       ) : (
