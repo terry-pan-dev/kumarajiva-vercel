@@ -138,12 +138,7 @@ export function PaginationControls({ currentPage, totalPages, className = 'h-10'
     </Pagination>
   );
 
-  // Only wrap in ClientOnly for URL-based pagination (Remix routes need SSR handling)
-  if (isUrlBased) {
-    return <ClientOnly fallback={<div className={className} />}>{() => paginationContent}</ClientOnly>;
-  }
-
-  return paginationContent;
+  return <ClientOnly fallback={<div className={className} />}>{() => paginationContent}</ClientOnly>;
 }
 
 // Export legacy components for backward compatibility
