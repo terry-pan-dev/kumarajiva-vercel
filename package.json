@@ -25,7 +25,10 @@
     "prepare": "husky",
     "playwright:codegen": "playwright codegen http://localhost:3002",
     "playwright:test:headed": "playwright test --headed",
-    "playwright:teardown": "playwright test global.teardown.ts"
+    "playwright:teardown": "playwright test global.teardown.ts",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.5",
@@ -107,6 +110,9 @@
     "@playwright/test": "^1.52.0",
     "@remix-run/dev": "2.10.0",
     "@remix-run/eslint-config": "2.10.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/lodash": "^4.17.10",
     "@types/node": "^22.7.5",
@@ -120,6 +126,7 @@
     "eslint-plugin-perfectionist": "^4.1.2",
     "eslint-plugin-prettier": "^5.2.1",
     "husky": "^9.1.6",
+    "jsdom": "^26.1.0",
     "lint-staged": "^15.2.10",
     "mastra": "^0.6.0",
     "papaparse": "^5.4.1",
@@ -130,7 +137,8 @@
     "tsx": "^4.19.1",
     "typescript": "^5.1.6",
     "vite": "^5.1.0",
-    "vite-tsconfig-paths": "^4.2.1"
+    "vite-tsconfig-paths": "^4.2.1",
+    "vitest": "^3.2.4"
   },
   "lint-staged": {
     "**/*.{js,ts,tsx,css,html}": [
