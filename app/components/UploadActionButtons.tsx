@@ -9,15 +9,6 @@ import { FormModal } from './FormModal';
 import { Icons } from './icons';
 import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui';
 
-// Utility function to normalize text to searchable ASCII
-const normalizeToSearchable = (text: string): string => {
-  return text
-    .normalize('NFD') // Decompose accented characters
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
-    .toLowerCase()
-    .trim();
-};
-
 interface UploadActionButtonsProps {
   onGlossaryUpload?: (results: Record<string, any>[]) => void;
 }
@@ -118,51 +109,35 @@ const UploadGlossaryForm = ({ onValidationComplete }: UploadGlossaryFormProps) =
   const [validationResult, setValidationResult] = useState<CsvValidationResult | null>(null);
 
   // Function to compose CSV data into glossary objects
+  // This matches the validation schema structure for bulk upload
   const composeGlossaryObjects = (data: Record<string, string>[]) => {
-    const obj: Record<string, any> = {};
-
-    data.forEach((row) => {
+    return data.map((row) => {
       const id = row['UUID'];
       const glossary = row['ChineseTerm'];
-      const phonetic = row['Phonetic'];
-      const phoneticSearchable = normalizeToSearchable(phonetic);
-      const author = row['Author'];
-      const cbetaFrequency = row['CBetaFrequency'];
-      const englishGlossary = row['EnglishTerm'];
-      const englishGlossarySearchable = normalizeToSearchable(englishGlossary);
-      const sutraName = row['SutraName'];
-      const volume = row['Volume'];
-      const originSutraText = row['ChineseSutraText'] || null;
-      const targetSutraText = row['EnglishSutraText'] || null;
+      const phonetic = row['Phonetic'] || undefined;
+      const author = row['Author'] || undefined;
+      const cbetaFrequency = row['CBetaFrequency'] || undefined;
+      const english = row['EnglishTerm'] || undefined;
+      const sutraName = row['SutraName'] || undefined;
+      const volume = row['Volume'] || undefined;
+      const originSutraText = row['ChineseSutraText'] || undefined;
+      const targetSutraText = row['EnglishSutraText'] || undefined;
 
-      const translation = {
-        glossary: englishGlossary,
-        glossarySearchable: englishGlossarySearchable,
-        language: 'english',
+      return {
+        id,
+        glossary,
+        phonetic,
+        author,
+        cbetaFrequency,
+        english,
         sutraName,
         volume,
-        author,
         originSutraText,
         targetSutraText,
+        // Note: discussion field is not in the CSV but is optional in schema
+        // Note: createdAt/updatedAt will be added server-side
       };
-
-      if (obj[id]) {
-        obj[id].translations.push(translation);
-      } else {
-        obj[id] = {
-          id,
-          glossary,
-          phonetic,
-          phoneticSearchable,
-          author,
-          cbetaFrequency,
-          subscribers: 0,
-          translations: [translation],
-        };
-      }
     });
-
-    return Object.values(obj);
   };
 
   const handleValidationComplete = (result: CsvValidationResult) => {

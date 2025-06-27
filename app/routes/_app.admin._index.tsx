@@ -1,16 +1,18 @@
-import { useLoaderData, useRouteError } from '@remix-run/react';
+import { useLoaderData, useRouteError, useSubmit, useActionData } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import bcrypt from 'bcryptjs';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ZodError } from 'zod';
 
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { useToast } from '../hooks/use-toast';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { SystemNotification } from '../pages/admin/system.notification';
 import { UploadManagement } from '../pages/admin/upload.management';
 import { AdminManagement } from '../pages/admin/user.management';
+import { bulkCreateGlossaries } from '../services/glossary.service';
 import {
   createNotification,
   deleteBanner,
@@ -20,9 +22,45 @@ import {
 } from '../services/notification.service';
 import { createTeam, readTeams } from '../services/teams.service';
 import { createUser, readUsers, updateUser } from '../services/user.service';
+import { bulkGlossaryUploadSchema } from '../validations/glossary-upload.validation';
 import { createBannerSchema } from '../validations/notification.validation';
 import { createTeamSchema } from '../validations/team.validation';
 import { createUserSchema, updateUserSchema } from '../validations/user.validation';
+
+// Type for upload results from CSV processing
+interface UploadResultItem {
+  id: string;
+  glossary: string;
+  phonetic?: string;
+  phoneticSearchable?: string;
+  author?: string;
+  cbetaFrequency?: string;
+  subscribers?: number;
+  translations?: Array<{
+    glossary: string;
+    glossarySearchable?: string;
+    language: string;
+    sutraName?: string;
+    volume?: string;
+    author?: string;
+    originSutraText?: string;
+    targetSutraText?: string;
+  }>;
+  // Additional fields for display formatting
+  english?: string;
+  sutraName?: string;
+  volume?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  discussion?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  searchId?: string | null;
+  deletedAt?: Date | null;
+  englishGlossarySearchable?: string | null;
+}
+
+type UploadResults = UploadResultItem[];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
@@ -106,6 +144,71 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     } else if (kind === 'delete-banner') {
       const bannerId = formData.get('bannerId') as string;
       await deleteBanner({ user: user, bannerId });
+    } else if (kind === 'upload-glossaries') {
+      const uploadResultsJson = formData.get('uploadResults') as string;
+
+      if (!uploadResultsJson) {
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                path: ['uploadResults'],
+                message: 'Upload results are required',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
+
+      let uploadResultsData;
+      try {
+        uploadResultsData = JSON.parse(uploadResultsJson);
+      } catch (parseError) {
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                path: ['uploadResults'],
+                message: 'Invalid JSON format for upload results',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
+
+      const result = validatePayloadOrThrow({
+        schema: bulkGlossaryUploadSchema,
+        formData: { uploadResults: uploadResultsData },
+      });
+
+      console.log('Validated upload results:', result.uploadResults.slice(1, 5));
+      console.log(`Processing ${result.uploadResults.length} glossary entries for user ${user.id}`);
+
+      // Process bulk upload to database and Algolia
+      const uploadResult = await bulkCreateGlossaries(result.uploadResults, user.id);
+
+      if (!uploadResult.success) {
+        console.error('Bulk upload failed:', uploadResult.errors);
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                path: ['uploadResults'],
+                message: `Upload failed: ${uploadResult.errors.join(', ')}`,
+              },
+            ],
+          },
+          { status: 500 },
+        );
+      }
+
+      console.log(`Successfully processed ${uploadResult.processed} glossary entries. Redirecting to glossary page.`);
+      return redirect('/glossary');
     }
   } catch (error) {
     console.error('admin action error', error);
@@ -125,8 +228,12 @@ export const ErrorBoundary = () => {
 
 export default function AdminIndex() {
   const { users, teams, notifications } = useLoaderData<typeof loader>();
-  const [uploadResults, setUploadResults] = useState<Record<string, any>[]>([]);
+  const actionData = useActionData<typeof action>();
+  const submit = useSubmit();
+  const { toast } = useToast();
+  const [uploadResults, setUploadResults] = useState<UploadResults>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isUploading, setIsUploading] = useState(false);
   const itemsPerPage = 10;
 
   const cleanedUsers = useMemo(
@@ -192,16 +299,54 @@ export default function AdminIndex() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedResults = formattedUploadResults.slice(startIndex, startIndex + itemsPerPage);
 
-  const handleGlossaryUpload = (results: Record<string, any>[]) => {
-    setUploadResults(results);
+  const handleGlossaryUpload = (results: Record<string, unknown>[]) => {
+    // Type assertion - we know the structure from the CSV processing
+    setUploadResults(results as unknown as UploadResults);
     setCurrentPage(1); // Reset to first page when new data is uploaded
   };
 
+  // Handle action data and show toasts for errors only (success redirects server-side)
+  useEffect(() => {
+    if (actionData) {
+      if ('success' in actionData && !actionData.success && 'errors' in actionData) {
+        const errors = actionData.errors;
+        let errorMessages: string;
+
+        if (Array.isArray(errors)) {
+          errorMessages = errors.map((error) => ('message' in error ? error.message : String(error))).join(', ');
+        } else if (typeof errors === 'object' && errors !== null && 'error' in errors) {
+          errorMessages = 'Validation errors occurred. Please check the console for details.';
+        } else {
+          errorMessages = 'An unknown error occurred';
+        }
+
+        toast({
+          title: 'Upload Failed',
+          description: errorMessages,
+          variant: 'error',
+        });
+        setIsUploading(false);
+      }
+    }
+  }, [actionData, toast]);
+
   const handleUploadResults = () => {
-    // TODO: Implement actual upload functionality
-    console.log('Uploading results:', uploadResults);
-    // For now, just show a placeholder action
-    alert(`Ready to upload ${uploadResults.length} glossary entries to the database.`);
+    if (uploadResults.length === 0) {
+      toast({
+        title: 'No Data to Upload',
+        description: 'Please upload and process a CSV file first.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    const formData = new FormData();
+    formData.append('kind', 'upload-glossaries');
+    formData.append('uploadResults', JSON.stringify(uploadResults));
+
+    submit(formData, { method: 'post' });
   };
 
   return (
@@ -225,6 +370,7 @@ export default function AdminIndex() {
         <UploadManagement
           totalPages={totalPages}
           currentPage={currentPage}
+          isUploading={isUploading}
           onPageChange={setCurrentPage}
           uploadResults={uploadResults}
           paginatedResults={paginatedResults}

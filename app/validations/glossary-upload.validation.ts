@@ -19,4 +19,27 @@ export const REQUIRED_GLOSSARY_HEADERS = [
   'Phonetic',
 ] as const;
 
+// Schema for bulk glossary upload to database
+export const bulkGlossaryUploadSchema = z.object({
+  uploadResults: z
+    .array(
+      z.object({
+        id: z.string().min(1, 'ID is required'),
+        glossary: z.string().min(1, 'Chinese term is required'),
+        phonetic: z.string().optional(),
+        author: z.string().optional(),
+        cbetaFrequency: z.string().optional(),
+        discussion: z.string().optional(),
+        english: z.string().optional(),
+        sutraName: z.string().optional(),
+        volume: z.string().optional(),
+        originSutraText: z.string().optional(),
+        targetSutraText: z.string().optional(),
+      }),
+    )
+    .min(1, 'At least one glossary entry is required')
+    .max(50000, 'Cannot upload more than 50000 entries at once'),
+});
+
 export type GlossaryCsvUploadData = z.infer<typeof glossaryCsvUploadSchema>;
+export type BulkGlossaryUploadData = z.infer<typeof bulkGlossaryUploadSchema>;

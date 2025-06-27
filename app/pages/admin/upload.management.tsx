@@ -12,6 +12,7 @@ interface UploadManagementProps {
   onGlossaryUpload: (results: Record<string, any>[]) => void;
   onUploadResults: () => void;
   onPageChange: (page: number) => void;
+  isUploading?: boolean;
 }
 
 export function UploadManagement({
@@ -22,6 +23,7 @@ export function UploadManagement({
   onGlossaryUpload,
   onUploadResults,
   onPageChange,
+  isUploading = false,
 }: UploadManagementProps) {
   if (uploadResults.length === 0) {
     return (
@@ -49,9 +51,9 @@ export function UploadManagement({
           <p className="text-sm text-muted-foreground">
             Showing {paginatedResults.length} of {uploadResults.length} entries
           </p>
-          <Button onClick={onUploadResults} className="flex h-8 items-center gap-2">
+          <Button disabled={isUploading} onClick={onUploadResults} className="flex h-8 items-center gap-2">
             <Icons.Upload className="h-4 w-4" />
-            Upload to Database
+            {isUploading ? 'Uploading...' : 'Upload to Database'}
           </Button>
         </div>
       </div>

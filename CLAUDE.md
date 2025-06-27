@@ -169,3 +169,7 @@ Playwright tests run against http://localhost:3000 in development and against th
   - Lint the code and fix any linter errors
   - Write unit tests for functionality like hooks and custom utility functions (not for UI components)
   - Run unit tests and ensure all tests pass
+
+## Type Usage Guidelines
+
+- Try your best to avoid using any type

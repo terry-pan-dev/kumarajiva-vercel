@@ -2,14 +2,7 @@ import { type CsvValidationResult } from '~/hooks/use-csv-uploader';
 
 import { CsvFileUploader } from './CsvFileUploader';
 
-// Utility function to normalize text to searchable ASCII
-const normalizeToSearchable = (text: string): string => {
-  return text
-    .normalize('NFD') // Decompose accented characters
-    .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
-    .toLowerCase()
-    .trim();
-};
+// Example usage showing proper object composition for glossary CSV upload
 
 // Example usage with object composition similar to your glossary script
 export const GlossaryUploader = () => {
@@ -29,62 +22,40 @@ export const GlossaryUploader = () => {
   ] as const;
 
   // Function to compose CSV data into structured objects
+  // This matches the current validation schema structure for bulk upload
   const composeGlossaryObjects = (data: Record<string, string>[]) => {
-    const userId = 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9'; // DEV user ID
-    const obj: Record<string, any> = {};
-
-    data.forEach((row) => {
+    return data.map((row) => {
       const id = row['UUID'];
       const glossary = row['ChineseTerm'];
-      const phonetic = row['Phonetic'];
-      const phoneticSearchable = normalizeToSearchable(phonetic);
-      const author = row['Author'];
-      const cbetaFrequency = row['CBetaFrequency'];
-      const englishGlossary = row['EnglishTerm'];
-      const englishGlossarySearchable = normalizeToSearchable(englishGlossary);
-      const sutraName = row['SutraName'];
-      const volume = row['Volume'];
-      const originSutraText = row['ChineseSutraText'] || null;
-      const targetSutraText = row['EnglishSutraText'] || null;
+      const phonetic = row['Phonetic'] || undefined;
+      const author = row['Author'] || undefined;
+      const cbetaFrequency = row['CBetaFrequency'] || undefined;
+      const english = row['EnglishTerm'] || undefined;
+      const sutraName = row['SutraName'] || undefined;
+      const volume = row['Volume'] || undefined;
+      const originSutraText = row['ChineseSutraText'] || undefined;
+      const targetSutraText = row['EnglishSutraText'] || undefined;
 
-      const translation = {
-        glossary: englishGlossary,
-        glossarySearchable: englishGlossarySearchable,
-        language: 'english',
+      return {
+        id,
+        glossary,
+        phonetic,
+        author,
+        cbetaFrequency,
+        english,
         sutraName,
         volume,
-        author,
         originSutraText,
         targetSutraText,
-        updatedBy: userId,
-        updatedAt: new Date().toISOString(),
+        // Note: discussion field is not in the CSV but is optional in schema
+        // Note: createdAt/updatedAt will be added server-side
       };
-
-      if (obj[id]) {
-        obj[id].translations.push(translation);
-      } else {
-        obj[id] = {
-          id,
-          glossary,
-          phonetic,
-          phoneticSearchable,
-          author,
-          cbetaFrequency,
-          createdBy: userId,
-          updatedBy: userId,
-          translations: [translation],
-        };
-      }
     });
-
-    return Object.values(obj);
   };
 
   const handleValidationComplete = (result: CsvValidationResult) => {
     if (result.isValid && result.composedObjects) {
       console.log('Composed glossary objects:', result.composedObjects);
-      // Here you would typically send result.composedObjects to your backend
-      // e.g., submitGlossaryData(result.composedObjects)
     }
   };
 
