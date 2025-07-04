@@ -19,6 +19,9 @@ import {
   ExternalLink,
   Eye,
   FileCode,
+  Files,
+  FileText,
+  FileUp,
   GripVertical,
   Heading1,
   Heading2,
@@ -34,6 +37,7 @@ import {
   Link2Off,
   List,
   ListOrdered,
+  Loader2,
   MessageSquare,
   MessageSquarePlus,
   Minus,
@@ -41,6 +45,7 @@ import {
   MoreHorizontal,
   Outdent,
   PaintBucket,
+  Paperclip,
   Pilcrow,
   Plus,
   Quote,
@@ -60,6 +65,8 @@ import {
   Twitter,
   Underline,
   Ungroup,
+  Upload,
+  UploadCloud,
   WrapText,
   X,
   type LucideIcon,
@@ -212,30 +219,6 @@ const lineChart = (props: LucideProps) => (
   >
     <path d="M3 3v16a2 2 0 0 0 2 2h16" />
     <path d="m19 9-5 5-4-4-3 3" />
-  </svg>
-);
-
-const loader = (props: LucideProps) => (
-  <svg
-    width="24"
-    height="24"
-    fill="none"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <path d="M12 2v4" />
-    <path d="m16.2 7.8 2.9-2.9" />
-    <path d="M18 12h4" />
-    <path d="m16.2 16.2 2.9 2.9" />
-    <path d="M12 18v4" />
-    <path d="m4.9 19.1 2.9-2.9" />
-    <path d="M2 12h4" />
-    <path d="m4.9 4.9 2.9 2.9" />
   </svg>
 );
 
@@ -541,6 +524,12 @@ export const Icons = {
   alignLeft: AlignLeft,
   alignRight: AlignRight,
   Download: Download,
+  Upload: Upload,
+  UploadCloud: UploadCloud,
+  FileUp: FileUp,
+  Files: Files,
+  FileText: FileText,
+  Paperclip: Paperclip,
   ArrowLeft: ArrowLeft,
   arrowRight: ArrowRight,
   arrowDown: ChevronDown,
@@ -553,11 +542,12 @@ export const Icons = {
   borderNone,
   borderRight,
   borderTop,
-  check: Check,
+  Check: Check,
   ChevronRight: ChevronRight,
   chevronsUpDown: ChevronsUpDown,
   clear: X,
   close: X,
+  X: X,
   Clock: clock,
   SquarePen: squarePen,
   code: Code2,
@@ -612,7 +602,7 @@ export const Icons = {
   viewing: Eye,
   User: user,
   Users: users,
-  Loader: loader,
+  Loader: Loader2,
   Book: book,
   BookMark: bookmark,
 

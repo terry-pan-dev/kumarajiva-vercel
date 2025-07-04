@@ -1,4 +1,4 @@
-import { Document, Paragraph, TextRun, HeadingLevel, Packer } from 'docx';
+import { Document, Paragraph, TextRun, HeadingLevel, Packer, AlignmentType } from 'docx';
 
 import type { IParagraph } from '~/services/paragraph.service';
 
@@ -17,14 +17,35 @@ export const useDownloadDocx = () => {
   ) => {
     // Create new document
     const doc = new Document({
+      styles: {
+        paragraphStyles: [
+          {
+            id: 'CenteredHeading1',
+            name: 'Centered Heading 1',
+            basedOn: 'Heading1',
+            next: 'Normal',
+            paragraph: {
+              alignment: AlignmentType.CENTER,
+            },
+          },
+          {
+            id: 'CenteredHeading2',
+            name: 'Centered Heading 2',
+            basedOn: 'Heading2',
+            next: 'Normal',
+            paragraph: {
+              alignment: AlignmentType.CENTER,
+            },
+          },
+        ],
+      },
       sections: [
         {
-          properties: {},
           children: [
             // Sutra Title as H1
             new Paragraph({
               heading: HeadingLevel.HEADING_1,
-              alignment: 'center',
+              style: 'CenteredHeading1',
               spacing: {
                 after: 400,
               },
@@ -39,9 +60,9 @@ export const useDownloadDocx = () => {
             // Roll Title as H2
             new Paragraph({
               heading: HeadingLevel.HEADING_2,
-              alignment: 'center',
+              style: 'CenteredHeading2',
               spacing: {
-                after: 800,
+                after: 400,
               },
               children: [
                 new TextRun({
@@ -55,6 +76,7 @@ export const useDownloadDocx = () => {
             ...paragraphs.flatMap((p) => [
               // Original text paragraph
               new Paragraph({
+                alignment: 'left',
                 children: [
                   new TextRun({
                     text: p.origin || '',
@@ -65,6 +87,7 @@ export const useDownloadDocx = () => {
               ...(p.target
                 ? [
                     new Paragraph({
+                      alignment: 'left',
                       children: [
                         new TextRun({
                           text: p.target,
@@ -75,6 +98,7 @@ export const useDownloadDocx = () => {
                 : []),
               // Add spacing between paragraph pairs
               new Paragraph({
+                alignment: 'left',
                 text: '',
                 spacing: {
                   after: 400,
@@ -93,7 +117,7 @@ export const useDownloadDocx = () => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = fileName;
+    link.download = rollInfo.title || fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

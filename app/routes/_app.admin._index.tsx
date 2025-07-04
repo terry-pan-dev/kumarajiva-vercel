@@ -1,15 +1,18 @@
-import { useLoaderData, useRouteError } from '@remix-run/react';
+import { useLoaderData, useRouteError, useSubmit, useActionData } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import bcrypt from 'bcryptjs';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ZodError } from 'zod';
 
 import { assertAuthUser } from '../auth.server';
 import { ErrorInfo } from '../components/ErrorInfo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { useToast } from '../hooks/use-toast';
 import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { SystemNotification } from '../pages/admin/system.notification';
+import { UploadManagement } from '../pages/admin/upload.management';
 import { AdminManagement } from '../pages/admin/user.management';
+import { bulkCreateGlossaries } from '../services/glossary.service';
 import {
   createNotification,
   deleteBanner,
@@ -19,9 +22,45 @@ import {
 } from '../services/notification.service';
 import { createTeam, readTeams } from '../services/teams.service';
 import { createUser, readUsers, updateUser } from '../services/user.service';
+import { bulkGlossaryUploadSchema } from '../validations/glossary-upload.validation';
 import { createBannerSchema } from '../validations/notification.validation';
 import { createTeamSchema } from '../validations/team.validation';
 import { createUserSchema, updateUserSchema } from '../validations/user.validation';
+
+// Type for upload results from CSV processing
+interface UploadResultItem {
+  id: string;
+  glossary: string;
+  phonetic?: string;
+  phoneticSearchable?: string;
+  author?: string;
+  cbetaFrequency?: string;
+  subscribers?: number;
+  translations?: Array<{
+    glossary: string;
+    glossarySearchable?: string;
+    language: string;
+    sutraName?: string;
+    volume?: string;
+    author?: string;
+    originSutraText?: string;
+    targetSutraText?: string;
+  }>;
+  // Additional fields for display formatting
+  english?: string;
+  sutraName?: string;
+  volume?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  discussion?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  searchId?: string | null;
+  deletedAt?: Date | null;
+  englishGlossarySearchable?: string | null;
+}
+
+type UploadResults = UploadResultItem[];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
@@ -105,6 +144,71 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     } else if (kind === 'delete-banner') {
       const bannerId = formData.get('bannerId') as string;
       await deleteBanner({ user: user, bannerId });
+    } else if (kind === 'upload-glossaries') {
+      const uploadResultsJson = formData.get('uploadResults') as string;
+
+      if (!uploadResultsJson) {
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                path: ['uploadResults'],
+                message: 'Upload results are required',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
+
+      let uploadResultsData;
+      try {
+        uploadResultsData = JSON.parse(uploadResultsJson);
+      } catch (parseError) {
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                path: ['uploadResults'],
+                message: 'Invalid JSON format for upload results',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
+
+      const result = validatePayloadOrThrow({
+        schema: bulkGlossaryUploadSchema,
+        formData: { uploadResults: uploadResultsData },
+      });
+
+      console.log('Validated upload results:', result.uploadResults.slice(1, 5));
+      console.log(`Processing ${result.uploadResults.length} glossary entries for user ${user.id}`);
+
+      // Process bulk upload to database and Algolia
+      const uploadResult = await bulkCreateGlossaries(result.uploadResults, user.id);
+
+      if (!uploadResult.success) {
+        console.error('Bulk upload failed:', uploadResult.errors);
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                path: ['uploadResults'],
+                message: `Upload failed: ${uploadResult.errors.join(', ')}`,
+              },
+            ],
+          },
+          { status: 500 },
+        );
+      }
+
+      console.log(`Successfully processed ${uploadResult.processed} glossary entries. Redirecting to glossary page.`);
+      return redirect('/glossary');
     }
   } catch (error) {
     console.error('admin action error', error);
@@ -124,6 +228,14 @@ export const ErrorBoundary = () => {
 
 export default function AdminIndex() {
   const { users, teams, notifications } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
+  const submit = useSubmit();
+  const { toast } = useToast();
+  const [uploadResults, setUploadResults] = useState<UploadResults>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isUploading, setIsUploading] = useState(false);
+  const itemsPerPage = 10;
+
   const cleanedUsers = useMemo(
     () =>
       users.map((user) => ({
@@ -158,17 +270,120 @@ export default function AdminIndex() {
     [notifications],
   );
 
+  // Format upload results for GlossaryList component
+  const formattedUploadResults = useMemo(() => {
+    return uploadResults.map((result, index) => ({
+      ...result,
+      id: result.id || `temp-${index}`,
+      createdBy: result.createdBy || 'upload-user',
+      updatedBy: result.updatedBy || 'upload-user',
+      searchId: result.searchId || null,
+      createdAt: result.createdAt ? new Date(result.createdAt) : new Date(),
+      updatedAt: result.updatedAt ? new Date(result.updatedAt) : new Date(),
+      deletedAt: result.deletedAt ? new Date(result.deletedAt) : null,
+      discussion: result.discussion || null,
+      glossary: result.glossary || '',
+      phonetic: result.phonetic || null,
+      english: result.english || null,
+      phoneticSearchable: result.phoneticSearchable || null,
+      englishGlossarySearchable: result.englishGlossarySearchable || null,
+      translations: result.translations || null,
+      subscribers: result.subscribers || null,
+      author: result.author || null,
+      cbetaFrequency: result.cbetaFrequency || null,
+    }));
+  }, [uploadResults]);
+
+  // Pagination for upload results
+  const totalPages = Math.ceil(uploadResults.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedResults = formattedUploadResults.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleGlossaryUpload = (results: Record<string, unknown>[]) => {
+    // Type assertion - we know the structure from the CSV processing
+    setUploadResults(results as unknown as UploadResults);
+    setCurrentPage(1); // Reset to first page when new data is uploaded
+  };
+
+  // Handle action data and show toasts for errors only (success redirects server-side)
+  useEffect(() => {
+    if (actionData) {
+      if ('success' in actionData && !actionData.success && 'errors' in actionData) {
+        const errors = actionData.errors;
+        let errorMessages: string;
+
+        if (Array.isArray(errors)) {
+          errorMessages = errors.map((error) => ('message' in error ? error.message : String(error))).join(', ');
+        } else if (typeof errors === 'object' && errors !== null && 'error' in errors) {
+          errorMessages = 'Validation errors occurred. Please check the console for details.';
+        } else {
+          errorMessages = 'An unknown error occurred';
+        }
+
+        toast({
+          title: 'Upload Failed',
+          description: errorMessages,
+          variant: 'error',
+        });
+        setIsUploading(false);
+      }
+    }
+  }, [actionData, toast]);
+
+  const handleUploadResults = () => {
+    if (uploadResults.length === 0) {
+      toast({
+        title: 'No Data to Upload',
+        description: 'Please upload and process a CSV file first.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    const formData = new FormData();
+    formData.append('kind', 'upload-glossaries');
+    formData.append('uploadResults', JSON.stringify(uploadResults));
+
+    submit(formData, { method: 'post' });
+  };
+
+  const handleCancelUpload = () => {
+    setUploadResults([]);
+    setCurrentPage(1);
+    setIsUploading(false);
+  };
+
   return (
     <Tabs className="w-full" defaultValue="user-management">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="user-management">Users</TabsTrigger>
         <TabsTrigger value="system-notifications">Notifications</TabsTrigger>
+        <TabsTrigger value="upload">Upload</TabsTrigger>
       </TabsList>
       <TabsContent value="user-management">
-        <AdminManagement users={cleanedUsers} teams={cleanedTeams} />
+        <div className="overflow-y-auto">
+          <AdminManagement users={cleanedUsers} teams={cleanedTeams} />
+        </div>
       </TabsContent>
       <TabsContent value="system-notifications">
-        <SystemNotification banners={cleanedNotifications} />
+        <div className="max-h-[calc(100vh-8rem)] overflow-y-auto">
+          <SystemNotification banners={cleanedNotifications} />
+        </div>
+      </TabsContent>
+      <TabsContent value="upload">
+        <UploadManagement
+          totalPages={totalPages}
+          currentPage={currentPage}
+          isUploading={isUploading}
+          onPageChange={setCurrentPage}
+          uploadResults={uploadResults}
+          onCancelUpload={handleCancelUpload}
+          paginatedResults={paginatedResults}
+          onUploadResults={handleUploadResults}
+          onGlossaryUpload={handleGlossaryUpload}
+        />
       </TabsContent>
     </Tabs>
   );

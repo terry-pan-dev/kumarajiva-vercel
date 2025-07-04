@@ -164,7 +164,12 @@ const GlossaryCreateForm = () => {
           onBlur={handleGlossaryChineseOnBlur}
           description="The Chinese glossary term."
         />
-        <FormInput required label="Phonetic" name="phoneticChinese" description="The phonetic of the glossary term." />
+        <FormInput
+          required
+          label="Phonetic"
+          name="phoneticChinese"
+          description="The Chinese glossary pinyin. [āōēīūǖáóéíúǘǎǒěǐǔǚàòèìùǜ]"
+        />
         <div className="col-span-2">
           <CustomAccordion onToggle={setChineseAccordionOpen} title="Optional Fields For Chinese">
             <div className="grid grid-cols-2 gap-4">

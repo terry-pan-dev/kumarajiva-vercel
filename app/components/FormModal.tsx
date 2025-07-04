@@ -144,7 +144,10 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
           >
             {trigger}
           </DialogTrigger>
-          <DialogContent className="lg:max-w-4xl" aria-describedby="form-modal-description">
+          <DialogContent
+            aria-describedby="form-modal-description"
+            className="max-h-[90vh] overflow-y-auto lg:max-w-4xl"
+          >
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
               <DialogDescription className="hidden">{description || 'form modal'}</DialogDescription>
