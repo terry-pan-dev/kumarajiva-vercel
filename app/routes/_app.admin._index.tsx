@@ -349,6 +349,12 @@ export default function AdminIndex() {
     submit(formData, { method: 'post' });
   };
 
+  const handleCancelUpload = () => {
+    setUploadResults([]);
+    setCurrentPage(1);
+    setIsUploading(false);
+  };
+
   return (
     <Tabs className="w-full" defaultValue="user-management">
       <TabsList className="grid w-full grid-cols-3">
@@ -373,6 +379,7 @@ export default function AdminIndex() {
           isUploading={isUploading}
           onPageChange={setCurrentPage}
           uploadResults={uploadResults}
+          onCancelUpload={handleCancelUpload}
           paginatedResults={paginatedResults}
           onUploadResults={handleUploadResults}
           onGlossaryUpload={handleGlossaryUpload}

@@ -12,6 +12,7 @@ interface UploadManagementProps {
   onGlossaryUpload: (results: Record<string, any>[]) => void;
   onUploadResults: () => void;
   onPageChange: (page: number) => void;
+  onCancelUpload: () => void;
   isUploading?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function UploadManagement({
   onGlossaryUpload,
   onUploadResults,
   onPageChange,
+  onCancelUpload,
   isUploading = false,
 }: UploadManagementProps) {
   if (uploadResults.length === 0) {
@@ -51,10 +53,15 @@ export function UploadManagement({
           <p className="text-sm text-muted-foreground">
             Showing {paginatedResults.length} of {uploadResults.length} entries
           </p>
-          <Button disabled={isUploading} onClick={onUploadResults} className="flex h-8 items-center gap-2">
-            <Icons.Upload className="h-4 w-4" />
-            {isUploading ? 'Uploading...' : 'Upload to Database'}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onCancelUpload} className="flex h-8 items-center gap-2">
+              Cancel
+            </Button>
+            <Button disabled={isUploading} onClick={onUploadResults} className="flex h-8 items-center gap-2">
+              <Icons.Upload className="h-4 w-4" />
+              {isUploading ? 'Uploading...' : 'Upload to Database'}
+            </Button>
+          </div>
         </div>
       </div>
       <div className="h-2" role="presentation" />
