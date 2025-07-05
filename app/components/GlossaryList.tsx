@@ -1,7 +1,7 @@
 import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { ChevronRight } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 
@@ -146,51 +146,76 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetcher.formData, subscribedGlossaries, glossary]);
 
+  // Regex cache to avoid recompilation
+  const regexCache = useRef<Map<string, RegExp>>(new Map());
+
   const highlightKeyword = useCallback(({ text, keyword }: { text?: string | null; keyword: string }) => {
     if (!text || !keyword.trim()) {
       return text ? <>{text}</> : null;
     }
 
-    // Limit processing for very long texts to prevent stack overflow
-    const MAX_TEXT_LENGTH = 1000;
-    const processedText = text.length > MAX_TEXT_LENGTH ? text.substring(0, MAX_TEXT_LENGTH) + '...' : text;
+    const trimmedKeyword = keyword.trim();
 
-    // Escape special regex characters in the keyword
-    const escapedKeyword = keyword.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Get or create cached regex
+    let regex = regexCache.current.get(trimmedKeyword);
+    if (!regex) {
+      // Escape special regex characters
+      const escapedKeyword = trimmedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      regex = new RegExp(escapedKeyword, 'gi');
 
-    // Create regex with global flag and case insensitive flag
-    const regex = new RegExp(escapedKeyword, 'gi');
-
-    // Split text by the keyword while preserving the keyword
-    const parts = processedText.split(regex);
-    const matches = processedText.match(regex) || [];
-
-    // If no matches found, return original text
-    if (matches.length === 0) {
-      return <>{processedText}</>;
+      // Limit cache size to prevent memory leaks
+      if (regexCache.current.size > 50) {
+        regexCache.current.clear();
+      }
+      regexCache.current.set(trimmedKeyword, regex);
     }
 
-    // Limit number of highlights to prevent excessive DOM elements
-    const MAX_HIGHLIGHTS = 10;
-    const limitedMatches = matches.slice(0, MAX_HIGHLIGHTS);
-
-    // Build the highlighted JSX
+    // Use single-pass algorithm to find matches and build result
     const result: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let matchCount = 0;
+    const MAX_HIGHLIGHTS = 15; // Increased limit since we're more efficient now
 
-    for (let i = 0; i < parts.length && i <= limitedMatches.length; i++) {
-      // Add the text part
-      if (parts[i]) {
-        result.push(parts[i]);
+    // Reset regex lastIndex for global search
+    regex.lastIndex = 0;
+
+    let match;
+    while ((match = regex.exec(text)) !== null && matchCount < MAX_HIGHLIGHTS) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        const beforeText = text.slice(lastIndex, match.index);
+        if (beforeText) {
+          result.push(beforeText);
+        }
       }
 
-      // Add the highlighted keyword if there's a match
-      if (i < limitedMatches.length) {
-        result.push(
-          <mark key={`highlight-${i}`} className="bg-transparent font-semibold text-yellow-600">
-            {limitedMatches[i]}
-          </mark>,
-        );
+      // Add highlighted match
+      result.push(
+        <mark key={`highlight-${matchCount}`} className="bg-transparent font-semibold text-yellow-600">
+          {match[0]}
+        </mark>,
+      );
+
+      lastIndex = match.index + match[0].length;
+      matchCount++;
+
+      // Prevent infinite loop with zero-length matches
+      if (match[0].length === 0) {
+        regex.lastIndex++;
       }
+    }
+
+    // Add remaining text after last match
+    if (lastIndex < text.length) {
+      const remainingText = text.slice(lastIndex);
+      if (remainingText) {
+        result.push(remainingText);
+      }
+    }
+
+    // If no matches found, return original text
+    if (matchCount === 0) {
+      return <>{text}</>;
     }
 
     return <>{result}</>;
