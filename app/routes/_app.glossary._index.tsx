@@ -1,6 +1,6 @@
 import { Form, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { ZodError } from 'zod';
 
 import { readGlossaries, updateGlossarySubscribers, updateGlossaryTranslations } from '~/services';
@@ -174,8 +174,38 @@ interface SearchBarProps {
 const SearchBar = ({ searchTerm, setSearchTerm }: SearchBarProps) => {
   const navigation = useNavigation();
   const isLoading = navigation.state === 'loading' || navigation.state === 'submitting';
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      // Only submit if there's a search term
+      if (searchTerm.trim()) {
+        const formData = new FormData();
+        formData.append('searchTerm', searchTerm);
+        e.currentTarget.submit();
+      }
+    },
+    [searchTerm],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Prevent auto-submit on Enter key, let manual submit handle it
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (searchTerm.trim()) {
+          const form = e.currentTarget.form;
+          if (form) {
+            form.requestSubmit();
+          }
+        }
+      }
+    },
+    [searchTerm],
+  );
+
   return (
-    <Form method="get" action={`/glossary?index&searchTerm=${searchTerm}`}>
+    <Form method="get" onSubmit={handleSubmit} action={`/glossary?index&searchTerm=${searchTerm}`}>
       <div className="flex w-full items-center space-x-2">
         <div className="relative flex-1">
           {isLoading && (
@@ -184,10 +214,12 @@ const SearchBar = ({ searchTerm, setSearchTerm }: SearchBarProps) => {
             </div>
           )}
           <Input
-            type="search"
+            type="text"
             name="searchTerm"
+            autoComplete="off"
             value={searchTerm}
             disabled={isLoading}
+            onKeyDown={handleKeyDown}
             placeholder="Glossary Term"
             className={isLoading ? 'pr-10' : ''}
             onChange={(e) => setSearchTerm(e.target.value)}
