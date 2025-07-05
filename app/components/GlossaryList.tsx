@@ -147,38 +147,47 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
   }, [fetcher.formData, subscribedGlossaries, glossary]);
 
   const highlightKeyword = useCallback(({ text, keyword }: { text?: string | null; keyword: string }) => {
-    if (!text) {
-      return null;
+    if (!text || !keyword.trim()) {
+      return text ? <>{text}</> : null;
     }
-    // Escape special regex characters in the keyword
-    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Create regex with global flag and optional case insensitive flag
+    // Limit processing for very long texts to prevent stack overflow
+    const MAX_TEXT_LENGTH = 1000;
+    const processedText = text.length > MAX_TEXT_LENGTH ? text.substring(0, MAX_TEXT_LENGTH) + '...' : text;
+
+    // Escape special regex characters in the keyword
+    const escapedKeyword = keyword.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Create regex with global flag and case insensitive flag
     const regex = new RegExp(escapedKeyword, 'gi');
 
     // Split text by the keyword while preserving the keyword
-    const parts = text.split(regex);
-    const matches = text.match(regex) || [];
+    const parts = processedText.split(regex);
+    const matches = processedText.match(regex) || [];
 
     // If no matches found, return original text
     if (matches.length === 0) {
-      return <>{text}</>;
+      return <>{processedText}</>;
     }
+
+    // Limit number of highlights to prevent excessive DOM elements
+    const MAX_HIGHLIGHTS = 10;
+    const limitedMatches = matches.slice(0, MAX_HIGHLIGHTS);
 
     // Build the highlighted JSX
     const result: React.ReactNode[] = [];
 
-    for (let i = 0; i < parts.length; i++) {
+    for (let i = 0; i < parts.length && i <= limitedMatches.length; i++) {
       // Add the text part
       if (parts[i]) {
         result.push(parts[i]);
       }
 
       // Add the highlighted keyword if there's a match
-      if (i < matches.length) {
+      if (i < limitedMatches.length) {
         result.push(
           <mark key={`highlight-${i}`} className="bg-transparent font-semibold text-yellow-600">
-            {matches[i]}
+            {limitedMatches[i]}
           </mark>,
         );
       }
