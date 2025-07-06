@@ -7,7 +7,7 @@ if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV) {
     tracesSampleRate: 1.0,
     autoInstrumentRemix: true,
     // Enable trace propagation for your domain
-    tracePropagationTargets: ['https://btts-kumarajiva.org', 'localhost'],
+    tracePropagationTargets: ['https://btts-kumarajiva.org'],
     // Enable detailed debugging for Vercel
     sendDefaultPii: true,
     debug: process.env.NODE_ENV !== 'production',
