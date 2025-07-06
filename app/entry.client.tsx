@@ -22,6 +22,7 @@ process.env.NODE_ENV === 'production' &&
 
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1,
+    tracePropagationTargets: ['https://btts-kumarajiva.org'],
   });
 
 startTransition(() => {
