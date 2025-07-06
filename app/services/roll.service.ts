@@ -6,7 +6,7 @@ import * as schema from '~/drizzle/schema';
 
 import 'dotenv/config';
 
-import { type ReadRollWithSutra, rollsTable, type ReadRoll } from '~/drizzle/tables';
+import { type ReadRollWithSutra, rollsTable, type ReadRoll, type CreateRoll } from '~/drizzle/tables';
 
 const dbClient = drizzle(sql, { schema });
 
@@ -49,6 +49,36 @@ export const readRollWithComments = async () => {
     with: {
       roll: true,
       paragraph: true,
+    },
+  });
+};
+
+export const createRoll = async (roll: Omit<CreateRoll, 'updatedBy' | 'createdBy'>, userId: string) => {
+  return dbClient
+    .insert(rollsTable)
+    .values({
+      ...roll,
+      updatedBy: userId,
+      createdBy: userId,
+    })
+    .returning();
+};
+
+export const getAllRolls = async () => {
+  return dbClient.query.rollsTable.findMany({
+    orderBy: (rolls, { asc }) => [asc(rolls.title)],
+    with: {
+      sutra: true,
+    },
+  });
+};
+
+export const getRollsBySutraId = async (sutraId: string) => {
+  return dbClient.query.rollsTable.findMany({
+    where: eq(rollsTable.sutraId, sutraId),
+    orderBy: (rolls, { asc }) => [asc(rolls.title)],
+    with: {
+      sutra: true,
     },
   });
 };

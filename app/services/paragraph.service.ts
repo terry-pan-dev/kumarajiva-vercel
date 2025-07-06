@@ -18,7 +18,14 @@ import type {
   UpdateComment,
 } from '~/drizzle/schema';
 
-import { commentsTable, glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
+import {
+  commentsTable,
+  glossariesTable,
+  paragraphsTable,
+  rollsTable,
+  sutrasTable,
+  referencesTable,
+} from '~/drizzle/schema';
 import * as schema from '~/drizzle/schema';
 
 import { type SearchResultListProps } from '../components/SideBarMenu';
@@ -308,4 +315,115 @@ export const updateComment = async ({
     })
     .where(eq(commentsTable.id, id));
   return result;
+};
+
+export const bulkCreateParagraphs = async ({
+  sutraId,
+  rollId,
+  data,
+  createdBy,
+}: {
+  sutraId: string;
+  rollId: string;
+  data: Array<{
+    originSutra: string;
+    targetSutra: string;
+    references: Array<{
+      sutraName: string;
+      content: string;
+      order: string;
+    }>;
+  }>;
+  createdBy: string;
+}) => {
+  const results = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const { originSutra, targetSutra, references } = data[i];
+
+    // Create origin paragraph
+    const originParagraphId = uuidv4();
+    const originSearchId = uuidv4();
+
+    await algoliaClient.saveObject({
+      indexName: 'paragraphs',
+      body: {
+        id: originParagraphId,
+        content: originSutra,
+        language: 'chinese',
+        rollId,
+        objectID: originSearchId,
+      },
+    });
+
+    const originParagraph = await dbClient
+      .insert(paragraphsTable)
+      .values({
+        id: originParagraphId,
+        content: originSutra,
+        language: 'chinese',
+        rollId,
+        number: i + 1,
+        order: String(i + 1),
+        searchId: originSearchId,
+        createdBy,
+        updatedBy: createdBy,
+      })
+      .returning({ id: paragraphsTable.id });
+
+    // Create target paragraph
+    const targetParagraphId = uuidv4();
+    const targetSearchId = uuidv4();
+
+    await algoliaClient.saveObject({
+      indexName: 'paragraphs',
+      body: {
+        id: targetParagraphId,
+        content: targetSutra,
+        language: 'english',
+        rollId,
+        parentId: originParagraphId,
+        objectID: targetSearchId,
+      },
+    });
+
+    const targetParagraph = await dbClient
+      .insert(paragraphsTable)
+      .values({
+        id: targetParagraphId,
+        content: targetSutra,
+        language: 'english',
+        rollId,
+        parentId: originParagraphId,
+        number: i + 1,
+        order: String(i + 1),
+        searchId: targetSearchId,
+        createdBy,
+        updatedBy: createdBy,
+      })
+      .returning({ id: paragraphsTable.id });
+
+    // Create references if any
+    if (references.length > 0) {
+      const referencesToInsert = references.map((ref) => ({
+        id: uuidv4(),
+        paragraphId: originParagraphId,
+        sutraName: ref.sutraName,
+        content: ref.content,
+        order: ref.order,
+        createdBy,
+        updatedBy: createdBy,
+      }));
+
+      await dbClient.insert(referencesTable).values(referencesToInsert);
+    }
+
+    results.push({
+      origin: originParagraph[0],
+      target: targetParagraph[0],
+      references: references.length,
+    });
+  }
+
+  return results;
 };

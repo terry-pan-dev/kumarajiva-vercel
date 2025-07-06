@@ -20,10 +20,14 @@ import {
   readAllNotifications,
   toggleBanner,
 } from '../services/notification.service';
+import { bulkCreateParagraphs } from '../services/paragraph.service';
+import { createSutra, getSutrasWithRolls } from '../services/sutra.service';
 import { createTeam, readTeams } from '../services/teams.service';
 import { createUser, readUsers, updateUser } from '../services/user.service';
 import { bulkGlossaryUploadSchema } from '../validations/glossary-upload.validation';
 import { createBannerSchema } from '../validations/notification.validation';
+import { bulkCreateParagraphsSchema } from '../validations/paragraph-upload.validation';
+import { createSutraSchema } from '../validations/sutra.validation';
 import { createTeamSchema } from '../validations/team.validation';
 import { createUserSchema, updateUserSchema } from '../validations/user.validation';
 
@@ -70,11 +74,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const users = await readUsers();
   const teams = await readTeams();
   const notifications = await readAllNotifications();
+  const sutras = await getSutrasWithRolls({ teamId: user.teamId });
   return json({
     users: users.filter((u) => u.id !== user.id || u.email === 'pantaotao123@gmail.com'),
     teams,
     user,
     notifications,
+    sutras,
   });
 };
 
@@ -209,6 +215,71 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       console.log(`Successfully processed ${uploadResult.processed} glossary entries. Redirecting to glossary page.`);
       return redirect('/glossary');
+    } else if (kind === 'upload-paragraph') {
+      const uploadResultsJson = formData.get('uploadResults') as string;
+
+      if (!uploadResultsJson) {
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                path: ['uploadResults'],
+                message: 'Upload results are required',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
+
+      let uploadResultsData;
+      try {
+        uploadResultsData = JSON.parse(uploadResultsJson);
+      } catch (parseError) {
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                path: ['uploadResults'],
+                message: 'Invalid JSON format for upload results',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
+
+      const result = validatePayloadOrThrow({
+        schema: bulkCreateParagraphsSchema,
+        formData: uploadResultsData[0],
+      });
+
+      console.log('Validated paragraph upload:', result);
+      console.log(`Processing ${result.data.length} paragraph entries for user ${user.id}`);
+
+      // Process bulk upload to database and Algolia
+      const uploadResult = await bulkCreateParagraphs({
+        ...result,
+        createdBy: user.id,
+      });
+
+      console.log(`Successfully processed ${uploadResult.length} paragraph entries.`);
+      return json({
+        success: true,
+        message: `Successfully uploaded ${uploadResult.length} paragraphs`,
+      });
+    } else if (kind === 'create-sutra') {
+      const result = validatePayloadOrThrow({ schema: createSutraSchema, formData: data });
+      // Use the user's team ID directly
+      const createdSutras = await createSutra(result, user.teamId, user.id);
+      const createdSutra = createdSutras[0];
+      return json({
+        success: true,
+        sutraId: createdSutra?.id,
+        message: 'Sutra created successfully',
+      });
     }
   } catch (error) {
     console.error('admin action error', error);
@@ -227,7 +298,7 @@ export const ErrorBoundary = () => {
 };
 
 export default function AdminIndex() {
-  const { users, teams, notifications } = useLoaderData<typeof loader>();
+  const { users, teams, notifications, sutras } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
   const { toast } = useToast();
@@ -270,6 +341,17 @@ export default function AdminIndex() {
     [notifications],
   );
 
+  const cleanedSutras = useMemo(
+    () =>
+      sutras.map((sutra) => ({
+        ...sutra,
+        createdAt: new Date(sutra.createdAt),
+        updatedAt: new Date(sutra.updatedAt),
+        deletedAt: sutra.deletedAt ? new Date(sutra.deletedAt) : null,
+      })),
+    [sutras],
+  );
+
   // Format upload results for GlossaryList component
   const formattedUploadResults = useMemo(() => {
     return uploadResults.map((result, index) => ({
@@ -305,6 +387,16 @@ export default function AdminIndex() {
     setCurrentPage(1); // Reset to first page when new data is uploaded
   };
 
+  const handleParagraphUpload = (results: Record<string, unknown>[]) => {
+    setIsUploading(true);
+
+    const formData = new FormData();
+    formData.append('kind', 'upload-paragraph');
+    formData.append('uploadResults', JSON.stringify(results));
+
+    submit(formData, { method: 'post' });
+  };
+
   // Handle action data and show toasts for errors only (success redirects server-side)
   useEffect(() => {
     if (actionData) {
@@ -324,6 +416,14 @@ export default function AdminIndex() {
           title: 'Upload Failed',
           description: errorMessages,
           variant: 'error',
+        });
+        setIsUploading(false);
+      } else if ('success' in actionData && actionData.success && 'message' in actionData) {
+        // Handle successful paragraph upload
+        toast({
+          title: 'Upload Successful',
+          description: String(actionData.message),
+          variant: 'default',
         });
         setIsUploading(false);
       }
@@ -374,6 +474,7 @@ export default function AdminIndex() {
       </TabsContent>
       <TabsContent value="upload">
         <UploadManagement
+          sutras={cleanedSutras}
           totalPages={totalPages}
           currentPage={currentPage}
           isUploading={isUploading}
@@ -383,6 +484,7 @@ export default function AdminIndex() {
           paginatedResults={paginatedResults}
           onUploadResults={handleUploadResults}
           onGlossaryUpload={handleGlossaryUpload}
+          onParagraphUpload={handleParagraphUpload}
         />
       </TabsContent>
     </Tabs>

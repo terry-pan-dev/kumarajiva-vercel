@@ -1,0 +1,39 @@
+import { z } from 'zod';
+
+export const paragraphUploadCsvSchema = z.object({
+  OriginSutra: z.string().min(1, 'Origin sutra is required'),
+  TargetSutra: z.string().min(1, 'Target sutra is required'),
+});
+
+export const paragraphUploadSchema = z.object({
+  sutraId: z.string().uuid('Invalid sutra ID'),
+  rollId: z.string().uuid('Invalid roll ID'),
+  csvData: z.array(z.record(z.string(), z.string().optional())).min(1, 'At least one row is required'),
+});
+
+export const bulkCreateParagraphsSchema = z.object({
+  sutraId: z.string().uuid('Invalid sutra ID'),
+  rollId: z.string().uuid('Invalid roll ID'),
+  data: z
+    .array(
+      z.object({
+        originSutra: z.string().min(1, 'Origin sutra is required'),
+        targetSutra: z.string().min(1, 'Target sutra is required'),
+        references: z
+          .array(
+            z.object({
+              sutraName: z.string().min(1, 'Reference sutra name is required'),
+              content: z.string().min(1, 'Reference content is required'),
+              order: z.string().default('0'),
+            }),
+          )
+          .default([]),
+      }),
+    )
+    .min(1, 'At least one paragraph is required')
+    .max(10000, 'Cannot upload more than 10,000 paragraphs at once'),
+});
+
+export type ParagraphUploadCsvRow = z.infer<typeof paragraphUploadCsvSchema>;
+export type ParagraphUploadData = z.infer<typeof paragraphUploadSchema>;
+export type BulkCreateParagraphsData = z.infer<typeof bulkCreateParagraphsSchema>;

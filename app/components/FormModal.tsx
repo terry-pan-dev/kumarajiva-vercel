@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher } from '@remix-run/react';
-import React, { useCallback, useEffect, useState, type PropsWithChildren } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { Controller, FormProvider, useForm, useFormContext, type Mode } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 import { type z, type ZodSchema } from 'zod';
@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
+import { ToastAction } from './ui/toast';
 
 interface FormModalProps<TFormValues extends ZodSchema = ZodSchema> {
   title: string;
@@ -59,17 +60,22 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
     mode,
     defaultValues,
   });
-  const fetcher = useFetcher<{ success: boolean; errors?: string[] }>({ key: fetcherKey });
+  const fetcher = useFetcher<{ success: boolean; errors?: string[]; sutraId?: string; message?: string }>({
+    key: fetcherKey,
+  });
 
   const disabled = fetcher.state !== 'idle';
 
   const [open, setOpen] = useState(false);
+  const [openToast, setOpenToast] = useState(false);
+  const processedSutraIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!open) {
       form.reset(defaultValues);
       form.reset();
       form.clearErrors();
+      setOpenToast(true);
     }
   }, [open, form, defaultValues]);
 
@@ -78,6 +84,45 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success) {
       setOpen(false);
+
+      // Show success toast for sutra creation
+      if (fetcher.data.sutraId && !processedSutraIds.current.has(fetcher.data.sutraId)) {
+        const copyToClipboard = async () => {
+          try {
+            await navigator.clipboard.writeText(fetcher.data!.sutraId!);
+            toast({
+              title: 'Copied! ✅',
+              description: 'Sutra ID has been copied to your clipboard',
+              variant: 'default',
+              duration: 3000,
+            });
+            setOpenToast(false);
+          } catch (error) {
+            console.error('Failed to copy:', error);
+          }
+        };
+
+        openToast &&
+          toast({
+            title: 'Sutra Created Successfully! 🎉',
+            description: `New sutra ID: ${fetcher.data.sutraId}`,
+            variant: 'default',
+            duration: 12000, // 12 seconds to give time to copy
+            action: (
+              <ToastAction altText="Copy sutra ID" onClick={copyToClipboard}>
+                Copy ID
+              </ToastAction>
+            ),
+          });
+
+        // Try automatic copy first, but don't show error toast if it fails
+        navigator.clipboard.writeText(fetcher.data.sutraId).catch(() => {
+          // Silent fail - user can use the copy button
+        });
+
+        // Mark this sutra ID as processed to prevent duplicate toasts
+        processedSutraIds.current.add(fetcher.data.sutraId);
+      }
     }
     if (fetcher.state === 'idle' && !fetcher.data?.success && fetcher.data?.errors) {
       toast({
@@ -86,7 +131,7 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
         variant: 'error',
       });
     }
-  }, [fetcher.data, fetcher.state, toast]);
+  }, [fetcher.data, fetcher.state, toast, openToast]);
 
   const onSubmit = useCallback(
     (data: z.infer<typeof schema>) => {

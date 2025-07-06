@@ -14,6 +14,7 @@ import {
   ChevronsUpDown,
   Code2,
   Combine,
+  Copy,
   Download,
   Edit2,
   ExternalLink,
@@ -428,8 +429,29 @@ const letterG = (props: LucideProps) => (
     strokeLinejoin="round"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M3 3m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"></path>
-    <path d="M14 8h-2a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2v-4h-1"></path>
+    <rect x="3" y="3" rx="2" ry="2" width="18" height="18" stroke="currentColor" />
+    <text x="12" y="16" fontSize="12" textAnchor="middle" fill="currentColor" fontFamily="monospace">
+      G
+    </text>
+  </svg>
+);
+
+const letterP = (props: LucideProps) => (
+  <svg
+    width="24"
+    height="24"
+    fill="none"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="3" y="3" rx="2" ry="2" width="18" height="18" stroke="currentColor" />
+    <text x="12" y="16" fontSize="12" textAnchor="middle" fill="currentColor" fontFamily="monospace">
+      P
+    </text>
   </svg>
 );
 
@@ -465,8 +487,29 @@ const letterS = (props: LucideProps) => (
     strokeLinejoin="round"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M3 3m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"></path>
-    <path d="M10 15a1 1 0 0 0 1 1h2a1 1 0 0 0 1 -1v-2a1 1 0 0 0 -1 -1h-2a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1"></path>
+    <rect x="3" y="3" rx="2" ry="2" width="18" height="18" stroke="currentColor" />
+    <text x="12" y="16" fontSize="12" textAnchor="middle" fill="currentColor" fontFamily="monospace">
+      S
+    </text>
+  </svg>
+);
+
+const letterC = (props: LucideProps) => (
+  <svg
+    width="24"
+    height="24"
+    fill="none"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="3" y="3" rx="2" ry="2" width="18" height="18" stroke="currentColor" />
+    <text x="12" y="16" fontSize="12" textAnchor="middle" fill="currentColor" fontFamily="monospace">
+      C
+    </text>
   </svg>
 );
 
@@ -518,6 +561,8 @@ export const Icons = {
   PanelLeftOpen: leftOpen,
   LetterG: letterG,
   LetterS: letterS,
+  LetterC: letterC,
+  LetterP: letterP,
   ChevronDown: ChevronDown,
   alignCenter: AlignCenter,
   alignJustify: AlignJustify,
@@ -548,6 +593,7 @@ export const Icons = {
   clear: X,
   close: X,
   X: X,
+  Copy: Copy,
   Clock: clock,
   SquarePen: squarePen,
   code: Code2,

@@ -43,10 +43,36 @@ export const createTargetSutra = async ({
   });
 };
 
-export const createSutra = async (sutra: Omit<CreateSutra, 'updatedBy' | 'createdBy'>) => {
-  return dbClient.insert(sutrasTable).values({
-    ...sutra,
-    updatedBy: '5eefc822-fadf-4e8d-892b-0a3badef4282',
-    createdBy: '5eefc822-fadf-4e8d-892b-0a3badef4282',
+export const createSutra = async (
+  sutra: Omit<CreateSutra, 'updatedBy' | 'createdBy' | 'teamId'>,
+  teamId: string,
+  userId: string,
+) => {
+  return dbClient
+    .insert(sutrasTable)
+    .values({
+      ...sutra,
+      teamId,
+      updatedBy: userId,
+      createdBy: userId,
+    })
+    .returning();
+};
+
+export const getAllSutras = async () => {
+  return dbClient.query.sutrasTable.findMany({
+    orderBy: (sutras, { asc }) => [asc(sutras.title)],
+  });
+};
+
+export const getSutrasWithRolls = async ({ teamId }: { teamId: string }) => {
+  return dbClient.query.sutrasTable.findMany({
+    where: eq(sutrasTable.teamId, teamId),
+    with: {
+      rolls: {
+        orderBy: (rolls, { asc }) => [asc(rolls.title)],
+      },
+    },
+    orderBy: (sutras, { asc }) => [asc(sutras.title)],
   });
 };

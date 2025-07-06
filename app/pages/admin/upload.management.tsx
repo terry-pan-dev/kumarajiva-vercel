@@ -1,15 +1,37 @@
+import type { ReadSutra, ReadRoll } from '~/drizzle/tables';
+
 import { GlossaryList } from '~/components/GlossaryList';
 import { Icons } from '~/components/icons';
 import { CallbackPaginationControls } from '~/components/PaginationControls';
 import { Button } from '~/components/ui';
 import UploadActionButtons from '~/components/UploadActionButtons';
 
+type SutraWithRolls = ReadSutra & {
+  rolls?: (
+    | ReadRoll
+    | {
+        id: string;
+        title: string;
+        subtitle: string;
+        parentId: string | null;
+        sutraId: string;
+        createdAt: string;
+        updatedAt: string;
+        deletedAt: string | null;
+        createdBy: string;
+        updatedBy: string;
+      }
+  )[];
+};
+
 interface UploadManagementProps {
   uploadResults: Record<string, any>[];
   currentPage: number;
   totalPages: number;
   paginatedResults: any[];
+  sutras: SutraWithRolls[];
   onGlossaryUpload: (results: Record<string, any>[]) => void;
+  onParagraphUpload: (results: Record<string, any>[]) => void;
   onUploadResults: () => void;
   onPageChange: (page: number) => void;
   onCancelUpload: () => void;
@@ -21,7 +43,9 @@ export function UploadManagement({
   currentPage,
   totalPages,
   paginatedResults,
+  sutras,
   onGlossaryUpload,
+  onParagraphUpload,
   onUploadResults,
   onPageChange,
   onCancelUpload,
@@ -32,7 +56,11 @@ export function UploadManagement({
       <>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Upload Management</h2>
-          <UploadActionButtons onGlossaryUpload={onGlossaryUpload} />
+          <UploadActionButtons
+            sutras={sutras}
+            onGlossaryUpload={onGlossaryUpload}
+            onParagraphUpload={onParagraphUpload}
+          />
         </div>
         <div className="py-16 text-center">
           <p className="text-muted-foreground">
