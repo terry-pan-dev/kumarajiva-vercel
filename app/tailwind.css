@@ -86,3 +86,20 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Ensure tables in prose have visible borders */
+  .prose table {
+    @apply border-collapse border border-border;
+  }
+  .prose table th,
+  .prose table td {
+    @apply border border-border px-4 py-2;
+  }
+  .prose table th {
+    @apply bg-muted font-semibold;
+  }
+  .prose table tbody tr:nth-child(even) {
+    @apply bg-muted/50;
+  }
+}
