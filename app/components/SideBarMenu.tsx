@@ -236,9 +236,7 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
 
   useEffect(() => {
     if (debouncedSearch.length > 1) {
-      const query = filter
-        ? `/search?query=${debouncedSearch}&type=${filter}`
-        : `/search?query=${debouncedSearch}&type=Glossary`;
+      const query = filter ? `/search?query=${debouncedSearch}&type=${filter}` : `/search?query=${debouncedSearch}`;
       if (query !== lastQuery.current) {
         fetcher.load(query);
         lastQuery.current = query;
