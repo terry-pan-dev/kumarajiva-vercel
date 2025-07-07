@@ -197,7 +197,7 @@ export const createGlossaryAndIndexInAlgolia = async (glossary: Omit<CreateGloss
 };
 
 export const searchGlossaries = async (tokens: string[]) => {
-  const glossaries: ReadGlossary[] = [];
+  const glossaryIds: string[] = [];
   const batchSize = 50;
   const batches = [];
   for (let i = 0; i < tokens.length; i += batchSize) {
@@ -223,22 +223,45 @@ export const searchGlossaries = async (tokens: string[]) => {
       results.forEach((result) => {
         if ('hits' in result) {
           result.hits.forEach((hit) => {
-            const { _highlightResult, ...rest } = hit;
-            glossaries.push(rest);
+            if (hit.id) {
+              glossaryIds.push(hit.id);
+            }
           });
         }
       });
     }
     console.log('glossary_searcher result', results?.length);
   }
+
+  // Get full details from database using the IDs
+  if (glossaryIds.length === 0) {
+    return [];
+  }
+
+  const glossaries = await readGlossariesByIds(glossaryIds);
   return glossaries.reduce(
     (acc, glossary) => {
       if (glossary.glossary) {
-        acc[glossary.glossary] = glossary.translations?.map((t) => t.glossary) ?? [];
+        acc[glossary.glossary] = {
+          definitions: glossary.translations?.map((t) => t.glossary) ?? [],
+          sutraTexts:
+            glossary.translations?.map((t) => ({
+              chinese: t.originSutraText,
+              english: t.targetSutraText,
+              sutraName: t.sutraName,
+              volume: t.volume,
+            })) ?? [],
+        };
       }
       return acc;
     },
-    {} as Record<string, string[]>,
+    {} as Record<
+      string,
+      {
+        definitions: string[];
+        sutraTexts: Array<{ chinese?: string | null; english?: string | null; sutraName: string; volume: string }>;
+      }
+    >,
   );
 };
 
