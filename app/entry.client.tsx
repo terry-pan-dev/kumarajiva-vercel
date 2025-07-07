@@ -6,7 +6,7 @@ import { hydrateRoot } from 'react-dom/client';
 process.env.NODE_ENV === 'production' &&
   Sentry.init({
     dsn: 'https://40cbe12a53fcd5340ef69af77c985db3@o4508454077923328.ingest.us.sentry.io/4508454079627264',
-    tracesSampleRate: 1,
+    tracesSampleRate: 0.2,
 
     integrations: [
       Sentry.browserTracingIntegration({
@@ -22,6 +22,7 @@ process.env.NODE_ENV === 'production' &&
 
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1,
+    tracePropagationTargets: ['https://btts-kumarajiva.org'],
   });
 
 startTransition(() => {
