@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git branch:*)",
+      "Bash(npm run:*)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_snapshot",
+      "Bash(npm install:*)",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(git restore:*)",
+      "Bash(gh pr status:*)"
+    ],
+    "deny": []
+  }
+}
