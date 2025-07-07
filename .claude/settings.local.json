@@ -45,7 +45,8 @@
       "mcp__sentry__find_errors",
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "mcp__playwright__browser_press_key"
     ],
     "deny": []
   }

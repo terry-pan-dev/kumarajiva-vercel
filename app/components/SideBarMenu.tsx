@@ -215,7 +215,7 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
   const fetcher = useFetcher<{ search: SearchResultListProps['results']; success: boolean }>({ key: 'search' });
   const debouncedSearch = useDebounce(search, 500);
   const lastQuery = useRef<string>('');
-  const [filter, setFilter] = useState<'Glossary' | 'Paragraph' | null>(null);
+  const [filter, setFilter] = useState<'Glossary' | 'Paragraph' | null>('Glossary');
   const [selectedIndex, setSelectedIndex] = useState<[number, 'Glossary' | 'Paragraph' | null]>([0, null]);
 
   const filteredResults = useMemo(() => {
@@ -261,7 +261,7 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
   useEffect(() => {
     if (!open) {
       setSearch('');
-      setFilter(null);
+      setFilter('Glossary');
       fetcher.load(`/search?query=${''}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
