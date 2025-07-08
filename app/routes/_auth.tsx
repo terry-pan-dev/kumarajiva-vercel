@@ -50,7 +50,7 @@ export const TextGenerateEffect = ({
 }) => {
   const [scope, animate] = useAnimate();
   useEffect(() => {
-    animate(
+    const animation = animate(
       'span',
       {
         opacity: 1,
@@ -61,6 +61,13 @@ export const TextGenerateEffect = ({
         delay: stagger(0.3),
       },
     );
+
+    // Cleanup function to stop animation when component unmounts
+    return () => {
+      if (animation && typeof animation.stop === 'function') {
+        animation.stop();
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope.current]);
 
