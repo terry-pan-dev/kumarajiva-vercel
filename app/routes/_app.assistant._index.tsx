@@ -598,6 +598,10 @@ export default function AssistantRoute() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
 
+  // Refs for cleanup tracking
+  const activeAbortController = useRef<AbortController | null>(null);
+  const activeStreamReader = useRef<ReadableStreamDefaultReader | null>(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -637,6 +641,28 @@ export default function AssistantRoute() {
     }
   }, [fetcher.data, fetcher.state]);
 
+  // Cleanup effect for component unmount
+  useEffect(() => {
+    return () => {
+      // Cancel active fetch request
+      if (activeAbortController.current) {
+        activeAbortController.current.abort();
+        activeAbortController.current = null;
+      }
+
+      // Cancel active stream reader
+      if (activeStreamReader.current) {
+        try {
+          activeStreamReader.current.cancel();
+        } catch (error) {
+          console.log('Stream already closed or cancelled');
+        } finally {
+          activeStreamReader.current = null;
+        }
+      }
+    };
+  }, []);
+
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -650,6 +676,10 @@ export default function AssistantRoute() {
 
       try {
         setIsStreaming(true);
+
+        // Create AbortController for this request
+        const abortController = new AbortController();
+        activeAbortController.current = abortController;
 
         // Create a new assistant message for streaming
         const assistantMessageId = crypto.randomUUID();
@@ -668,6 +698,7 @@ export default function AssistantRoute() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ message: messageToSend }),
+          signal: abortController.signal,
         });
 
         if (!response.ok) {
@@ -679,6 +710,7 @@ export default function AssistantRoute() {
         // Handle streaming response
         if (response.body) {
           const reader = response.body.getReader();
+          activeStreamReader.current = reader;
           const decoder = new TextDecoder();
           let content = '';
 
@@ -712,7 +744,16 @@ export default function AssistantRoute() {
                   : msg,
               ),
             );
+
+            // Clear reader reference after successful completion
+            activeStreamReader.current = null;
           } catch (streamError) {
+            // Handle AbortError separately from other stream errors
+            if (streamError instanceof Error && streamError.name === 'AbortError') {
+              console.log('Stream cancelled by user navigation');
+              return; // Don't update UI if request was cancelled
+            }
+
             console.error('Streaming error:', streamError);
             setMessages((prevMessages) =>
               prevMessages.map((msg) =>
@@ -725,9 +766,18 @@ export default function AssistantRoute() {
                   : msg,
               ),
             );
+          } finally {
+            // Ensure reader reference is cleared
+            activeStreamReader.current = null;
           }
         }
       } catch (error) {
+        // Handle AbortError separately from other errors
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Request cancelled by user navigation');
+          return; // Don't update UI if request was cancelled
+        }
+
         console.error('Submit error:', error);
         setMessages((prevMessages) => [
           ...prevMessages,
@@ -739,6 +789,9 @@ export default function AssistantRoute() {
         ]);
       } finally {
         setIsStreaming(false);
+        // Clear references after request completion
+        activeAbortController.current = null;
+        activeStreamReader.current = null;
       }
     },
     [inputValue],

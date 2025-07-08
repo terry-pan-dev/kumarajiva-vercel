@@ -46,6 +46,10 @@
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
       "Bash(pnpm lint:*)",
+      "mcp__playwright__browser_press_key",
+      "mcp__sentry__find_organizations",
+      "mcp__sentry__find_issues",
+      "mcp__sentry__update_issue",
       "mcp__playwright__browser_press_key"
     ],
     "deny": []
