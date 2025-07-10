@@ -18,10 +18,10 @@ import {
   CardHeader,
   ScrollArea,
   Separator,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
   TooltipProvider,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
 } from '../components/ui';
 import { Divider } from '../components/ui/divider';
 import { glossaryEditFormSchema, glossaryInsertFormSchema } from '../validations/glossary.validation';
@@ -117,6 +117,8 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
 export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadGlossary; showEdit?: boolean }) => {
   const [subscribedGlossaries, setSubscribedGlossaries] = useLocalStorage<string[]>('subscribedGlossaries', []);
   const fetcher = useFetcher<{ success: boolean }>();
+
+  console.log({ glossary });
 
   let isBookmarked = useMemo(() => {
     if (glossary?.id) {
@@ -292,16 +294,20 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
             )}
             <div className="ml-auto" />
             {glossary.discussion && (
-              <Tooltip>
-                <span className="inline-block align-middle">
-                  <TooltipTrigger aria-label="discussion">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Show discussion"
+                    className="rounded p-1 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-yellow-600"
+                  >
                     <Icons.Discussion className="h-6 w-6 text-primary" />
-                  </TooltipTrigger>
-                </span>
-                <TooltipContent side="right" role="tooltip" aria-label="discussion tooltip">
-                  <p>{glossary.discussion}</p>
-                </TooltipContent>
-              </Tooltip>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" sideOffset={8} className="w-64 p-2">
+                  {glossary.discussion}
+                </PopoverContent>
+              </Popover>
             )}
           </div>
 

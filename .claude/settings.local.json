@@ -50,7 +50,10 @@
       "mcp__sentry__find_organizations",
       "mcp__sentry__find_issues",
       "mcp__sentry__update_issue",
-      "mcp__playwright__browser_press_key"
+      "mcp__playwright__browser_press_key",
+      "Bash(pnpm list:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm dev:*)"
     ],
     "deny": []
   }
