@@ -87,6 +87,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           to: newUser.email,
           subject: 'Welcome to Kumarajiva',
           html: `<p>Welcome to Kumarajiva! You can login with your email and initial password.</p>
+          <p>Site: <a href="https://btts-kumarajiva.org">https://btts-kumarajiva.org</a></p>
           <p>Email: ${newUser.email}</p>
           <p>Password: ${password}</p>
           <p>Please change your password after login.</p>
