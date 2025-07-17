@@ -505,7 +505,7 @@ const insertGlossariesInBatches = async (
   return { processed, errors };
 };
 
-// Bulk create glossaries with Algolia indexing
+// Bulk create glossaries with Algolia indexing (legacy method for flat data)
 export const bulkCreateGlossaries = async (
   uploadData: UploadResultItem[],
   userId: string,
@@ -552,6 +552,216 @@ export const bulkCreateGlossaries = async (
       success: false,
       processed: 0,
       errors: [errorMessage],
+    };
+  }
+};
+
+// Detailed upload report structure
+export interface UploadReport {
+  success: boolean;
+  totalAttempted: number;
+  totalInserted: number;
+  totalFailed: number;
+  insertedGlossaries: ReadGlossary[];
+  failedGlossaries: Array<{
+    glossary: string;
+    error: string;
+    originalData: Omit<CreateGlossary, 'searchId' | 'createdAt' | 'updatedAt'>;
+  }>;
+  algoliaErrors: string[];
+  searchIdUpdateErrors: string[];
+}
+
+// Insert glossaries without searchId, handling unique constraint violations
+const insertGlossariesWithoutSearchId = async (
+  glossaries: Omit<CreateGlossary, 'searchId' | 'createdAt' | 'updatedAt'>[],
+  batchSize: number = 1000,
+): Promise<{
+  inserted: ReadGlossary[];
+  failed: Array<{
+    glossary: string;
+    error: string;
+    originalData: Omit<CreateGlossary, 'searchId' | 'createdAt' | 'updatedAt'>;
+  }>;
+}> => {
+  console.log(`Starting database insertion for ${glossaries.length} glossaries`);
+
+  const inserted: ReadGlossary[] = [];
+  const failed: Array<{
+    glossary: string;
+    error: string;
+    originalData: Omit<CreateGlossary, 'searchId' | 'createdAt' | 'updatedAt'>;
+  }> = [];
+
+  // Create batches
+  const batches = [];
+  for (let i = 0; i < glossaries.length; i += batchSize) {
+    batches.push(glossaries.slice(i, i + batchSize));
+  }
+
+  console.log(`Created ${batches.length} batches for database insertion (batch size: ${batchSize})`);
+
+  // Process each batch
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    console.log(`Processing batch ${i + 1}/${batches.length} with ${batch.length} items`);
+
+    try {
+      // Insert batch, ignore conflicts due to unique constraint
+      const result = await dbClient.insert(glossariesTable).values(batch).onConflictDoNothing().returning();
+
+      inserted.push(...result);
+      console.log(`Successfully inserted ${result.length} glossaries from batch ${i + 1}`);
+
+      // Track failed insertions (those that were skipped due to unique constraint)
+      const insertedGlossaryNames = new Set(result.map((g) => g.glossary));
+      const failedInBatch = batch.filter((g) => !insertedGlossaryNames.has(g.glossary));
+
+      failedInBatch.forEach((glossary) => {
+        failed.push({
+          glossary: glossary.glossary,
+          error: 'Duplicate glossary name (unique constraint violation)',
+          originalData: glossary,
+        });
+      });
+
+      if (failedInBatch.length > 0) {
+        console.log(`${failedInBatch.length} glossaries skipped due to unique constraint in batch ${i + 1}`);
+      }
+    } catch (batchError) {
+      console.error(`Failed to insert batch ${i + 1}:`, batchError);
+
+      // Mark all items in this batch as failed
+      batch.forEach((glossary) => {
+        failed.push({
+          glossary: glossary.glossary,
+          error: `Batch insertion failed: ${batchError}`,
+          originalData: glossary,
+        });
+      });
+    }
+  }
+
+  console.log(`Database insertion completed. Inserted: ${inserted.length}, Failed: ${failed.length}`);
+  return { inserted, failed };
+};
+
+// Update glossaries with searchId after Algolia indexing
+const updateGlossariesWithSearchId = async (
+  glossaries: ReadGlossary[],
+  searchIds: string[],
+): Promise<{ updated: number; errors: string[] }> => {
+  console.log(`Updating ${glossaries.length} glossaries with search IDs`);
+
+  const errors: string[] = [];
+  let updated = 0;
+
+  for (let i = 0; i < glossaries.length; i++) {
+    const glossary = glossaries[i];
+    const searchId = searchIds[i];
+
+    if (!searchId || searchId.startsWith('failed-')) {
+      errors.push(`Invalid search ID for glossary ${glossary.glossary}: ${searchId}`);
+      continue;
+    }
+
+    try {
+      await dbClient.update(glossariesTable).set({ searchId }).where(eq(glossariesTable.id, glossary.id));
+
+      updated++;
+    } catch (updateError) {
+      errors.push(`Failed to update search ID for glossary ${glossary.glossary}: ${updateError}`);
+    }
+  }
+
+  console.log(`Search ID update completed. Updated: ${updated}, Errors: ${errors.length}`);
+  return { updated, errors };
+};
+
+// Bulk create glossaries from already-transformed data (new optimized method with proper ordering)
+export const bulkCreateGlossariesFromTransformed = async (
+  glossaries: Omit<CreateGlossary, 'searchId' | 'createdAt' | 'updatedAt'>[],
+): Promise<UploadReport> => {
+  console.log(`Starting bulk glossary creation from transformed data for ${glossaries.length} items`);
+
+  try {
+    if (glossaries.length === 0) {
+      console.log('No valid glossary data to process');
+      return {
+        success: false,
+        totalAttempted: 0,
+        totalInserted: 0,
+        totalFailed: 0,
+        insertedGlossaries: [],
+        failedGlossaries: [],
+        algoliaErrors: [],
+        searchIdUpdateErrors: [],
+      };
+    }
+
+    // Step 1: Insert into database first (ignoring unique constraint violations)
+    const { inserted, failed } = await insertGlossariesWithoutSearchId(glossaries);
+
+    // Step 2: Index successfully inserted glossaries in Algolia
+    let algoliaErrors: string[] = [];
+    let searchIdUpdateErrors: string[] = [];
+
+    if (inserted.length > 0) {
+      // Prepare Algolia objects for inserted glossaries
+      const algoliaObjects = inserted.map((glossary) => ({
+        id: glossary.id,
+        phonetic: glossary.phonetic,
+        glossary: glossary.glossary,
+        translations:
+          glossary.translations?.map((translation) => ({
+            glossary: translation.glossary,
+            language: translation.language,
+            phonetic: translation.phonetic || undefined,
+          })) || [],
+      }));
+
+      // Index in Algolia
+      const { allObjectIDs, errors: algoliaIndexErrors } = await indexGlossariesInAlgolia(algoliaObjects);
+      algoliaErrors = algoliaIndexErrors;
+
+      // Step 3: Update database with searchId from Algolia
+      const { updated, errors: updateErrors } = await updateGlossariesWithSearchId(inserted, allObjectIDs);
+      searchIdUpdateErrors = updateErrors;
+
+      console.log(`Updated ${updated} glossaries with search IDs`);
+    }
+
+    const report: UploadReport = {
+      success: failed.length === 0 && algoliaErrors.length === 0 && searchIdUpdateErrors.length === 0,
+      totalAttempted: glossaries.length,
+      totalInserted: inserted.length,
+      totalFailed: failed.length,
+      insertedGlossaries: inserted,
+      failedGlossaries: failed,
+      algoliaErrors,
+      searchIdUpdateErrors,
+    };
+
+    console.log(
+      `Bulk glossary creation completed. Success: ${report.success}, Inserted: ${report.totalInserted}, Failed: ${report.totalFailed}`,
+    );
+
+    return report;
+  } catch (error) {
+    console.error('Bulk glossary creation failed:', error);
+    return {
+      success: false,
+      totalAttempted: glossaries.length,
+      totalInserted: 0,
+      totalFailed: glossaries.length,
+      insertedGlossaries: [],
+      failedGlossaries: glossaries.map((g) => ({
+        glossary: g.glossary,
+        error: `Bulk operation failed: ${error}`,
+        originalData: g,
+      })),
+      algoliaErrors: [],
+      searchIdUpdateErrors: [],
     };
   }
 };

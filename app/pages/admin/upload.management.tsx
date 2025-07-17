@@ -1,9 +1,20 @@
-import type { ReadSutra, ReadRoll } from '~/drizzle/tables';
+import type { ReadSutra, ReadRoll, ReadGlossary } from '~/drizzle/tables';
+import type { UploadReport } from '~/services/glossary.service';
 
 import { GlossaryList } from '~/components/GlossaryList';
 import { Icons } from '~/components/icons';
 import { CallbackPaginationControls } from '~/components/PaginationControls';
-import { Button } from '~/components/ui';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '~/components/ui';
 import UploadActionButtons from '~/components/UploadActionButtons';
 
 type SutraWithRolls = ReadSutra & {
@@ -25,11 +36,12 @@ type SutraWithRolls = ReadSutra & {
 };
 
 interface UploadManagementProps {
-  uploadResults: Record<string, any>[];
+  uploadResults: ReadGlossary[];
   currentPage: number;
   totalPages: number;
-  paginatedResults: any[];
+  paginatedResults: ReadGlossary[];
   sutras: SutraWithRolls[];
+  uploadReport: UploadReport | null;
   onGlossaryUpload: (results: Record<string, any>[]) => void;
   onParagraphUpload: (results: Record<string, any>[]) => void;
   onUploadResults: () => void;
@@ -44,6 +56,7 @@ export function UploadManagement({
   totalPages,
   paginatedResults,
   sutras,
+  uploadReport,
   onGlossaryUpload,
   onParagraphUpload,
   onUploadResults,
@@ -51,7 +64,7 @@ export function UploadManagement({
   onCancelUpload,
   isUploading = false,
 }: UploadManagementProps) {
-  if (uploadResults.length === 0) {
+  if (uploadResults.length === 0 && !uploadReport) {
     return (
       <>
         <div className="flex items-center justify-between">
@@ -72,35 +85,151 @@ export function UploadManagement({
   }
 
   return (
-    <>
+    <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-semibold">Upload Management</h2>
         </div>
         <div className="flex items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            Showing {paginatedResults.length} of {uploadResults.length} entries
-          </p>
+          {uploadResults.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Showing {paginatedResults.length} of {uploadResults.length} entries
+            </p>
+          )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancelUpload} className="flex h-8 items-center gap-2">
               Cancel
             </Button>
-            <Button disabled={isUploading} onClick={onUploadResults} className="flex h-8 items-center gap-2">
-              <Icons.Upload className="h-4 w-4" />
-              {isUploading ? 'Uploading...' : 'Upload to Database'}
-            </Button>
+            {uploadResults.length > 0 && !uploadReport && (
+              <Button disabled={isUploading} onClick={onUploadResults} className="flex h-8 items-center gap-2">
+                <Icons.Upload className="h-4 w-4" />
+                {isUploading ? 'Uploading...' : 'Upload to Database'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
       <div className="h-2" role="presentation" />
 
-      <div className="flex-1 overflow-y-auto">
-        <GlossaryList showEdit={false} glossaries={paginatedResults} />
-      </div>
+      {/* Upload Report Section */}
+      {uploadReport && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Card className="flex h-full flex-1 flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
+                <Icons.FileText className="h-6 w-6 text-slate-900" />
+                Upload Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col">
+              <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="border-blue-300 bg-blue-100 text-blue-900">
+                    Total Attempted
+                  </Badge>
+                  <span className="text-lg font-bold text-blue-900">{uploadReport.totalAttempted}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="border-green-300 bg-green-100 text-green-900">
+                    Successfully Uploaded
+                  </Badge>
+                  <span className="text-lg font-bold text-green-900">{uploadReport.totalInserted}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="border-red-300 bg-red-100 text-red-900">
+                    Failed
+                  </Badge>
+                  <span className="text-lg font-bold text-red-900">{uploadReport.totalFailed}</span>
+                </div>
+              </div>
 
-      {totalPages > 1 && (
+              {/* Failed Glossaries Section */}
+              {uploadReport.failedGlossaries.length > 0 && (
+                <div className="mt-4 flex min-h-0 flex-1 flex-col">
+                  <Alert variant="destructive">
+                    <Icons.X className="h-4 w-4" />
+                    <AlertTitle>Failed Uploads (either UUID same or Chinese glossary already exists)</AlertTitle>
+                    <AlertDescription>The following Chinese glossaries failed to upload:</AlertDescription>
+                  </Alert>
+                  <div className="mt-2 flex-1 overflow-y-auto rounded-md border p-2">
+                    <div className="space-y-1">
+                      {uploadReport.failedGlossaries.map((failed, index) => (
+                        <div key={index} className="flex items-center justify-between rounded bg-red-50 p-2 text-sm">
+                          <span className="font-medium text-red-900">{failed.glossary}</span>
+                          <span className="text-red-700">{failed.error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Algolia Errors Section */}
+              {uploadReport.algoliaErrors.length > 0 && (
+                <div className="mt-4">
+                  <Alert variant="destructive">
+                    <Icons.Search className="h-4 w-4" />
+                    <AlertTitle>Search Index Errors</AlertTitle>
+                    <AlertDescription>Some glossaries were uploaded but failed to index for search:</AlertDescription>
+                  </Alert>
+                  <div className="mt-2 max-h-32 overflow-y-auto rounded-md border p-2">
+                    <div className="space-y-1">
+                      {uploadReport.algoliaErrors.map((error, index) => (
+                        <div key={index} className="text-sm text-red-700">
+                          {error}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Search ID Update Errors */}
+              {uploadReport.searchIdUpdateErrors.length > 0 && (
+                <div className="mt-4">
+                  <Alert variant="destructive">
+                    <Icons.SquarePen className="h-4 w-4" />
+                    <AlertTitle>Search ID Update Errors</AlertTitle>
+                    <AlertDescription>
+                      Some glossaries were uploaded and indexed but failed to update search references:
+                    </AlertDescription>
+                  </Alert>
+                  <div className="mt-2 max-h-32 overflow-y-auto rounded-md border p-2">
+                    <div className="space-y-1">
+                      {uploadReport.searchIdUpdateErrors.map((error, index) => (
+                        <div key={index} className="text-sm text-red-700">
+                          {error}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {uploadReport.success && (
+                <div className="mt-4">
+                  <Alert>
+                    <Icons.Check className="h-4 w-4" />
+                    <AlertTitle>Success!</AlertTitle>
+                    <AlertDescription>All glossaries were successfully uploaded and indexed.</AlertDescription>
+                  </Alert>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Glossary List Section - Only show before upload is completed */}
+      {uploadResults.length > 0 && !uploadReport && (
+        <div className="flex-1 overflow-y-auto">
+          <GlossaryList showEdit={false} glossaries={paginatedResults} />
+        </div>
+      )}
+
+      {totalPages > 1 && !uploadReport && (
         <CallbackPaginationControls totalPages={totalPages} currentPage={currentPage} onPageChange={onPageChange} />
       )}
-    </>
+    </div>
   );
 }

@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { useMemo, useState, useEffect } from 'react';
 import { ZodError } from 'zod';
 
+import type { ReadGlossary } from '~/drizzle/tables';
+
 import resend from '~/providers/resend';
 
 import { assertAuthUser } from '../auth.server';
@@ -14,7 +16,7 @@ import { validatePayloadOrThrow } from '../lib/payload.validation';
 import { SystemNotification } from '../pages/admin/system.notification';
 import { UploadManagement } from '../pages/admin/upload.management';
 import { AdminManagement } from '../pages/admin/user.management';
-import { bulkCreateGlossaries } from '../services/glossary.service';
+import { bulkCreateGlossariesFromTransformed, type UploadReport } from '../services/glossary.service';
 import {
   createNotification,
   deleteBanner,
@@ -26,7 +28,10 @@ import { bulkCreateParagraphs } from '../services/paragraph.service';
 import { createSutra, getSutrasWithRolls } from '../services/sutra.service';
 import { createTeam, readTeams } from '../services/teams.service';
 import { createUser, readUsers, updateUser } from '../services/user.service';
-import { bulkGlossaryUploadSchema } from '../validations/glossary-upload.validation';
+import {
+  transformUploadDataToGlossariesForFrontend,
+  transformGlossariesToCreateFormat,
+} from '../utils/glossary.transformation';
 import { createBannerSchema } from '../validations/notification.validation';
 import { bulkCreateParagraphsSchema } from '../validations/paragraph-upload.validation';
 import { createSutraSchema } from '../validations/sutra.validation';
@@ -164,17 +169,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     } else if (kind === 'delete-banner') {
       const bannerId = formData.get('bannerId') as string;
       await deleteBanner({ user: user, bannerId });
-    } else if (kind === 'upload-glossaries') {
-      const uploadResultsJson = formData.get('uploadResults') as string;
+    } else if (kind === 'upload-glossaries-transformed') {
+      const glossariesJson = formData.get('glossaries') as string;
 
-      if (!uploadResultsJson) {
+      if (!glossariesJson) {
         return json(
           {
             success: false,
             errors: [
               {
-                path: ['uploadResults'],
-                message: 'Upload results are required',
+                path: ['glossaries'],
+                message: 'Glossaries data is required',
               },
             ],
           },
@@ -182,17 +187,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         );
       }
 
-      let uploadResultsData;
+      let glossariesData;
       try {
-        uploadResultsData = JSON.parse(uploadResultsJson);
+        glossariesData = JSON.parse(glossariesJson);
       } catch (parseError) {
         return json(
           {
             success: false,
             errors: [
               {
-                path: ['uploadResults'],
-                message: 'Invalid JSON format for upload results',
+                path: ['glossaries'],
+                message: 'Invalid JSON format for glossaries data',
               },
             ],
           },
@@ -200,35 +205,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         );
       }
 
-      const result = validatePayloadOrThrow({
-        schema: bulkGlossaryUploadSchema,
-        formData: { uploadResults: uploadResultsData },
+      console.log('Processing transformed glossaries:', glossariesData.slice(0, 2));
+      console.log(`Processing ${glossariesData.length} glossary entries`);
+
+      // Process bulk upload to database and Algolia using the new optimized method
+      const uploadResult = await bulkCreateGlossariesFromTransformed(glossariesData);
+
+      // Always return the upload report, even if there are some failures
+      return json({
+        success: true,
+        uploadReport: uploadResult,
       });
-
-      console.log('Validated upload results:', result.uploadResults.slice(1, 5));
-      console.log(`Processing ${result.uploadResults.length} glossary entries for user ${user.id}`);
-
-      // Process bulk upload to database and Algolia
-      const uploadResult = await bulkCreateGlossaries(result.uploadResults, user.id);
-
-      if (!uploadResult.success) {
-        console.error('Bulk upload failed:', uploadResult.errors);
-        return json(
-          {
-            success: false,
-            errors: [
-              {
-                path: ['uploadResults'],
-                message: `Upload failed: ${uploadResult.errors.join(', ')}`,
-              },
-            ],
-          },
-          { status: 500 },
-        );
-      }
-
-      console.log(`Successfully processed ${uploadResult.processed} glossary entries. Redirecting to glossary page.`);
-      return redirect('/glossary');
     } else if (kind === 'upload-paragraph') {
       const uploadResultsJson = formData.get('uploadResults') as string;
 
@@ -312,11 +299,12 @@ export const ErrorBoundary = () => {
 };
 
 export default function AdminIndex() {
-  const { users, teams, notifications, sutras } = useLoaderData<typeof loader>();
+  const { users, teams, notifications, sutras, user } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
   const { toast } = useToast();
-  const [uploadResults, setUploadResults] = useState<UploadResults>([]);
+  const [transformedGlossaries, setTransformedGlossaries] = useState<ReadGlossary[]>([]);
+  const [uploadReport, setUploadReport] = useState<UploadReport | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
   const itemsPerPage = 10;
@@ -366,38 +354,19 @@ export default function AdminIndex() {
     [sutras],
   );
 
-  // Format upload results for GlossaryList component
-  const formattedUploadResults = useMemo(() => {
-    return uploadResults.map((result, index) => ({
-      ...result,
-      id: result.id || `temp-${index}`,
-      createdBy: result.createdBy || 'upload-user',
-      updatedBy: result.updatedBy || 'upload-user',
-      searchId: result.searchId || null,
-      createdAt: result.createdAt ? new Date(result.createdAt) : new Date(),
-      updatedAt: result.updatedAt ? new Date(result.updatedAt) : new Date(),
-      deletedAt: result.deletedAt ? new Date(result.deletedAt) : null,
-      discussion: result.discussion || null,
-      glossary: result.glossary || '',
-      phonetic: result.phonetic || null,
-      english: result.english || null,
-      phoneticSearchable: result.phoneticSearchable || null,
-      englishGlossarySearchable: result.englishGlossarySearchable || null,
-      translations: result.translations || null,
-      subscribers: result.subscribers || null,
-      author: result.author || null,
-      cbetaFrequency: result.cbetaFrequency || null,
-    }));
-  }, [uploadResults]);
-
-  // Pagination for upload results
-  const totalPages = Math.ceil(uploadResults.length / itemsPerPage);
+  // Pagination for transformed glossaries
+  const totalPages = Math.ceil(transformedGlossaries.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedResults = formattedUploadResults.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedResults = transformedGlossaries.slice(startIndex, startIndex + itemsPerPage);
 
   const handleGlossaryUpload = (results: Record<string, unknown>[]) => {
     // Type assertion - we know the structure from the CSV processing
-    setUploadResults(results as unknown as UploadResults);
+    const uploadData = results as unknown as UploadResults;
+
+    // Transform the flat data to proper glossary structure for frontend display
+    const transformed = transformUploadDataToGlossariesForFrontend(uploadData, user.id);
+    setTransformedGlossaries(transformed);
+
     setCurrentPage(1); // Reset to first page when new data is uploaded
   };
 
@@ -432,20 +401,33 @@ export default function AdminIndex() {
           variant: 'error',
         });
         setIsUploading(false);
-      } else if ('success' in actionData && actionData.success && 'message' in actionData) {
-        // Handle successful paragraph upload
-        toast({
-          title: 'Upload Successful',
-          description: String(actionData.message),
-          variant: 'default',
-        });
-        setIsUploading(false);
+      } else if ('success' in actionData && actionData.success) {
+        if ('uploadReport' in actionData) {
+          // Handle glossary upload report
+          setUploadReport(actionData.uploadReport as UploadReport);
+          setIsUploading(false);
+
+          const report = actionData.uploadReport as UploadReport;
+          toast({
+            title: 'Upload Completed',
+            description: `${report.totalInserted} glossaries uploaded successfully${report.totalFailed > 0 ? `, ${report.totalFailed} failed` : ''}`,
+            variant: report.success ? 'default' : 'error',
+          });
+        } else if ('message' in actionData) {
+          // Handle successful paragraph upload
+          toast({
+            title: 'Upload Successful',
+            description: String(actionData.message),
+            variant: 'default',
+          });
+          setIsUploading(false);
+        }
       }
     }
   }, [actionData, toast]);
 
   const handleUploadResults = () => {
-    if (uploadResults.length === 0) {
+    if (transformedGlossaries.length === 0) {
       toast({
         title: 'No Data to Upload',
         description: 'Please upload and process a CSV file first.',
@@ -456,15 +438,19 @@ export default function AdminIndex() {
 
     setIsUploading(true);
 
+    // Convert transformed glossaries to CreateGlossary format for optimized backend processing
+    const glossariesForBackend = transformGlossariesToCreateFormat(transformedGlossaries);
+
     const formData = new FormData();
-    formData.append('kind', 'upload-glossaries');
-    formData.append('uploadResults', JSON.stringify(uploadResults));
+    formData.append('kind', 'upload-glossaries-transformed');
+    formData.append('glossaries', JSON.stringify(glossariesForBackend));
 
     submit(formData, { method: 'post' });
   };
 
   const handleCancelUpload = () => {
-    setUploadResults([]);
+    setTransformedGlossaries([]);
+    setUploadReport(null);
     setCurrentPage(1);
     setIsUploading(false);
   };
@@ -492,10 +478,11 @@ export default function AdminIndex() {
           totalPages={totalPages}
           currentPage={currentPage}
           isUploading={isUploading}
+          uploadReport={uploadReport}
           onPageChange={setCurrentPage}
-          uploadResults={uploadResults}
           onCancelUpload={handleCancelUpload}
           paginatedResults={paginatedResults}
+          uploadResults={transformedGlossaries}
           onUploadResults={handleUploadResults}
           onGlossaryUpload={handleGlossaryUpload}
           onParagraphUpload={handleParagraphUpload}
