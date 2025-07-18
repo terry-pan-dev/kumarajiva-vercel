@@ -25,7 +25,7 @@ import {
   toggleBanner,
 } from '../services/notification.service';
 import { bulkCreateParagraphs } from '../services/paragraph.service';
-import { createSutra, getSutrasWithRolls } from '../services/sutra.service';
+import { createSutra, getAllSutrasWithRolls } from '../services/sutra.service';
 import { createTeam, readTeams } from '../services/teams.service';
 import { createUser, readUsers, updateUser } from '../services/user.service';
 import {
@@ -81,7 +81,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const users = await readUsers();
   const teams = await readTeams();
   const notifications = await readAllNotifications();
-  const sutras = await getSutrasWithRolls({ teamId: user.teamId });
+  // Admins can see all sutras regardless of team
+  const sutras = await getAllSutrasWithRolls();
   return json({
     users: users.filter((u) => u.id !== user.id || u.email === 'pantaotao123@gmail.com'),
     teams,
@@ -304,6 +305,10 @@ export default function AdminIndex() {
   const submit = useSubmit();
   const { toast } = useToast();
   const [transformedGlossaries, setTransformedGlossaries] = useState<ReadGlossary[]>([]);
+  const [paragraphUploadResults, setParagraphUploadResults] = useState<any[]>([]);
+  const [paragraphUploadMetadata, setParagraphUploadMetadata] = useState<{ sutraId: string; rollId: string } | null>(
+    null,
+  );
   const [uploadReport, setUploadReport] = useState<UploadReport | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
@@ -371,13 +376,16 @@ export default function AdminIndex() {
   };
 
   const handleParagraphUpload = (results: Record<string, unknown>[]) => {
-    setIsUploading(true);
+    // Extract the paragraph data from the results
+    const uploadData = results[0] as any;
+    const paragraphData = uploadData.data || [];
 
-    const formData = new FormData();
-    formData.append('kind', 'upload-paragraph');
-    formData.append('uploadResults', JSON.stringify(results));
-
-    submit(formData, { method: 'post' });
+    setParagraphUploadResults(paragraphData);
+    setParagraphUploadMetadata({
+      sutraId: uploadData.sutraId,
+      rollId: uploadData.rollId,
+    });
+    setCurrentPage(1); // Reset to first page when new data is uploaded
   };
 
   // Handle action data and show toasts for errors only (success redirects server-side)
@@ -427,7 +435,7 @@ export default function AdminIndex() {
   }, [actionData, toast]);
 
   const handleUploadResults = () => {
-    if (transformedGlossaries.length === 0) {
+    if (transformedGlossaries.length === 0 && paragraphUploadResults.length === 0) {
       toast({
         title: 'No Data to Upload',
         description: 'Please upload and process a CSV file first.',
@@ -438,18 +446,38 @@ export default function AdminIndex() {
 
     setIsUploading(true);
 
-    // Convert transformed glossaries to CreateGlossary format for optimized backend processing
-    const glossariesForBackend = transformGlossariesToCreateFormat(transformedGlossaries);
+    if (transformedGlossaries.length > 0) {
+      // Handle glossary upload
+      const glossariesForBackend = transformGlossariesToCreateFormat(transformedGlossaries);
 
-    const formData = new FormData();
-    formData.append('kind', 'upload-glossaries-transformed');
-    formData.append('glossaries', JSON.stringify(glossariesForBackend));
+      const formData = new FormData();
+      formData.append('kind', 'upload-glossaries-transformed');
+      formData.append('glossaries', JSON.stringify(glossariesForBackend));
 
-    submit(formData, { method: 'post' });
+      submit(formData, { method: 'post' });
+    } else if (paragraphUploadResults.length > 0) {
+      // Handle paragraph upload
+      const formData = new FormData();
+      formData.append('kind', 'upload-paragraph');
+      formData.append(
+        'uploadResults',
+        JSON.stringify([
+          {
+            data: paragraphUploadResults,
+            sutraId: paragraphUploadMetadata?.sutraId,
+            rollId: paragraphUploadMetadata?.rollId,
+          },
+        ]),
+      );
+
+      submit(formData, { method: 'post' });
+    }
   };
 
   const handleCancelUpload = () => {
     setTransformedGlossaries([]);
+    setParagraphUploadResults([]);
+    setParagraphUploadMetadata(null);
     setUploadReport(null);
     setCurrentPage(1);
     setIsUploading(false);
@@ -482,10 +510,11 @@ export default function AdminIndex() {
           onPageChange={setCurrentPage}
           onCancelUpload={handleCancelUpload}
           paginatedResults={paginatedResults}
-          uploadResults={transformedGlossaries}
           onUploadResults={handleUploadResults}
+          uploadResults={transformedGlossaries}
           onGlossaryUpload={handleGlossaryUpload}
           onParagraphUpload={handleParagraphUpload}
+          paragraphUploadResults={paragraphUploadResults}
         />
       </TabsContent>
     </Tabs>

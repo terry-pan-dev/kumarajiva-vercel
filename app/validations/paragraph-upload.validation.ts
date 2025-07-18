@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const paragraphUploadCsvSchema = z.object({
   OriginSutra: z.string().min(1, 'Origin sutra is required'),
-  TargetSutra: z.string().min(1, 'Target sutra is required'),
+  TargetSutra: z.string().optional(),
 });
 
 export const paragraphUploadSchema = z.object({
@@ -18,7 +18,7 @@ export const bulkCreateParagraphsSchema = z.object({
     .array(
       z.object({
         originSutra: z.string().min(1, 'Origin sutra is required'),
-        targetSutra: z.string().min(1, 'Target sutra is required'),
+        targetSutra: z.string().optional(),
         references: z
           .array(
             z.object({

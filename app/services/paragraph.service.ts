@@ -327,7 +327,7 @@ export const bulkCreateParagraphs = async ({
   rollId: string;
   data: Array<{
     originSutra: string;
-    targetSutra: string;
+    targetSutra?: string;
     references: Array<{
       sutraName: string;
       content: string;
@@ -371,37 +371,40 @@ export const bulkCreateParagraphs = async ({
       })
       .returning({ id: paragraphsTable.id });
 
-    // Create target paragraph
-    const targetParagraphId = uuidv4();
-    const targetSearchId = uuidv4();
+    // Create target paragraph only if targetSutra is provided and not empty
+    let targetParagraph = null;
+    if (targetSutra && targetSutra.trim()) {
+      const targetParagraphId = uuidv4();
+      const targetSearchId = uuidv4();
 
-    await algoliaClient.saveObject({
-      indexName: 'paragraphs',
-      body: {
-        id: targetParagraphId,
-        content: targetSutra,
-        language: 'english',
-        rollId,
-        parentId: originParagraphId,
-        objectID: targetSearchId,
-      },
-    });
+      await algoliaClient.saveObject({
+        indexName: 'paragraphs',
+        body: {
+          id: targetParagraphId,
+          content: targetSutra,
+          language: 'english',
+          rollId,
+          parentId: originParagraphId,
+          objectID: targetSearchId,
+        },
+      });
 
-    const targetParagraph = await dbClient
-      .insert(paragraphsTable)
-      .values({
-        id: targetParagraphId,
-        content: targetSutra,
-        language: 'english',
-        rollId,
-        parentId: originParagraphId,
-        number: i + 1,
-        order: String(i + 1),
-        searchId: targetSearchId,
-        createdBy,
-        updatedBy: createdBy,
-      })
-      .returning({ id: paragraphsTable.id });
+      targetParagraph = await dbClient
+        .insert(paragraphsTable)
+        .values({
+          id: targetParagraphId,
+          content: targetSutra,
+          language: 'english',
+          rollId,
+          parentId: originParagraphId,
+          number: i + 1,
+          order: String(i + 1),
+          searchId: targetSearchId,
+          createdBy,
+          updatedBy: createdBy,
+        })
+        .returning({ id: paragraphsTable.id });
+    }
 
     // Create references if any
     if (references.length > 0) {
@@ -420,7 +423,7 @@ export const bulkCreateParagraphs = async ({
 
     results.push({
       origin: originParagraph[0],
-      target: targetParagraph[0],
+      target: targetParagraph ? targetParagraph[0] : null,
       references: references.length,
     });
   }
