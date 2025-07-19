@@ -260,7 +260,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         formData: uploadResultsData[0],
       });
 
-      console.log('Validated paragraph upload:', result);
+      console.log('Validated paragraph upload:', result.data[0]);
       console.log(`Processing ${result.data.length} paragraph entries for user ${user.id}`);
 
       // Process bulk upload to database and Algolia

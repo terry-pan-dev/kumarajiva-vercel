@@ -320,11 +320,15 @@ export const updateComment = async ({
 export const bulkCreateParagraphs = async ({
   sutraId,
   rollId,
+  targetSutraId,
+  targetRollId,
   data,
   createdBy,
 }: {
   sutraId: string;
   rollId: string;
+  targetSutraId?: string | null;
+  targetRollId?: string | null;
   data: Array<{
     originSutra: string;
     targetSutra?: string;
@@ -336,77 +340,114 @@ export const bulkCreateParagraphs = async ({
   }>;
   createdBy: string;
 }) => {
-  const results = [];
+  // Fetch sutra information to get the correct languages
+  const originSutra = await dbClient.query.sutrasTable.findFirst({
+    where: (sutras, { eq }) => eq(sutras.id, sutraId),
+  });
 
+  if (!originSutra) {
+    throw new Error(`Origin sutra with ID ${sutraId} not found`);
+  }
+
+  let targetSutra = null;
+  if (targetSutraId) {
+    targetSutra = await dbClient.query.sutrasTable.findFirst({
+      where: (sutras, { eq }) => eq(sutras.id, targetSutraId),
+    });
+
+    if (!targetSutra) {
+      throw new Error(`Target sutra with ID ${targetSutraId} not found`);
+    }
+  }
+  // Prepare data for bulk operations
+  const originParagraphs: CreateParagraph[] = [];
+  const targetParagraphs: CreateParagraph[] = [];
+  const allReferences: Array<{
+    id: string;
+    paragraphId: string;
+    sutraName: string;
+    content: string;
+    order: string;
+    createdBy: string;
+    updatedBy: string;
+  }> = [];
+  const algoliaObjects: Array<{
+    id: string;
+    content: string;
+    language: string;
+    rollId: string;
+    parentId?: string;
+    objectID: string;
+  }> = [];
+  const results: Array<{
+    originId: string;
+    targetId: string | null;
+    references: number;
+  }> = [];
+
+  // Pre-generate all IDs and prepare data structures
   for (let i = 0; i < data.length; i++) {
-    const { originSutra, targetSutra, references } = data[i];
+    const { originSutra: originSutraContent, targetSutra: targetSutraContent, references } = data[i];
 
-    // Create origin paragraph
     const originParagraphId = uuidv4();
     const originSearchId = uuidv4();
 
-    await algoliaClient.saveObject({
-      indexName: 'paragraphs',
-      body: {
-        id: originParagraphId,
-        content: originSutra,
-        language: 'chinese',
-        rollId,
-        objectID: originSearchId,
-      },
+    // Prepare origin paragraph for DB
+    originParagraphs.push({
+      id: originParagraphId,
+      content: originSutraContent,
+      language: originSutra.language, // Use the origin sutra's language setting
+      rollId,
+      number: i,
+      order: `${i}.0`,
+      searchId: originSearchId,
+      createdBy,
+      updatedBy: createdBy,
     });
 
-    const originParagraph = await dbClient
-      .insert(paragraphsTable)
-      .values({
-        id: originParagraphId,
-        content: originSutra,
-        language: 'chinese',
-        rollId,
-        number: i + 1,
-        order: String(i + 1),
-        searchId: originSearchId,
+    // Prepare origin paragraph for Algolia
+    algoliaObjects.push({
+      id: originParagraphId,
+      content: originSutraContent,
+      language: originSutra.language, // Use the origin sutra's language setting
+      rollId,
+      objectID: originSearchId,
+    });
+
+    let targetParagraphId = null;
+    let targetSearchId = null;
+
+    // Create target paragraph only if targetSutra is provided and not empty, and target roll exists
+    if (targetSutraContent && targetSutraContent.trim() && targetRollId && targetSutra) {
+      targetParagraphId = uuidv4();
+      targetSearchId = uuidv4();
+
+      // Prepare target paragraph for DB - uses target roll ID, not origin roll ID
+      targetParagraphs.push({
+        id: targetParagraphId,
+        content: targetSutraContent,
+        language: targetSutra.language, // Use the target sutra's language setting
+        rollId: targetRollId, // Use target roll ID, not origin roll ID
+        parentId: originParagraphId,
+        number: i,
+        order: `${i}.0`,
+        searchId: targetSearchId,
         createdBy,
         updatedBy: createdBy,
-      })
-      .returning({ id: paragraphsTable.id });
-
-    // Create target paragraph only if targetSutra is provided and not empty
-    let targetParagraph = null;
-    if (targetSutra && targetSutra.trim()) {
-      const targetParagraphId = uuidv4();
-      const targetSearchId = uuidv4();
-
-      await algoliaClient.saveObject({
-        indexName: 'paragraphs',
-        body: {
-          id: targetParagraphId,
-          content: targetSutra,
-          language: 'english',
-          rollId,
-          parentId: originParagraphId,
-          objectID: targetSearchId,
-        },
       });
 
-      targetParagraph = await dbClient
-        .insert(paragraphsTable)
-        .values({
-          id: targetParagraphId,
-          content: targetSutra,
-          language: 'english',
-          rollId,
-          parentId: originParagraphId,
-          number: i + 1,
-          order: String(i + 1),
-          searchId: targetSearchId,
-          createdBy,
-          updatedBy: createdBy,
-        })
-        .returning({ id: paragraphsTable.id });
+      // Prepare target paragraph for Algolia
+      algoliaObjects.push({
+        id: targetParagraphId,
+        content: targetSutraContent,
+        language: targetSutra.language, // Use the target sutra's language setting
+        rollId: targetRollId, // Use target roll ID, not origin roll ID
+        parentId: originParagraphId,
+        objectID: targetSearchId,
+      });
     }
 
-    // Create references if any
+    // Prepare references for bulk insert
     if (references.length > 0) {
       const referencesToInsert = references.map((ref) => ({
         id: uuidv4(),
@@ -418,15 +459,78 @@ export const bulkCreateParagraphs = async ({
         updatedBy: createdBy,
       }));
 
-      await dbClient.insert(referencesTable).values(referencesToInsert);
+      allReferences.push(...referencesToInsert);
     }
 
+    // Prepare result entry
     results.push({
-      origin: originParagraph[0],
-      target: targetParagraph ? targetParagraph[0] : null,
+      originId: originParagraphId,
+      targetId: targetParagraphId,
       references: references.length,
     });
   }
 
-  return results;
+  try {
+    // Bulk insert to Algolia first (faster to rollback if DB fails)
+    if (algoliaObjects.length > 0) {
+      await algoliaClient.saveObjects({
+        indexName: 'paragraphs',
+        objects: algoliaObjects,
+      });
+    }
+
+    // Bulk insert origin paragraphs to database
+    const insertedOriginParagraphs = await dbClient
+      .insert(paragraphsTable)
+      .values(originParagraphs)
+      .returning({ id: paragraphsTable.id });
+
+    // Bulk insert target paragraphs to database if any
+    let insertedTargetParagraphs: Array<{ id: string }> = [];
+    if (targetParagraphs.length > 0) {
+      insertedTargetParagraphs = await dbClient
+        .insert(paragraphsTable)
+        .values(targetParagraphs)
+        .returning({ id: paragraphsTable.id });
+    }
+
+    // Bulk insert references if any
+    if (allReferences.length > 0) {
+      await dbClient.insert(referencesTable).values(allReferences);
+    }
+
+    // Map results with actual inserted data
+    let targetIndex = 0;
+    return results.map((result, index) => {
+      let targetResult = null;
+      if (result.targetId) {
+        targetResult = insertedTargetParagraphs[targetIndex] || null;
+        targetIndex++;
+      }
+
+      return {
+        origin: insertedOriginParagraphs[index] || null,
+        target: targetResult,
+        references: result.references,
+      };
+    });
+  } catch (error) {
+    // If database operations fail, clean up Algolia objects
+    console.error('Bulk paragraph creation failed:', error);
+
+    if (algoliaObjects.length > 0) {
+      try {
+        const objectIDs = algoliaObjects.map((obj) => obj.objectID);
+        await algoliaClient.deleteObjects({
+          indexName: 'paragraphs',
+          objectIDs,
+        });
+        console.log('Cleaned up Algolia objects after database failure');
+      } catch (cleanupError) {
+        console.error('Failed to cleanup Algolia objects:', cleanupError);
+      }
+    }
+
+    throw error;
+  }
 };

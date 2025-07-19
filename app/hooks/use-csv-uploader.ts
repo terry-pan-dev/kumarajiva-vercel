@@ -94,7 +94,11 @@ export const useCsvUploader = ({
   );
 
   const validateDataValues = useCallback(
-    (data: Record<string, string>[], headers: string[]): { errors: string[]; missingValues: MissingValueEntry[] } => {
+    (
+      data: Record<string, string>[],
+      headers: string[],
+      requiredHeaders: readonly string[],
+    ): { errors: string[]; missingValues: MissingValueEntry[] } => {
       const errors: string[] = [];
       const missingValues: MissingValueEntry[] = [];
 
@@ -103,9 +107,21 @@ export const useCsvUploader = ({
 
         headers.forEach((header) => {
           const value = row[header];
-          // Check if value is null, undefined, or empty string (after trimming)
-          if (value == null || value.toString().trim() === '') {
-            missingFields.push(header);
+          const trimmedValue = value?.toString().trim() || '';
+
+          // For required headers, value must not be empty
+          if (requiredHeaders.includes(header)) {
+            if (!trimmedValue) {
+              missingFields.push(header);
+            }
+          }
+          // For TargetSutra and Reference columns: if present and not null/undefined, must be non-empty
+          else if (header === 'TargetSutra' || (header !== 'OriginSutra' && header !== 'TargetSutra')) {
+            // Only validate if the value is explicitly provided (not null/undefined)
+            // but if provided, it must not be empty after trimming
+            if (value != null && trimmedValue === '') {
+              missingFields.push(header);
+            }
           }
         });
 
@@ -155,14 +171,23 @@ export const useCsvUploader = ({
       Papa.parse<Record<string, string>>(file, {
         header: true,
         skipEmptyLines: true,
+        delimiter: '', // Let Papa Parse auto-detect, but be more forgiving
+        delimitersToGuess: [',', '\t', '|', ';'], // Common delimiters to try
         complete: (results: Papa.ParseResult<Record<string, string>>) => {
           const errors: string[] = [];
 
-          // Check for parsing errors
+          // Check for parsing errors, but be more lenient for single-column files
           if (results.errors.length > 0) {
-            const parseErrors = results.errors
-              .filter((error) => error.type === 'Quotes' || error.type === 'Delimiter')
-              .map((error) => `Row ${error.row}: ${error.message}`);
+            const significantErrors = results.errors.filter((error) => {
+              // Filter out delimiter detection warnings for single-column files
+              if (error.type === 'Delimiter' && error.message?.includes('auto-detect delimiting character')) {
+                // Check if we have valid data despite the warning
+                return results.data.length === 0 || !results.meta.fields || results.meta.fields.length === 0;
+              }
+              return error.type === 'Quotes' || error.type === 'Delimiter';
+            });
+
+            const parseErrors = significantErrors.map((error) => `Row ${error.row}: ${error.message}`);
             errors.push(...parseErrors);
           }
 
@@ -182,7 +207,7 @@ export const useCsvUploader = ({
           // Validate data values for missing fields
           let missingValues: MissingValueEntry[] = [];
           if (results.data.length > 0 && results.meta.fields) {
-            const valueValidation = validateDataValues(results.data, results.meta.fields);
+            const valueValidation = validateDataValues(results.data, results.meta.fields, requiredHeaders);
             errors.push(...valueValidation.errors);
             missingValues = valueValidation.missingValues;
           }
@@ -230,7 +255,7 @@ export const useCsvUploader = ({
         },
       });
     },
-    [validateFile, validateHeaders, validateDataValues, onValidationComplete, composeObjects],
+    [validateFile, validateHeaders, validateDataValues, onValidationComplete, composeObjects, requiredHeaders],
   );
 
   const clearFile = useCallback(() => {

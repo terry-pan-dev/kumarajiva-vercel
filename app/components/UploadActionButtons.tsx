@@ -303,26 +303,40 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
 
   // Function to compose CSV data into paragraph objects
   const composeParagraphObjects = (data: Record<string, string>[]) => {
-    return data.map((row) => {
-      const originSutra = row['OriginSutra'];
-      const targetSutra = row['TargetSutra'];
+    return data
+      .filter((row) => {
+        // Skip completely empty rows (all values are empty/whitespace)
+        const hasNonEmptyValue = Object.values(row).some((value) => value?.toString().trim());
+        return hasNonEmptyValue;
+      })
+      .map((row) => {
+        const originSutra = row['OriginSutra']?.trim() || '';
+        const targetSutra = row['TargetSutra']?.trim() || '';
 
-      // Extract reference fields (any fields other than required ones)
-      const references = Object.entries(row)
-        .filter(([key]) => !['OriginSutra', 'TargetSutra'].includes(key))
-        .map(([sutraName, content], index) => ({
-          sutraName,
-          content: content || '',
-          order: String(index),
-        }))
-        .filter((ref) => ref.content.trim() !== '');
+        // Extract reference fields (any fields other than required ones)
+        const references = Object.entries(row)
+          .filter(([key]) => !['OriginSutra', 'TargetSutra'].includes(key))
+          .map(([sutraName, content], index) => ({
+            sutraName,
+            content: content?.toString().trim() || '',
+            order: String(index),
+          }))
+          .filter((ref) => {
+            // Only include references that have non-empty content
+            // This handles cases where CSV has empty cells vs null/undefined
+            return ref.content !== '';
+          });
 
-      return {
-        originSutra,
-        targetSutra,
-        references,
-      };
-    });
+        return {
+          originSutra,
+          targetSutra,
+          references,
+        };
+      })
+      .filter((composed) => {
+        // Ensure OriginSutra is not empty after processing
+        return composed.originSutra !== '';
+      });
   };
 
   // Check if TargetSutra column exists and validate corresponding target sutra/chapter
@@ -425,6 +439,13 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
     // Wait for user to select sutra and chapter
   };
 
+  const requiredHeaders = ['OriginSutra'];
+
+  // Check if form is valid based on whether TargetSutra column exists
+  const hasTargetSutraColumn = validationResult?.data?.data?.some(
+    (row) => 'TargetSutra' in row && row['TargetSutra']?.trim(),
+  );
+
   // Function to handle final validation and submission
   const handleFormSubmit = useCallback(() => {
     if (!validationResult?.isValid || !validationResult.composedObjects || !onValidationComplete) {
@@ -436,21 +457,35 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
       return;
     }
 
+    // Get target roll ID if target sutra is selected
+    let targetRollId = null;
+    if (hasTargetSutraColumn && selectedTargetSutra && selectedRoll) {
+      // Find the corresponding target roll based on the selected origin roll
+      const targetSutraForRoll = selectedTargetSutraData || targetSutras[0];
+      const targetRoll = targetSutraForRoll?.rolls?.find((roll) => roll.parentId === selectedRoll);
+      targetRollId = targetRoll?.id || null;
+    }
+
     // Add sutra and roll information to the composed objects
     const dataWithSelection = {
       sutraId: selectedSutra,
       rollId: selectedRoll,
+      targetSutraId: selectedTargetSutra || null,
+      targetRollId: targetRollId,
       data: validationResult.composedObjects,
     };
     onValidationComplete([dataWithSelection]);
-  }, [validationResult, onValidationComplete, selectedSutra, selectedRoll, validateTargetSutra]);
-
-  const requiredHeaders = ['OriginSutra'];
-
-  // Check if form is valid based on whether TargetSutra column exists
-  const hasTargetSutraColumn = validationResult?.data?.data?.some(
-    (row) => 'TargetSutra' in row && row['TargetSutra']?.trim(),
-  );
+  }, [
+    validationResult,
+    onValidationComplete,
+    selectedSutra,
+    selectedRoll,
+    validateTargetSutra,
+    hasTargetSutraColumn,
+    selectedTargetSutra,
+    selectedTargetSutraData,
+    targetSutras,
+  ]);
 
   const isFormValid = useMemo(() => {
     if (!selectedSutra || !selectedRoll || !validationResult?.isValid || targetSutraValidationError) {
@@ -494,14 +529,51 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
 
   return (
     <div className="space-y-4">
-      {/* Show dropdown lists after CSV upload */}
+      {/* Show upload instructions and drop zone only if no CSV is uploaded */}
+      {!validationResult?.isValid && (
+        <div className="space-y-2">
+          <div className="rounded-md bg-blue-50 p-3">
+            <p className="text-sm text-blue-800">
+              <strong>Required:</strong> OriginSutra
+            </p>
+            <p className="text-sm text-blue-700">
+              <strong>Optional:</strong> TargetSutra, Reference columns
+            </p>
+            <p className="mt-1 text-xs text-blue-600">Additional fields will be treated as references.</p>
+          </div>
+
+          <CsvFileUploader
+            requiredHeaders={requiredHeaders}
+            maxFileSizeBytes={10 * 1024 * 1024} // 10MB
+            composeObjects={composeParagraphObjects}
+            onValidationComplete={handleValidationComplete}
+          />
+        </div>
+      )}
+
+      {/* Show form controls after CSV upload */}
       {validationResult?.isValid && (
         <div className="space-y-4">
-          <h3 className="text-md font-medium">Select Sutra and Chapter to upload to</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-md font-medium">Select Sutra and Chapter to upload to</h3>
+            <button
+              type="button"
+              className="text-sm text-gray-500 underline hover:text-gray-700"
+              onClick={() => {
+                setValidationResult(null);
+                setSelectedSutra('');
+                setSelectedRoll('');
+                setSelectedTargetSutra('');
+                setTargetSutraValidationError('');
+              }}
+            >
+              Upload different file
+            </button>
+          </div>
 
           {/* Show uploaded CSV column names */}
           <div className="rounded-md bg-green-50 p-3">
-            <p className="mb-2 text-sm font-medium text-green-800">Uploaded CSV columns:</p>
+            <p className="mb-2 text-sm font-medium text-green-800">CSV columns values to upload:</p>
             <div className="flex flex-wrap gap-2">
               {validationResult.headers?.map((header: string, index: number) => (
                 <span
@@ -604,26 +676,7 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
         </div>
       )}
 
-      {/* Upload area */}
-      <div className="space-y-2">
-        <div className="rounded-md bg-blue-50 p-3">
-          <p className="text-sm text-blue-800">
-            <strong>Required:</strong> OriginSutra
-          </p>
-          <p className="text-sm text-blue-700">
-            <strong>Optional:</strong> TargetSutra, Reference columns
-          </p>
-          <p className="mt-1 text-xs text-blue-600">Additional fields will be treated as references.</p>
-        </div>
-
-        <CsvFileUploader
-          requiredHeaders={requiredHeaders}
-          maxFileSizeBytes={10 * 1024 * 1024} // 10MB
-          composeObjects={composeParagraphObjects}
-          onValidationComplete={handleValidationComplete}
-        />
-      </div>
-
+      {/* Show success message when form is valid */}
       {isFormValid && (
         <div className="rounded-lg bg-green-50 p-4">
           <div className="flex items-center gap-2 text-green-800">

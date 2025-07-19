@@ -14,6 +14,8 @@ export const paragraphUploadSchema = z.object({
 export const bulkCreateParagraphsSchema = z.object({
   sutraId: z.string().uuid('Invalid sutra ID'),
   rollId: z.string().uuid('Invalid roll ID'),
+  targetSutraId: z.string().uuid('Invalid target sutra ID').nullable().optional(),
+  targetRollId: z.string().uuid('Invalid target roll ID').nullable().optional(),
   data: z
     .array(
       z.object({
