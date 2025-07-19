@@ -58,6 +58,7 @@ export const createRoll = async (roll: Omit<CreateRoll, 'updatedBy' | 'createdBy
     .insert(rollsTable)
     .values({
       ...roll,
+      parentId: roll.parentId || null, // Convert empty string or undefined to null
       updatedBy: userId,
       createdBy: userId,
     })

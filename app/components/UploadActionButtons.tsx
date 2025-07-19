@@ -30,6 +30,8 @@ type SutraWithRolls = ReadSutra & {
         updatedBy: string;
       }
   )[];
+  children?: ReadSutra[];
+  parent?: ReadSutra | null;
 };
 
 interface UploadActionButtonsProps {
@@ -240,11 +242,64 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
   const [validationResult, setValidationResult] = useState<CsvValidationResult | null>(null);
   const [selectedSutra, setSelectedSutra] = useState<string>('');
   const [selectedRoll, setSelectedRoll] = useState<string>('');
+  const [selectedTargetSutra, setSelectedTargetSutra] = useState<string>('');
   const [targetSutraValidationError, setTargetSutraValidationError] = useState<string>('');
 
   // Get rolls for the selected sutra
   const selectedSutraData = useMemo(() => sutras.find((s) => s.id === selectedSutra), [sutras, selectedSutra]);
   const availableRolls = useMemo(() => selectedSutraData?.rolls || [], [selectedSutraData]);
+
+  // Get target sutras for the selected origin sutra
+  const targetSutras = useMemo(() => {
+    if (!selectedSutraData) return [];
+    return sutras.filter((s) => s.parentId === selectedSutra);
+  }, [sutras, selectedSutra, selectedSutraData]);
+
+  // Get selected target sutra data
+  const selectedTargetSutraData = useMemo(() => {
+    if (!selectedTargetSutra) return null;
+    return sutras.find((s) => s.id === selectedTargetSutra);
+  }, [sutras, selectedTargetSutra]);
+
+  // Get selected roll data
+  const selectedRollData = useMemo(() => {
+    if (!selectedRoll) return null;
+    return availableRolls.find((r) => r.id === selectedRoll);
+  }, [availableRolls, selectedRoll]);
+
+  // Check if selected sutra has any chapters
+  const validateSutraHasChapters = useCallback(() => {
+    if (!selectedSutra || !selectedSutraData) {
+      setTargetSutraValidationError('');
+      return true;
+    }
+
+    const selectedSutraTitle = selectedSutraData.title;
+
+    if (!availableRolls || availableRolls.length === 0) {
+      setTargetSutraValidationError(
+        `No chapters found for sutra "${selectedSutraTitle}". Please create chapters first before uploading paragraphs.`,
+      );
+      return false;
+    }
+
+    setTargetSutraValidationError('');
+    return true;
+  }, [selectedSutra, selectedSutraData, availableRolls]);
+
+  // Auto-validate when sutra data changes
+  React.useEffect(() => {
+    if (selectedSutra && selectedSutraData) {
+      // Always validate chapters first
+      validateSutraHasChapters();
+    } else if (selectedSutra && !selectedSutraData) {
+      // If sutra is selected but sutraData is not found, clear error
+      setTargetSutraValidationError('');
+    } else if (!selectedSutra) {
+      // If no sutra selected, clear error
+      setTargetSutraValidationError('');
+    }
+  }, [selectedSutra, selectedSutraData, validateSutraHasChapters]);
 
   // Function to compose CSV data into paragraph objects
   const composeParagraphObjects = (data: Record<string, string>[]) => {
@@ -270,7 +325,7 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
     });
   };
 
-  // Check if TargetSutra column exists and validate corresponding English sutra/chapter
+  // Check if TargetSutra column exists and validate corresponding target sutra/chapter
   const validateTargetSutra = useCallback(
     (data: Record<string, string>[]) => {
       const hasTargetSutraColumn = data.some((row) => 'TargetSutra' in row && row['TargetSutra']?.trim());
@@ -286,50 +341,44 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
         return true;
       }
 
-      // Find English sutras using the language field from the database schema
-      const englishSutras = sutras.filter((sutra) => sutra.language === 'english');
-
-      if (englishSutras.length === 0) {
-        setTargetSutraValidationError('No English sutras found. Please create English sutras first.');
-        return false;
-      }
-
-      // Check if selected sutra has English equivalent
-      // For Chinese sutras, look for English translations (parentId points to the Chinese sutra)
       const selectedSutraTitle = selectedSutraData?.title;
-      const correspondingEnglishSutra = englishSutras.find(
-        (sutra) =>
-          sutra.parentId === selectedSutra ||
-          sutra.title.toLowerCase().includes(
-            selectedSutraTitle
-              ?.toLowerCase()
-              .replace(/english/gi, '')
-              .trim() || '',
-          ),
-      );
+      const selectedRollTitle = selectedRollData?.title;
 
-      if (!correspondingEnglishSutra) {
+      // Check if target sutras exist for the selected origin sutra
+      if (targetSutras.length === 0) {
         setTargetSutraValidationError(
-          `No corresponding English sutra found for "${selectedSutraTitle}". Please create the English sutra and chapter first.`,
+          `Target sutra missing for current sutra "${selectedSutraTitle}". Please create the target sutra first.`,
         );
         return false;
       }
 
-      // Check if English sutra has corresponding chapter
-      const selectedRollTitle = availableRolls.find((roll) => roll.id === selectedRoll)?.title;
-      const correspondingEnglishRoll = correspondingEnglishSutra.rolls?.find(
-        (roll) =>
-          roll.title.toLowerCase().includes(
-            selectedRollTitle
-              ?.toLowerCase()
-              .replace(/english/gi, '')
-              .trim() || '',
-          ) || roll.title === selectedRollTitle,
-      );
+      // If multiple target sutras exist, user must select one
+      if (targetSutras.length > 1 && !selectedTargetSutra) {
+        setTargetSutraValidationError('');
+        return true; // This will show the dropdown, no error yet
+      }
 
-      if (!correspondingEnglishRoll) {
+      // If only one target sutra exists, auto-select it
+      if (targetSutras.length === 1 && !selectedTargetSutra) {
+        setSelectedTargetSutra(targetSutras[0].id);
+      }
+
+      // Check if target chapter exists for the selected target sutra
+      const targetSutraForValidation = selectedTargetSutra ? selectedTargetSutraData : targetSutras[0];
+
+      if (!targetSutraForValidation) {
         setTargetSutraValidationError(
-          `No corresponding English chapter found for "${selectedRollTitle}" in sutra "${correspondingEnglishSutra.title}". Please create the English chapter first.`,
+          `Target sutra missing for current sutra "${selectedSutraTitle}". Please create the target sutra first.`,
+        );
+        return false;
+      }
+
+      // Find target chapter that corresponds to the selected origin chapter
+      const targetChapter = targetSutraForValidation.rolls?.find((roll) => roll.parentId === selectedRoll);
+
+      if (!targetChapter) {
+        setTargetSutraValidationError(
+          `Target chapter missing for current chapter "${selectedRollTitle}" in sutra "${targetSutraForValidation.title}". Please create the target chapter first.`,
         );
         return false;
       }
@@ -337,8 +386,38 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
       setTargetSutraValidationError('');
       return true;
     },
-    [selectedSutra, selectedRoll, sutras, selectedSutraData, availableRolls],
+    [
+      selectedSutra,
+      selectedRoll,
+      selectedTargetSutra,
+      selectedSutraData,
+      selectedRollData,
+      selectedTargetSutraData,
+      targetSutras,
+    ],
   );
+
+  // Auto-validate when chapter or target sutra changes
+  React.useEffect(() => {
+    if (
+      selectedSutra &&
+      selectedSutraData &&
+      validationResult?.data?.data &&
+      availableRolls &&
+      availableRolls.length > 0
+    ) {
+      // Only validate target sutra if the sutra has chapters
+      validateTargetSutra(validationResult.data?.data || []);
+    }
+  }, [
+    selectedRoll,
+    selectedTargetSutra,
+    selectedSutra,
+    selectedSutraData,
+    validateTargetSutra,
+    validationResult,
+    availableRolls,
+  ]);
 
   const handleValidationComplete = (result: CsvValidationResult) => {
     setValidationResult(result);
@@ -367,7 +446,44 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
   }, [validationResult, onValidationComplete, selectedSutra, selectedRoll, validateTargetSutra]);
 
   const requiredHeaders = ['OriginSutra'];
-  const isFormValid = selectedSutra && selectedRoll && validationResult?.isValid && !targetSutraValidationError;
+
+  // Check if form is valid based on whether TargetSutra column exists
+  const hasTargetSutraColumn = validationResult?.data?.data?.some(
+    (row) => 'TargetSutra' in row && row['TargetSutra']?.trim(),
+  );
+
+  const isFormValid = useMemo(() => {
+    if (!selectedSutra || !selectedRoll || !validationResult?.isValid || targetSutraValidationError) {
+      return false;
+    }
+
+    // First check if selected sutra has chapters
+    if (!validateSutraHasChapters()) {
+      return false;
+    }
+
+    // If CSV has TargetSutra column, additional validation is needed
+    if (hasTargetSutraColumn) {
+      // If multiple target sutras exist, user must select one
+      if (targetSutras.length > 1 && !selectedTargetSutra) {
+        return false;
+      }
+      // Must pass target sutra validation
+      return validateTargetSutra(validationResult.data?.data || []);
+    }
+
+    return true;
+  }, [
+    selectedSutra,
+    selectedRoll,
+    validationResult,
+    targetSutraValidationError,
+    hasTargetSutraColumn,
+    targetSutras.length,
+    selectedTargetSutra,
+    validateSutraHasChapters,
+    validateTargetSutra,
+  ]);
 
   // Auto-submit when form becomes valid
   React.useEffect(() => {
@@ -416,11 +532,8 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
                 onChange={(e) => {
                   setSelectedSutra(e.target.value);
                   setSelectedRoll(''); // Reset roll selection when sutra changes
-                  setTargetSutraValidationError(''); // Clear previous errors
-                  // Validate when sutra changes (if roll is also selected)
-                  if (validationResult?.data?.data) {
-                    setTimeout(() => validateTargetSutra(validationResult.data?.data || []), 0);
-                  }
+                  setSelectedTargetSutra(''); // Reset target sutra selection when sutra changes
+                  // Don't clear errors here - let the useEffect handle validation
                 }}
               >
                 <option value="">Choose a sutra...</option>
@@ -437,15 +550,11 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
               <select
                 value={selectedRoll}
                 disabled={!selectedSutra}
-                className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
                 onChange={(e) => {
                   setSelectedRoll(e.target.value);
-                  setTargetSutraValidationError(''); // Clear previous errors
-                  // Validate when roll changes (if sutra is also selected)
-                  if (validationResult?.data?.data && selectedSutra) {
-                    setTimeout(() => validateTargetSutra(validationResult.data?.data || []), 0);
-                  }
+                  // Let the useEffect handle validation automatically
                 }}
+                className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
               >
                 <option value="">Choose a chapter...</option>
                 {availableRolls.map((roll) => (
@@ -456,6 +565,31 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
               </select>
             </div>
           </div>
+
+          {/* Show target sutra selection dropdown if multiple target sutras exist */}
+          {hasTargetSutraColumn && targetSutras.length > 1 && (
+            <div>
+              <label className="mb-2 block text-sm font-medium">Select Target Sutra *</label>
+              <select
+                value={selectedTargetSutra}
+                className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => {
+                  setSelectedTargetSutra(e.target.value);
+                  // Let the useEffect handle validation automatically
+                }}
+              >
+                <option value="">Choose a target sutra...</option>
+                {targetSutras.map((sutra) => (
+                  <option key={sutra.id} value={sutra.id}>
+                    {sutra.title} ({sutra.language})
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-600">
+                Multiple target sutras found. Please select which one to upload against.
+              </p>
+            </div>
+          )}
 
           {/* Show TargetSutra validation error */}
           {targetSutraValidationError && (
@@ -498,7 +632,7 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
           </div>
           <p className="mt-1 text-sm text-green-700">
             Your CSV file has been validated and contains{' '}
-            {validationResult.composedObjects?.length || validationResult.data?.data.length} paragraph entries. Click
+            {validationResult?.composedObjects?.length || validationResult?.data?.data.length} paragraph entries. Click
             "Save" to proceed with the upload.
           </p>
         </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useFormContext } from 'react-hook-form';
 
-import type { ReadRollWithSutra, ReadSutra } from '~/drizzle/tables';
+import type { ReadRollWithSutra, ReadSutra, ReadRoll } from '~/drizzle/tables';
 
 import { createRollSchema } from '~/validations/roll.validation';
 
@@ -9,8 +9,28 @@ import { FormInput, FormSelect, FormModal } from './FormModal';
 import { Icons } from './icons';
 import { Button, ScrollArea, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui';
 
+type SutraWithRolls = ReadSutra & {
+  rolls?: (
+    | ReadRoll
+    | {
+        id: string;
+        title: string;
+        subtitle: string;
+        parentId: string | null;
+        sutraId: string;
+        createdAt: string;
+        updatedAt: string;
+        deletedAt: string | null;
+        createdBy: string;
+        updatedBy: string;
+      }
+  )[];
+  children?: ReadSutra[];
+  parent?: ReadSutra | null;
+};
+
 interface CreateChapterDialogProps {
-  sutras: ReadSutra[];
+  sutras: SutraWithRolls[];
   trigger?: React.ReactNode;
 }
 
@@ -147,7 +167,7 @@ function CreateChapterFormWrapper({
   sutras,
   onSutraSelect,
 }: {
-  sutras: ReadSutra[];
+  sutras: SutraWithRolls[];
   onSutraSelect: (sutraId: string) => void;
 }) {
   return <CreateChapterForm sutras={sutras} onSutraSelect={onSutraSelect} />;
@@ -157,7 +177,7 @@ function CreateChapterForm({
   sutras,
   onSutraSelect,
 }: {
-  sutras: ReadSutra[];
+  sutras: SutraWithRolls[];
   onSutraSelect: (sutraId: string) => void;
 }) {
   const { watch } = useFormContext();
@@ -168,6 +188,18 @@ function CreateChapterForm({
       onSutraSelect(sutraId);
     }
   }, [sutraId, onSutraSelect]);
+
+  // Get the selected sutra to find its parent
+  const selectedSutra = sutras.find((sutra) => sutra.id === sutraId);
+
+  // Get parent sutra and its chapters for the Origin Chapter ID dropdown
+  const parentSutra = selectedSutra?.parent;
+  // Find the parent sutra in the full sutras list to get its rolls
+  const parentSutraWithRolls = parentSutra ? sutras.find((s) => s.id === parentSutra.id) : null;
+  const parentChapters = parentSutraWithRolls?.rolls || [];
+
+  // Show Origin Chapter ID dropdown only if parent sutra has chapters
+  const showOriginChapterDropdown = parentSutra && parentChapters.length > 0;
 
   return (
     <div className="space-y-4 px-2">
@@ -184,11 +216,25 @@ function CreateChapterForm({
         />
         <FormInput required name="title" label="Title" description="The chapter title" />
         <FormInput required name="subtitle" label="Subtitle" description="The chapter subtitle" />
-        <FormInput
-          name="parentId"
-          label="Parent Chapter ID"
-          description="Optional parent chapter ID for nested chapters"
-        />
+        {showOriginChapterDropdown ? (
+          <FormSelect
+            name="parentId"
+            label="Origin Chapter ID"
+            placeholder="Select a chapter or leave blank"
+            description="Select the corresponding chapter from the origin sutra"
+            options={parentChapters.map((chapter) => ({
+              label: `${chapter.title} (${chapter.subtitle})`,
+              value: chapter.id,
+            }))}
+          />
+        ) : (
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-gray-700">Origin Chapter ID</label>
+            <div className="rounded-md border border-gray-300 bg-gray-50 p-2 text-sm text-gray-500">
+              {parentSutra ? 'No chapters found in origin sutra' : 'No origin sutra associated'}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

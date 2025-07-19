@@ -1,7 +1,7 @@
 import { useLoaderData, useRouteError, useSubmit, useActionData } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import bcrypt from 'bcryptjs';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { ZodError } from 'zod';
 
 import type { ReadGlossary } from '~/drizzle/tables';
@@ -25,6 +25,7 @@ import {
   toggleBanner,
 } from '../services/notification.service';
 import { bulkCreateParagraphs } from '../services/paragraph.service';
+import { createRoll } from '../services/roll.service';
 import { createSutra, getAllSutrasWithRolls } from '../services/sutra.service';
 import { createTeam, readTeams } from '../services/teams.service';
 import { createUser, readUsers, updateUser } from '../services/user.service';
@@ -34,6 +35,7 @@ import {
 } from '../utils/glossary.transformation';
 import { createBannerSchema } from '../validations/notification.validation';
 import { bulkCreateParagraphsSchema } from '../validations/paragraph-upload.validation';
+import { createRollSchema } from '../validations/roll.validation';
 import { createSutraSchema } from '../validations/sutra.validation';
 import { createTeamSchema } from '../validations/team.validation';
 import { createUserSchema, updateUserSchema } from '../validations/user.validation';
@@ -282,6 +284,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         sutraId: createdSutra?.id,
         message: 'Sutra created successfully',
       });
+    } else if (kind === 'create-roll') {
+      const result = validatePayloadOrThrow({ schema: createRollSchema, formData: data });
+      const createdRolls = await createRoll(result, user.id);
+      const createdRoll = createdRolls[0];
+      return json({
+        success: true,
+        rollId: createdRoll?.id,
+        message: 'Chapter created successfully',
+      });
     }
   } catch (error) {
     console.error('admin action error', error);
@@ -312,7 +323,26 @@ export default function AdminIndex() {
   const [uploadReport, setUploadReport] = useState<UploadReport | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentSutras, setCurrentSutras] = useState(sutras);
   const itemsPerPage = 10;
+
+  // Function to refresh sutras data
+  const refreshSutrasData = useCallback(async () => {
+    try {
+      const response = await fetch('/api/sutras-with-rolls');
+      if (response.ok) {
+        const freshSutras = await response.json();
+        setCurrentSutras(freshSutras);
+      }
+    } catch (error) {
+      console.error('Failed to refresh sutras:', error);
+    }
+  }, []);
+
+  // Update currentSutras when sutras prop changes (initial load)
+  useEffect(() => {
+    setCurrentSutras(sutras);
+  }, [sutras]);
 
   const cleanedUsers = useMemo(
     () =>
@@ -350,13 +380,13 @@ export default function AdminIndex() {
 
   const cleanedSutras = useMemo(
     () =>
-      sutras.map((sutra) => ({
+      currentSutras.map((sutra) => ({
         ...sutra,
         createdAt: new Date(sutra.createdAt),
         updatedAt: new Date(sutra.updatedAt),
         deletedAt: sutra.deletedAt ? new Date(sutra.deletedAt) : null,
       })),
-    [sutras],
+    [currentSutras],
   );
 
   // Pagination for transformed glossaries
@@ -422,17 +452,22 @@ export default function AdminIndex() {
             variant: report.success ? 'default' : 'error',
           });
         } else if ('message' in actionData) {
-          // Handle successful paragraph upload
+          // Handle successful paragraph upload or roll creation
           toast({
             title: 'Upload Successful',
             description: String(actionData.message),
             variant: 'default',
           });
           setIsUploading(false);
+
+          // Refresh sutras data if a roll was created
+          if (String(actionData.message).includes('Chapter created successfully')) {
+            refreshSutrasData();
+          }
         }
       }
     }
-  }, [actionData, toast]);
+  }, [actionData, toast, refreshSutrasData]);
 
   const handleUploadResults = () => {
     if (transformedGlossaries.length === 0 && paragraphUploadResults.length === 0) {
