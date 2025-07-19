@@ -4,6 +4,7 @@ import type { UploadReport } from '~/services/glossary.service';
 import { GlossaryList } from '~/components/GlossaryList';
 import { Icons } from '~/components/icons';
 import { CallbackPaginationControls } from '~/components/PaginationControls';
+import { ParagraphUploadList } from '~/components/ParagraphUploadList';
 import {
   Alert,
   AlertDescription,
@@ -35,8 +36,19 @@ type SutraWithRolls = ReadSutra & {
   )[];
 };
 
+interface ParagraphUploadData {
+  originSutra: string;
+  targetSutra: string;
+  references: {
+    sutraName: string;
+    content: string;
+    order: string;
+  }[];
+}
+
 interface UploadManagementProps {
   uploadResults: ReadGlossary[];
+  paragraphUploadResults: ParagraphUploadData[];
   currentPage: number;
   totalPages: number;
   paginatedResults: ReadGlossary[];
@@ -52,6 +64,7 @@ interface UploadManagementProps {
 
 export function UploadManagement({
   uploadResults,
+  paragraphUploadResults,
   currentPage,
   totalPages,
   paginatedResults,
@@ -64,7 +77,7 @@ export function UploadManagement({
   onCancelUpload,
   isUploading = false,
 }: UploadManagementProps) {
-  if (uploadResults.length === 0 && !uploadReport) {
+  if (uploadResults.length === 0 && paragraphUploadResults.length === 0 && !uploadReport) {
     return (
       <>
         <div className="flex items-center justify-between">
@@ -91,16 +104,18 @@ export function UploadManagement({
           <h2 className="text-xl font-semibold">Upload Management</h2>
         </div>
         <div className="flex items-center gap-4">
-          {uploadResults.length > 0 && (
+          {(uploadResults.length > 0 || paragraphUploadResults.length > 0) && (
             <p className="text-sm text-muted-foreground">
-              Showing {paginatedResults.length} of {uploadResults.length} entries
+              {uploadResults.length > 0
+                ? `Showing ${paginatedResults.length} of ${uploadResults.length} glossary entries`
+                : `Showing ${paragraphUploadResults.length} paragraph entries`}
             </p>
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancelUpload} className="flex h-8 items-center gap-2">
               Cancel
             </Button>
-            {uploadResults.length > 0 && !uploadReport && (
+            {(uploadResults.length > 0 || paragraphUploadResults.length > 0) && !uploadReport && (
               <Button disabled={isUploading} onClick={onUploadResults} className="flex h-8 items-center gap-2">
                 <Icons.Upload className="h-4 w-4" />
                 {isUploading ? 'Uploading...' : 'Upload to Database'}
@@ -227,7 +242,14 @@ export function UploadManagement({
         </div>
       )}
 
-      {totalPages > 1 && !uploadReport && (
+      {/* Paragraph Upload List Section - Only show before upload is completed */}
+      {paragraphUploadResults.length > 0 && !uploadReport && (
+        <div className="flex-1 overflow-y-auto">
+          <ParagraphUploadList paragraphs={paragraphUploadResults} />
+        </div>
+      )}
+
+      {totalPages > 1 && !uploadReport && uploadResults.length > 0 && (
         <CallbackPaginationControls totalPages={totalPages} currentPage={currentPage} onPageChange={onPageChange} />
       )}
     </div>
