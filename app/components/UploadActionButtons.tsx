@@ -12,7 +12,7 @@ import { CreateSutraDialog } from './CreateSutraDialog';
 import { CsvFileUploader } from './CsvFileUploader';
 import { FormModal } from './FormModal';
 import { Icons } from './icons';
-import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui';
+import { Button, Switch, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui';
 
 type SutraWithRolls = ReadSutra & {
   rolls?: (
@@ -244,6 +244,7 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
   const [selectedRoll, setSelectedRoll] = useState<string>('');
   const [selectedTargetSutra, setSelectedTargetSutra] = useState<string>('');
   const [targetSutraValidationError, setTargetSutraValidationError] = useState<string>('');
+  const [enableFullTextSearch, setEnableFullTextSearch] = useState<boolean>(true);
 
   // Get rolls for the selected sutra
   const selectedSutraData = useMemo(() => sutras.find((s) => s.id === selectedSutra), [sutras, selectedSutra]);
@@ -472,6 +473,7 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
       rollId: selectedRoll,
       targetSutraId: selectedTargetSutra || null,
       targetRollId: targetRollId,
+      enableFullTextSearch: enableFullTextSearch,
       data: validationResult.composedObjects,
     };
     onValidationComplete([dataWithSelection]);
@@ -485,6 +487,7 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
     selectedTargetSutra,
     selectedTargetSutraData,
     targetSutras,
+    enableFullTextSearch,
   ]);
 
   const isFormValid = useMemo(() => {
@@ -673,6 +676,19 @@ const UploadParagraphForm = ({ onValidationComplete, sutras = [] }: UploadParagr
               <p className="mt-1 text-sm text-red-700">{targetSutraValidationError}</p>
             </div>
           )}
+
+          {/* Full Text Search Toggle */}
+          <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4">
+            <div className="flex flex-col">
+              <label htmlFor="fullTextSearch" className="text-sm font-medium text-gray-900">
+                Index for full text search
+              </label>
+              <p className="text-xs text-gray-600">
+                Enable to make paragraphs searchable via Algolia. Disable to save indexing resources.
+              </p>
+            </div>
+            <Switch id="fullTextSearch" checked={enableFullTextSearch} onCheckedChange={setEnableFullTextSearch} />
+          </div>
         </div>
       )}
 

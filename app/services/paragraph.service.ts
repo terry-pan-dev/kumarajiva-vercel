@@ -322,6 +322,7 @@ export const bulkCreateParagraphs = async ({
   rollId,
   targetSutraId,
   targetRollId,
+  enableFullTextSearch = true,
   data,
   createdBy,
 }: {
@@ -329,6 +330,7 @@ export const bulkCreateParagraphs = async ({
   rollId: string;
   targetSutraId?: string | null;
   targetRollId?: string | null;
+  enableFullTextSearch?: boolean;
   data: Array<{
     originSutra: string;
     targetSutra?: string;
@@ -400,19 +402,21 @@ export const bulkCreateParagraphs = async ({
       rollId,
       number: i,
       order: `${i}.0`,
-      searchId: originSearchId,
+      searchId: enableFullTextSearch ? originSearchId : null, // Only set searchId if indexing is enabled
       createdBy,
       updatedBy: createdBy,
     });
 
-    // Prepare origin paragraph for Algolia
-    algoliaObjects.push({
-      id: originParagraphId,
-      content: originSutraContent,
-      language: originSutra.language, // Use the origin sutra's language setting
-      rollId,
-      objectID: originSearchId,
-    });
+    // Prepare origin paragraph for Algolia (only if indexing is enabled)
+    if (enableFullTextSearch) {
+      algoliaObjects.push({
+        id: originParagraphId,
+        content: originSutraContent,
+        language: originSutra.language, // Use the origin sutra's language setting
+        rollId,
+        objectID: originSearchId,
+      });
+    }
 
     let targetParagraphId = null;
     let targetSearchId = null;
@@ -431,20 +435,22 @@ export const bulkCreateParagraphs = async ({
         parentId: originParagraphId,
         number: i,
         order: `${i}.0`,
-        searchId: targetSearchId,
+        searchId: enableFullTextSearch ? targetSearchId : null, // Only set searchId if indexing is enabled
         createdBy,
         updatedBy: createdBy,
       });
 
-      // Prepare target paragraph for Algolia
-      algoliaObjects.push({
-        id: targetParagraphId,
-        content: targetSutraContent,
-        language: targetSutra.language, // Use the target sutra's language setting
-        rollId: targetRollId, // Use target roll ID, not origin roll ID
-        parentId: originParagraphId,
-        objectID: targetSearchId,
-      });
+      // Prepare target paragraph for Algolia (only if indexing is enabled)
+      if (enableFullTextSearch) {
+        algoliaObjects.push({
+          id: targetParagraphId,
+          content: targetSutraContent,
+          language: targetSutra.language, // Use the target sutra's language setting
+          rollId: targetRollId, // Use target roll ID, not origin roll ID
+          parentId: originParagraphId,
+          objectID: targetSearchId,
+        });
+      }
     }
 
     // Prepare references for bulk insert
@@ -471,8 +477,8 @@ export const bulkCreateParagraphs = async ({
   }
 
   try {
-    // Bulk insert to Algolia first (faster to rollback if DB fails)
-    if (algoliaObjects.length > 0) {
+    // Bulk insert to Algolia first (faster to rollback if DB fails) - only if indexing is enabled
+    if (enableFullTextSearch && algoliaObjects.length > 0) {
       await algoliaClient.saveObjects({
         indexName: 'paragraphs',
         objects: algoliaObjects,
@@ -515,10 +521,10 @@ export const bulkCreateParagraphs = async ({
       };
     });
   } catch (error) {
-    // If database operations fail, clean up Algolia objects
+    // If database operations fail, clean up Algolia objects (only if indexing was enabled)
     console.error('Bulk paragraph creation failed:', error);
 
-    if (algoliaObjects.length > 0) {
+    if (enableFullTextSearch && algoliaObjects.length > 0) {
       try {
         const objectIDs = algoliaObjects.map((obj) => obj.objectID);
         await algoliaClient.deleteObjects({

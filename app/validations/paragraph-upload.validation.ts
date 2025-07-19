@@ -16,6 +16,7 @@ export const bulkCreateParagraphsSchema = z.object({
   rollId: z.string().uuid('Invalid roll ID'),
   targetSutraId: z.string().uuid('Invalid target sutra ID').nullable().optional(),
   targetRollId: z.string().uuid('Invalid target roll ID').nullable().optional(),
+  enableFullTextSearch: z.boolean().default(true),
   data: z
     .array(
       z.object({
