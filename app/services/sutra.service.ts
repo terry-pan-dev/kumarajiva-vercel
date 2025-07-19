@@ -76,3 +76,20 @@ export const getSutrasWithRolls = async ({ teamId }: { teamId: string }) => {
     orderBy: (sutras, { asc }) => [asc(sutras.title)],
   });
 };
+
+export const getAllSutrasWithRolls = async () => {
+  return dbClient.query.sutrasTable.findMany({
+    with: {
+      rolls: {
+        orderBy: (rolls, { asc }) => [asc(rolls.title)],
+        with: {
+          children: true,
+          parent: true,
+        },
+      },
+      children: true,
+      parent: true,
+    },
+    orderBy: (sutras, { asc }) => [asc(sutras.title)],
+  });
+};
