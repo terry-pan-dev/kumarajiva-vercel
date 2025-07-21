@@ -162,15 +162,22 @@ export const FormModal = <T extends ZodSchema = ZodSchema>({
         return check(obj);
       }
 
-      if (hasNonPrimitive(data)) {
-        const enhancedData = JSON.stringify(data);
+      // Filter out empty string values, 'undefined' strings, and actual undefined values
+      const cleanedData = Object.fromEntries(
+        Object.entries(data).filter(([_, value]) => {
+          return value !== '' && value !== 'undefined' && value !== undefined && value !== null;
+        }),
+      );
+
+      if (hasNonPrimitive(cleanedData)) {
+        const enhancedData = JSON.stringify(cleanedData);
         const formData = {
           kind: kind || '',
           data: enhancedData,
         };
         fetcher.submit(formData, { method: 'post' });
       } else {
-        fetcher.submit({ kind, ...data }, { method: 'post' });
+        fetcher.submit({ kind: kind || '', ...cleanedData }, { method: 'post' });
       }
     },
     [fetcher, kind],
@@ -279,7 +286,17 @@ export function FormSelect({ name, label, required = false, description, options
         name={name}
         control={control}
         render={({ field }) => (
-          <Select defaultValue={field.value} onValueChange={field.onChange}>
+          <Select
+            defaultValue={field.value || ''}
+            onValueChange={(value) => {
+              // Prevent string 'undefined' from being set
+              if (value === 'undefined' || value === '') {
+                field.onChange(undefined);
+              } else {
+                field.onChange(value);
+              }
+            }}
+          >
             <SelectTrigger id={name}>
               <SelectValue placeholder={`Select ${label}`} />
             </SelectTrigger>
