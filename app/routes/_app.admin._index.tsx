@@ -276,8 +276,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     } else if (kind === 'create-sutra') {
       const result = validatePayloadOrThrow({ schema: createSutraSchema, formData: data });
-      // Use the user's team ID directly
-      const createdSutras = await createSutra(result, user.teamId, user.id);
+      // Use the selected team ID from the form (now required)
+      const createdSutras = await createSutra(result, result.teamId, user.id);
       const createdSutra = createdSutras[0];
       return json({
         success: true,
@@ -537,6 +537,7 @@ export default function AdminIndex() {
       </TabsContent>
       <TabsContent value="upload">
         <UploadManagement
+          teams={cleanedTeams}
           sutras={cleanedSutras}
           totalPages={totalPages}
           currentPage={currentPage}

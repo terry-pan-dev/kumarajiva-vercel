@@ -1,4 +1,4 @@
-import type { ReadSutra, ReadRoll, ReadGlossary } from '~/drizzle/tables';
+import type { ReadSutra, ReadRoll, ReadGlossary, ReadTeam } from '~/drizzle/tables';
 import type { UploadReport } from '~/services/glossary.service';
 
 import { GlossaryList } from '~/components/GlossaryList';
@@ -53,6 +53,7 @@ interface UploadManagementProps {
   totalPages: number;
   paginatedResults: ReadGlossary[];
   sutras: SutraWithRolls[];
+  teams: ReadTeam[];
   uploadReport: UploadReport | null;
   onGlossaryUpload: (results: Record<string, any>[]) => void;
   onParagraphUpload: (results: Record<string, any>[]) => void;
@@ -69,6 +70,7 @@ export function UploadManagement({
   totalPages,
   paginatedResults,
   sutras,
+  teams,
   uploadReport,
   onGlossaryUpload,
   onParagraphUpload,
@@ -83,6 +85,7 @@ export function UploadManagement({
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Upload Management</h2>
           <UploadActionButtons
+            teams={teams}
             sutras={sutras}
             onGlossaryUpload={onGlossaryUpload}
             onParagraphUpload={onParagraphUpload}

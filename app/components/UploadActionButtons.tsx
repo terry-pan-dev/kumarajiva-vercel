@@ -1,7 +1,7 @@
 import { AlertCircle } from 'lucide-react';
 import React, { useState, useCallback, useMemo } from 'react';
 
-import type { ReadSutra, ReadRoll } from '~/drizzle/tables';
+import type { ReadSutra, ReadRoll, ReadTeam } from '~/drizzle/tables';
 
 import { type CsvValidationResult } from '~/hooks/use-csv-uploader';
 import { glossaryCsvUploadSchema, REQUIRED_GLOSSARY_HEADERS } from '~/validations/glossary-upload.validation';
@@ -38,12 +38,14 @@ interface UploadActionButtonsProps {
   onGlossaryUpload?: (results: Record<string, any>[]) => void;
   onParagraphUpload?: (results: Record<string, any>[]) => void;
   sutras?: SutraWithRolls[];
+  teams?: ReadTeam[];
 }
 
 export default function UploadActionButtons({
   onGlossaryUpload,
   onParagraphUpload,
   sutras = [],
+  teams = [],
 }: UploadActionButtonsProps = {}) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -106,6 +108,7 @@ export default function UploadActionButtons({
 
   const createSutraModal = (
     <CreateSutraDialog
+      teams={teams}
       sutras={sutras}
       trigger={
         <Button

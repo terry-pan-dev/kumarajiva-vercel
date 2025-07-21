@@ -7,6 +7,6 @@ export const createSutraSchema = z.object({
   translator: z.string().min(1),
   cbeta: z.string().min(1),
   language: z.enum(['chinese', 'english', 'sanskrit', 'indonesian']).default('chinese'),
-  teamId: z.string().uuid().optional(),
+  teamId: z.string().uuid(),
   parentId: z.string().uuid().optional(),
 });

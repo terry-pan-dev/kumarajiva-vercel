@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { ReadSutra } from '~/drizzle/tables';
+import type { ReadSutra, ReadTeam } from '~/drizzle/tables';
 
 import { createSutraSchema } from '~/validations/sutra.validation';
 
@@ -10,6 +10,7 @@ import { Button, ScrollArea, Table, TableBody, TableCell, TableHead, TableHeader
 
 interface CreateSutraDialogProps {
   sutras: ReadSutra[];
+  teams: ReadTeam[];
   trigger?: React.ReactNode;
 }
 
@@ -59,7 +60,7 @@ function getSutraRelationships(sutras: ReadSutra[]): SutraRelationship[] {
   return relationships;
 }
 
-export function CreateSutraDialog({ sutras, trigger }: CreateSutraDialogProps) {
+export function CreateSutraDialog({ sutras, teams, trigger }: CreateSutraDialogProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopy = async (id: string) => {
@@ -172,7 +173,7 @@ export function CreateSutraDialog({ sutras, trigger }: CreateSutraDialogProps) {
           {/* Create Form - Takes up remaining space */}
           <div>
             <h3 className="mb-3 text-md font-semibold">Create New Sutra</h3>
-            <CreateSutraForm sutras={sutras} />
+            <CreateSutraForm teams={teams} sutras={sutras} />
           </div>
         </div>
       </ScrollArea>
@@ -180,11 +181,17 @@ export function CreateSutraDialog({ sutras, trigger }: CreateSutraDialogProps) {
   );
 }
 
-function CreateSutraForm({ sutras }: { sutras: ReadSutra[] }) {
+function CreateSutraForm({ teams, sutras }: { teams: ReadTeam[]; sutras: ReadSutra[] }) {
   // All sutras can potentially be parents (origins) for other sutras
   const originSutraOptions = sutras.map((sutra) => ({
     label: sutra.title,
     value: sutra.id,
+  }));
+
+  // Team options showing alias (preferred) or name as fallback
+  const teamOptions = teams.map((team) => ({
+    label: team.alias ?? team.name,
+    value: team.id,
   }));
 
   return (
@@ -206,6 +213,13 @@ function CreateSutraForm({ sutras }: { sutras: ReadSutra[] }) {
             { label: 'Sanskrit', value: 'sanskrit' },
             { label: 'Indonesian', value: 'indonesian' },
           ]}
+        />
+        <FormSelect
+          required
+          label="Team"
+          name="teamId"
+          options={teamOptions}
+          description="Select the team this sutra belongs to"
         />
         <FormSelect
           name="parentId"
