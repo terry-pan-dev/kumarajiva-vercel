@@ -45,3 +45,13 @@ export const updateUser = async (user: UpdateUser) => {
 export const createUser = async (user: CreateUser) => {
   return dbClient.insert(usersTable).values(user).returning();
 };
+
+export const resetUserPassword = async (userId: string, password: string) => {
+  return dbClient
+    .update(usersTable)
+    .set({
+      password,
+      firstLogin: true,
+    })
+    .where(eq(usersTable.id, userId));
+};

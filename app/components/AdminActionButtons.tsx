@@ -1,15 +1,17 @@
 import { useState } from 'react';
+import { useFormContext } from 'react-hook-form';
 
 import { type ReadTeam } from '~/drizzle/tables';
 import { langEnum, roleEnum } from '~/drizzle/tables/enums';
-import { createUserSchema } from '~/validations/user.validation';
+import { type ReadUser } from '~/drizzle/tables/user';
+import { createUserSchema, resetPasswordSchema } from '~/validations/user.validation';
 
 import { createTeamSchema } from '../validations/team.validation';
 import { FormInput, FormModal, FormSelect } from './FormModal';
 import { Icons } from './icons';
 import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui';
 
-export default function AdminActionButtons({ teams }: { teams: ReadTeam[] }) {
+export default function AdminActionButtons({ users, teams }: { users: ReadUser[]; teams: ReadTeam[] }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpand = () => {
@@ -53,6 +55,25 @@ export default function AdminActionButtons({ teams }: { teams: ReadTeam[] }) {
     </FormModal>
   );
 
+  const resetPasswordModal = (
+    <FormModal
+      kind="reset-password"
+      title="Reset User Password"
+      schema={resetPasswordSchema}
+      trigger={
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-12 w-12 rounded-full shadow-lg transition-all duration-300 ease-in-out"
+        >
+          <Icons.Key className="h-4 w-4" />
+        </Button>
+      }
+    >
+      <ResetPasswordForm users={users} />
+    </FormModal>
+  );
+
   return (
     <TooltipProvider>
       <div className="fixed bottom-6 right-6">
@@ -62,6 +83,7 @@ export default function AdminActionButtons({ teams }: { teams: ReadTeam[] }) {
               {[
                 { modal: addTeamModal, tooltip: 'Add Team' },
                 { modal: addUserModal, tooltip: 'Add User' },
+                { modal: resetPasswordModal, tooltip: 'Reset Password' },
               ].map(({ modal, tooltip }, index) => (
                 <Tooltip key={index}>
                   <TooltipTrigger asChild>
@@ -137,6 +159,43 @@ const AddUserForm = ({ teams }: { teams: ReadTeam[] }) => {
         description="The target language of the user."
       />
       <FormInput required name="password" label="Password" description="The password of the user." />
+    </div>
+  );
+};
+
+const ResetPasswordForm = ({ users }: { users: ReadUser[] }) => {
+  const { watch } = useFormContext();
+  const selectedUserId = watch('userId');
+  const selectedUser = users.find((user) => user.id === selectedUserId);
+
+  const userOptions = users.map((user) => ({
+    label: user.username,
+    value: user.id,
+  }));
+
+  return (
+    <div className="grid grid-cols-1 gap-4">
+      <FormSelect
+        required
+        label="User"
+        name="userId"
+        options={userOptions}
+        description="Select the user to reset password."
+      />
+      {selectedUser && (
+        <div className="rounded-md border p-3">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold">Email:</span> {selectedUser.email}
+          </p>
+        </div>
+      )}
+      <FormInput
+        required
+        type="password"
+        name="password"
+        label="New Password"
+        description="Enter the new password for this user."
+      />
     </div>
   );
 };

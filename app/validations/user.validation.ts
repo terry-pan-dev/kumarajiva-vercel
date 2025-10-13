@@ -14,4 +14,10 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = createUserSchema.extend({ id: z.string().uuid() }).omit({ password: true }).partial();
 
+export const resetPasswordSchema = z.object({
+  userId: z.string().uuid(),
+  password: z.string().min(1),
+});
+
 export type UpdateUserSchema = z.infer<typeof updateUserSchema>;
+export type ResetPasswordSchema = z.infer<typeof resetPasswordSchema>;

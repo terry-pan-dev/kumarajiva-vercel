@@ -20,10 +20,10 @@ import {
   toggleBanner,
 } from '../services/notification.service';
 import { createTeam, readTeams } from '../services/teams.service';
-import { createUser, readUsers, updateUser } from '../services/user.service';
+import { createUser, readUsers, resetUserPassword, updateUser } from '../services/user.service';
 import { createBannerSchema } from '../validations/notification.validation';
 import { createTeamSchema } from '../validations/team.validation';
-import { createUserSchema, updateUserSchema } from '../validations/user.validation';
+import { createUserSchema, resetPasswordSchema, updateUserSchema } from '../validations/user.validation';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
@@ -119,6 +119,28 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     } else if (kind === 'delete-banner') {
       const bannerId = formData.get('bannerId') as string;
       await deleteBanner({ user: user, bannerId });
+    } else if (kind === 'reset-password') {
+      const result = validatePayloadOrThrow({ schema: resetPasswordSchema, formData: data });
+      const { userId, password } = result;
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await resetUserPassword(userId, hashedPassword);
+
+      // Get user info to send email
+      const users = await readUsers();
+      const targetUser = users.find((u) => u.id === userId);
+      if (targetUser) {
+        await resend.emails.send({
+          from: 'Kumarajiva <onboarding@info.btts-kumarajiva.org>',
+          to: targetUser.email,
+          subject: 'Your Password Has Been Reset',
+          html: `<p>Hello ${targetUser.username},</p>
+          <p>Your password has been reset by an administrator.</p>
+          <p>Your new temporary password is: <strong>${password}</strong></p>
+          <p>Please login at <a href="https://btts-kumarajiva.org">https://btts-kumarajiva.org</a> and change your password immediately.</p>
+          <p>Thank you for using Kumarajiva!</p>`,
+        });
+        console.log(`Password reset email sent to ${targetUser.email}`);
+      }
     }
   } catch (error) {
     console.error('admin action error', error);
