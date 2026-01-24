@@ -5,7 +5,7 @@ import { hydrateRoot } from 'react-dom/client';
 
 process.env.NODE_ENV === 'production' &&
   Sentry.init({
-    dsn: 'https://40cbe12a53fcd5340ef69af77c985db3@o4508454077923328.ingest.us.sentry.io/4508454079627264',
+    dsn: 'https://8119ac64bfb23f74d2189f3d5a86e6c4@o4510736651321344.ingest.de.sentry.io/4510767510716496',
     tracesSampleRate: 1,
 
     integrations: [
