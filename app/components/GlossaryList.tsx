@@ -313,9 +313,23 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
             return (
               <div key={`${glossary.id}-${index}`}>
                 <Divider className="py-1 text-primary lg:py-3">{translation.language.toUpperCase()}</Divider>
-                <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
-                  {translation.sutraName} | {translation.volume}
-                </Badge>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="default" className="w-fit font-mono text-xs font-medium">
+                    {translation.sutraName} | {translation.volume}
+                  </Badge>
+                  {translation.updatedAt && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Icons.Clock className="h-3 w-3" />
+                      {new Date(translation.updatedAt).toLocaleDateString()}
+                    </span>
+                  )}
+                  {translation.author && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Icons.User className="h-3 w-3" />
+                      {translation.author}
+                    </span>
+                  )}
+                </div>
                 {originSutraText && (
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
