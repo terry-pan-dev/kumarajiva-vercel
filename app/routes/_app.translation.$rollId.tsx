@@ -1,8 +1,16 @@
-import { Form, useActionData, useLoaderData, useNavigation, useOutletContext, useRouteError } from '@remix-run/react';
+import {
+  Form,
+  useActionData,
+  useFetcher,
+  useLoaderData,
+  useNavigation,
+  useOutletContext,
+  useRouteError,
+} from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
-import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown, Copy, Pencil, Check, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren, useCallback, Fragment } from 'react';
 import Markdown from 'react-markdown';
 import { ClientOnly } from 'remix-utils/client-only';
@@ -95,6 +103,35 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
   const formData = Object.fromEntries(await request.formData());
   const kind = formData['kind'];
+
+  // Handle updating origin paragraph content
+  if (kind === 'updateSource') {
+    try {
+      const paragraphId = formData['paragraphId'] as string;
+      const content = formData['content'] as string;
+
+      await updateParagraph({
+        id: paragraphId,
+        newContent: content,
+        updatedBy: user.id,
+      });
+
+      return json({
+        success: true,
+        message: 'Source text updated successfully',
+        kind: 'updateSource',
+        id: paragraphId,
+        content,
+      });
+    } catch (error) {
+      console.error('Error updating source text:', error);
+      if (error instanceof ZodError) {
+        return json({ success: false, errors: error.errors }, { status: 400 });
+      }
+      return json({ success: false, message: 'Failed to update source text' }, { status: 500 });
+    }
+  }
+
   if (kind === 'createComment') {
     try {
       const result = validatePayloadOrThrow({ schema: createCommentActionSchema, formData });
@@ -180,6 +217,170 @@ export async function action({ request, params }: ActionFunctionArgs) {
   return json({ success: true, paragraphs: [] });
 }
 
+// ============================================================================
+// Editable Source Text Component
+// ============================================================================
+interface EditableSourceTextProps {
+  paragraphId: string;
+  content: string;
+  title?: string;
+}
+
+const EditableSourceText = ({ paragraphId, content, title }: EditableSourceTextProps) => {
+  const fetcher = useFetcher<{ success: boolean; content?: string; message?: string }>();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(content);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { toast } = useToast();
+
+  const isSaving = fetcher.state === 'submitting';
+
+  // Update local state when content prop changes
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedContent(content);
+    }
+  }, [content, isEditing]);
+
+  // Focus textarea when entering edit mode
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      // Move cursor to end
+      const len = textareaRef.current.value.length;
+      textareaRef.current.setSelectionRange(len, len);
+    }
+  }, [isEditing]);
+
+  // Handle fetcher response
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data) {
+      if (fetcher.data.success) {
+        toast({
+          variant: 'default',
+          title: 'Success',
+          description: fetcher.data.message || 'Source text updated',
+          position: 'top-right',
+        });
+        setIsEditing(false);
+        if (fetcher.data.content) {
+          setEditedContent(fetcher.data.content);
+        }
+      } else {
+        toast({
+          variant: 'error',
+          title: 'Error',
+          description: fetcher.data.message || 'Failed to update',
+          position: 'top-right',
+        });
+      }
+    }
+  }, [fetcher.state, fetcher.data, toast]);
+
+  const handleSave = () => {
+    if (editedContent.trim() === content.trim()) {
+      setIsEditing(false);
+      return;
+    }
+
+    fetcher.submit(
+      {
+        kind: 'updateSource',
+        paragraphId,
+        content: editedContent,
+      },
+      { method: 'post' },
+    );
+  };
+
+  const handleCancel = () => {
+    setEditedContent(content);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      handleCancel();
+    }
+    // Cmd/Ctrl + Enter to save
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
+  // Use optimistic update - show new content immediately after submit
+  const displayContent = fetcher.data?.content ?? editedContent;
+
+  if (isEditing) {
+    return (
+      <div className="flex flex-col gap-2">
+        {title && <p className="text-md font-semibold">{title}</p>}
+        <div className="relative">
+          <Textarea
+            ref={textareaRef}
+            disabled={isSaving}
+            value={editedContent}
+            onKeyDown={handleKeyDown}
+            className="min-h-[120px] pr-20 text-md"
+            onChange={(e) => setEditedContent(e.target.value)}
+          />
+          <div className="absolute right-2 top-2 flex gap-1">
+            <Button
+              size="icon"
+              type="button"
+              variant="ghost"
+              disabled={isSaving}
+              onClick={handleSave}
+              title="Save (Ctrl+Enter)"
+              className="h-8 w-8 bg-background/80 hover:bg-green-100"
+            >
+              {isSaving ? (
+                <Icons.Loader className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4 text-green-600" />
+              )}
+            </Button>
+            <Button
+              size="icon"
+              type="button"
+              variant="ghost"
+              disabled={isSaving}
+              title="Cancel (Esc)"
+              onClick={handleCancel}
+              className="h-8 w-8 bg-background/80 hover:bg-red-100"
+            >
+              <X className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">Press Ctrl+Enter to save, Esc to cancel</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="group relative">
+      <Paragraph title={title} id={paragraphId} text={displayContent} />
+      <Can I="Update" this="SourceText">
+        <Button
+          size="icon"
+          type="button"
+          variant="ghost"
+          title="Edit original text"
+          onClick={() => setIsEditing(true)}
+          className="absolute -right-1 -top-1 h-7 w-7 bg-background/80 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      </Can>
+    </div>
+  );
+};
+
+// ============================================================================
+// Main Component
+// ============================================================================
 export default function TranslationRoll() {
   const { paragraphs, rollInfo } = useLoaderData<typeof loader>();
   const actionData = useActionData<{ success: boolean; message: string; kind: 'insert' | 'update'; id: string }>();
@@ -563,7 +764,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
         initial={{ opacity: 0, x: '100%' }}
       >
         <ContextMenuWrapper>
-          <Paragraph id={id} text={origin} title="Origin" />
+          <EditableSourceText title="Origin" paragraphId={id} content={origin} />
         </ContextMenuWrapper>
         <Form method="post" className="mt-4" onSubmit={() => cleanTranslation()}>
           <div className="mt-auto grid w-full gap-2">

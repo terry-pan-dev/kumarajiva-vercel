@@ -15,3 +15,6 @@ node_modules
 .auth/
 playwright-report/
 test-results/
+.env*.local
+.cache
+public
