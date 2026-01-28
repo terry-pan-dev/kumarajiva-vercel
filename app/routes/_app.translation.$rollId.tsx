@@ -279,15 +279,17 @@ export default function TranslationRoll() {
         <div
           className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-6 px-2`}
         >
-          <ContextMenuWrapper>
-            <Paragraph
-              isOrigin
-              id={paragraph.id}
-              text={paragraph.origin}
-              comments={paragraph.originComments}
-              isSelected={selectedParagraphIndex === paragraph.id}
-            />
-          </ContextMenuWrapper>
+          <div onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}>
+            <ContextMenuWrapper>
+              <Paragraph
+                isOrigin
+                id={paragraph.id}
+                text={paragraph.origin}
+                comments={paragraph.originComments}
+                isSelected={selectedParagraphIndex === paragraph.id}
+              />
+            </ContextMenuWrapper>
+          </div>
           <div
             className="flex h-auto text-md font-normal"
             ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
