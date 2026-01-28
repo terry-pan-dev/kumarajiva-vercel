@@ -6,7 +6,7 @@ type Actions = 'Create' | 'Read' | 'Update' | 'Delete' | 'Download';
 type Subjects =
   | 'Administration'
   | 'Sutra'
-  | 'SourceText'
+  | 'OriginText'
   | 'Paragraph'
   | 'Reference'
   | 'Translation'
@@ -29,7 +29,7 @@ export const defineAbilityFor = (user: ReadUser) => {
   }
 
   if (user.role === 'admin' || user.role === 'leader') {
-    can('Update', 'SourceText');
+    can('Update', 'OriginText');
   }
 
   if (user.role === 'admin' || user.role === 'manager') {
