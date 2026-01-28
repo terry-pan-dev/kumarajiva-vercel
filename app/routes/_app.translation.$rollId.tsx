@@ -277,17 +277,15 @@ export default function TranslationRoll() {
     <div key={paragraph.id} className="flex items-center gap-6 px-4">
       {paragraph?.target ? (
         <div
-          className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-6 px-2`}
+          className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-6 px-2 ${
+            selectedParagraphIndex === paragraph.id
+              ? 'rounded-xl bg-gradient-to-r from-yellow-600 to-slate-700 p-5 shadow-xl'
+              : ''
+          }`}
         >
           <div onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}>
             <ContextMenuWrapper>
-              <Paragraph
-                isOrigin
-                id={paragraph.id}
-                text={paragraph.origin}
-                comments={paragraph.originComments}
-                isSelected={selectedParagraphIndex === paragraph.id}
-              />
+              <Paragraph isOrigin id={paragraph.id} text={paragraph.origin} comments={paragraph.originComments} />
             </ContextMenuWrapper>
           </div>
           <div
