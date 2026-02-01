@@ -28,7 +28,7 @@ export const defineAbilityFor = (user: ReadUser) => {
     can('Download', 'Paragraph');
   }
 
-  if (user.role === 'admin' || user.role === 'leader') {
+  if (user.role === 'admin' || user.role === 'leader' || user.role === 'manager') {
     can('Update', 'OriginText');
   }
 

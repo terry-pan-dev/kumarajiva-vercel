@@ -1,18 +1,23 @@
-import { useRef, useEffect } from 'react';
+import { useCallback, useRef, useLayoutEffect } from 'react';
 
-export const useTextAreaAutoHeight = (translation: string) => {
-  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+export const useTextAreaAutoHeight = (value: string) => {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
 
-  useEffect(() => {
-    const textarea = textAreaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
+  const setRef = useCallback((el: HTMLTextAreaElement | null) => {
+    ref.current = el;
+    if (!el) return;
 
-      const scrollHeight = textarea.scrollHeight;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 10}px`;
+  }, []);
 
-      textarea.style.height = `${scrollHeight + 10}px`;
-    }
-  }, [translation]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
 
-  return textAreaRef;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 10}px`;
+  }, [value]);
+
+  return setRef;
 };

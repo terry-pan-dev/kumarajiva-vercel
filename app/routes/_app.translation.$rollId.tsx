@@ -588,8 +588,8 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
     }
   }, [actionData, toast]);
 
-  const originTextAreaRef = useTextAreaAutoHeight(editedOrigin);
-  const textAreaRef = useTextAreaAutoHeight(translation);
+  const originRef = useTextAreaAutoHeight(editedOrigin);
+  const translationRef = useTextAreaAutoHeight(translation);
 
   return (
     <div className="flex h-full flex-col justify-start gap-4 px-1">
@@ -607,22 +607,21 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
                 <input name="kind" type="hidden" value="updateOrigin" />
                 <input value={id} type="hidden" name="paragraphId" />
                 <Textarea
+                  ref={originRef}
                   name="originText"
+                  className="text-md"
                   value={editedOrigin}
-                  className="h-32 text-md"
                   onChange={(e) => setEditedOrigin(e.target.value)}
-                  ref={(e) => {
-                    originTextAreaRef.current = e;
-                  }}
                 />
                 <div className="mt-2 flex gap-2">
-                  <Button size="icon" type="submit" variant="ghost">
+                  <Button size="icon" type="submit" variant="ghost" name="acceptEdit">
                     <Check className="h-4 w-4" />
                   </Button>
                   <Button
                     size="icon"
                     type="button"
                     variant="ghost"
+                    name="cancelEdit"
                     onClick={() => {
                       setEditedOrigin(origin); // reset to original
                       setIsEditingOrigin(false);
@@ -657,12 +656,10 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
               <Textarea
                 name="translation"
                 value={translation}
+                ref={translationRef}
                 className="h-8 text-md"
                 disabled={isLoading || disabledEdit}
                 onChange={(e) => pasteTranslation(e.target.value)}
-                ref={(e) => {
-                  textAreaRef.current = e;
-                }}
                 placeholder={
                   disabledEdit
                     ? 'Please select a new paragraph to edit or double click translated paragraph.'
