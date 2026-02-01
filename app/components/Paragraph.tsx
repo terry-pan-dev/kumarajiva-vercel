@@ -296,7 +296,7 @@ export const Paragraph = ({
       data-id={id}
       className={`relative h-full w-full rounded-xl ${
         isSelected
-          ? 'bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5 pl-2 shadow-xl'
+          ? 'bg-gradient-to-r from-yellow-600 to-slate-700 p-2 shadow-xl'
           : `${isOrigin ? 'bg-card' : 'bg-card-foreground'} px-6 py-4 shadow-lg`
       } ${isUpdate ? 'animate-[pulse_1s_ease-in-out_1]' : ''}`}
     >
