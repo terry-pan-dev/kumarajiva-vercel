@@ -277,17 +277,17 @@ export default function TranslationRoll() {
     <div key={paragraph.id} className="flex items-center gap-6 px-4">
       {paragraph?.target ? (
         <div
-          className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-6 px-2`}
+          className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-2 px-2 ${
+            selectedParagraphIndex === paragraph.id
+              ? 'rounded-xl bg-gradient-to-r from-yellow-600 to-slate-700 p-2 shadow-xl'
+              : ''
+          }`}
         >
-          <ContextMenuWrapper>
-            <Paragraph
-              isOrigin
-              id={paragraph.id}
-              text={paragraph.origin}
-              comments={paragraph.originComments}
-              isSelected={selectedParagraphIndex === paragraph.id}
-            />
-          </ContextMenuWrapper>
+          <div onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}>
+            <ContextMenuWrapper>
+              <Paragraph isOrigin id={paragraph.id} text={paragraph.origin} comments={paragraph.originComments} />
+            </ContextMenuWrapper>
+          </div>
           <div
             className="flex h-auto text-md font-normal"
             ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
@@ -350,7 +350,11 @@ export default function TranslationRoll() {
         <DragPanel>
           <LeftPanel>
             <ScrollArea className="h-full w-full lg:pr-4">
-              <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
+              <RadioGroup
+                className="gap-4"
+                onValueChange={setSelectedParagraphIndex}
+                value={selectedParagraphIndex ?? undefined}
+              >
                 {Paragraphs}
               </RadioGroup>
             </ScrollArea>
@@ -370,7 +374,11 @@ export default function TranslationRoll() {
   return (
     <Fragment>
       <ScrollArea className="h-full px-0 lg:px-4">
-        <RadioGroup className="gap-4" onValueChange={setSelectedParagraphIndex}>
+        <RadioGroup
+          className="gap-4"
+          onValueChange={setSelectedParagraphIndex}
+          value={selectedParagraphIndex ?? undefined}
+        >
           {paragraphs.length ? (
             <>
               <p className="text-center text-lg lg:text-2xl">{rollInfo?.sutra.title}</p>
