@@ -2,7 +2,7 @@ import { Form, useActionData, useLoaderData, useNavigation, useOutletContext, us
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
-import { ChevronsDownUp, ChevronsUpDown, Copy } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown, Copy, Pencil, Check, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren, useCallback, Fragment } from 'react';
 import Markdown from 'react-markdown';
 import { ClientOnly } from 'remix-utils/client-only';
@@ -95,6 +95,35 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
   const formData = Object.fromEntries(await request.formData());
   const kind = formData['kind'];
+
+  // Handle updating origin paragraph content
+  if (kind === 'updateOrigin') {
+    try {
+      const paragraphId = formData['paragraphId'] as string;
+      const content = formData['originText'] as string;
+
+      await updateParagraph({
+        id: paragraphId,
+        newContent: content,
+        updatedBy: user.id,
+      });
+
+      return json({
+        success: true,
+        message: 'Origin text updated successfully',
+        kind: 'updateOrigin',
+        id: paragraphId,
+        content,
+      });
+    } catch (error) {
+      console.error('Error updating origin text:', error);
+      if (error instanceof ZodError) {
+        return json({ success: false, errors: error.errors }, { status: 400 });
+      }
+      return json({ success: false, message: 'Failed to update origin text' }, { status: 500 });
+    }
+  }
+
   if (kind === 'createComment') {
     try {
       const result = validatePayloadOrThrow({ schema: createCommentActionSchema, formData });
@@ -532,6 +561,14 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
 
   const { toast } = useToast();
 
+  const [isEditingOrigin, setIsEditingOrigin] = useState(false);
+  const [editedOrigin, setEditedOrigin] = useState(origin);
+
+  useEffect(() => {
+    setEditedOrigin(origin);
+    setIsEditingOrigin(false);
+  }, [origin]);
+
   useEffect(() => {
     if (!actionData) return;
     if (actionData.success) {
@@ -551,7 +588,8 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
     }
   }, [actionData, toast]);
 
-  const textAreaRef = useTextAreaAutoHeight(translation);
+  const originRef = useTextAreaAutoHeight(editedOrigin);
+  const translationRef = useTextAreaAutoHeight(translation);
 
   return (
     <div className="flex h-full flex-col justify-start gap-4 px-1">
@@ -563,7 +601,52 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
         initial={{ opacity: 0, x: '100%' }}
       >
         <ContextMenuWrapper>
-          <Paragraph id={id} text={origin} title="Origin" />
+          <div className="relative">
+            {isEditingOrigin ? (
+              <Form method="post" onSubmit={() => setIsEditingOrigin(false)}>
+                <input name="kind" type="hidden" value="updateOrigin" />
+                <input value={id} type="hidden" name="paragraphId" />
+                <Textarea
+                  ref={originRef}
+                  name="originText"
+                  className="text-md"
+                  value={editedOrigin}
+                  onChange={(e) => setEditedOrigin(e.target.value)}
+                />
+                <div className="mt-2 flex gap-2">
+                  <Button size="icon" type="submit" variant="ghost" name="acceptEdit">
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                    name="cancelEdit"
+                    onClick={() => {
+                      setEditedOrigin(origin); // reset to original
+                      setIsEditingOrigin(false);
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </Form>
+            ) : (
+              <>
+                <Paragraph id={id} text={origin} title="Origin" />
+                <Can I="Update" this="OriginText">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute right-0 top-0"
+                    onClick={() => setIsEditingOrigin(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </Can>
+              </>
+            )}
+          </div>
         </ContextMenuWrapper>
         <Form method="post" className="mt-4" onSubmit={() => cleanTranslation()}>
           <div className="mt-auto grid w-full gap-2">
@@ -573,12 +656,10 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
               <Textarea
                 name="translation"
                 value={translation}
+                ref={translationRef}
                 className="h-8 text-md"
                 disabled={isLoading || disabledEdit}
                 onChange={(e) => pasteTranslation(e.target.value)}
-                ref={(e) => {
-                  textAreaRef.current = e;
-                }}
                 placeholder={
                   disabledEdit
                     ? 'Please select a new paragraph to edit or double click translated paragraph.'
