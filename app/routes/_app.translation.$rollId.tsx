@@ -273,7 +273,7 @@ export default function TranslationRoll() {
     }
   }, [paragraphs, actionData]);
 
-  const Paragraphs = paragraphsWithHistory.map((paragraph) => (
+  const Paragraphs = paragraphsWithHistory.map((paragraph, index) => (
     <div key={paragraph.id} className="flex items-center gap-6 px-4">
       {paragraph?.target ? (
         <div
@@ -285,7 +285,10 @@ export default function TranslationRoll() {
         >
           <div onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}>
             <ContextMenuWrapper>
-              <Paragraph isOrigin id={paragraph.id} text={paragraph.origin} comments={paragraph.originComments} />
+              <div className="relative">
+                <span className="absolute left-1.5 top-4 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
+                <Paragraph isOrigin id={paragraph.id} text={paragraph.origin} comments={paragraph.originComments} />
+              </div>
             </ContextMenuWrapper>
           </div>
           <div
@@ -331,12 +334,15 @@ export default function TranslationRoll() {
             ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
-              <Paragraph
-                id={paragraph.id}
-                text={paragraph.origin}
-                comments={paragraph.originComments}
-                isSelected={selectedParagraphIndex === paragraph.id}
-              />
+              <div className="relative">
+                <span className="absolute left-1.5 top-4 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
+                <Paragraph
+                  id={paragraph.id}
+                  text={paragraph.origin}
+                  comments={paragraph.originComments}
+                  isSelected={selectedParagraphIndex === paragraph.id}
+                />
+              </div>
             </ContextMenuWrapper>
           </Label>
         </motion.div>
