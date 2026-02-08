@@ -21,6 +21,9 @@
     "db:seed:prod": "dotenv -e .env.prod -- tsx drizzle/seeds/prod/index.ts",
     "read-glossary": "tsx scripts/read-glossary.ts",
     "read-paragraph": "tsx scripts/read-paragraph.ts",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
     "transformation": "tsx scripts/transformation.ts",
     "prepare": "husky",
     "playwright:codegen": "playwright codegen http://localhost:3002",
@@ -132,7 +135,8 @@
     "tsx": "^4.19.1",
     "typescript": "^5.1.6",
     "vite": "^5.1.0",
-    "vite-tsconfig-paths": "^4.2.1"
+    "vite-tsconfig-paths": "^4.2.1",
+    "vitest": "^4.0.18"
   },
   "lint-staged": {
     "**/*.{js,ts,tsx,css,html}": [
