@@ -41,7 +41,7 @@ const menuItems = [
   { icon: Home, label: 'Home', href: '/dashboard' },
   { icon: Book, label: 'Translation', href: '/translation' },
   { icon: Sheet, label: 'Glossary', href: '/glossary' },
-  { icon: BookCopy, label: 'Reference', href: '/reference' },
+  { icon: BookCopy, label: 'Data Management', href: '/data' },
   { icon: MessageSquare, label: 'Assistant', href: '/assistant' },
   { icon: Cog, label: 'Admin', href: '/admin' },
 ];
