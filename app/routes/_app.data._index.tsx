@@ -42,7 +42,7 @@ export default function DataManagementIndex() {
     <div className="container mx-auto max-w-5xl p-6">
       <div className="mb-8 border-b border-gray-200 pb-4">
         <h1 className="text-2xl font-bold text-gray-900">Data Management</h1>
-        <p className="mt-1 text-sm text-gray-500">Import translations, export data from rolls to CSV/Excel.</p>
+        <p className="mt-1 text-sm text-gray-500">Import translations, export data from rolls to Excel.</p>
       </div>
 
       <div className="space-y-4">
@@ -89,7 +89,7 @@ export default function DataManagementIndex() {
                           className="flex items-center gap-2 rounded bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
                         >
                           <Download size={14} />
-                          Export CSV
+                          Export xlsx
                         </a>
                       </div>
                     </div>

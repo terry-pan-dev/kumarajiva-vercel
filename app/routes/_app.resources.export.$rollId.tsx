@@ -1,17 +1,8 @@
 import { type LoaderFunctionArgs } from '@vercel/remix';
+import ExcelJS from 'exceljs';
 
 import { assertAuthUser } from '../auth.server';
 import { readParagraphsByRollId } from '../services/paragraph.service';
-
-// Helper to escape CSV characters
-const escapeCsv = (str: string | null | undefined) => {
-  if (!str) return '';
-  const stringValue = String(str);
-  if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-    return `"${stringValue.replace(/"/g, '""')}"`;
-  }
-  return stringValue;
-};
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { rollId } = params;
@@ -41,12 +32,18 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     throw new Response('No data found for this roll', { status: 404 });
   }
 
-  // 2. Define CSV Headers
+  // 1. Create Workbook and Worksheet
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Translation Data');
 
-  // Collect all unique reference names found in this dataset to build columns dynamically
-  const standardHeaders = ['Origin', 'Translation'];
+  // 2. Setup Columns
+  // We define the static columns first
+  const columns = [
+    { header: 'Origin', key: 'origin', width: 40 },
+    { header: 'Translation', key: 'target', width: 40 },
+  ];
 
-  // Let's find all unique reference sources (e.g., 'Cleary', 'Kalavinka') present in the data
+  // Dynamically add columns for References (Cleary, Kalavinka, etc.)
   const referenceSources = new Set<string>();
   paragraphs.forEach((p) => {
     p.references.forEach((r) => {
@@ -58,57 +55,55 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   console.log('--- Detected Reference Sources ---', refHeaders);
 
   // Build header row: Origin, Translation, [RefName1], [RefName1_page], [RefName2]...
-  const csvHeaders = [...standardHeaders];
   refHeaders.forEach((source) => {
-    csvHeaders.push(source);
-    // csvHeaders.push(`${source}_location`);
+    columns.push({ header: source, key: source, width: 40 });
+    // columns.push({ header: `${source}_location`, key: `${source}_location`, width: 10 });
   });
 
-  // 3. Build CSV Rows
-  const csvRows = paragraphs.map((p, index) => {
-    const rowData: Record<string, string> = {
+  worksheet.columns = columns;
+
+  // 3. Add Rows
+  paragraphs.forEach((p) => {
+    const rowValue: any = {
       label: p.id, // TODO add ref_code
-      Origin: p.origin || '',
-      Translation: p.target || '',
+      origin: p.origin || '',
+      target: p.target || '',
     };
 
-    // Fill reference columns
     refHeaders.forEach((source) => {
       // Find the reference in this paragraph that matches the source name
       const ref = p.references.find((r) => r.sutraName === source);
-
-      if (ref) {
-        rowData[source] = ref.content || '';
-        // TODO: add location field (holds page number) and export
-        // rowData[`${source}_location`] = ref.location : '';
-      } else {
-        rowData[source] = '';
-        // rowData[`${source}_location`] = '';
-      }
+      rowValue[source] = ref?.content || '';
+      // rowValue[`${source}_location`] = ref?.location || '';
     });
 
-    // --- DEBUGGING: Log specific rows if they look weird ---
-    // Example: Log the first row's processed data
-    if (index === 0) {
-      console.log('--- Processed Row [0] Data ---', rowData);
-    }
-
-    // Map to array order of headers
-    return csvHeaders.map((header) => escapeCsv(rowData[header])).join(',');
+    worksheet.addRow(rowValue);
   });
 
-  // Combine Header and Rows
-  const csvString = [csvHeaders.join(','), ...csvRows].join('\n');
+  // 4. Styling (Make it look professional)
+  worksheet.getRow(1).font = { bold: true };
+  worksheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFE0E0E0' },
+  };
 
-  // 4. Return as File Download
-  // Add BOM for Excel compatibility with UTF-8 characters (Chinese)
-  const bom = '\uFEFF';
-  const filename = `${'export'}_${new Date().toISOString().split('T')[0]}.csv`;
+  // Enable text wrapping for content cells so long paragraphs don't stretch forever
+  worksheet.eachRow((row, rowNumber) => {
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+    });
+  });
 
-  return new Response(bom + csvString, {
+  // 5. Write to Buffer and Return Response
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  const filename = `${'export'}_${new Date().toISOString()}.xlsx`;
+
+  return new Response(buffer, {
     status: 200,
     headers: {
-      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="${filename}"`,
     },
   });
