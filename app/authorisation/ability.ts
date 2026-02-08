@@ -8,7 +8,7 @@ type Subjects =
   | 'Sutra'
   | 'OriginText'
   | 'Paragraph'
-  | 'Reference'
+  | 'DataManagement'
   | 'Translation'
   | 'Glossary'
   | 'Comment'
@@ -33,7 +33,7 @@ export const defineAbilityFor = (user: ReadUser) => {
   }
 
   if (user.role === 'admin' || user.role === 'manager') {
-    can('Read', 'Reference');
+    can('Read', 'DataManagement');
     can('Read', 'Paragraph');
     can('Create', 'Paragraph');
     can('Update', 'Paragraph');
