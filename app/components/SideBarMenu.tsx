@@ -1,7 +1,7 @@
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Form, Link, NavLink, useFetcher, useLocation, useNavigation } from '@remix-run/react';
 import { useDebounce } from '@uidotdev/usehooks';
-import { Book, BookCopy, Cog, Home, LogOut, Search, Sheet, MessageSquare } from 'lucide-react';
+import { Book, Cog, Home, LogOut, Search, Sheet, MessageSquare, Database } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { match } from 'ts-pattern';
@@ -41,7 +41,7 @@ const menuItems = [
   { icon: Home, label: 'Home', href: '/dashboard' },
   { icon: Book, label: 'Translation', href: '/translation' },
   { icon: Sheet, label: 'Glossary', href: '/glossary' },
-  { icon: BookCopy, label: 'Reference', href: '/reference' },
+  { icon: Database, label: 'Data Management', href: '/data' },
   { icon: MessageSquare, label: 'Assistant', href: '/assistant' },
   { icon: Cog, label: 'Admin', href: '/admin' },
 ];
@@ -114,7 +114,7 @@ export function SideBarMenu({
               if (item.href.includes('admin') && userRole !== 'admin') {
                 return false;
               }
-              if (item.href.includes('reference') && userRole !== 'admin' && userRole !== 'manager') {
+              if (item.href.includes('data') && userRole !== 'admin' && userRole !== 'manager') {
                 return false;
               }
               return true;

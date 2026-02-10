@@ -8,7 +8,7 @@ import { Separator } from '../components/ui/separator';
 import { readUsers } from '../services';
 
 export const meta: MetaFunction = () => {
-  return [{ title: 'Reference' }];
+  return [{ title: 'Data Management' }];
 };
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
@@ -23,13 +23,13 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   });
 };
 
-export default function ReferenceLayout() {
+export default function DataManagementLayout() {
   const { user, users } = useLoaderData<typeof loader>();
   return (
     <div className="flex h-auto min-h-screen flex-col bg-secondary px-4">
       <div className="my-2 flex h-10 items-center gap-2 text-xl font-semibold">
         <SideBarTrigger />
-        Reference
+        Data Management
       </div>
       <Separator className="mb-2 bg-yellow-600" />
       <Outlet context={{ user, users }} />
