@@ -1,13 +1,9 @@
-import { sql as postgresSql } from '@vercel/postgres';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
 
-import * as schema from '~/drizzle/schema';
 import { sutrasTable, type CreateSutra, type ReadUser } from '~/drizzle/tables';
+import { dbClient } from '~/lib/db.server';
 
 import 'dotenv/config';
-
-const dbClient = drizzle(postgresSql, { schema });
 
 export const readSutrasAndRolls = async ({ user }: { user: ReadUser }) => {
   return dbClient.query.sutrasTable.findMany({

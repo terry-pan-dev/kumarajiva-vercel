@@ -1,14 +1,10 @@
-import { sql as postgresql } from '@vercel/postgres';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
 
 import { referencesTable, type UpdateReference } from '~/drizzle/schema';
 
 import 'dotenv/config';
 
-import * as schema from '~/drizzle/schema';
-
-const dbClient = drizzle(postgresql, { schema });
+import { dbClient } from '~/lib/db.server';
 
 export const updateReference = async (reference: UpdateReference) => {
   if (!reference.id) {

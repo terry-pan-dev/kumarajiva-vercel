@@ -1,12 +1,8 @@
-import { sql as vercelSql } from '@vercel/postgres';
 import { inArray } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
 
-import * as schema from '~/drizzle/schema';
 import { glossariesTable, type ReadGlossary } from '~/drizzle/tables';
+import { dbClient } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
-
-const dbClient = drizzle(vercelSql, { schema });
 
 export const searchGlossaries = async (searchTerm: string, limit = 10): Promise<ReadGlossary[]> => {
   const indexExist = await algoliaClient.indexExists({ indexName: 'glossaries' });

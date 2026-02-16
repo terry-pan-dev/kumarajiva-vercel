@@ -1,14 +1,11 @@
-import { sql } from '@vercel/postgres';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
 
-import * as schema from '~/drizzle/schema';
+import type { CreateRoll } from '~/drizzle/schema';
 
 import 'dotenv/config';
 
 import { type ReadRollWithSutra, rollsTable, type ReadRoll } from '~/drizzle/tables';
-
-const dbClient = drizzle(sql, { schema });
+import { dbClient } from '~/lib/db.server';
 
 export const readRolls = async (): Promise<ReadRoll[]> => {
   return dbClient.query.rollsTable.findMany();
@@ -28,7 +25,7 @@ export const createTargetRoll = async ({
   targetRoll,
 }: {
   originRollId: string;
-  targetRoll: schema.CreateRoll;
+  targetRoll: CreateRoll;
 }) => {
   const roll = await dbClient.query.rollsTable.findFirst({
     where: eq(rollsTable.id, originRollId),
