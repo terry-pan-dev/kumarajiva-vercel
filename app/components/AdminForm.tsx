@@ -6,8 +6,8 @@ import { type ZodSchema } from 'zod';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui';
 import { type ReadTeam, type ReadUser } from '~/drizzle/tables';
-import { langEnum, roleEnum } from '~/drizzle/tables/enums';
 import { useToast } from '~/hooks/use-toast';
+import { LANG_VALUES, ROLE_VALUES } from '~/utils/constants';
 import { type UpdateUserSchema } from '~/validations/user.validation';
 
 import { Button } from './ui/button';
@@ -24,8 +24,8 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
     success: boolean;
     errors: Record<string, string>;
   }>();
-  const roles = roleEnum.enumValues;
-  const languages = langEnum.enumValues;
+  const roles = ROLE_VALUES;
+  const languages = LANG_VALUES;
   const form = useForm<UpdateUserSchema>({
     resolver: zodResolver(userSchema),
     defaultValues: {

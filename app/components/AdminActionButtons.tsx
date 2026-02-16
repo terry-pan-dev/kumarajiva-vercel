@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { type ReadTeam } from '~/drizzle/tables';
-import { langEnum, roleEnum } from '~/drizzle/tables/enums';
 import { type ReadUser } from '~/drizzle/tables/user';
+import { LANG_VALUES, ROLE_VALUES } from '~/utils/constants';
 import { createTeamSchema } from '~/validations/team.validation';
 import { createUserSchema, resetPasswordSchema } from '~/validations/user.validation';
 
@@ -129,11 +129,11 @@ const AddUserForm = ({ teams }: { teams: ReadTeam[] }) => {
     label: team.alias ?? team.name,
     value: team.id,
   }));
-  const rolesOptions = roleEnum.enumValues.map((role) => ({
+  const rolesOptions = ROLE_VALUES.map((role) => ({
     label: role,
     value: role,
   }));
-  const languageOptions = langEnum.enumValues.map((language) => ({
+  const languageOptions = LANG_VALUES.map((language) => ({
     label: language,
     value: language,
   }));
