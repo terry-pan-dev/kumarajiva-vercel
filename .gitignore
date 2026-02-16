@@ -18,3 +18,4 @@ test-results/
 .env*.local
 .cache
 public
+archive
