@@ -1,11 +1,8 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
-export const langEnum = pgEnum('lang', ['english', 'chinese', 'sanskrit', 'indonesian']);
+import { LANG_VALUES, ROLE_VALUES, NOTIFICATION_VALUES } from '~/utils/constants';
 
-export const roleEnum = pgEnum('roles', ['admin', 'leader', 'editor', 'reader', 'assistant', 'manager']);
-
-export const notificationEnum = pgEnum('notification_type', ['info', 'error', 'success', 'warning']);
-
-export type UserRole = (typeof roleEnum.enumValues)[number];
-export type Lang = (typeof langEnum.enumValues)[number];
-export type NotificationType = (typeof notificationEnum.enumValues)[number];
+// Drizzle definitions for the Postgres types
+export const langEnum = pgEnum('lang', LANG_VALUES);
+export const roleEnum = pgEnum('roles', ROLE_VALUES);
+export const notificationEnum = pgEnum('notification_type', NOTIFICATION_VALUES);
