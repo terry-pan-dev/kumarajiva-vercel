@@ -4,9 +4,9 @@ import { match } from 'ts-pattern';
 import AdminActionButtons from '~/components/AdminActionButtons';
 import { AdminForm } from '~/components/AdminForm';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge } from '~/components/ui';
-import { type UserRole } from '~/drizzle/tables/enums';
 import { type ReadTeam } from '~/drizzle/tables/team';
 import { type ReadUser } from '~/drizzle/tables/user';
+import { type UserRole } from '~/utils/constants';
 import { updateUserSchema } from '~/validations/user.validation';
 
 export const AdminManagement = ({ users, teams }: { users: ReadUser[]; teams: ReadTeam[] }) => {
