@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
-import { langEnum, roleEnum } from '~/drizzle/tables/enums';
+import { LANG_VALUES, ROLE_VALUES } from '~/utils/constants';
 
 export const createUserSchema = z.object({
   username: z.string().min(1),
   email: z.string().email(),
   teamId: z.string().uuid(),
-  originLang: z.enum(langEnum.enumValues),
-  targetLang: z.enum(langEnum.enumValues),
-  role: z.enum(roleEnum.enumValues),
+  originLang: z.enum(LANG_VALUES),
+  targetLang: z.enum(LANG_VALUES),
+  role: z.enum(ROLE_VALUES),
   password: z.string().min(1),
 });
 
