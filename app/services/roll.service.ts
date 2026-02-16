@@ -5,7 +5,9 @@ import type { CreateRoll } from '~/drizzle/schema';
 import 'dotenv/config';
 
 import { type ReadRollWithSutra, rollsTable, type ReadRoll } from '~/drizzle/tables';
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
+
+const dbClient = getDb();
 
 export const readRolls = async (): Promise<ReadRoll[]> => {
   return dbClient.query.rollsTable.findMany();

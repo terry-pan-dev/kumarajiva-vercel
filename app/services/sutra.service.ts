@@ -1,9 +1,11 @@
 import { eq } from 'drizzle-orm';
 
 import { sutrasTable, type CreateSutra, type ReadUser } from '~/drizzle/tables';
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
 
 import 'dotenv/config';
+
+const dbClient = getDb();
 
 export const readSutrasAndRolls = async ({ user }: { user: ReadUser }) => {
   return dbClient.query.sutrasTable.findMany({

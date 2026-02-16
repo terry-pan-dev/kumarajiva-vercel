@@ -3,7 +3,9 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { ReadUser } from '~/drizzle/schema';
 
 import { notifications, type CreateNotification, type ReadNotification } from '~/drizzle/tables/notification';
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
+
+const dbClient = getDb();
 
 export const readActiveNotifications = async (): Promise<ReadNotification[]> => {
   return dbClient.query.notifications.findMany({

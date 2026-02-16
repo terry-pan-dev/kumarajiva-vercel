@@ -19,9 +19,10 @@ import type {
 
 import { type SearchResultListProps } from '~/components/SideBarMenu';
 import { commentsTable, glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
+const dbClient = getDb();
 
 export interface IParagraph {
   id: string;

@@ -3,8 +3,10 @@ import OpenAI from 'openai';
 import 'dotenv/config';
 
 import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlossary } from '~/drizzle/tables';
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
+
+const dbClient = getDb();
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

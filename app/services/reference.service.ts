@@ -4,7 +4,9 @@ import { referencesTable, type UpdateReference } from '~/drizzle/schema';
 
 import 'dotenv/config';
 
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
+
+const dbClient = getDb();
 
 export const updateReference = async (reference: UpdateReference) => {
   if (!reference.id) {

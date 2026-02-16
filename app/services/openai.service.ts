@@ -3,7 +3,9 @@ import type { Assistant } from 'openai/resources/beta/assistants.mjs';
 import { OpenAI } from 'openai';
 
 import { systemConfigTable } from '~/drizzle/tables';
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
+
+const dbClient = getDb();
 
 const assistantName = 'Chinese Tokenizer';
 

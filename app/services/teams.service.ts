@@ -1,6 +1,8 @@
 import { teamsTable } from '~/drizzle/schema';
 import { type CreateTeam, type ReadTeam } from '~/drizzle/tables';
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
+
+const dbClient = getDb();
 
 export const readTeams = async (): Promise<ReadTeam[]> => {
   return dbClient.query.teamsTable.findMany();

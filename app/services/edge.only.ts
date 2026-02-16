@@ -1,8 +1,10 @@
 import { inArray } from 'drizzle-orm';
 
 import { glossariesTable, type ReadGlossary } from '~/drizzle/tables';
-import { dbClient } from '~/lib/db.server';
+import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
+
+const dbClient = getDb();
 
 export const searchGlossaries = async (searchTerm: string, limit = 10): Promise<ReadGlossary[]> => {
   const indexExist = await algoliaClient.indexExists({ indexName: 'glossaries' });
