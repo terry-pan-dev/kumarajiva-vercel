@@ -1,13 +1,11 @@
-import { sql as vercelSql } from '@vercel/postgres';
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
 
 import type { ReadUser } from '~/drizzle/schema';
 
-import * as schema from '~/drizzle/schema';
 import { notifications, type CreateNotification, type ReadNotification } from '~/drizzle/tables/notification';
+import { getDb } from '~/lib/db.server';
 
-const dbClient = drizzle(vercelSql, { schema });
+const dbClient = getDb();
 
 export const readActiveNotifications = async (): Promise<ReadNotification[]> => {
   return dbClient.query.notifications.findMany({

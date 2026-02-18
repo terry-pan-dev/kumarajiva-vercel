@@ -1,13 +1,11 @@
 import type { Assistant } from 'openai/resources/beta/assistants.mjs';
 
-import { sql as vercelSql } from '@vercel/postgres';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { OpenAI } from 'openai';
 
-import * as schema from '~/drizzle/schema';
 import { systemConfigTable } from '~/drizzle/tables';
+import { getDb } from '~/lib/db.server';
 
-const dbClient = drizzle(vercelSql, { schema });
+const dbClient = getDb();
 
 const assistantName = 'Chinese Tokenizer';
 

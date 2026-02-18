@@ -1,10 +1,8 @@
 import type { SearchQuery } from '@algolia/client-search';
 
-import { sql as postgresql } from '@vercel/postgres';
 import { and, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
 import 'dotenv/config';
 import { alias } from 'drizzle-orm/pg-core';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { v4 as uuidv4 } from 'uuid';
 
 import type {
@@ -16,14 +14,15 @@ import type {
   CreateComment,
   ReadComment,
   UpdateComment,
+  ReadUser,
 } from '~/drizzle/schema';
 
 import { type SearchResultListProps } from '~/components/SideBarMenu';
 import { commentsTable, glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
-import * as schema from '~/drizzle/schema';
+import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
-const dbClient = drizzle(postgresql, { schema });
+const dbClient = getDb();
 
 export interface IParagraph {
   id: string;
@@ -42,7 +41,7 @@ export const readParagraphsByRollId = async ({
   user,
 }: {
   rollId: string;
-  user: schema.ReadUser;
+  user: ReadUser;
 }): Promise<IParagraph[]> => {
   const paragraphs = await dbClient.query.paragraphsTable.findMany({
     where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, user.originLang)),

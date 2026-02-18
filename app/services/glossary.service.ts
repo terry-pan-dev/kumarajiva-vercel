@@ -1,18 +1,16 @@
-import { sql as vercelSql } from '@vercel/postgres';
 import { eq, inArray, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
 import OpenAI from 'openai';
 import 'dotenv/config';
 
-import * as schema from '~/drizzle/schema';
 import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlossary } from '~/drizzle/tables';
+import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
+
+const dbClient = getDb();
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-const dbClient = drizzle(vercelSql, { schema });
 
 export type Pagination = {
   page: number;
