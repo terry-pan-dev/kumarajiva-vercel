@@ -5,16 +5,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import AvatarEditor from 'react-avatar-editor';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { type ReadGlossary } from '../../drizzle/schema';
-import { assertAuthUser } from '../auth.server';
-import { GlossaryList } from '../components/GlossaryList';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Slider } from '../components/ui/slider';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { readGlossariesByIds, updateUser } from '../services';
+import { assertAuthUser } from '~/auth.server';
+import { GlossaryList } from '~/components/GlossaryList';
+import { Button } from '~/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '~/components/ui/card';
+import { Input } from '~/components/ui/input';
+import { Label } from '~/components/ui/label';
+import { Slider } from '~/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { type ReadGlossary } from '~/drizzle/schema';
+import { readGlossariesByIds, updateUser } from '~/services';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { searchParams } = new URL(request.url);

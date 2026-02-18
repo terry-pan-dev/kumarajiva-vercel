@@ -2,10 +2,10 @@ import type { LoaderFunctionArgs, MetaFunction } from '@vercel/remix';
 
 import { json, Outlet, redirect, useLoaderData } from '@remix-run/react';
 
-import { assertAuthUser } from '../auth.server';
-import { SideBarTrigger } from '../components/SideBarTrigger';
-import { Separator } from '../components/ui/separator';
-import { readUsers } from '../services';
+import { assertAuthUser } from '~/auth.server';
+import { SideBarTrigger } from '~/components/SideBarTrigger';
+import { Separator } from '~/components/ui/separator';
+import { readUsers } from '~/services';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Data Management' }];

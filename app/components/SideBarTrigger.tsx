@@ -1,5 +1,6 @@
-import { useScreenSize } from '../lib/hooks/useScreenSizeHook';
-import { cn } from '../lib/utils';
+import { useScreenSize } from '~/lib/hooks/useScreenSizeHook';
+import { cn } from '~/lib/utils';
+
 import { Icons } from './icons';
 import { useSideBarMenuContext } from './SideBarMenuContext';
 

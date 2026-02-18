@@ -3,14 +3,13 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
+import AuthForm from '~/components/AuthForm';
+import { ErrorInfo } from '~/components/ErrorInfo';
+import { FormInput } from '~/components/FormModal';
+import { Spacer } from '~/components/ui/spacer';
 import { logger } from '~/lib/logger';
-
-import AuthForm from '../components/AuthForm';
-import { ErrorInfo } from '../components/ErrorInfo';
-import { FormInput } from '../components/FormModal';
-import { Spacer } from '../components/ui/spacer';
-import { validatePayloadOrThrow } from '../lib/payload.validation';
-import { readUserByEmail, updateUserPassword } from '../services/user.service';
+import { validatePayloadOrThrow } from '~/lib/payload.validation';
+import { readUserByEmail, updateUserPassword } from '~/services/user.service';
 
 const schema = z.object({
   new_pass: z.string().min(8),

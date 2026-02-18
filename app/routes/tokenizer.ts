@@ -1,8 +1,8 @@
 import { json, redirect, type ActionFunctionArgs } from '@remix-run/node';
 
-import { assertAuthUser } from '../auth.server';
-import { getGlossariesByGivenGlossaries } from '../services/glossary.service';
-import { tokenizer } from '../services/tokenizer.service';
+import { assertAuthUser } from '~/auth.server';
+import { getGlossariesByGivenGlossaries } from '~/services/glossary.service';
+import { tokenizer } from '~/services/tokenizer.service';
 
 export const loader = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);

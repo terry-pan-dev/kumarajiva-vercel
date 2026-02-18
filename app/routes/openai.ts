@@ -5,8 +5,8 @@ import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 
-import { assertAuthUser } from '../auth.server';
-import { searchGlossaries } from '../services/glossary.service';
+import { assertAuthUser } from '~/auth.server';
+import { searchGlossaries } from '~/services/glossary.service';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

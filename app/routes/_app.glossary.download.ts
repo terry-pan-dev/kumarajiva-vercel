@@ -2,8 +2,8 @@ import type { LoaderFunctionArgs } from '@remix-run/node';
 
 import { redirect } from '@remix-run/node';
 
-import { assertAuthUser } from '../auth.server';
-import { getAllGlossaries } from '../services/glossary.service';
+import { assertAuthUser } from '~/auth.server';
+import { getAllGlossaries } from '~/services/glossary.service';
 
 function escapeCSVValue(value: unknown): string {
   if (value == null) return ''; // handle null or undefined

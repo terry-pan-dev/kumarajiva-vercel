@@ -1,9 +1,9 @@
 import { Outlet, useRouteError } from '@remix-run/react';
 import { type MetaFunction } from '@vercel/remix';
 
-import { ErrorInfo } from '../components/ErrorInfo';
-import { SideBarTrigger } from '../components/SideBarTrigger';
-import { Separator } from '../components/ui/separator';
+import { ErrorInfo } from '~/components/ErrorInfo';
+import { SideBarTrigger } from '~/components/SideBarTrigger';
+import { Separator } from '~/components/ui/separator';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Dashboard' }];

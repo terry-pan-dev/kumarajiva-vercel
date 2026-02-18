@@ -1,10 +1,10 @@
 import { Outlet, type MetaFunction } from '@remix-run/react';
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
 
-import { assertAuthUser } from '../auth.server';
-import { SideBarTrigger } from '../components/SideBarTrigger';
-import { Separator } from '../components/ui';
-import { Toaster } from '../components/ui/toaster';
+import { assertAuthUser } from '~/auth.server';
+import { SideBarTrigger } from '~/components/SideBarTrigger';
+import { Separator } from '~/components/ui';
+import { Toaster } from '~/components/ui/toaster';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Administration' }];

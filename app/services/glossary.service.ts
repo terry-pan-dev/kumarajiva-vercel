@@ -6,8 +6,7 @@ import 'dotenv/config';
 
 import * as schema from '~/drizzle/schema';
 import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlossary } from '~/drizzle/tables';
-
-import algoliaClient from '../providers/algolia';
+import algoliaClient from '~/providers/algolia';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

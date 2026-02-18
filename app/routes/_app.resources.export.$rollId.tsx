@@ -1,8 +1,8 @@
 import { type LoaderFunctionArgs } from '@vercel/remix';
 
-import { assertAuthUser } from '../auth.server';
-import { buildExportFilename, buildExportWorkbook } from '../services/export.service';
-import { readParagraphsByRollId } from '../services/paragraph.service';
+import { assertAuthUser } from '~/auth.server';
+import { buildExportFilename, buildExportWorkbook } from '~/services/export.service';
+import { readParagraphsByRollId } from '~/services/paragraph.service';
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { rollId } = params;

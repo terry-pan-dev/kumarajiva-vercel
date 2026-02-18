@@ -1,8 +1,8 @@
 import { Outlet } from '@remix-run/react';
 import { type MetaFunction } from '@vercel/remix';
 
-import { SideBarTrigger } from '../components/SideBarTrigger';
-import { Separator } from '../components/ui/separator';
+import { SideBarTrigger } from '~/components/SideBarTrigger';
+import { Separator } from '~/components/ui/separator';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Setting' }];

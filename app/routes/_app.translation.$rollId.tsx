@@ -8,18 +8,15 @@ import Markdown from 'react-markdown';
 import { ClientOnly } from 'remix-utils/client-only';
 import { ZodError } from 'zod';
 
+import type { ReadHistory } from '~/drizzle/tables/paragraph';
+
+import { assertAuthUser } from '~/auth.server';
+import { Can } from '~/authorisation';
+import { useCommentContext } from '~/components/CommentContext';
+import ContextMenuWrapper from '~/components/ContextMenu';
+import { ErrorInfo } from '~/components/ErrorInfo';
 import { Icons } from '~/components/icons';
-import { type ReadReference } from '~/drizzle/tables/reference';
-import { type ReadUser } from '~/drizzle/tables/user';
-
-import type { ReadHistory } from '../../drizzle/tables/paragraph';
-
-import { assertAuthUser } from '../auth.server';
-import { Can } from '../authorisation';
-import { useCommentContext } from '../components/CommentContext';
-import ContextMenuWrapper from '../components/ContextMenu';
-import { ErrorInfo } from '../components/ErrorInfo';
-import { Paragraph } from '../components/Paragraph';
+import { Paragraph } from '~/components/Paragraph';
 import {
   Button,
   Collapsible,
@@ -43,12 +40,14 @@ import {
   ResizablePanelGroup,
   ScrollArea,
   Textarea,
-} from '../components/ui';
-import { useToast } from '../hooks/use-toast';
-import { useScreenSize } from '../lib/hooks/useScreenSizeHook';
-import { useTextAreaAutoHeight } from '../lib/hooks/useTextAreaAutoHeight';
-import { useTranslation } from '../lib/hooks/useTranslation';
-import { validatePayloadOrThrow } from '../lib/payload.validation';
+} from '~/components/ui';
+import { type ReadReference } from '~/drizzle/tables/reference';
+import { type ReadUser } from '~/drizzle/tables/user';
+import { useToast } from '~/hooks/use-toast';
+import { useScreenSize } from '~/lib/hooks/useScreenSizeHook';
+import { useTextAreaAutoHeight } from '~/lib/hooks/useTextAreaAutoHeight';
+import { useTranslation } from '~/lib/hooks/useTranslation';
+import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import {
   createComment,
   insertParagraph,
@@ -56,13 +55,13 @@ import {
   updateComment,
   updateParagraph,
   type IParagraph,
-} from '../services/paragraph.service';
-import { readRollById } from '../services/roll.service';
+} from '~/services/paragraph.service';
+import { readRollById } from '~/services/roll.service';
 import {
   createCommentActionSchema,
   paragraphActionSchema,
   updateCommentActionSchema,
-} from '../validations/paragraph.validation';
+} from '~/validations/paragraph.validation';
 
 export const config = {
   memory: 3009,

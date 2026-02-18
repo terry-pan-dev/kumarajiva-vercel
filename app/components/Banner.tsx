@@ -1,7 +1,7 @@
 import { AlertCircle, Bell, CheckCircle, Info, X } from 'lucide-react';
 import React from 'react';
 
-import type { NotificationType } from '~/drizzle/schema';
+import type { NotificationType } from '~/utils/constants';
 
 export interface Banner {
   id: string;

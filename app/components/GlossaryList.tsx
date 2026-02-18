@@ -5,10 +5,8 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { langEnum, type ReadGlossary } from '~/drizzle/tables';
-
-import { Can } from '../authorisation';
-import { Icons } from '../components/icons';
+import { Can } from '~/authorisation';
+import { Icons } from '~/components/icons';
 import {
   Badge,
   Button,
@@ -22,9 +20,12 @@ import {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from '../components/ui';
-import { Divider } from '../components/ui/divider';
-import { glossaryEditFormSchema, glossaryInsertFormSchema } from '../validations/glossary.validation';
+} from '~/components/ui';
+import { Divider } from '~/components/ui/divider';
+import { type ReadGlossary } from '~/drizzle/tables';
+import { LANG_VALUES } from '~/utils/constants';
+import { glossaryEditFormSchema, glossaryInsertFormSchema } from '~/validations/glossary.validation';
+
 import { FormInput, FormModal, FormSelect, FormTextarea, HiddenInput } from './FormModal';
 import { Spacer } from './ui/spacer';
 
@@ -433,12 +434,10 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
 };
 
 const GlossaryInsertForm = ({ id }: { id: string }) => {
-  const languageOptions = langEnum.enumValues
-    .filter((language) => language !== 'chinese')
-    .map((language) => ({
-      label: language,
-      value: language,
-    }));
+  const languageOptions = LANG_VALUES.filter((language) => language !== 'chinese').map((language) => ({
+    label: language,
+    value: language,
+  }));
 
   return (
     <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">

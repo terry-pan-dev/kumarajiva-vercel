@@ -3,15 +3,14 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { z } from 'zod';
 
 import { authenticator } from '~/auth.server';
+import AuthForm from '~/components/AuthForm';
+import { ErrorInfo } from '~/components/ErrorInfo';
+import { FormInput } from '~/components/FormModal';
+import { Icons } from '~/components/icons';
+import { Spacer } from '~/components/ui/spacer';
 import { logger } from '~/lib/logger';
+import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { commitSession, getSession } from '~/session.server';
-
-import AuthForm from '../components/AuthForm';
-import { ErrorInfo } from '../components/ErrorInfo';
-import { FormInput } from '../components/FormModal';
-import { Icons } from '../components/icons';
-import { Spacer } from '../components/ui/spacer';
-import { validatePayloadOrThrow } from '../lib/payload.validation';
 
 const loginSchema = z.object({
   email: z.string().email(),

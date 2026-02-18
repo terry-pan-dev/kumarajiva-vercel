@@ -3,7 +3,7 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import Markdown from 'react-markdown';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import type { ReadComment } from '../../drizzle/tables/comment';
+import type { ReadComment } from '~/drizzle/tables/comment';
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, Switch, Divider, SheetDescription } from './ui';
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
-import { useScreenSize } from '../lib/hooks';
+import { useScreenSize } from '~/lib/hooks';
 
 interface SideBarMenuContextType {
   isOpen: boolean;
