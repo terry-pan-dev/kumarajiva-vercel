@@ -3,10 +3,10 @@ import type { LoaderFunctionArgs } from '@vercel/remix';
 
 import { json, Outlet, useLoaderData } from '@remix-run/react';
 
-import { assertAuthUser } from '../auth.server';
-import { SideBarTrigger } from '../components/SideBarTrigger';
-import { Separator } from '../components/ui/separator';
-import { readUsers } from '../services/user.service';
+import { assertAuthUser } from '~/auth.server';
+import { SideBarTrigger } from '~/components/SideBarTrigger';
+import { Separator } from '~/components/ui/separator';
+import { readUsers } from '~/services/user.service';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Assistant' }];

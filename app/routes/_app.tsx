@@ -4,17 +4,17 @@ import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { useEffect, useMemo } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { type ReadUser } from '../../drizzle/schema';
-import { assertAuthUser } from '../auth.server';
-import { AbilityContext, defineAbilityFor } from '../authorisation';
-import { BannerStack } from '../components/BannerStack';
-import { CommentProvider } from '../components/CommentContext';
-import { ErrorInfo } from '../components/ErrorInfo';
-import { SearchProvider } from '../components/SearchContext';
-import { SideBarMenu } from '../components/SideBarMenu';
-import { SideBarMenuContextProvider } from '../components/SideBarMenuContext';
-import { readActiveNotifications } from '../services/notification.service';
-import { readUsers } from '../services/user.service';
+import { assertAuthUser } from '~/auth.server';
+import { AbilityContext, defineAbilityFor } from '~/authorisation';
+import { BannerStack } from '~/components/BannerStack';
+import { CommentProvider } from '~/components/CommentContext';
+import { ErrorInfo } from '~/components/ErrorInfo';
+import { SearchProvider } from '~/components/SearchContext';
+import { SideBarMenu } from '~/components/SideBarMenu';
+import { SideBarMenuContextProvider } from '~/components/SideBarMenuContext';
+import { type ReadUser } from '~/drizzle/schema';
+import { readActiveNotifications } from '~/services/notification.service';
+import { readUsers } from '~/services/user.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);

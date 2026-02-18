@@ -3,16 +3,16 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 
-import { type ReadRoll, type ReadSutra, type ReadUser } from '../../drizzle/schema';
-import { assertAuthUser } from '../auth.server';
-import { TranslationCard } from '../components/Card';
-import { ErrorInfo } from '../components/ErrorInfo';
-import { FormInput, FormModal } from '../components/FormModal';
-import { validatePayloadOrThrow } from '../lib/payload.validation';
-import { createTargetRoll } from '../services/roll.service';
-import { createTargetSutra, readSutrasAndRolls } from '../services/sutra.service';
-import { createRollSchema } from '../validations/roll.validation';
-import { createSutraSchema } from '../validations/sutra.validation';
+import { assertAuthUser } from '~/auth.server';
+import { TranslationCard } from '~/components/Card';
+import { ErrorInfo } from '~/components/ErrorInfo';
+import { FormInput, FormModal } from '~/components/FormModal';
+import { type ReadRoll, type ReadSutra, type ReadUser } from '~/drizzle/schema';
+import { validatePayloadOrThrow } from '~/lib/payload.validation';
+import { createTargetRoll } from '~/services/roll.service';
+import { createTargetSutra, readSutrasAndRolls } from '~/services/sutra.service';
+import { createRollSchema } from '~/validations/roll.validation';
+import { createSutraSchema } from '~/validations/sutra.validation';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);

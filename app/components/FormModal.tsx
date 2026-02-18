@@ -5,7 +5,8 @@ import { Controller, FormProvider, useForm, useFormContext, type Mode } from 're
 import { ClientOnly } from 'remix-utils/client-only';
 import { type z, type ZodSchema } from 'zod';
 
-import { useToast } from '../hooks/use-toast';
+import { useToast } from '~/hooks/use-toast';
+
 import {
   FormControl,
   FormDescription,

@@ -4,9 +4,9 @@ import { useFormContext } from 'react-hook-form';
 import { type ReadTeam } from '~/drizzle/tables';
 import { langEnum, roleEnum } from '~/drizzle/tables/enums';
 import { type ReadUser } from '~/drizzle/tables/user';
+import { createTeamSchema } from '~/validations/team.validation';
 import { createUserSchema, resetPasswordSchema } from '~/validations/user.validation';
 
-import { createTeamSchema } from '../validations/team.validation';
 import { FormInput, FormModal, FormSelect } from './FormModal';
 import { Icons } from './icons';
 import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui';

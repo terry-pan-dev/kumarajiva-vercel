@@ -4,26 +4,25 @@ import bcrypt from 'bcryptjs';
 import { useMemo } from 'react';
 import { ZodError } from 'zod';
 
+import { assertAuthUser } from '~/auth.server';
+import { ErrorInfo } from '~/components/ErrorInfo';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { validatePayloadOrThrow } from '~/lib/payload.validation';
+import { SystemNotification } from '~/pages/admin/system.notification';
+import { AdminManagement } from '~/pages/admin/user.management';
 import resend from '~/providers/resend';
-
-import { assertAuthUser } from '../auth.server';
-import { ErrorInfo } from '../components/ErrorInfo';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { validatePayloadOrThrow } from '../lib/payload.validation';
-import { SystemNotification } from '../pages/admin/system.notification';
-import { AdminManagement } from '../pages/admin/user.management';
 import {
   createNotification,
   deleteBanner,
   dismissNotification,
   readAllNotifications,
   toggleBanner,
-} from '../services/notification.service';
-import { createTeam, readTeams } from '../services/teams.service';
-import { createUser, readUsers, resetUserPassword, updateUser } from '../services/user.service';
-import { createBannerSchema } from '../validations/notification.validation';
-import { createTeamSchema } from '../validations/team.validation';
-import { createUserSchema, resetPasswordSchema, updateUserSchema } from '../validations/user.validation';
+} from '~/services/notification.service';
+import { createTeam, readTeams } from '~/services/teams.service';
+import { createUser, readUsers, resetUserPassword, updateUser } from '~/services/user.service';
+import { createBannerSchema } from '~/validations/notification.validation';
+import { createTeamSchema } from '~/validations/team.validation';
+import { createUserSchema, resetPasswordSchema, updateUserSchema } from '~/validations/user.validation';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);

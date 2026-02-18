@@ -9,21 +9,21 @@ import { useCallback, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { CreateGlossary } from '../../drizzle/schema';
+import type { CreateGlossary } from '~/drizzle/schema';
 
-import { assertAuthUser } from '../auth.server';
-import { Can } from '../authorisation';
-import { FormInput, FormModal, FormTextarea } from '../components/FormModal';
-import { Icons } from '../components/icons';
-import { SideBarTrigger } from '../components/SideBarTrigger';
-import { Button } from '../components/ui/button';
-import { Divider } from '../components/ui/divider';
-import { Separator } from '../components/ui/separator';
-import { Toaster } from '../components/ui/toaster';
-import { validatePayloadOrThrow } from '../lib/payload.validation';
-import { createGlossaryAndIndexInAlgolia, getGlossariesByGivenGlossaries } from '../services/glossary.service';
-import { readUsers } from '../services/user.service';
-import { glossaryFormSchema } from '../validations/glossary.validation';
+import { assertAuthUser } from '~/auth.server';
+import { Can } from '~/authorisation';
+import { FormInput, FormModal, FormTextarea } from '~/components/FormModal';
+import { Icons } from '~/components/icons';
+import { SideBarTrigger } from '~/components/SideBarTrigger';
+import { Button } from '~/components/ui/button';
+import { Divider } from '~/components/ui/divider';
+import { Separator } from '~/components/ui/separator';
+import { Toaster } from '~/components/ui/toaster';
+import { validatePayloadOrThrow } from '~/lib/payload.validation';
+import { createGlossaryAndIndexInAlgolia, getGlossariesByGivenGlossaries } from '~/services/glossary.service';
+import { readUsers } from '~/services/user.service';
+import { glossaryFormSchema } from '~/validations/glossary.validation';
 
 export const config = {
   memory: 3009,

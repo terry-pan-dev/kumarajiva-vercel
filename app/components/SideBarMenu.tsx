@@ -25,12 +25,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '~/components/ui';
+import { type ReadGlossary } from '~/drizzle/schema';
 import { type UserRole } from '~/drizzle/tables/enums';
 import favicon from '~/images/favicon-32x32.png';
 import { cn } from '~/lib/utils';
+import { type ParagraphSearchResult } from '~/services/paragraph.service';
 
-import { type ReadGlossary } from '../../drizzle/schema';
-import { type ParagraphSearchResult } from '../services/paragraph.service';
 import { GlossaryDetail, GlossaryItem } from './GlossaryList';
 import { Icons } from './icons';
 import { ParagraphDetail, ParagraphItem } from './ParagraphList';

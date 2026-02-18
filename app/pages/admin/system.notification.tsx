@@ -4,7 +4,7 @@ import React from 'react';
 
 import type { BannerType } from '~/drizzle/tables/notification';
 
-import { AdminBannerForm } from '../../components/AdminBannerForm';
+import { AdminBannerForm } from '~/components/AdminBannerForm';
 
 export const SystemNotification = ({ banners }: { banners: BannerType[] }) => {
   const fetcher = useFetcher();

@@ -2,9 +2,9 @@ import { useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { Download, FileText, ChevronRight } from 'lucide-react'; // Assuming you have lucide-react, or use your Icon component
 
-import { assertAuthUser } from '../auth.server';
-import { ErrorInfo } from '../components/ErrorInfo';
-import { readSutrasAndRolls } from '../services/sutra.service';
+import { assertAuthUser } from '~/auth.server';
+import { ErrorInfo } from '~/components/ErrorInfo';
+import { readSutrasAndRolls } from '~/services/sutra.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);

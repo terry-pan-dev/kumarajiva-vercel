@@ -2,9 +2,9 @@ import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/
 import { eventStream } from 'remix-utils/sse/server';
 import { interval } from 'remix-utils/timers';
 
-import type { OnlineUser } from '../validations/online.validation';
+import type { OnlineUser } from '~/validations/online.validation';
 
-import { onlineSchema } from '../validations/online.validation';
+import { onlineSchema } from '~/validations/online.validation';
 
 const onlineUsersForRollId: Record<string, OnlineUser[]> = {};
 

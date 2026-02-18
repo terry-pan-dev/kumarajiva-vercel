@@ -8,16 +8,15 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+import { assertAuthUser } from '~/auth.server';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '~/components/ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent } from '~/components/ui/card';
 import { Textarea } from '~/components/ui/textarea';
 import { cn } from '~/lib/utils';
-
-import { assertAuthUser } from '../auth.server';
-import { searchGlossaries } from '../services/glossary.service';
-import { tokenizer } from '../services/tokenizer.service';
+import { searchGlossaries } from '~/services/glossary.service';
+import { tokenizer } from '~/services/tokenizer.service';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',

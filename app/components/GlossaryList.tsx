@@ -5,10 +5,8 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { langEnum, type ReadGlossary } from '~/drizzle/tables';
-
-import { Can } from '../authorisation';
-import { Icons } from '../components/icons';
+import { Can } from '~/authorisation';
+import { Icons } from '~/components/icons';
 import {
   Badge,
   Button,
@@ -22,9 +20,11 @@ import {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from '../components/ui';
-import { Divider } from '../components/ui/divider';
-import { glossaryEditFormSchema, glossaryInsertFormSchema } from '../validations/glossary.validation';
+} from '~/components/ui';
+import { Divider } from '~/components/ui/divider';
+import { langEnum, type ReadGlossary } from '~/drizzle/tables';
+import { glossaryEditFormSchema, glossaryInsertFormSchema } from '~/validations/glossary.validation';
+
 import { FormInput, FormModal, FormSelect, FormTextarea, HiddenInput } from './FormModal';
 import { Spacer } from './ui/spacer';
 

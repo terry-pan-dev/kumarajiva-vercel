@@ -2,7 +2,8 @@ import highlightWords from 'highlight-words';
 import { ChevronRight } from 'lucide-react';
 import { useMemo } from 'react';
 
-import { type ParagraphSearchResult } from '../services/paragraph.service';
+import { type ParagraphSearchResult } from '~/services/paragraph.service';
+
 import { Icons } from './icons';
 import { useSearchContext } from './SearchContext';
 import { Badge } from './ui/badge';

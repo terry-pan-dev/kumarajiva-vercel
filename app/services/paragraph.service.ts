@@ -18,11 +18,10 @@ import type {
   UpdateComment,
 } from '~/drizzle/schema';
 
+import { type SearchResultListProps } from '~/components/SideBarMenu';
 import { commentsTable, glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
 import * as schema from '~/drizzle/schema';
-
-import { type SearchResultListProps } from '../components/SideBarMenu';
-import algoliaClient from '../providers/algolia';
+import algoliaClient from '~/providers/algolia';
 
 const dbClient = drizzle(postgresql, { schema });
 

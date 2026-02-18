@@ -2,19 +2,19 @@ import { Outlet, useLoaderData, useParams, type MetaFunction, useFetcher } from 
 import { type ActionFunctionArgs, json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { useEffect, useState } from 'react';
 
-import { type ReadRollWithSutra } from '../../drizzle/tables';
-import { assertAuthUser } from '../auth.server';
-import { Can } from '../authorisation/can';
-import { BreadcrumbLine } from '../components/Breadcrumb';
-import { Icons } from '../components/icons';
-import { SideBarTrigger } from '../components/SideBarTrigger';
-import { Button } from '../components/ui/button';
-import { Separator } from '../components/ui/separator';
-import { Toaster } from '../components/ui/toaster';
-import { useDownloadDocx } from '../lib/hooks';
-import { readUsers } from '../services';
-import { type IParagraph, readParagraphsByRollId } from '../services/paragraph.service';
-import { readRollById } from '../services/roll.service';
+import { assertAuthUser } from '~/auth.server';
+import { Can } from '~/authorisation/can';
+import { BreadcrumbLine } from '~/components/Breadcrumb';
+import { Icons } from '~/components/icons';
+import { SideBarTrigger } from '~/components/SideBarTrigger';
+import { Button } from '~/components/ui/button';
+import { Separator } from '~/components/ui/separator';
+import { Toaster } from '~/components/ui/toaster';
+import { type ReadRollWithSutra } from '~/drizzle/tables';
+import { useDownloadDocx } from '~/lib/hooks';
+import { readUsers } from '~/services';
+import { type IParagraph, readParagraphsByRollId } from '~/services/paragraph.service';
+import { readRollById } from '~/services/roll.service';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Translation' }];

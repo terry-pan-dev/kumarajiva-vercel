@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { langEnum } from '../../drizzle/schema';
-import { chineseRegex } from '../lib/utils';
+import { langEnum } from '~/drizzle/schema';
+import { chineseRegex } from '~/lib/utils';
 
 export const glossaryFormSchema = z.object({
   glossaryChinese: z

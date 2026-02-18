@@ -1,6 +1,6 @@
 import { useEffect, useState, type PropsWithChildren } from 'react';
 
-import { Can } from '../authorisation/can';
+import { Can } from '~/authorisation/can';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -8,7 +8,8 @@ import {
   ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuTrigger,
-} from '../components/ui/context-menu';
+} from '~/components/ui/context-menu';
+
 import { useCommentContext } from './CommentContext';
 import { Icons } from './icons';
 import { useSearchContext } from './SearchContext';

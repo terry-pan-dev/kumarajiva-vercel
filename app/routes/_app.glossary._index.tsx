@@ -4,12 +4,10 @@ import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { ZodError } from 'zod';
 
-import { readGlossaries, updateGlossarySubscribers, updateGlossaryTranslations } from '~/services';
-
-import { assertAuthUser } from '../auth.server';
-import { ErrorInfo } from '../components/ErrorInfo';
-import { GlossaryList } from '../components/GlossaryList';
-import { Button, Input } from '../components/ui';
+import { assertAuthUser } from '~/auth.server';
+import { ErrorInfo } from '~/components/ErrorInfo';
+import { GlossaryList } from '~/components/GlossaryList';
+import { Button, Input } from '~/components/ui';
 import {
   Pagination,
   PaginationPrevious,
@@ -17,14 +15,15 @@ import {
   PaginationContent,
   PaginationNext,
   PaginationEllipsis,
-} from '../components/ui/pagination';
-import { validatePayloadOrThrow } from '../lib/payload.validation';
-import { searchGlossaries } from '../services/edge.only';
+} from '~/components/ui/pagination';
+import { validatePayloadOrThrow } from '~/lib/payload.validation';
+import { readGlossaries, updateGlossarySubscribers, updateGlossaryTranslations } from '~/services';
+import { searchGlossaries } from '~/services/edge.only';
 import {
   glossaryEditFormSchema,
   glossaryFormSchema,
   glossaryInsertFormSchema,
-} from '../validations/glossary.validation';
+} from '~/validations/glossary.validation';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
