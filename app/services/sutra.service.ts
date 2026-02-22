@@ -1,24 +1,11 @@
-import { eq } from 'drizzle-orm';
-
-import { sutrasTable, type CreateSutra, type ReadUser } from '~/drizzle/tables';
-import { getDb } from '~/lib/db.server';
+import type { CreateSutra, ReadUser } from '~/drizzle/tables';
 
 import 'dotenv/config';
 
-const dbClient = getDb();
+import { DbSutras } from './crud.server';
 
 export const readSutrasAndRolls = async ({ user }: { user: ReadUser }) => {
-  return dbClient.query.sutrasTable.findMany({
-    where: eq(sutrasTable.language, user.originLang),
-    with: {
-      rolls: {
-        with: {
-          children: true,
-        },
-      },
-      children: true,
-    },
-  });
+  return DbSutras.findByLanguageWithRolls(user.originLang);
 };
 
 export const createTargetSutra = async ({
@@ -28,23 +15,21 @@ export const createTargetSutra = async ({
   originSutraId: string;
   targetSutra: Omit<CreateSutra, 'cbeta'>;
 }) => {
-  const sutra = await dbClient.query.sutrasTable.findFirst({
-    where: eq(sutrasTable.id, originSutraId),
-  });
+  const sutra = await DbSutras.findById(originSutraId);
   if (!sutra) {
     throw new Error('Origin sutra not found');
   }
   const { id, ...rest } = sutra;
-  return dbClient.insert(sutrasTable).values({
+  return DbSutras.create({
     ...rest,
     ...targetSutra,
   });
 };
 
-export const createSutra = async (sutra: Omit<CreateSutra, 'updatedBy' | 'createdBy'>) => {
-  return dbClient.insert(sutrasTable).values({
+export const createSutra = async (sutra: Omit<CreateSutra, 'updatedBy' | 'createdBy'>, user: ReadUser) => {
+  return DbSutras.create({
     ...sutra,
-    updatedBy: '5eefc822-fadf-4e8d-892b-0a3badef4282',
-    createdBy: '5eefc822-fadf-4e8d-892b-0a3badef4282',
+    updatedBy: user.id,
+    createdBy: user.id,
   });
 };
