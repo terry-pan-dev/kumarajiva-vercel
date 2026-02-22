@@ -1,16 +1,17 @@
-import { eq } from 'drizzle-orm';
-
-import { referencesTable, type UpdateReference } from '~/drizzle/schema';
+import type { UpdateReference } from '~/drizzle/schema';
 
 import 'dotenv/config';
 
-import { getDb } from '~/lib/db.server';
-
-const dbClient = getDb();
+import { DbReferences } from './crud.server';
 
 export const updateReference = async (reference: UpdateReference) => {
   if (!reference.id) {
     throw new Error('Reference id is required');
   }
-  return dbClient.update(referencesTable).set(reference).where(eq(referencesTable.id, reference.id));
+  const { id, ...rest } = reference;
+
+  return DbReferences.updateById(id, {
+    ...rest,
+    updatedAt: new Date(),
+  });
 };

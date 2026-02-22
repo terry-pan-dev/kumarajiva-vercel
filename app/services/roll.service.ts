@@ -1,25 +1,17 @@
-import { eq } from 'drizzle-orm';
-
 import type { CreateRoll } from '~/drizzle/schema';
 
 import 'dotenv/config';
 
-import { type ReadRollWithSutra, rollsTable, type ReadRoll } from '~/drizzle/tables';
-import { getDb } from '~/lib/db.server';
+import type { ReadRollWithSutra, ReadRoll } from '~/drizzle/tables';
 
-const dbClient = getDb();
+import { DbComments, DbRolls } from './crud.server';
 
 export const readRolls = async (): Promise<ReadRoll[]> => {
-  return dbClient.query.rollsTable.findMany();
+  return DbRolls.findAll();
 };
 
 export const readRollById = async (rollId: string): Promise<ReadRollWithSutra | undefined> => {
-  return dbClient.query.rollsTable.findFirst({
-    where: eq(rollsTable.id, rollId),
-    with: {
-      sutra: true,
-    },
-  });
+  return DbRolls.findByIdWithSutra(rollId);
 };
 
 export const createTargetRoll = async ({
@@ -29,25 +21,17 @@ export const createTargetRoll = async ({
   originRollId: string;
   targetRoll: CreateRoll;
 }) => {
-  const roll = await dbClient.query.rollsTable.findFirst({
-    where: eq(rollsTable.id, originRollId),
-  });
+  const roll = await DbRolls.findById(originRollId);
   if (!roll) {
     throw new Error('Origin roll not found');
   }
   const { id, ...rest } = roll;
-  return dbClient.insert(rollsTable).values({
+  return DbRolls.create({
     ...rest,
     ...targetRoll,
   });
 };
 
 export const readRollWithComments = async () => {
-  return dbClient.query.commentsTable.findMany({
-    where: (comments, { eq }) => eq(comments.resolved, false),
-    with: {
-      roll: true,
-      paragraph: true,
-    },
-  });
+  return DbComments.findAllUnresolvedWithRollParagraph();
 };

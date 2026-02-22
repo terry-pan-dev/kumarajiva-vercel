@@ -28,7 +28,7 @@ import {
 import { type ReadGlossary } from '~/drizzle/schema';
 import favicon from '~/images/favicon-32x32.png';
 import { cn } from '~/lib/utils';
-import { type ParagraphSearchResult } from '~/services/paragraph.service';
+import { type ParagraphSearchResult } from '~/services/search.server';
 import { type UserRole } from '~/utils/constants';
 
 import { GlossaryDetail, GlossaryItem } from './GlossaryList';
