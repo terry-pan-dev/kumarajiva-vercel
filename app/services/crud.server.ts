@@ -253,6 +253,9 @@ export const DbRolls = {
   findById: async (id: string) => {
     return db.query.rollsTable.findFirst({
       where: eq(rollsTable.id, id),
+      with: {
+        children: true,
+      },
     });
   },
 
@@ -271,6 +274,9 @@ export const DbRolls = {
     return db.query.rollsTable.findMany({
       where: (rolls, { inArray }) => inArray(rolls.id, ids),
       limit: limit,
+      with: {
+        children: true,
+      },
     });
   },
 
@@ -328,6 +334,9 @@ export const DbSutras = {
   findById: async (id: string) => {
     return db.query.sutrasTable.findFirst({
       where: eq(sutrasTable.id, id),
+      with: {
+        children: true,
+      },
     });
   },
 
@@ -337,6 +346,9 @@ export const DbSutras = {
     return db.query.sutrasTable.findMany({
       where: (sutras, { inArray }) => inArray(sutras.id, ids),
       limit: limit,
+      with: {
+        children: true,
+      },
     });
   },
 

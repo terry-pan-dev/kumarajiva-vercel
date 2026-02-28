@@ -14,6 +14,10 @@ export const readRollById = async (rollId: string): Promise<ReadRollWithSutra | 
   return DbRolls.findByIdWithSutra(rollId);
 };
 
+export const getRoll = async (id: string) => {
+  return DbRolls.findById(id);
+};
+
 export const createTargetRoll = async ({
   originRollId,
   targetRoll,
