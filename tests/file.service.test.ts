@@ -2,29 +2,27 @@ import ExcelJS from 'exceljs';
 import { describe, it, expect } from 'vitest';
 
 import {
-  type ExportParagraph,
+  type ExcelTranslationRow,
   extractReferenceSources,
   buildColumns,
-  paragraphToRow,
+  translationRowToExcelRow,
   buildExportWorkbook,
   buildExportFilename,
-} from '../app/services/export.service';
+} from '../app/services/file.service';
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const makeParagraph = (overrides: Partial<ExportParagraph> = {}): ExportParagraph => ({
-  id: 'p1',
+const makeParagraph = (overrides: Partial<ExcelTranslationRow> = {}): ExcelTranslationRow => ({
   origin: '原文',
   target: 'Translation',
   references: [],
   ...overrides,
 });
 
-const sampleParagraphs: ExportParagraph[] = [
+const sampleParagraphs: ExcelTranslationRow[] = [
   makeParagraph({
-    id: 'p1',
     origin: 'Origin A',
     target: 'Target A',
     references: [
@@ -33,13 +31,11 @@ const sampleParagraphs: ExportParagraph[] = [
     ],
   }),
   makeParagraph({
-    id: 'p2',
     origin: 'Origin B',
     target: 'Target B',
     references: [{ sutraName: 'Cleary', content: 'Cleary text B' }],
   }),
   makeParagraph({
-    id: 'p3',
     origin: 'Origin C',
     target: '',
     references: [
@@ -109,24 +105,24 @@ describe('paragraphToRow', () => {
   const sources = ['BTTS', 'Cleary', 'Kalavinka'];
 
   it('maps origin and target', () => {
-    const row = paragraphToRow(sampleParagraphs[0], sources);
+    const row = translationRowToExcelRow(sampleParagraphs[0], sources);
     expect(row.origin).toBe('Origin A');
     expect(row.target).toBe('Target A');
   });
 
   it('maps matching reference content', () => {
-    const row = paragraphToRow(sampleParagraphs[0], sources);
+    const row = translationRowToExcelRow(sampleParagraphs[0], sources);
     expect(row['Cleary']).toBe('Cleary text A');
     expect(row['Kalavinka']).toBe('Kalavinka text A');
   });
 
   it('uses empty string for missing reference', () => {
-    const row = paragraphToRow(sampleParagraphs[0], sources);
+    const row = translationRowToExcelRow(sampleParagraphs[0], sources);
     expect(row['BTTS']).toBe('');
   });
 
   it('uses empty string for missing origin/target', () => {
-    const row = paragraphToRow(makeParagraph({ origin: undefined as unknown as string, target: undefined }), []);
+    const row = translationRowToExcelRow(makeParagraph({ origin: undefined as unknown as string, target: undefined }), []);
     expect(row.origin).toBe('');
     expect(row.target).toBe('');
   });

@@ -1,7 +1,7 @@
 import { type LoaderFunctionArgs } from '@vercel/remix';
 
 import { assertAuthUser } from '~/auth.server';
-import { buildExportFilename, buildExportWorkbook } from '~/services/export.service';
+import { buildExportFilename, buildExportWorkbook, toExcelRows } from '~/services/file.service';
 import { readParagraphsByRollId } from '~/services/paragraph.service';
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
@@ -17,7 +17,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     throw new Response('No data found for this roll', { status: 404 });
   }
 
-  const workbook = await buildExportWorkbook(paragraphs);
+  const workbook = await buildExportWorkbook(toExcelRows(paragraphs));
   const buffer = await workbook.xlsx.writeBuffer();
   const filename = buildExportFilename();
 
