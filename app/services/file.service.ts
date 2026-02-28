@@ -38,11 +38,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import ExcelJS from 'exceljs';
-
 import 'dotenv/config';
+
 import { type IParagraph } from './paragraph.service';
-
-
 
 // =============================================================================
 // SECTION 1: Excel-layer types & constants
@@ -63,7 +61,7 @@ export interface ExcelTranslationRow {
   /** The original-language text (always required). */
   origin: string;
   /** The translation text (optional on import). */
-  target?: string;
+  target: string | null;
   /** Associated sutra references (populated on export, optional on import). */
   references: { sutraName?: string; content?: string }[];
 }
@@ -77,7 +75,6 @@ export interface ExcelTranslationRow {
  */
 const COLUMN_HEADERS_ORIGIN = 'Origin';
 const COLUMN_HEADERS_TARGET = 'Translation';
-
 
 // =============================================================================
 // SECTION 2: Export workbook generation
@@ -176,7 +173,7 @@ export async function buildExportWorkbook(rows: ExcelTranslationRow[]): Promise<
     fgColor: { argb: 'FFE0E0E0' },
   };
 
-    // ── Cell-level styling (all rows) ───────────────────────────────────
+  // ── Cell-level styling (all rows) ───────────────────────────────────
   worksheet.eachRow((row) => {
     row.eachCell((cell) => {
       cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
@@ -194,7 +191,6 @@ export async function buildExportWorkbook(rows: ExcelTranslationRow[]): Promise<
 export function buildExportFilename(date: Date = new Date()): string {
   return `export_${date.toISOString()}.xlsx`;
 }
-
 
 // =============================================================================
 // SECTION 3: Mapping helpers (between layers)
