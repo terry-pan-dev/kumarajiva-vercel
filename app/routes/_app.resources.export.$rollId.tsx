@@ -11,7 +11,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) throw new Response('Unauthorized', { status: 401 });
 
-  const paragraphs = await readParagraphsByRollId({ rollId, user } );
+  const paragraphs = await readParagraphsByRollId({ rollId, user });
 
   if (!paragraphs.length) {
     throw new Response('No data found for this roll', { status: 404 });
