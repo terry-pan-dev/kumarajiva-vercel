@@ -51,7 +51,7 @@ import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import {
   createComment,
   insertParagraph,
-  readParagraphsByRollId,
+  readParagraphsByRollIdForUser,
   updateComment,
   updateParagraph,
   type IParagraph,
@@ -79,7 +79,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   }
   const { rollId } = params;
   const [paragraphs, rollInfo] = await Promise.all([
-    readParagraphsByRollId({ rollId: rollId as string, user }),
+    readParagraphsByRollIdForUser({ rollId: rollId as string, user }),
     readRollById(rollId as string),
   ]);
 

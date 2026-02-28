@@ -16,6 +16,7 @@ import { saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.serve
 
 export interface IParagraph {
   id: string;
+  order?: string;
   origin: string;
   rollId: string;
   target: string | null;
@@ -28,15 +29,41 @@ export interface IParagraph {
 
 export const readParagraphsByRollId = async ({
   rollId,
-  user,
+  limit,
 }: {
   rollId: string;
-  user: ReadUser;
+  limit?: number;
 }): Promise<IParagraph[]> => {
-  const paragraphs = await DbParagraphs.findByRollIdWithChildren(rollId, user);
+  const paragraphs = await DbParagraphs.findByRollIdWithChildren(rollId, limit);
 
   const result = paragraphs.map((paragraph) => ({
     ...paragraph,
+    order: paragraph.order,
+    origin: paragraph.content,
+    target: paragraph.children?.content,
+    histories: paragraph.children?.history || [],
+    originComments: paragraph.comments || [],
+    targetComments: paragraph.children?.comments || [],
+    targetId: paragraph.children?.id,
+  }));
+
+  return result;
+};
+
+export const readParagraphsByRollIdForUser = async ({
+  rollId,
+  user,
+  limit,
+}: {
+  rollId: string;
+  user: ReadUser;
+  limit?: number;
+}): Promise<IParagraph[]> => {
+  const paragraphs = await DbParagraphs.findByRollIdWithChildrenForUser(rollId, user, limit);
+
+  const result = paragraphs.map((paragraph) => ({
+    ...paragraph,
+    order: paragraph.order,
     origin: paragraph.content,
     target: paragraph.children?.content,
     histories: paragraph.children?.history || [],
