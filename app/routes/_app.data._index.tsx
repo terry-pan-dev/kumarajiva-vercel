@@ -1,6 +1,6 @@
 import { useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
-import { Download, FileText, ChevronRight } from 'lucide-react'; // Assuming you have lucide-react, or use your Icon component
+import { Download, FileText, ChevronRight, Upload } from 'lucide-react'; // Assuming you have lucide-react, or use your Icon component
 
 import { assertAuthUser } from '~/auth.server';
 import { ErrorInfo } from '~/components/ErrorInfo';
@@ -79,18 +79,30 @@ export default function DataManagementIndex() {
                           {roll.subtitle && <p className="text-xs text-gray-500">{roll.subtitle}</p>}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-3">
-                        {/* Export Button -> Points to Resource Route */}
-                        <a
-                          target="_blank"
-                          rel="noreferrer"
-                          href={`/resources/export/${roll.id}`}
-                          className="flex items-center gap-2 rounded bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
-                        >
-                          <Download size={14} />
-                          Export xlsx
-                        </a>
+                      <div className="flex flex-row justify-end gap-5">
+                        <div className="flex items-center gap-3">
+                          <a
+                            target="_blank"
+                            rel="noreferrer"
+                            href={`/data/import?sutraId=${sutra.id}&rollId=${roll.id}`}
+                            className="flex items-center gap-2 rounded bg-orange-50 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+                          >
+                            <Upload size={14} />
+                            Import & Replace
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {/* Export Button -> Points to Resource Route */}
+                          <a
+                            target="_blank"
+                            rel="noreferrer"
+                            href={`/resources/export/${roll.id}`}
+                            className="flex items-center gap-2 rounded bg-gray-200 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+                          >
+                            <Download size={14} />
+                            Export xlsx
+                          </a>
+                        </div>
                       </div>
                     </div>
                   ))
