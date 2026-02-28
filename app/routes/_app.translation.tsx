@@ -43,7 +43,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   let rollInfo: ReadRollWithSutra | undefined = undefined;
   if (rollId) {
     [paragraphs, rollInfo] = await Promise.all([
-      readParagraphsByRollId({ rollId: rollId as string, user }),
+      readParagraphsByRollId(rollId as string),
       readRollById(rollId as string),
     ]);
   }

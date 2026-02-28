@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export const useTranslation = ({ originId, target }: { originId: string; target: string | null }) => {
+export const useTranslation = ({ originId, target }: { originId: string; target: string | undefined }) => {
   const previousOriginId = useRef<string>(originId);
   // const fetcher = useFetcher<T>();
   const [translation, setTranslation] = useState(target || '');

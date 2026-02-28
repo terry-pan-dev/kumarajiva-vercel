@@ -86,16 +86,44 @@ export const DbParagraphs = {
     });
   },
 
-  findByRollId: async (rollId: string) => {
+  findByRollId: async (rollId: string, limit?: number) => {
     return db.query.paragraphsTable.findMany({
       where: eq(paragraphsTable.rollId, rollId),
+      limit: limit,
       orderBy: (paragraphs, { asc }) => [asc(paragraphs.number), asc(paragraphs.order)],
     });
   },
 
-  findByRollIdWithChildren: async (rollId: string, user: ReadUser) => {
+  findByRollIdWithChildren: async (rollId: string, limit?: number) => {
+    return db.query.paragraphsTable.findMany({
+      where: (paragraphs, { eq }) => eq(paragraphs.rollId, rollId),
+      limit: limit,
+      with: {
+        children: {
+          with: {
+            history: {
+              orderBy: (history, { desc }) => [desc(history.updatedAt)],
+            },
+            comments: {
+              where: (comments, { eq }) => eq(comments.resolved, false),
+            },
+          },
+        },
+        references: {
+          orderBy: (references, { asc }) => [asc(references.order)],
+        },
+        comments: {
+          where: (comments, { eq }) => eq(comments.resolved, false),
+        },
+      },
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.number), asc(paragraphs.order)],
+    });
+  },
+
+  findByRollIdWithChildrenForUser: async (rollId: string, user: ReadUser, limit?: number) => {
     return db.query.paragraphsTable.findMany({
       where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, user.originLang)),
+      limit: limit,
       with: {
         children: {
           with: {

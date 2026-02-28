@@ -8,6 +8,10 @@ export const readSutrasAndRolls = async ({ user }: { user: ReadUser }) => {
   return DbSutras.findByLanguageWithRolls(user.originLang);
 };
 
+export const getSutra = async (id: string) => {
+  return DbSutras.findById(id);
+};
+
 export const createTargetSutra = async ({
   originSutraId,
   targetSutra,
