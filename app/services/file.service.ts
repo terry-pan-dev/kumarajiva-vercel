@@ -64,8 +64,6 @@ export interface ParagraphUnit {
 // SECTION 3: Service-layer types (import options, results, previews)
 // =============================================================================
 
-export const PREVIEW_LIMIT = 5;
-
 export interface ImportOptions {
   sutraId: string;
   rollId: string;

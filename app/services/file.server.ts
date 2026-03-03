@@ -17,8 +17,10 @@
 
 import 'dotenv/config';
 
-import { type ExistingDataPreview, PREVIEW_LIMIT } from './file.service';
-import { readParagraphsByRollId } from './paragraph.service';
+import { DEFAULT_ORIGIN_LANG, PREVIEW_LIMIT } from '~/utils/constants';
+
+import { type ExistingDataPreview } from './file.service';
+import { readParagraphsByRollIdForLanguage } from './paragraph.service';
 
 /**
  * Fetch a preview of the existing data for a roll from the database.
@@ -28,7 +30,7 @@ import { readParagraphsByRollId } from './paragraph.service';
  * user confirms an import.
  */
 export async function getExistingDataPreviewForRollId(rollId: string): Promise<ExistingDataPreview> {
-  const databaseParagraphs = await readParagraphsByRollId({ rollId });
+  const databaseParagraphs = await readParagraphsByRollIdForLanguage({ rollId, language: DEFAULT_ORIGIN_LANG });
 
   const totalParagraphs = databaseParagraphs.length;
   const totalReferences = databaseParagraphs.reduce((sum, p) => sum + (p.references?.length || 0), 0);

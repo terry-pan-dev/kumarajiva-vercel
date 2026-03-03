@@ -9,8 +9,8 @@ import type {
   CreateSutra,
   ReadComment,
   ReadRoll,
-  ReadUser,
 } from '~/drizzle/schema';
+import type { Lang } from '~/utils/constants';
 
 import { commentsTable, paragraphsTable, referencesTable, rollsTable, sutrasTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
@@ -120,9 +120,9 @@ export const DbParagraphs = {
     });
   },
 
-  findByRollIdWithChildrenForUser: async (rollId: string, user: ReadUser, limit?: number) => {
+  findByRollIdWithChildrenForLanguage: async (rollId: string, language: Lang, limit?: number) => {
     return db.query.paragraphsTable.findMany({
-      where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, user.originLang)),
+      where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, language)),
       limit: limit,
       with: {
         children: {
