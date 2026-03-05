@@ -1,14 +1,10 @@
-import { sql } from '@vercel/postgres';
 import { asc, eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
-
-import * as schema from '~/drizzle/schema';
-
 import 'dotenv/config';
 
 import { usersTable, type CreateUser, type ReadUser, type UpdateUser } from '~/drizzle/tables';
+import { getDb } from '~/lib/db.server';
 
-const dbClient = drizzle(sql, { schema });
+const dbClient = getDb();
 
 export const readUserByEmail = async (email: string): Promise<ReadUser | undefined> => {
   return dbClient.query.usersTable.findFirst({

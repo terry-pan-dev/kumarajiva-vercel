@@ -1,10 +1,8 @@
-import { relations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { type AnyPgColumn, timestamp, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
-import { commentsTable } from './comment';
 import { langEnum } from './enums';
-import { referencesTable } from './reference';
 import { rollsTable } from './roll';
 
 export const paragraphsTable = pgTable('paragraphs', {
@@ -34,31 +32,6 @@ export const paragraphsHistoryTable = pgTable('paragraphs_history', {
   newContent: text('new_content').notNull(),
   updatedBy: text('updated_by').notNull(),
 });
-
-export const paragraphsHistoryTableRelations = relations(paragraphsHistoryTable, ({ one }) => ({
-  paragraph: one(paragraphsTable, {
-    fields: [paragraphsHistoryTable.paragraphId],
-    references: [paragraphsTable.id],
-  }),
-}));
-
-export const paragraphsTableRelations = relations(paragraphsTable, ({ many, one }) => ({
-  children: one(paragraphsTable, {
-    references: [paragraphsTable.parentId],
-    fields: [paragraphsTable.id],
-  }),
-  parent: one(paragraphsTable, {
-    fields: [paragraphsTable.parentId],
-    references: [paragraphsTable.id],
-  }),
-  roll: one(rollsTable, {
-    fields: [paragraphsTable.rollId],
-    references: [rollsTable.id],
-  }),
-  history: many(paragraphsHistoryTable),
-  references: many(referencesTable),
-  comments: many(commentsTable),
-}));
 
 export type CreateParagraph = typeof paragraphsTable.$inferInsert;
 export type ReadParagraph = typeof paragraphsTable.$inferSelect;

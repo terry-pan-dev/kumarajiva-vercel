@@ -1,9 +1,6 @@
-import { relations } from 'drizzle-orm';
 import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
-import { sutrasTable } from './sutra';
-import { usersTable } from './user';
 
 export const teamsTable = pgTable('teams', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -18,11 +15,6 @@ export const teamsTable = pgTable('teams', {
   ...auditAtFields,
   ...auditByFields,
 });
-
-export const teamsTableRelations = relations(teamsTable, ({ many }) => ({
-  sutras: many(sutrasTable),
-  users: many(usersTable),
-}));
 
 export type ReadTeam = typeof teamsTable.$inferSelect;
 export type CreateTeam = typeof teamsTable.$inferInsert;

@@ -1,4 +1,3 @@
-import { relations } from 'drizzle-orm';
 import { boolean, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
@@ -22,13 +21,6 @@ export const usersTable = pgTable('users', {
   ...auditAtFields,
   ...auditByFields,
 });
-
-export const usersTableRelations = relations(usersTable, ({ one }) => ({
-  team: one(teamsTable, {
-    fields: [usersTable.teamId],
-    references: [teamsTable.id],
-  }),
-}));
 
 export type ReadUser = typeof usersTable.$inferSelect;
 export type CreateUser = typeof usersTable.$inferInsert;
