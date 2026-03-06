@@ -118,27 +118,30 @@ function getCellText(value: ExcelJS.CellValue): string {
 
 export async function parseCSV(fileContent: string): Promise<ExcelTranslationRow[]> {
   return new Promise<ExcelTranslationRow[]>((resolve, reject) => {
+    // No transformHeader — we need the original case for reference sutraNames.
     Papa.parse<Record<string, string>>(fileContent, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: (header: string): string => header.toLowerCase().trim(),
 
       complete: (results: Papa.ParseResult<Record<string, string>>): void => {
+        const headers = results.meta.fields ?? [];
+
+        const originHeader = headers.find((h) => HEADER_ALIASES[h.toLowerCase().trim()] === 'origin');
+        const targetHeader = headers.find((h) => HEADER_ALIASES[h.toLowerCase().trim()] === 'target');
+        const refHeaders = headers.filter((h) => !HEADER_ALIASES[h.toLowerCase().trim()]);
+
         const rows: ExcelTranslationRow[] = results.data
           .map((raw): ExcelTranslationRow | null => {
-            const originKey = Object.keys(raw).find((k) => HEADER_ALIASES[k] === 'origin');
-            const targetKey = Object.keys(raw).find((k) => HEADER_ALIASES[k] === 'target');
-
-            const origin = originKey ? raw[originKey]?.trim() : '';
+            const origin = originHeader ? raw[originHeader]?.trim() : '';
             if (!origin) return null;
 
-            const target = targetKey ? raw[targetKey]?.trim() : '';
+            const target = targetHeader ? raw[targetHeader]?.trim() : '';
 
-            return {
-              origin,
-              target: target || null,
-              references: [],
-            };
+            const references = refHeaders
+              .map((h) => ({ sutraName: h, content: raw[h]?.trim() || '' }))
+              .filter((r) => r.content);
+
+            return { origin, target: target || null, references };
           })
           .filter((row): row is ExcelTranslationRow => row !== null);
 
@@ -163,12 +166,16 @@ export async function parseXLSX(fileBuffer: ArrayBuffer): Promise<ExcelTranslati
 
   const headerRow = worksheet.getRow(1);
   const columnMapping: Map<number, 'origin' | 'target'> = new Map();
+  // colNumber → original header text (preserved case) for reference columns
+  const refCols: Map<number, string> = new Map();
 
   headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-    const rawHeader = getCellText(cell.value).toLowerCase().trim();
-    const canonical = HEADER_ALIASES[rawHeader];
+    const originalHeader = getCellText(cell.value).trim();
+    const canonical = HEADER_ALIASES[originalHeader.toLowerCase()];
     if (canonical) {
       columnMapping.set(colNumber, canonical);
+    } else if (originalHeader) {
+      refCols.set(colNumber, originalHeader);
     }
   });
 
@@ -189,11 +196,11 @@ export async function parseXLSX(fileBuffer: ArrayBuffer): Promise<ExcelTranslati
 
     const target = targetCol ? getCellText(row.getCell(targetCol).value).trim() : '';
 
-    rows.push({
-      origin,
-      target: target || null,
-      references: [],
-    });
+    const references = [...refCols.entries()]
+      .map(([colNum, sutraName]) => ({ sutraName, content: getCellText(row.getCell(colNum).value).trim() }))
+      .filter((r) => r.content);
+
+    rows.push({ origin, target: target || null, references });
   });
 
   return rows;

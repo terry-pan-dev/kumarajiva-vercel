@@ -342,7 +342,7 @@ export default function DataImport() {
                         <div className="mt-2 border-t pt-2">
                           {paragraph.references.map((ref) => (
                             <p key={ref.id} className="text-xs text-muted-foreground">
-                              <span className="font-medium text-muted-foreground">Ref:</span> {ref.content}
+                              <span className="font-medium text-muted-foreground">{ref.sutraName}:</span> {ref.content}
                             </p>
                           ))}
                         </div>
@@ -390,6 +390,15 @@ export default function DataImport() {
                           <p className="text-sm italic text-muted-foreground">No translation</p>
                         )}
                       </div>
+                      {!!row.references?.length && (
+                        <div className="mt-2 border-t border-green-200 pt-2 dark:border-green-900">
+                          {row.references.map((ref, refIdx) => (
+                            <p key={refIdx} className="text-xs text-muted-foreground">
+                              <span className="font-medium text-muted-foreground">{ref.sutraName}:</span> {ref.content}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {fileRows.length > PREVIEW_LIMIT && (

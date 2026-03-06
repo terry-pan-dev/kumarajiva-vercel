@@ -73,6 +73,19 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
     })
     .filter((p): p is NonNullable<typeof p> => p !== null);
 
+  const referencesToInsert = rows.flatMap((row, idx) =>
+    row.references
+      .filter((r) => r.sutraName && r.content)
+      .map((r) => ({
+        paragraphId: originParagraphs[idx].id,
+        order: String(idx + 1),
+        sutraName: r.sutraName!,
+        content: r.content!,
+        createdBy: userId,
+        updatedBy: userId,
+      })),
+  );
+
   try {
     const deletedCount = await db.transaction(async (tx) => {
       // ── 1. Load all existing paragraphs for this roll ────────────────────
@@ -109,6 +122,11 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         await tx.insert(paragraphsTable).values(targetParagraphs);
       }
 
+      // ── 7. Insert references ───────────────────────────────────────────────
+      if (referencesToInsert.length > 0) {
+        await tx.insert(referencesTable).values(referencesToInsert);
+      }
+
       return existing.filter((p) => p.parentId == null).length;
     });
 
@@ -116,7 +134,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
       success: true,
       inserted: rows.length,
       deleted: deletedCount,
-      message: `Replaced ${deletedCount} existing paragraph(s) with ${rows.length} new paragraph(s) (${targetParagraphs.length} with translations).`,
+      message: `Replaced ${deletedCount} existing paragraph(s) with ${rows.length} new paragraph(s) (${targetParagraphs.length} with translations, ${referencesToInsert.length} references).`,
     };
   } catch (error) {
     console.error('replaceRollData error:', error);
