@@ -34,17 +34,12 @@ import { readParagraphsByRollIdForLanguage } from './paragraph.service';
 export const db = getDb();
 
 /**
- * Delete all paragraphs and references for a roll, then insert fresh rows from
- * the imported file.  Runs the deletes in the correct FK order:
- *   1. references (FK → paragraphs)
- *   2. child paragraphs (parentId → paragraphs)
- *   3. parent/origin paragraphs
- * Then inserts origin paragraphs followed by translation children.
+ * Pure computation — builds the three insert arrays from file rows and import
+ * options.  No DB I/O; safe to call and unit-test without a database.
  */
-export async function replaceRollData(rows: ExcelTranslationRow[], options: ImportOptions): Promise<ImportResult> {
+export function buildImportData(rows: ExcelTranslationRow[], options: ImportOptions) {
   const { rollId, originalLanguage, translationLanguage, userId } = options;
 
-  // Build insert data before the transaction — pure computation, no DB I/O.
   const originParagraphs = rows.map((row, idx) => ({
     id: uuidv4(),
     rollId,
@@ -85,6 +80,22 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         updatedBy: userId,
       })),
   );
+
+  return { originParagraphs, targetParagraphs, referencesToInsert };
+}
+
+/**
+ * Delete all paragraphs and references for a roll, then insert fresh rows from
+ * the imported file.  Runs the deletes in the correct FK order:
+ *   1. references (FK → paragraphs)
+ *   2. child paragraphs (parentId → paragraphs)
+ *   3. parent/origin paragraphs
+ * Then inserts origin paragraphs followed by translation children.
+ */
+export async function replaceRollData(rows: ExcelTranslationRow[], options: ImportOptions): Promise<ImportResult> {
+  const { rollId } = options;
+
+  const { originParagraphs, targetParagraphs, referencesToInsert } = buildImportData(rows, options);
 
   try {
     const deletedCount = await db.transaction(async (tx) => {
