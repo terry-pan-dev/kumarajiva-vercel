@@ -8,7 +8,7 @@ import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
-import { getExistingDataPreviewForRollId } from '~/services/file.server';
+import { getExistingDataPreviewForRollId, replaceRollData } from '~/services/file.server';
 import {
   parseCSV,
   parseXLSX,
@@ -144,7 +144,17 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
-    // TODO: implement DB replace transaction
+    const rows: ExcelTranslationRow[] = JSON.parse(rowsJson);
+    const result = await replaceRollData(rows, {
+      sutraId,
+      rollId,
+      sutraName: '',
+      originalLanguage,
+      translationLanguage,
+      userId: user.id,
+    });
+
+    return json<ActionResponse>({ intent: 'replace', result });
   }
 }
 
