@@ -16,7 +16,7 @@
  */
 
 import 'dotenv/config';
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 import { paragraphsTable, referencesTable } from '~/drizzle/schema';
@@ -85,67 +85,161 @@ export function buildImportData(rows: ExcelTranslationRow[], options: ImportOpti
 }
 
 /**
- * Delete all paragraphs and references for a roll, then insert fresh rows from
- * the imported file.  Runs the deletes in the correct FK order:
- *   1. references (FK → paragraphs)
- *   2. child paragraphs (parentId → paragraphs)
- *   3. parent/origin paragraphs
- * Then inserts origin paragraphs followed by translation children.
+ * Upsert imported rows into the roll, matching by order position:
+ *   - Existing paragraph at position N → UPDATE content (and its child translation)
+ *   - No existing paragraph at position N → INSERT new paragraph (and child)
+ *   - Extra existing paragraphs beyond imported count → "park" by negating number/order
+ *
+ * References for each updated/inserted origin paragraph are replaced wholesale.
+ * Parked paragraphs (and their children) are excluded from all reads via the
+ * `number >= 0` filter applied in crud.server.ts.
  */
 export async function replaceRollData(rows: ExcelTranslationRow[], options: ImportOptions): Promise<ImportResult> {
-  const { rollId } = options;
-
-  const { originParagraphs, targetParagraphs, referencesToInsert } = buildImportData(rows, options);
+  const { rollId, originalLanguage, translationLanguage, userId } = options;
 
   try {
-    const deletedCount = await db.transaction(async (tx) => {
-      // ── 1. Load all existing paragraphs for this roll ────────────────────
-      const existing = await tx.query.paragraphsTable.findMany({
-        where: eq(paragraphsTable.rollId, rollId),
+    const counts = await db.transaction(async (tx) => {
+      // ── 1. Load existing origin paragraphs (non-parked) sorted by position ─
+      const existingOrigins = await tx.query.paragraphsTable.findMany({
+        where: (p, { eq, and, gte, isNull }) =>
+          and(eq(p.rollId, rollId), eq(p.language, originalLanguage as any), isNull(p.parentId), gte(p.number, 0)),
+        with: { children: true, references: true },
+        orderBy: (p, { asc }) => [asc(p.number), asc(p.order)],
       });
 
-      if (existing.length > 0) {
-        const existingIds = existing.map((p) => p.id);
+      let updatedCount = 0;
+      let insertedCount = 0;
 
-        // ── 2. Delete references ────────────────────────────────────────────
-        await tx.delete(referencesTable).where(inArray(referencesTable.paragraphId, existingIds));
+      // ── 2. Update or insert one paragraph per imported row ────────────────
+      for (let idx = 0; idx < rows.length; idx++) {
+        const row = rows[idx];
+        const existing = existingOrigins[idx];
+        const paraNumber = idx + 1;
+        const paraOrder = String(idx + 1);
 
-        // ── 3. Delete child paragraphs before parents (FK constraint) ───────
-        const childIds = existing.filter((p) => p.parentId != null).map((p) => p.id);
-        if (childIds.length > 0) {
-          await tx.delete(paragraphsTable).where(inArray(paragraphsTable.id, childIds));
+        if (existing) {
+          // UPDATE existing origin paragraph
+          await tx
+            .update(paragraphsTable)
+            .set({ content: row.origin, number: paraNumber, order: paraOrder, updatedBy: userId })
+            .where(eq(paragraphsTable.id, existing.id));
+
+          // UPDATE or INSERT translation child
+          const child = existing.children;
+          if (row.target) {
+            if (child) {
+              await tx
+                .update(paragraphsTable)
+                .set({ content: row.target, number: paraNumber, order: paraOrder, updatedBy: userId })
+                .where(eq(paragraphsTable.id, child.id));
+            } else {
+              await tx.insert(paragraphsTable).values({
+                id: uuidv4(),
+                rollId,
+                parentId: existing.id,
+                number: paraNumber,
+                order: paraOrder,
+                language: translationLanguage as (typeof paragraphsTable.language.enumValues)[number],
+                content: row.target,
+                createdBy: userId,
+                updatedBy: userId,
+              });
+            }
+          }
+
+          // Replace references only if the imported row provides new ones
+          const newRefs = row.references.filter((r) => r.sutraName && r.content);
+          if (newRefs.length > 0) {
+            await tx.delete(referencesTable).where(eq(referencesTable.paragraphId, existing.id));
+            await tx.insert(referencesTable).values(
+              newRefs.map((r) => ({
+                paragraphId: existing.id,
+                order: paraOrder,
+                sutraName: r.sutraName!,
+                content: r.content!,
+                createdBy: userId,
+                updatedBy: userId,
+              })),
+            );
+          }
+
+          updatedCount++;
+        } else {
+          // INSERT new origin paragraph
+          const newId = uuidv4();
+          await tx.insert(paragraphsTable).values({
+            id: newId,
+            rollId,
+            number: paraNumber,
+            order: paraOrder,
+            language: originalLanguage as (typeof paragraphsTable.language.enumValues)[number],
+            content: row.origin,
+            createdBy: userId,
+            updatedBy: userId,
+          });
+
+          if (row.target) {
+            await tx.insert(paragraphsTable).values({
+              id: uuidv4(),
+              rollId,
+              parentId: newId,
+              number: paraNumber,
+              order: paraOrder,
+              language: translationLanguage as (typeof paragraphsTable.language.enumValues)[number],
+              content: row.target,
+              createdBy: userId,
+              updatedBy: userId,
+            });
+          }
+
+          const newRefs = row.references.filter((r) => r.sutraName && r.content);
+          if (newRefs.length > 0) {
+            await tx.insert(referencesTable).values(
+              newRefs.map((r) => ({
+                paragraphId: newId,
+                order: paraOrder,
+                sutraName: r.sutraName!,
+                content: r.content!,
+                createdBy: userId,
+                updatedBy: userId,
+              })),
+            );
+          }
+
+          insertedCount++;
         }
+      }
 
-        // ── 4. Delete parent/origin paragraphs ─────────────────────────────
-        const parentIds = existing.filter((p) => p.parentId == null).map((p) => p.id);
-        if (parentIds.length > 0) {
-          await tx.delete(paragraphsTable).where(inArray(paragraphsTable.id, parentIds));
+      // ── 3. Park extra existing paragraphs (negate number/order) ──────────
+      const extras = existingOrigins.slice(rows.length);
+      for (const extra of extras) {
+        const negNumber = extra.number > 0 ? -extra.number : extra.number;
+        const negOrder = extra.order.startsWith('-') ? extra.order : `-${extra.order}`;
+        await tx
+          .update(paragraphsTable)
+          .set({ number: negNumber, order: negOrder, updatedBy: userId })
+          .where(eq(paragraphsTable.id, extra.id));
+
+        if (extra.children) {
+          const childNegNumber = extra.children.number > 0 ? -extra.children.number : extra.children.number;
+          const childNegOrder = extra.children.order.startsWith('-')
+            ? extra.children.order
+            : `-${extra.children.order}`;
+          await tx
+            .update(paragraphsTable)
+            .set({ number: childNegNumber, order: childNegOrder, updatedBy: userId })
+            .where(eq(paragraphsTable.id, extra.children.id));
         }
       }
 
-      // ── 5. Insert new origin paragraphs ──────────────────────────────────
-      if (originParagraphs.length > 0) {
-        await tx.insert(paragraphsTable).values(originParagraphs);
-      }
-
-      // ── 6. Insert target/translation paragraphs ───────────────────────────
-      if (targetParagraphs.length > 0) {
-        await tx.insert(paragraphsTable).values(targetParagraphs);
-      }
-
-      // ── 7. Insert references ───────────────────────────────────────────────
-      if (referencesToInsert.length > 0) {
-        await tx.insert(referencesTable).values(referencesToInsert);
-      }
-
-      return existing.filter((p) => p.parentId == null).length;
+      return { updatedCount, insertedCount, parkedCount: extras.length };
     });
 
     return {
       success: true,
-      inserted: rows.length,
-      deleted: deletedCount,
-      message: `Replaced ${deletedCount} existing paragraph(s) with ${rows.length} new paragraph(s) (${targetParagraphs.length} with translations, ${referencesToInsert.length} references).`,
+      inserted: counts.insertedCount,
+      deleted: counts.parkedCount,
+      message: `Updated ${counts.updatedCount} paragraph(s), inserted ${counts.insertedCount} new, parked ${counts.parkedCount} extra.`,
     };
   } catch (error) {
     console.error('replaceRollData error:', error);

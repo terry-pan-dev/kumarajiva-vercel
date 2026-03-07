@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq, gte, inArray } from 'drizzle-orm';
 import 'dotenv/config';
 
 import type {
@@ -88,7 +88,7 @@ export const DbParagraphs = {
 
   findByRollId: async (rollId: string, limit?: number) => {
     return db.query.paragraphsTable.findMany({
-      where: eq(paragraphsTable.rollId, rollId),
+      where: (p, { eq, and }) => and(eq(p.rollId, rollId), gte(p.number, 0)),
       limit: limit,
       orderBy: (paragraphs, { asc }) => [asc(paragraphs.number), asc(paragraphs.order)],
     });
@@ -96,7 +96,7 @@ export const DbParagraphs = {
 
   findByRollIdWithChildren: async (rollId: string, limit?: number) => {
     return db.query.paragraphsTable.findMany({
-      where: (paragraphs, { eq }) => eq(paragraphs.rollId, rollId),
+      where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), gte(paragraphs.number, 0)),
       limit: limit,
       with: {
         children: {
@@ -122,7 +122,8 @@ export const DbParagraphs = {
 
   findByRollIdWithChildrenForLanguage: async (rollId: string, language: Lang, limit?: number) => {
     return db.query.paragraphsTable.findMany({
-      where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, language)),
+      where: (paragraphs, { eq, and }) =>
+        and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, language), gte(paragraphs.number, 0)),
       limit: limit,
       with: {
         children: {
