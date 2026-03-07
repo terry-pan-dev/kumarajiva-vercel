@@ -30,6 +30,7 @@ import {
   type ImportResult,
 } from './file.service';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
+import { saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
 
 export const db = getDb();
 
@@ -119,21 +120,35 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
 
         if (existing) {
           // UPDATE existing origin paragraph
-          await tx
-            .update(paragraphsTable)
-            .set({ content: row.origin, number: paraNumber, order: paraOrder, updatedBy: userId })
-            .where(eq(paragraphsTable.id, existing.id));
+          const paragraphData = {
+            content: row.origin,
+            number: paraNumber,
+            order: paraOrder,
+            updatedBy: userId,
+          };
+          await tx.update(paragraphsTable).set(paragraphData).where(eq(paragraphsTable.id, existing.id));
+
+          if (existing.searchId) {
+            await updateParagraphToAlgolia(existing.searchId, paragraphData);
+          }
 
           // UPDATE or INSERT translation child
           const child = existing.children;
           if (row.target) {
             if (child) {
-              await tx
-                .update(paragraphsTable)
-                .set({ content: row.target, number: paraNumber, order: paraOrder, updatedBy: userId })
-                .where(eq(paragraphsTable.id, child.id));
+              const paragraphData = {
+                content: row.target,
+                number: paraNumber,
+                order: paraOrder,
+                updatedBy: userId,
+              };
+              await tx.update(paragraphsTable).set(paragraphData).where(eq(paragraphsTable.id, child.id));
+
+              if (child.searchId) {
+                await updateParagraphToAlgolia(child.searchId, paragraphData);
+              }
             } else {
-              await tx.insert(paragraphsTable).values({
+              const newParagraphData = {
                 id: uuidv4(),
                 rollId,
                 parentId: existing.id,
@@ -141,9 +156,12 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
                 order: paraOrder,
                 language: translationLanguage as (typeof paragraphsTable.language.enumValues)[number],
                 content: row.target,
+                searchId: uuidv4(),
                 createdBy: userId,
                 updatedBy: userId,
-              });
+              };
+              await tx.insert(paragraphsTable).values(newParagraphData);
+              await saveParagraphToAlgolia(newParagraphData);
             }
           }
 
@@ -167,19 +185,22 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         } else {
           // INSERT new origin paragraph
           const newId = uuidv4();
-          await tx.insert(paragraphsTable).values({
+          const newParagraphData = {
             id: newId,
             rollId,
             number: paraNumber,
             order: paraOrder,
             language: originalLanguage as (typeof paragraphsTable.language.enumValues)[number],
             content: row.origin,
+            searchId: uuidv4(),
             createdBy: userId,
             updatedBy: userId,
-          });
+          };
+          await tx.insert(paragraphsTable).values(newParagraphData);
+          await saveParagraphToAlgolia(newParagraphData);
 
           if (row.target) {
-            await tx.insert(paragraphsTable).values({
+            const newTargetData = {
               id: uuidv4(),
               rollId,
               parentId: newId,
@@ -187,9 +208,12 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
               order: paraOrder,
               language: translationLanguage as (typeof paragraphsTable.language.enumValues)[number],
               content: row.target,
+              searchId: uuidv4(),
               createdBy: userId,
               updatedBy: userId,
-            });
+            };
+            await tx.insert(paragraphsTable).values(newTargetData);
+            await saveParagraphToAlgolia(newTargetData);
           }
 
           const newRefs = row.references.filter((r) => r.sutraName && r.content);
