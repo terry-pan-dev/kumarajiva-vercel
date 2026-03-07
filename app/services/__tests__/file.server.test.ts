@@ -12,19 +12,35 @@ const mocks = vi.hoisted(() => {
   const txFindMany = vi.fn<() => Promise<{ id: string; parentId: string | null }[]>>().mockResolvedValue([]);
   const txDeleteWhere = vi.fn().mockResolvedValue(undefined);
   const txInsertValues = vi.fn().mockResolvedValue(undefined);
+  const txUpdateWhere = vi.fn().mockResolvedValue(undefined);
+  const txUpdateSet = vi.fn().mockReturnValue({ where: txUpdateWhere });
   const txDelete = vi.fn().mockReturnValue({ where: txDeleteWhere });
   const txInsert = vi.fn().mockReturnValue({ values: txInsertValues });
+  const txUpdate = vi.fn().mockReturnValue({ set: txUpdateSet });
 
   const mockTx = {
     query: { paragraphsTable: { findMany: txFindMany } },
     delete: txDelete,
     insert: txInsert,
+    update: txUpdate,
   };
 
   const mockTransaction = vi.fn().mockImplementation((fn: (tx: typeof mockTx) => Promise<number>) => fn(mockTx));
   const mockDb = { transaction: mockTransaction };
 
-  return { mockDb, mockTx, txFindMany, txDeleteWhere, txInsertValues, txDelete, txInsert, mockTransaction };
+  return {
+    mockDb,
+    mockTx,
+    txFindMany,
+    txDeleteWhere,
+    txInsertValues,
+    txDelete,
+    txInsert,
+    mockTransaction,
+    txUpdate,
+    txUpdateSet,
+    txUpdateWhere,
+  };
 });
 
 vi.mock('~/lib/db.server', () => ({ getDb: () => mocks.mockDb }));
@@ -32,6 +48,11 @@ vi.mock('~/lib/db.server', () => ({ getDb: () => mocks.mockDb }));
 // paragraph.service is a transitive dep; mock it to avoid its own DB bootstrap
 vi.mock('../paragraph.service', () => ({
   readParagraphsByRollIdForLanguage: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../search.server', () => ({
+  saveParagraphToAlgolia: vi.fn().mockResolvedValue(undefined),
+  updateParagraphToAlgolia: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
@@ -125,8 +146,11 @@ describe('replaceRollData', () => {
     mocks.txFindMany.mockResolvedValue([]);
     mocks.txDeleteWhere.mockResolvedValue(undefined);
     mocks.txInsertValues.mockResolvedValue(undefined);
+    mocks.txUpdateWhere.mockResolvedValue(undefined);
+    mocks.txUpdateSet.mockReturnValue({ where: mocks.txUpdateWhere });
     mocks.txDelete.mockReturnValue({ where: mocks.txDeleteWhere });
     mocks.txInsert.mockReturnValue({ values: mocks.txInsertValues });
+    mocks.txUpdate.mockReturnValue({ set: mocks.txUpdateSet });
     mocks.mockTransaction.mockImplementation((fn: (tx: typeof mocks.mockTx) => Promise<number>) => fn(mocks.mockTx));
   });
 
@@ -138,38 +162,78 @@ describe('replaceRollData', () => {
   // ── With existing data ───────────────────────────────────────────────────
 
   describe('when existing paragraphs are present', () => {
-    const existingParagraphs = [
-      { id: 'orig-1', parentId: null },
-      { id: 'child-1', parentId: 'orig-1' },
+    // 1 existing origin with a child, searchIds, and a reference.
+    // TWO_ROWS has 2 rows, so row 0 matches the existing and row 1 is a new insert.
+    const existingOrigins = [
+      {
+        id: 'orig-1',
+        parentId: null,
+        number: 1,
+        order: '1',
+        searchId: 'search-orig-1',
+        children: { id: 'child-1', number: 1, order: '1', searchId: 'search-child-1' },
+        references: [{ id: 'ref-1' }],
+      },
     ];
 
     beforeEach(() => {
-      mocks.txFindMany.mockResolvedValue(existingParagraphs as any);
+      mocks.txFindMany.mockResolvedValue(existingOrigins as any);
     });
 
-    it('deletes references before paragraphs', async () => {
+    it('updates existing paragraphs in-place rather than deleting them', async () => {
       await replaceRollData(TWO_ROWS, BASE_OPTIONS);
-      // delete is called for: references (1st), children (2nd), parents (3rd)
-      const deleteCalls = mocks.txDelete.mock.calls;
-      expect(deleteCalls).toHaveLength(3);
+      // orig-1 updated + child-1 updated = 2 update calls
+      expect(mocks.txUpdate).toHaveBeenCalledTimes(2);
     });
 
-    it('inserts origins then targets then references', async () => {
+    it('replaces references for updated paragraphs', async () => {
       await replaceRollData(TWO_ROWS, BASE_OPTIONS);
-      // insert is called for: origins (1st), targets (2nd), references (3rd)
-      const insertCalls = mocks.txInsert.mock.calls;
-      expect(insertCalls).toHaveLength(3);
+      // delete old refs for orig-1 (row 0 has a reference)
+      expect(mocks.txDelete).toHaveBeenCalledOnce();
     });
 
-    it('returns success with correct deleted count (origin paragraphs only)', async () => {
+    it('inserts new child translation and new reference and new origin for unmatched row', async () => {
+      await replaceRollData(TWO_ROWS, BASE_OPTIONS);
+      // tx.insert: new refs (row 0) + new origin (row 1) = 2
+      expect(mocks.txInsert).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns success=true', async () => {
       const result = await replaceRollData(TWO_ROWS, BASE_OPTIONS);
       expect(result.success).toBe(true);
-      expect(result.deleted).toBe(1); // only the parent, not the child
     });
 
-    it('returns inserted count equal to number of file rows', async () => {
+    it('reports inserted count for genuinely new paragraphs', async () => {
       const result = await replaceRollData(TWO_ROWS, BASE_OPTIONS);
-      expect(result.inserted).toBe(TWO_ROWS.length);
+      expect(result.inserted).toBe(1); // only row 1 is a new origin
+    });
+
+    it('reports deleted=0 when no paragraphs are parked', async () => {
+      const result = await replaceRollData(TWO_ROWS, BASE_OPTIONS);
+      expect(result.deleted).toBe(0);
+    });
+  });
+
+  describe('when existing count exceeds imported row count', () => {
+    // 3 existing origins but only 2 rows → 1 should be parked
+    const threeExisting = [
+      { id: 'orig-1', parentId: null, number: 1, order: '1', searchId: null, children: null, references: [] },
+      { id: 'orig-2', parentId: null, number: 2, order: '2', searchId: null, children: null, references: [] },
+      { id: 'orig-3', parentId: null, number: 3, order: '3', searchId: null, children: null, references: [] },
+    ];
+
+    beforeEach(() => {
+      mocks.txFindMany.mockResolvedValue(threeExisting as any);
+    });
+
+    it('parks the extra paragraph by negating its number/order', async () => {
+      await replaceRollData(TWO_ROWS, BASE_OPTIONS);
+      expect(mocks.txUpdate).toHaveBeenCalledTimes(3); // 2 updates + 1 park
+    });
+
+    it('reports deleted equal to number of parked paragraphs', async () => {
+      const result = await replaceRollData(TWO_ROWS, BASE_OPTIONS);
+      expect(result.deleted).toBe(1);
     });
   });
 
@@ -202,8 +266,8 @@ describe('replaceRollData', () => {
 
     it('inserts only origin paragraphs (no target insert call)', async () => {
       await replaceRollData(originOnlyRows, BASE_OPTIONS);
-      // only one insert call: origins
-      expect(mocks.txInsert).toHaveBeenCalledOnce();
+      // one insert call per origin row, no target inserts
+      expect(mocks.txInsert).toHaveBeenCalledTimes(originOnlyRows.length);
     });
   });
 
