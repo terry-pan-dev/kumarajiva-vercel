@@ -16,3 +16,6 @@ export const DEFAULT_TARGET_LANG = 'english';
 export type Lang = (typeof LANG_VALUES)[number];
 export type UserRole = (typeof ROLE_VALUES)[number];
 export type NotificationType = (typeof NOTIFICATION_VALUES)[number];
+
+// Import Preview
+export const PREVIEW_LIMIT = 5;

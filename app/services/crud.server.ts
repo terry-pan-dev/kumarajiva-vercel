@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq, gte, inArray } from 'drizzle-orm';
 import 'dotenv/config';
 
 import type {
@@ -9,8 +9,8 @@ import type {
   CreateSutra,
   ReadComment,
   ReadRoll,
-  ReadUser,
 } from '~/drizzle/schema';
+import type { Lang } from '~/utils/constants';
 
 import { commentsTable, paragraphsTable, referencesTable, rollsTable, sutrasTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
@@ -88,7 +88,7 @@ export const DbParagraphs = {
 
   findByRollId: async (rollId: string, limit?: number) => {
     return db.query.paragraphsTable.findMany({
-      where: eq(paragraphsTable.rollId, rollId),
+      where: (p, { eq, and }) => and(eq(p.rollId, rollId), gte(p.number, 0)),
       limit: limit,
       orderBy: (paragraphs, { asc }) => [asc(paragraphs.number), asc(paragraphs.order)],
     });
@@ -96,7 +96,7 @@ export const DbParagraphs = {
 
   findByRollIdWithChildren: async (rollId: string, limit?: number) => {
     return db.query.paragraphsTable.findMany({
-      where: (paragraphs, { eq }) => eq(paragraphs.rollId, rollId),
+      where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), gte(paragraphs.number, 0)),
       limit: limit,
       with: {
         children: {
@@ -120,9 +120,10 @@ export const DbParagraphs = {
     });
   },
 
-  findByRollIdWithChildrenForUser: async (rollId: string, user: ReadUser, limit?: number) => {
+  findByRollIdWithChildrenForLanguage: async (rollId: string, language: Lang, limit?: number) => {
     return db.query.paragraphsTable.findMany({
-      where: (paragraphs, { eq, and }) => and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, user.originLang)),
+      where: (paragraphs, { eq, and }) =>
+        and(eq(paragraphs.rollId, rollId), eq(paragraphs.language, language), gte(paragraphs.number, 0)),
       limit: limit,
       with: {
         children: {
@@ -253,6 +254,9 @@ export const DbRolls = {
   findById: async (id: string) => {
     return db.query.rollsTable.findFirst({
       where: eq(rollsTable.id, id),
+      with: {
+        children: true,
+      },
     });
   },
 
@@ -271,6 +275,9 @@ export const DbRolls = {
     return db.query.rollsTable.findMany({
       where: (rolls, { inArray }) => inArray(rolls.id, ids),
       limit: limit,
+      with: {
+        children: true,
+      },
     });
   },
 
@@ -328,6 +335,9 @@ export const DbSutras = {
   findById: async (id: string) => {
     return db.query.sutrasTable.findFirst({
       where: eq(sutrasTable.id, id),
+      with: {
+        children: true,
+      },
     });
   },
 
@@ -337,6 +347,9 @@ export const DbSutras = {
     return db.query.sutrasTable.findMany({
       where: (sutras, { inArray }) => inArray(sutras.id, ids),
       limit: limit,
+      with: {
+        children: true,
+      },
     });
   },
 

@@ -1,36 +1,13 @@
 /**
  * =============================================================================
- * file.service.ts
+ * file.service.ts  —  CLIENT-SAFE
  * =============================================================================
  *
- * Service for exporting paragraph/translation data.
+ * Pure file-parsing and export helpers. No database access.
+ * Safe to import from both server (loader/action) and client (component) code.
  *
- * This module enforces separation of concerns across three data layers:
- *
- *   1. **Excel layer** — The shape of data as it appears in spreadsheets
- *      (CSV/XLSX). These types have no IDs, no ordering metadata — just
- *      content columns: origin text, translation text, and reference text
- *      keyed by sutra name.
- *      Types: `ExcelTranslationRow`, `ExcelReference`
- *
- *   2. **Database layer** — The shape of data as stored in the DB. Origin
- *      and translation are separate rows linked by `parentId`. References
- *      are a separate table with ordering. These structures are handled
- *      exclusively inside `db*` functions which isolate all transactions.
- *      Types: (Drizzle schema types — `CreateParagraph`, etc.)
- *
- *   3. **Application layer** — The shape used by the website/UI. This is
- *      essentially the Excel shape enriched with IDs and ordering so the
- *      UI can track, sort, and link back to DB records.
- *      Types: `ParagraphUnit`, `ParagraphReferenceView`
- *
- * Data flow:
- *   - Export:  db functions → ParagraphUnit[] → ExcelTranslationRow[] → workbook
- *
- * Sections (in order):
- *   - Excel-layer types & constants
- *   - Export workbook generation
- *   - Mapping helpers (between layers)
+ * For DB-backed helpers (e.g. getExistingDataPreviewForRollId) see:
+ *   ~/services/file.server.ts
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,6 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import ExcelJS from 'exceljs';
+import Papa from 'papaparse';
 import 'dotenv/config';
 
 import { type IParagraph } from './paragraph.service';
@@ -45,58 +23,193 @@ import { type IParagraph } from './paragraph.service';
 // =============================================================================
 // SECTION 1: Excel-layer types & constants
 // =============================================================================
-//
-// These types represent the shape of data in spreadsheets. They contain
-// NO database metadata (no IDs, no ordering) — purely content.
-// =============================================================================
 
-/**
- * A single row in an import/export spreadsheet.
- *
- * This is the pure file-level representation with no database metadata.
- * On import, `references` is optional. On export, references are populated
- * from the database before being written to the workbook.
- */
 export interface ExcelTranslationRow {
-  /** The original-language text (always required). */
   origin: string;
-  /** The translation text (optional on import). */
   target: string | null;
-  /** Associated sutra references (populated on export, optional on import). */
   references: { sutraName?: string; content?: string }[];
 }
 
-/**
- * The canonical column headers used in exported spreadsheets.
- *
- * The import parser normalises incoming headers to lowercase and matches
- * against these (also lowercased), plus legacy aliases like "original" →
- * "origin" and "translation" → "target".
- */
 const COLUMN_HEADERS_ORIGIN = 'Origin';
 const COLUMN_HEADERS_TARGET = 'Translation';
 
+const HEADER_ALIASES: Record<string, 'origin' | 'target'> = {
+  origin: 'origin',
+  original: 'origin',
+  target: 'target',
+  translation: 'target',
+};
+
 // =============================================================================
-// SECTION 2: Export workbook generation
-// =============================================================================
-//
-// Builds a styled ExcelJS workbook from an array of ExcelTranslationRow[].
-//
-// The workbook has a single worksheet ("Translation Data") with:
-//   - An "Origin" column
-//   - A "Translation" column
-//   - One additional column per unique reference source (sutra name)
-//
-// This means a round-trip is possible: export a roll, edit it, then re-import.
-// (Reference columns are informational on export; they are not imported.)
+// SECTION 2: Application-layer types
 // =============================================================================
 
-/**
- * Collect all unique reference source names from the given rows and
- * return them sorted alphabetically.
- *
- * Each unique sutra name becomes its own column in the export spreadsheet.
- */
+export interface ParagraphReferenceView {
+  id: string;
+  order: string;
+  sutraName: string;
+  content: string;
+}
+
+export interface ParagraphUnit {
+  id: string;
+  order?: string;
+  origin: string;
+  targetId?: string;
+  target: string | null;
+  references?: ParagraphReferenceView[];
+}
+
+// =============================================================================
+// SECTION 3: Service-layer types (import options, results, previews)
+// =============================================================================
+
+export interface ImportOptions {
+  sutraId: string;
+  rollId: string;
+  sutraName: string;
+  originalLanguage: string;
+  translationLanguage: string;
+  userId: string;
+}
+
+export interface ImportResult {
+  success: boolean;
+  inserted?: number;
+  deleted?: number;
+  errors?: string[];
+  message: string;
+}
+
+export interface ExistingDataPreview {
+  paragraphs: ParagraphUnit[];
+  totalParagraphs: number;
+  totalReferences: number;
+}
+
+// =============================================================================
+// SECTION 4: Cell-value helpers
+// =============================================================================
+
+function getCellText(value: ExcelJS.CellValue): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value instanceof Date) return value.toISOString();
+
+  if (typeof value === 'object' && 'richText' in value && Array.isArray(value.richText)) {
+    return value.richText.map((part) => part.text ?? '').join('');
+  }
+
+  if (typeof value === 'object' && 'formula' in value) {
+    return getCellText((value as ExcelJS.CellFormulaValue).result as ExcelJS.CellValue);
+  }
+
+  if (typeof value === 'object' && 'hyperlink' in value) {
+    return (value as ExcelJS.CellHyperlinkValue).text?.toString() ?? '';
+  }
+
+  return String(value);
+}
+
+// =============================================================================
+// SECTION 5: Parsing — CSV and XLSX → ExcelTranslationRow[]
+// =============================================================================
+
+export async function parseCSV(fileContent: string): Promise<ExcelTranslationRow[]> {
+  return new Promise<ExcelTranslationRow[]>((resolve, reject) => {
+    // No transformHeader — we need the original case for reference sutraNames.
+    Papa.parse<Record<string, string>>(fileContent, {
+      header: true,
+      skipEmptyLines: true,
+
+      complete: (results: Papa.ParseResult<Record<string, string>>): void => {
+        const headers = results.meta.fields ?? [];
+
+        const originHeader = headers.find((h) => HEADER_ALIASES[h.toLowerCase().trim()] === 'origin');
+        const targetHeader = headers.find((h) => HEADER_ALIASES[h.toLowerCase().trim()] === 'target');
+        const refHeaders = headers.filter((h) => !HEADER_ALIASES[h.toLowerCase().trim()]);
+
+        const rows: ExcelTranslationRow[] = results.data
+          .map((raw): ExcelTranslationRow | null => {
+            const origin = originHeader ? raw[originHeader]?.trim() : '';
+            if (!origin) return null;
+
+            const target = targetHeader ? raw[targetHeader]?.trim() : '';
+
+            const references = refHeaders
+              .map((h) => ({ sutraName: h, content: raw[h]?.trim() || '' }))
+              .filter((r) => r.content);
+
+            return { origin, target: target || null, references };
+          })
+          .filter((row): row is ExcelTranslationRow => row !== null);
+
+        resolve(rows);
+      },
+
+      error: (error: Error): void => reject(error),
+    });
+  });
+}
+
+export async function parseXLSX(fileBuffer: ArrayBuffer): Promise<ExcelTranslationRow[]> {
+  const ExcelJS = await import('exceljs');
+
+  const workbook = new ExcelJS.default.Workbook();
+  await workbook.xlsx.load(Buffer.from(fileBuffer));
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) {
+    return [];
+  }
+
+  const headerRow = worksheet.getRow(1);
+  const columnMapping: Map<number, 'origin' | 'target'> = new Map();
+  // colNumber → original header text (preserved case) for reference columns
+  const refCols: Map<number, string> = new Map();
+
+  headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    const originalHeader = getCellText(cell.value).trim();
+    const canonical = HEADER_ALIASES[originalHeader.toLowerCase()];
+    if (canonical) {
+      columnMapping.set(colNumber, canonical);
+    } else if (originalHeader) {
+      refCols.set(colNumber, originalHeader);
+    }
+  });
+
+  const originCol = [...columnMapping.entries()].find(([, v]) => v === 'origin')?.[0];
+  if (originCol === undefined) {
+    return [];
+  }
+
+  const targetCol = [...columnMapping.entries()].find(([, v]) => v === 'target')?.[0];
+
+  const rows: ExcelTranslationRow[] = [];
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+
+    const origin = getCellText(row.getCell(originCol).value).trim();
+    if (!origin) return;
+
+    const target = targetCol ? getCellText(row.getCell(targetCol).value).trim() : '';
+
+    const references = [...refCols.entries()]
+      .map(([colNum, sutraName]) => ({ sutraName, content: getCellText(row.getCell(colNum).value).trim() }))
+      .filter((r) => r.content);
+
+    rows.push({ origin, target: target || null, references });
+  });
+
+  return rows;
+}
+
+// =============================================================================
+// SECTION 6: Export workbook generation
+// =============================================================================
+
 export function extractReferenceSources(rows: ExcelTranslationRow[]): string[] {
   const sources = new Set<string>();
   rows.forEach((row) => {
@@ -107,12 +220,6 @@ export function extractReferenceSources(rows: ExcelTranslationRow[]): string[] {
   return Array.from(sources).sort();
 }
 
-/**
- * Build the column definitions for the export worksheet.
- *
- * Always includes Origin and Translation, then appends one column per
- * reference source.
- */
 export function buildColumns(referenceSources: string[]): { header: string; key: string; width: number }[] {
   const columns = [
     { header: COLUMN_HEADERS_ORIGIN, key: 'origin', width: 40 },
@@ -126,13 +233,6 @@ export function buildColumns(referenceSources: string[]): { header: string; key:
   return columns;
 }
 
-/**
- * Flatten a single ExcelTranslationRow into a plain object suitable for
- * adding as a worksheet row.
- *
- * The keys of the returned object match the `key` values in `buildColumns`,
- * so ExcelJS can automatically slot each value into the correct cell.
- */
 export function translationRowToExcelRow(row: ExcelTranslationRow, referenceSources: string[]): Record<string, string> {
   const ExcelRow: Record<string, string> = {
     origin: row.origin || '',
@@ -147,13 +247,6 @@ export function translationRowToExcelRow(row: ExcelTranslationRow, referenceSour
   return ExcelRow;
 }
 
-/**
- * Build a complete, styled ExcelJS workbook ready for download.
- *
- * Styling applied:
- *   - Bold header row with a light-grey background.
- *   - All cells top-left aligned with word wrap enabled.
- */
 export async function buildExportWorkbook(rows: ExcelTranslationRow[]): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Translation Data');
@@ -165,7 +258,6 @@ export async function buildExportWorkbook(rows: ExcelTranslationRow[]): Promise<
     worksheet.addRow(translationRowToExcelRow(row, referenceSources));
   });
 
-  // ── Header row styling ──────────────────────────────────────────────
   worksheet.getRow(1).font = { bold: true };
   worksheet.getRow(1).fill = {
     type: 'pattern',
@@ -173,7 +265,6 @@ export async function buildExportWorkbook(rows: ExcelTranslationRow[]): Promise<
     fgColor: { argb: 'FFE0E0E0' },
   };
 
-  // ── Cell-level styling (all rows) ───────────────────────────────────
   worksheet.eachRow((row) => {
     row.eachCell((cell) => {
       cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
@@ -183,28 +274,14 @@ export async function buildExportWorkbook(rows: ExcelTranslationRow[]): Promise<
   return workbook;
 }
 
-/**
- * Generate a timestamped filename for an export download.
- *
- * Example: "export_2025-06-15T10:30:00.000Z.xlsx"
- */
 export function buildExportFilename(date: Date = new Date()): string {
   return `export_${date.toISOString()}.xlsx`;
 }
 
 // =============================================================================
-// SECTION 3: Mapping helpers (between layers)
-// =============================================================================
-//
-// These functions convert between the data layers:
-//   - IParagraph (app) → ExcelTranslationRow (excel)
-//   - DB row → IParagraph (app)
+// SECTION 7: Mapping helpers (between layers)
 // =============================================================================
 
-/**
- * Convert a IParagraph (application layer) to an ExcelTranslationRow
- * (excel layer) by stripping database metadata (IDs, ordering).
- */
 export function toExcelRow(paragraph: IParagraph): ExcelTranslationRow {
   return {
     origin: paragraph.origin,
@@ -216,9 +293,6 @@ export function toExcelRow(paragraph: IParagraph): ExcelTranslationRow {
   };
 }
 
-/**
- * Convert an array of IParagraphs to ExcelTranslationRows for export.
- */
 export function toExcelRows(paragraphs: IParagraph[]): ExcelTranslationRow[] {
   return paragraphs.map(toExcelRow);
 }

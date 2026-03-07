@@ -8,8 +8,8 @@ import type {
   CreateComment,
   ReadComment,
   UpdateComment,
-  ReadUser,
 } from '~/drizzle/schema';
+import type { Lang } from '~/utils/constants';
 
 import { DbComments, DbParagraphs } from './crud.server';
 import { saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
@@ -50,16 +50,16 @@ export const readParagraphsByRollId = async ({
   return result;
 };
 
-export const readParagraphsByRollIdForUser = async ({
+export const readParagraphsByRollIdForLanguage = async ({
   rollId,
-  user,
+  language,
   limit,
 }: {
   rollId: string;
-  user: ReadUser;
+  language: Lang;
   limit?: number;
 }): Promise<IParagraph[]> => {
-  const paragraphs = await DbParagraphs.findByRollIdWithChildrenForUser(rollId, user, limit);
+  const paragraphs = await DbParagraphs.findByRollIdWithChildrenForLanguage(rollId, language, limit);
 
   const result = paragraphs.map((paragraph) => ({
     ...paragraph,
