@@ -1,35 +1,34 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
-import { Form, useActionData, useLoaderData, useNavigation } from '@remix-run/react';
-import { AlertCircle, ArrowLeftRight, CheckCircle2 } from 'lucide-react';
+import { useActionData, useLoaderData, useNavigation } from '@remix-run/react';
 import { useState } from 'react';
 
-import { Alert, AlertDescription } from '~/components/ui/alert';
-import { Button } from '~/components/ui/button';
+import { DataComparisonPanel } from '~/components/import/DataComparisonPanel';
+import { FileUploadForm } from '~/components/import/FileUploadForm';
+import { ImportContextBar } from '~/components/import/ImportContextBar';
+import { ImportInstructions } from '~/components/import/ImportInstructions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { Input } from '~/components/ui/input';
-import { Label } from '~/components/ui/label';
 import { getExistingDataPreviewForRollId, replaceRollData } from '~/services/file.server';
 import {
   parseCSV,
   parseXLSX,
+  type ExcelTranslationRow,
   type ImportOptions,
   type ImportResult,
-  type ExcelTranslationRow,
 } from '~/services/file.service';
 import { getRoll } from '~/services/roll.service';
 import { getSutra } from '~/services/sutra.service';
-import { DEFAULT_ORIGIN_LANG, DEFAULT_TARGET_LANG, PREVIEW_LIMIT } from '~/utils/constants';
+import { DEFAULT_ORIGIN_LANG, DEFAULT_TARGET_LANG } from '~/utils/constants';
 
 import { assertAuthUser } from '../auth.server';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type ActionResponse =
   | { intent: 'preview'; fileRows: ExcelTranslationRow[]; formValues: ImportOptions }
   | { intent: 'replace'; result: ImportResult }
   | { intent: 'error'; result: ImportResult };
 
-// ─── Loader ─────────────────────────────────────────────────────────────────
+// ─── Loader ──────────────────────────────────────────────────────────────────
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
@@ -61,7 +60,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 }
 
-// ─── Action ─────────────────────────────────────────────────────────────────
+// ─── Action ──────────────────────────────────────────────────────────────────
 
 export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
@@ -70,7 +69,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
 
-  // ── Preview: parse file only — existing data is already in the loader ──
+  // ── Preview: parse file only ──
   if (intent === 'preview') {
     const file = formData.get('file') as File;
     const sutraId = formData.get('sutraId') as string;
@@ -158,7 +157,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-// ─── Component ──────────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DataImport() {
   const { sutraId, rollId, sutraName, rollName, originalLanguage, translationLanguage, existing } =
@@ -166,13 +165,9 @@ export default function DataImport() {
   const actionData = useActionData<ActionResponse>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
+  const navigationIntent = (navigation.formData?.get('intent') as string) ?? null;
 
-  const [fileName, setFileName] = useState<string>('');
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    setFileName(file ? file.name : '');
-  };
+  const [fileName, setFileName] = useState('');
 
   const fileRows = actionData?.intent === 'preview' ? actionData.fileRows : null;
   const formValues = actionData?.intent === 'preview' ? actionData.formValues : null;
@@ -181,7 +176,6 @@ export default function DataImport() {
 
   return (
     <div className="container mx-auto max-w-5xl p-6">
-      {/* ── Import Data Card ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl text-primary">Import Data</CardTitle>
@@ -191,291 +185,37 @@ export default function DataImport() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* ── Sutra / Roll / Language context ── */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-lg border bg-muted/30 px-4 py-3">
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Sutra</p>
-              <p className="text-base font-semibold text-foreground">{sutraName}</p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 px-4 py-3">
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Roll</p>
-              <p className="text-base font-semibold text-foreground">{rollName}</p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 px-4 py-3">
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Origin Language</p>
-              <p className="text-base font-semibold text-foreground">{originalLanguage}</p>
-            </div>
-            <div className="rounded-lg border bg-muted/30 px-4 py-3">
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Translation Language
-              </p>
-              <p className="text-base font-semibold text-foreground">{translationLanguage}</p>
-            </div>
-          </div>
-
-          {/* ── File upload form ── */}
-          <Form method="post" className="space-y-4" encType="multipart/form-data">
-            <input type="hidden" name="intent" value="preview" />
-            <input type="hidden" name="sutraId" value={sutraId} />
-            <input type="hidden" name="rollId" value={rollId} />
-            <input type="hidden" name="sutraName" value={sutraName} />
-            <input type="hidden" name="originalLanguage" value={originalLanguage} />
-            <input type="hidden" name="translationLanguage" value={translationLanguage} />
-
-            <div className="space-y-2">
-              <Label htmlFor="file" className="text-lg text-primary">
-                Data File *
-              </Label>
-              <div className="flex items-center gap-3">
-                <Input
-                  required
-                  id="file"
-                  name="file"
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFileChange}
-                  className="flex-1 text-base"
-                />
-              </div>
-              <div>
-                {fileName && (
-                  <p>
-                    <span className="text-lg text-muted-foreground">Selected: </span>
-                    <span className="text-base font-semibold text-foreground">{fileName}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {errorResult && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errorResult.message}</AlertDescription>
-              </Alert>
-            )}
-
-            {replaceResult && (
-              <Alert variant={replaceResult.success ? 'default' : 'destructive'}>
-                {replaceResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p>{replaceResult.message}</p>
-                    {replaceResult.errors && replaceResult.errors.length > 0 && (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-sm font-medium">
-                          View errors ({replaceResult.errors.length})
-                        </summary>
-                        <ul className="mt-2 space-y-1 text-xs">
-                          {replaceResult.errors.map((error, idx) => (
-                            <li key={idx}>• {error}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    )}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex justify-end gap-3">
-              <Button asChild type="button" variant="outline" className="text-base text-muted-foreground">
-                <a href="/data">Cancel</a>
-              </Button>
-              <Button type="submit" className="text-base" disabled={isSubmitting}>
-                {isSubmitting && navigation.formData?.get('intent') === 'preview'
-                  ? 'Reading file...'
-                  : 'Preview Import'}
-              </Button>
-            </div>
-          </Form>
+          <ImportContextBar
+            rollName={rollName}
+            sutraName={sutraName}
+            originalLanguage={originalLanguage}
+            translationLanguage={translationLanguage}
+          />
+          <FileUploadForm
+            rollId={rollId}
+            sutraId={sutraId}
+            fileName={fileName}
+            sutraName={sutraName}
+            errorResult={errorResult}
+            isSubmitting={isSubmitting}
+            replaceResult={replaceResult}
+            originalLanguage={originalLanguage}
+            navigationIntent={navigationIntent}
+            translationLanguage={translationLanguage}
+            onFileChange={(e) => setFileName(e.target.files?.[0]?.name ?? '')}
+          />
         </CardContent>
       </Card>
 
-      {/* ── Data Comparison Card — always visible; file side fills in after preview ── */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl text-primary">
-            <ArrowLeftRight className="h-5 w-5" />
-            Data Comparison
-          </CardTitle>
-          <CardDescription className="text-base">
-            {fileRows
-              ? 'Review the existing data and the imported file data before replacing.'
-              : 'Existing data for this roll. Upload a file above to compare.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Side-by-side paragraph preview */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Existing data — always shown */}
-            <div>
-              <h4 className="mb-3 text-base font-medium text-primary">
-                Existing Data{' '}
-                <span className="text-sm font-normal text-muted-foreground">
-                  (first {Math.min(PREVIEW_LIMIT, existing.paragraphs.length)} of {existing.totalParagraphs})
-                </span>
-              </h4>
-              {existing.paragraphs.length === 0 ? (
-                <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-                  No existing data for this roll
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {existing.paragraphs.map((paragraph) => (
-                    <div key={paragraph.id} className="rounded-lg border p-3">
-                      <div className="mb-1">
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-                          #{paragraph.order}
-                        </span>
-                      </div>
-                      <p className="mb-0.5 text-xs font-medium text-muted-foreground">Original:</p>
-                      <p className="text-sm text-foreground">{paragraph.origin}</p>
-                      <div className="mt-2 border-t pt-2">
-                        <p className="mb-0.5 text-xs font-medium text-muted-foreground">Translation:</p>
-                        {paragraph.target ? (
-                          <p className="text-sm text-foreground">{paragraph.target}</p>
-                        ) : (
-                          <p className="text-sm italic text-muted-foreground">No translation</p>
-                        )}
-                      </div>
-                      {!!paragraph.references?.length && (
-                        <div className="mt-2 border-t pt-2">
-                          {paragraph.references.map((ref) => (
-                            <p key={ref.id} className="text-xs text-muted-foreground">
-                              <span className="font-medium text-muted-foreground">{ref.sutraName}:</span> {ref.content}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {existing.totalParagraphs > PREVIEW_LIMIT && (
-                    <p className="text-center text-xs text-muted-foreground">
-                      ... and {existing.totalParagraphs - PREVIEW_LIMIT} more paragraphs
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+      <DataComparisonPanel
+        existing={existing}
+        fileRows={fileRows}
+        formValues={formValues}
+        isSubmitting={isSubmitting}
+        navigationIntent={navigationIntent}
+      />
 
-            {/* File data — placeholder until a file is previewed */}
-            <div>
-              <h4 className="mb-3 text-base font-medium text-primary">
-                File Data{' '}
-                {fileRows && (
-                  <span className="text-sm font-normal text-muted-foreground">
-                    (first {Math.min(PREVIEW_LIMIT, fileRows.length)} of {fileRows.length})
-                  </span>
-                )}
-              </h4>
-              {fileRows ? (
-                <div className="space-y-2">
-                  {fileRows.slice(0, PREVIEW_LIMIT).map((row, idx) => (
-                    <div key={idx} className="rounded-lg border border-secondary bg-secondary/20 p-3">
-                      <div className="mb-1">
-                        <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground">
-                          #{idx + 1}
-                        </span>
-                      </div>
-                      <p className="mb-0.5 text-xs font-medium text-muted-foreground">Original:</p>
-                      <p className="text-sm text-foreground">{row.origin}</p>
-                      <div className="mt-2 border-t border-secondary/40 pt-2">
-                        <p className="mb-0.5 text-xs font-medium text-muted-foreground">Translation:</p>
-                        {row.target ? (
-                          <p className="text-sm text-foreground">{row.target}</p>
-                        ) : (
-                          <p className="text-sm italic text-muted-foreground">No translation</p>
-                        )}
-                      </div>
-                      {!!row.references?.length && (
-                        <div className="mt-2 border-t border-secondary/40 pt-2">
-                          {row.references.map((ref, refIdx) => (
-                            <p key={refIdx} className="text-xs text-muted-foreground">
-                              <span className="font-medium text-muted-foreground">{ref.sutraName}:</span> {ref.content}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {fileRows.length > PREVIEW_LIMIT && (
-                    <p className="text-center text-xs text-muted-foreground">
-                      ... and {fileRows.length - PREVIEW_LIMIT} more rows
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-                  Upload and preview a file to see incoming data here
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Replace action — only shown after a file has been previewed */}
-          {fileRows && formValues && (
-            <>
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Warning:</strong> Clicking "Replace Data" will permanently delete all existing paragraphs and
-                  references for this roll and replace them with the file data. This action cannot be undone.
-                </AlertDescription>
-              </Alert>
-
-              <Form method="post">
-                <input type="hidden" name="intent" value="replace" />
-                <input name="rows" type="hidden" value={JSON.stringify(fileRows)} />
-                <input type="hidden" name="sutraId" value={formValues.sutraId} />
-                <input type="hidden" name="rollId" value={formValues.rollId} />
-                <input type="hidden" name="originalLanguage" value={formValues.originalLanguage} />
-                <input type="hidden" name="translationLanguage" value={formValues.translationLanguage} />
-
-                <div className="flex justify-end gap-3">
-                  <Button type="submit" variant="destructive" className="text-base" disabled={isSubmitting}>
-                    {isSubmitting && navigation.formData?.get('intent') === 'replace' ? 'Replacing...' : 'Replace Data'}
-                  </Button>
-                </div>
-              </Form>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Instructions Card ── */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-xl text-primary">File Format Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-base">
-          <div>
-            <h4 className="mb-1 text-base font-medium text-primary">CSV Format:</h4>
-            <pre className="overflow-x-auto rounded bg-muted p-3 text-sm text-muted-foreground">
-              {`origin,translation\n諸法因緣生,All dharmas arise from causes and conditions\n諸法因緣滅,All dharmas cease through causes and conditions`}
-            </pre>
-          </div>
-          <div>
-            <h4 className="mb-1 text-base font-medium text-primary">Excel Format:</h4>
-            <p className="text-base text-muted-foreground">
-              Create an Excel file with the same column structure. The first row should contain headers: "origin" and
-              "translation".
-            </p>
-          </div>
-          <div>
-            <h4 className="mb-1 text-base font-medium text-primary">Notes:</h4>
-            <ul className="list-inside list-disc space-y-1 text-base text-muted-foreground">
-              <li>The "origin" column is required (also accepts "original" for backwards compatibility)</li>
-              <li>The "translation" column is optional (also accepts "target")</li>
-              <li>All other columns will be ignored</li>
-              <li>Column names are case-insensitive</li>
-              <li>Empty rows will be skipped</li>
-              <li>
-                Importing will <strong>replace</strong> all existing data for the selected roll
-              </li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+      <ImportInstructions />
     </div>
   );
 }
