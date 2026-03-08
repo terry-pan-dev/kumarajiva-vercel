@@ -1,35 +1,15 @@
-import { useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
+import { useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { ChevronRight, Download, FileText, Pencil, Plus, Upload, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
-
-import type { Lang } from '~/utils/constants';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { SutraForm } from '~/components/data/SutraForm';
+import { SutraRow } from '~/components/data/SutraRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { createRoll, updateRoll } from '~/services/roll.service';
 import { createSutra, readSutrasAndRolls, updateSutra } from '~/services/sutra.service';
-import { SUPPORTED_LANGUAGES } from '~/utils/constants';
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-type SutraForForm = {
-  id: string;
-  title: string;
-  subtitle?: string | null;
-  language: string;
-  category: string;
-  translator: string;
-  cbeta: string;
-  children?: { id: string; title: string; subtitle?: string | null; language: string } | null;
-};
-
-type RollForForm = {
-  id: string;
-  title: string;
-  subtitle: string;
-  children?: { id: string; title: string; subtitle: string } | null;
-};
+import { parseRollCreate, parseRollUpdate, parseSutraCreate, parseSutraUpdate } from '~/utils/dataFormParsers';
 
 // ─── Action ─────────────────────────────────────────────────────────────────
 
@@ -42,15 +22,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   // ── Sutra: create ──
   if (intent === 'create') {
-    const originTitle = formData.get('originTitle') as string;
-    const originSubtitle = (formData.get('originSubtitle') as string) || null;
-    const originLang = formData.get('originLang') as Lang;
-    const translationTitle = formData.get('translationTitle') as string;
-    const translationSubtitle = (formData.get('translationSubtitle') as string) || null;
-    const translationLang = formData.get('translationLang') as Lang;
-    const category = (formData.get('category') as string) || '';
-    const translator = (formData.get('translator') as string) || '';
-    const cbeta = (formData.get('cbeta') as string) || '';
+    const {
+      originTitle,
+      originSubtitle,
+      originLang,
+      translationTitle,
+      translationSubtitle,
+      translationLang,
+      category,
+      translator,
+      cbeta,
+    } = parseSutraCreate(formData);
 
     const [created] = await createSutra(
       {
@@ -86,17 +68,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   // ── Sutra: update ──
   if (intent === 'update') {
-    const sutraId = formData.get('sutraId') as string;
-    const childSutraId = formData.get('childSutraId') as string | null;
-    const originTitle = formData.get('originTitle') as string;
-    const originSubtitle = (formData.get('originSubtitle') as string) || null;
-    const originLang = formData.get('originLang') as Lang;
-    const translationTitle = formData.get('translationTitle') as string;
-    const translationSubtitle = (formData.get('translationSubtitle') as string) || null;
-    const translationLang = formData.get('translationLang') as Lang;
-    const category = (formData.get('category') as string) || '';
-    const translator = (formData.get('translator') as string) || '';
-    const cbeta = (formData.get('cbeta') as string) || '';
+    const {
+      sutraId,
+      childSutraId,
+      originTitle,
+      originSubtitle,
+      originLang,
+      translationTitle,
+      translationSubtitle,
+      translationLang,
+      category,
+      translator,
+      cbeta,
+    } = parseSutraUpdate(formData);
 
     await updateSutra(
       sutraId,
@@ -133,12 +117,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   // ── Roll: create ──
   if (intent === 'create-roll') {
-    const sutraId = formData.get('sutraId') as string;
-    const childSutraId = formData.get('childSutraId') as string | null;
-    const originTitle = formData.get('originTitle') as string;
-    const originSubtitle = (formData.get('originSubtitle') as string) || '';
-    const translationTitle = formData.get('translationTitle') as string;
-    const translationSubtitle = (formData.get('translationSubtitle') as string) || '';
+    const { sutraId, childSutraId, originTitle, originSubtitle, translationTitle, translationSubtitle } =
+      parseRollCreate(formData);
 
     const [created] = await createRoll({ title: originTitle, subtitle: originSubtitle, sutraId }, user);
 
@@ -154,13 +134,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   // ── Roll: update ──
   if (intent === 'update-roll') {
-    const rollId = formData.get('rollId') as string;
-    const childRollId = formData.get('childRollId') as string | null;
-    const childSutraId = formData.get('childSutraId') as string | null;
-    const originTitle = formData.get('originTitle') as string;
-    const originSubtitle = (formData.get('originSubtitle') as string) || '';
-    const translationTitle = formData.get('translationTitle') as string;
-    const translationSubtitle = (formData.get('translationSubtitle') as string) || '';
+    const { rollId, childRollId, childSutraId, originTitle, originSubtitle, translationTitle, translationSubtitle } =
+      parseRollUpdate(formData);
 
     await updateRoll(rollId, { title: originTitle, subtitle: originSubtitle }, user);
 
@@ -201,287 +176,7 @@ export const ErrorBoundary = () => {
   return <ErrorInfo error={error} />;
 };
 
-// ─── Shared field classes ────────────────────────────────────────────────────
-
-const textareaClass = (bg: string) =>
-  `w-full resize-y rounded ${bg} px-3 py-2 text-sm text-foreground placeholder-muted-foreground ring-1 ring-input focus:outline-none focus:ring-2 focus:ring-ring`;
-
-const inputClass = (bg: string) =>
-  `w-full rounded ${bg} px-3 py-2 text-sm text-foreground placeholder-muted-foreground ring-1 ring-input focus:outline-none focus:ring-2 focus:ring-ring`;
-
-const selectClass = (bg: string) =>
-  `w-full rounded ${bg} px-3 py-2 text-sm text-foreground ring-1 ring-input focus:outline-none focus:ring-2 focus:ring-ring`;
-
-// ─── SutraForm ───────────────────────────────────────────────────────────────
-
-function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => void }) {
-  const fetcher = useFetcher<{ success: boolean }>();
-  const isSubmitting = fetcher.state === 'submitting';
-  const bg = 'bg-background';
-
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data?.success) onClose();
-  }, [fetcher.state, fetcher.data, onClose]);
-
-  return (
-    <div className="rounded-lg bg-primary p-5 text-primary-foreground shadow-xl">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-primary-foreground">{sutra ? 'Edit Sutra' : 'Add New Sutra'}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-primary-foreground/60 transition hover:text-primary-foreground"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      <fetcher.Form method="post" className="space-y-4">
-        <input type="hidden" name="intent" value={sutra ? 'update' : 'create'} />
-        {sutra && <input type="hidden" name="sutraId" value={sutra.id} />}
-        {sutra?.children && <input type="hidden" name="childSutraId" value={sutra.children.id} />}
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {/* ── Original column ── */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Original</p>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">
-                Title <span className="text-destructive">*</span>
-              </label>
-              <textarea
-                required
-                rows={2}
-                name="originTitle"
-                placeholder="e.g., 大般若波羅蜜多經"
-                className={textareaClass(bg)}
-                defaultValue={sutra?.title ?? ''}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
-              <textarea
-                rows={2}
-                name="originSubtitle"
-                className={textareaClass(bg)}
-                placeholder="Optional subtitle"
-                defaultValue={sutra?.subtitle ?? ''}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">
-                Language <span className="text-destructive">*</span>
-              </label>
-              <select required name="originLang" className={selectClass(bg)} defaultValue={sutra?.language}>
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <option key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* ── Translation column ── */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Translation</p>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Title</label>
-              <textarea
-                rows={2}
-                name="translationTitle"
-                className={textareaClass(bg)}
-                defaultValue={sutra?.children?.title ?? ''}
-                placeholder="e.g., The Great Prajnaparamita Sutra"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
-              <textarea
-                rows={2}
-                name="translationSubtitle"
-                className={textareaClass(bg)}
-                placeholder="Optional subtitle"
-                defaultValue={sutra?.children?.subtitle ?? ''}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Language</label>
-              <select name="translationLang" className={selectClass(bg)} defaultValue={sutra?.children?.language ?? ''}>
-                <option value="">— none —</option>
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <option key={lang.value} value={lang.value}>
-                    {lang.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Metadata row */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Category</label>
-            <input
-              name="category"
-              className={inputClass(bg)}
-              defaultValue={sutra?.category}
-              placeholder="e.g., Prajnaparamita"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Translator</label>
-            <input
-              name="translator"
-              className={inputClass(bg)}
-              placeholder="e.g., Xuanzang"
-              defaultValue={sutra?.translator}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-primary-foreground/70">CBETA Code</label>
-            <input name="cbeta" placeholder="e.g., T0001" className={inputClass(bg)} defaultValue={sutra?.cbeta} />
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-1">
-          <button
-            type="reset"
-            className="rounded px-4 py-2 text-sm text-primary-foreground/70 transition hover:text-primary-foreground"
-          >
-            Reset
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
-          >
-            {isSubmitting ? 'Saving…' : sutra ? 'Update Sutra' : 'Create Sutra'}
-          </button>
-        </div>
-      </fetcher.Form>
-    </div>
-  );
-}
-
-// ─── RollForm ─────────────────────────────────────────────────────────────────
-
-function RollForm({
-  roll,
-  sutraId,
-  childSutraId,
-  onClose,
-}: {
-  roll?: RollForForm;
-  sutraId: string;
-  childSutraId?: string | null;
-  onClose: () => void;
-}) {
-  const fetcher = useFetcher<{ success: boolean }>();
-  const isSubmitting = fetcher.state === 'submitting';
-  const bg = 'bg-background';
-
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data?.success) onClose();
-  }, [fetcher.state, fetcher.data, onClose]);
-
-  return (
-    <div className="rounded-lg bg-primary p-5 text-primary-foreground shadow-lg">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-primary-foreground">{roll ? 'Edit Roll' : 'Add New Roll'}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-primary-foreground/60 transition hover:text-primary-foreground"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      <fetcher.Form method="post" className="space-y-4">
-        <input type="hidden" name="intent" value={roll ? 'update-roll' : 'create-roll'} />
-        <input type="hidden" name="sutraId" value={sutraId} />
-        {childSutraId && <input type="hidden" name="childSutraId" value={childSutraId} />}
-        {roll && <input type="hidden" name="rollId" value={roll.id} />}
-        {roll?.children && <input type="hidden" name="childRollId" value={roll.children.id} />}
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {/* ── Original column ── */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Original</p>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">
-                Title <span className="text-destructive">*</span>
-              </label>
-              <textarea
-                required
-                rows={2}
-                name="originTitle"
-                placeholder="e.g., 卷一"
-                className={textareaClass(bg)}
-                defaultValue={roll?.title ?? ''}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
-              <textarea
-                rows={2}
-                name="originSubtitle"
-                className={textareaClass(bg)}
-                placeholder="Optional subtitle"
-                defaultValue={roll?.subtitle ?? ''}
-              />
-            </div>
-          </div>
-
-          {/* ── Translation column ── */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Translation</p>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Title</label>
-              <textarea
-                rows={2}
-                name="translationTitle"
-                className={textareaClass(bg)}
-                placeholder="e.g., Volume One"
-                defaultValue={roll?.children?.title ?? ''}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
-              <textarea
-                rows={2}
-                name="translationSubtitle"
-                className={textareaClass(bg)}
-                placeholder="Optional subtitle"
-                defaultValue={roll?.children?.subtitle ?? ''}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-1">
-          <button
-            type="reset"
-            className="rounded px-4 py-2 text-sm text-primary-foreground/70 transition hover:text-primary-foreground"
-          >
-            Reset
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
-          >
-            {isSubmitting ? 'Saving…' : roll ? 'Update Roll' : 'Create Roll'}
-          </button>
-        </div>
-      </fetcher.Form>
-    </div>
-  );
-}
-
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DataManagementIndex() {
   const { sutras } = useLoaderData<typeof loader>();
@@ -521,177 +216,30 @@ export default function DataManagementIndex() {
 
       {/* Sutra list */}
       <div className="space-y-4">
-        {sutras.map((sutra) => {
-          const isEditingSutra = editingSutraId === sutra.id;
-          const isAddingRoll = addingRollToSutraId === sutra.id;
-          const childSutraId = sutra.children?.id ?? null;
-
-          const sutraForForm: SutraForForm = {
-            id: sutra.id,
-            title: sutra.title,
-            subtitle: sutra.subtitle,
-            language: sutra.language,
-            category: sutra.category,
-            translator: sutra.translator,
-            cbeta: sutra.cbeta,
-            children: sutra.children
-              ? {
-                  id: sutra.children.id,
-                  title: sutra.children.title,
-                  subtitle: sutra.children.subtitle,
-                  language: sutra.children.language,
-                }
-              : null,
-          };
-
-          return (
-            <div key={sutra.id} className="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-              <details className="group">
-                <summary className="flex cursor-pointer items-center justify-between bg-muted p-4 transition hover:bg-muted/80">
-                  {/* Left: chevron + title + edit pencil */}
-                  <div className="flex items-center gap-3">
-                    <div className="text-muted-foreground transition-transform group-open:rotate-90">
-                      <ChevronRight size={20} />
-                    </div>
-                    <div>
-                      <h3 className="flex items-center gap-1.5 text-lg font-semibold text-foreground">
-                        {sutra.title} {sutra.children?.title}
-                        <button
-                          type="button"
-                          title="Edit sutra"
-                          className="rounded p-1 text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setEditingSutraId(isEditingSutra ? null : sutra.id);
-                            setShowAddSutraForm(false);
-                          }}
-                        >
-                          <Pencil size={13} />
-                        </button>
-                      </h3>
-                      <div className="text-xs text-muted-foreground">
-                        {sutra.rolls?.length || 0} Rolls • {sutra.category}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Add Roll button — only visible when expanded */}
-                  <button
-                    type="button"
-                    title="Add roll"
-                    className="hidden items-center gap-1.5 rounded bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/80 group-open:flex"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setAddingRollToSutraId(isAddingRoll ? null : sutra.id);
-                      setEditingRollId(null);
-                    }}
-                  >
-                    <Plus size={13} />
-                    Add Roll
-                  </button>
-                </summary>
-
-                {/* Edit-sutra form */}
-                {isEditingSutra && (
-                  <div className="p-4 pt-0">
-                    <SutraForm sutra={sutraForForm} onClose={() => setEditingSutraId(null)} />
-                  </div>
-                )}
-
-                {/* Rolls list */}
-                <div className="divide-y divide-border border-t border-border">
-                  {sutra.rolls && sutra.rolls.length > 0 ? (
-                    sutra.rolls.map((roll) => {
-                      const isEditingRoll = editingRollId === roll.id;
-                      const rollForForm: RollForForm = {
-                        id: roll.id,
-                        title: roll.title,
-                        subtitle: roll.subtitle,
-                        children: roll.children
-                          ? { id: roll.children.id, title: roll.children.title, subtitle: roll.children.subtitle }
-                          : null,
-                      };
-
-                      return (
-                        <div key={roll.id}>
-                          <div className="flex items-center justify-between p-4 hover:bg-muted/50">
-                            <div className="flex items-center gap-3">
-                              <FileText size={18} className="text-muted-foreground" />
-                              <div>
-                                <p className="flex items-center gap-1.5 font-medium text-foreground">
-                                  {roll.title} {roll.children?.title}
-                                  <button
-                                    type="button"
-                                    title="Edit roll"
-                                    className="rounded p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground"
-                                    onClick={() => {
-                                      setEditingRollId(isEditingRoll ? null : roll.id);
-                                      setAddingRollToSutraId(null);
-                                    }}
-                                  >
-                                    <Pencil size={12} />
-                                  </button>
-                                </p>
-                                {roll.subtitle && <p className="text-xs text-muted-foreground">{roll.subtitle}</p>}
-                              </div>
-                            </div>
-                            <div className="flex flex-row justify-end gap-5">
-                              <a
-                                target="_blank"
-                                rel="noreferrer"
-                                href={`/data/import?sutraId=${sutra.id}&rollId=${roll.id}`}
-                                className="flex items-center gap-2 rounded bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:bg-accent/80"
-                              >
-                                <Upload size={14} />
-                                Import & Replace
-                              </a>
-                              <a
-                                target="_blank"
-                                rel="noreferrer"
-                                href={`/resources/export/${roll.id}`}
-                                className="flex items-center gap-2 rounded bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
-                              >
-                                <Download size={14} />
-                                Export xlsx
-                              </a>
-                            </div>
-                          </div>
-
-                          {/* Edit-roll form */}
-                          {isEditingRoll && (
-                            <div className="px-4 pb-4">
-                              <RollForm
-                                roll={rollForForm}
-                                sutraId={sutra.id}
-                                childSutraId={childSutraId}
-                                onClose={() => setEditingRollId(null)}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="p-4 text-center text-sm text-muted-foreground">No rolls found for this sutra.</div>
-                  )}
-                </div>
-              </details>
-
-              {/* Add-roll form */}
-              {isAddingRoll && (
-                <div className="border-t border-border p-4">
-                  <RollForm
-                    sutraId={sutra.id}
-                    childSutraId={childSutraId}
-                    onClose={() => setAddingRollToSutraId(null)}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {sutras.map((sutra) => (
+          <SutraRow
+            sutra={sutra}
+            key={sutra.id}
+            editingRollId={editingRollId}
+            isEditingSutra={editingSutraId === sutra.id}
+            onEditRollClose={() => setEditingRollId(null)}
+            isAddingRoll={addingRollToSutraId === sutra.id}
+            onEditSutraClose={() => setEditingSutraId(null)}
+            onAddRollClose={() => setAddingRollToSutraId(null)}
+            onAddRollToggle={() => {
+              setAddingRollToSutraId((id) => (id === sutra.id ? null : sutra.id));
+              setEditingRollId(null);
+            }}
+            onEditSutraToggle={() => {
+              setEditingSutraId((id) => (id === sutra.id ? null : sutra.id));
+              setShowAddSutraForm(false);
+            }}
+            onEditRollToggle={(rollId) => {
+              setEditingRollId((id) => (id === rollId ? null : rollId));
+              setAddingRollToSutraId(null);
+            }}
+          />
+        ))}
       </div>
     </div>
   );

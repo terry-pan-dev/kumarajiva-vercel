@@ -10,7 +10,7 @@ import {
   parseCSV,
   parseXLSX,
   translationRowToExcelRow,
-} from '../file.service';
+} from '~/services/file.service';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
