@@ -184,7 +184,7 @@ export default function DataImport() {
       {/* ── Import Data Card ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl text-yellow-600">Import Data</CardTitle>
+          <CardTitle className="text-2xl text-primary">Import Data</CardTitle>
           <CardDescription className="text-base">
             Upload a CSV or XLSX file with columns: <strong>origin</strong>, <strong>translation</strong> (optional).
             This will replace all existing data for the selected roll.
@@ -223,7 +223,7 @@ export default function DataImport() {
             <input type="hidden" name="translationLanguage" value={translationLanguage} />
 
             <div className="space-y-2">
-              <Label htmlFor="file" className="text-lg text-yellow-600">
+              <Label htmlFor="file" className="text-lg text-primary">
                 Data File *
               </Label>
               <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ export default function DataImport() {
       {/* ── Data Comparison Card — always visible; file side fills in after preview ── */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl text-yellow-600">
+          <CardTitle className="flex items-center gap-2 text-xl text-primary">
             <ArrowLeftRight className="h-5 w-5" />
             Data Comparison
           </CardTitle>
@@ -309,7 +309,7 @@ export default function DataImport() {
           <div className="grid grid-cols-2 gap-4">
             {/* Existing data — always shown */}
             <div>
-              <h4 className="mb-3 text-base font-medium text-yellow-600">
+              <h4 className="mb-3 text-base font-medium text-primary">
                 Existing Data{' '}
                 <span className="text-sm font-normal text-muted-foreground">
                   (first {Math.min(PREVIEW_LIMIT, existing.paragraphs.length)} of {existing.totalParagraphs})
@@ -360,7 +360,7 @@ export default function DataImport() {
 
             {/* File data — placeholder until a file is previewed */}
             <div>
-              <h4 className="mb-3 text-base font-medium text-yellow-600">
+              <h4 className="mb-3 text-base font-medium text-primary">
                 File Data{' '}
                 {fileRows && (
                   <span className="text-sm font-normal text-muted-foreground">
@@ -371,18 +371,15 @@ export default function DataImport() {
               {fileRows ? (
                 <div className="space-y-2">
                   {fileRows.slice(0, PREVIEW_LIMIT).map((row, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-lg border border-green-200 bg-green-50/50 p-3 dark:border-green-900 dark:bg-green-950/20"
-                    >
+                    <div key={idx} className="rounded-lg border border-secondary bg-secondary/20 p-3">
                       <div className="mb-1">
-                        <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                        <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground">
                           #{idx + 1}
                         </span>
                       </div>
                       <p className="mb-0.5 text-xs font-medium text-muted-foreground">Original:</p>
                       <p className="text-sm text-foreground">{row.origin}</p>
-                      <div className="mt-2 border-t border-green-200 pt-2 dark:border-green-900">
+                      <div className="mt-2 border-t border-secondary/40 pt-2">
                         <p className="mb-0.5 text-xs font-medium text-muted-foreground">Translation:</p>
                         {row.target ? (
                           <p className="text-sm text-foreground">{row.target}</p>
@@ -391,7 +388,7 @@ export default function DataImport() {
                         )}
                       </div>
                       {!!row.references?.length && (
-                        <div className="mt-2 border-t border-green-200 pt-2 dark:border-green-900">
+                        <div className="mt-2 border-t border-secondary/40 pt-2">
                           {row.references.map((ref, refIdx) => (
                             <p key={refIdx} className="text-xs text-muted-foreground">
                               <span className="font-medium text-muted-foreground">{ref.sutraName}:</span> {ref.content}
@@ -448,24 +445,24 @@ export default function DataImport() {
       {/* ── Instructions Card ── */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="text-xl text-yellow-600">File Format Instructions</CardTitle>
+          <CardTitle className="text-xl text-primary">File Format Instructions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-base">
           <div>
-            <h4 className="mb-1 text-base font-medium text-yellow-600">CSV Format:</h4>
+            <h4 className="mb-1 text-base font-medium text-primary">CSV Format:</h4>
             <pre className="overflow-x-auto rounded bg-muted p-3 text-sm text-muted-foreground">
               {`origin,translation\n諸法因緣生,All dharmas arise from causes and conditions\n諸法因緣滅,All dharmas cease through causes and conditions`}
             </pre>
           </div>
           <div>
-            <h4 className="mb-1 text-base font-medium text-yellow-600">Excel Format:</h4>
+            <h4 className="mb-1 text-base font-medium text-primary">Excel Format:</h4>
             <p className="text-base text-muted-foreground">
               Create an Excel file with the same column structure. The first row should contain headers: "origin" and
               "translation".
             </p>
           </div>
           <div>
-            <h4 className="mb-1 text-base font-medium text-yellow-600">Notes:</h4>
+            <h4 className="mb-1 text-base font-medium text-primary">Notes:</h4>
             <ul className="list-inside list-disc space-y-1 text-base text-muted-foreground">
               <li>The "origin" column is required (also accepts "original" for backwards compatibility)</li>
               <li>The "translation" column is optional (also accepts "target")</li>

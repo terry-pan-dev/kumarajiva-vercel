@@ -204,30 +204,34 @@ export const ErrorBoundary = () => {
 // ─── Shared field classes ────────────────────────────────────────────────────
 
 const textareaClass = (bg: string) =>
-  `w-full resize-y rounded ${bg} px-3 py-2 text-sm text-gray-900 placeholder-gray-400 ring-1 ring-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500`;
+  `w-full resize-y rounded ${bg} px-3 py-2 text-sm text-foreground placeholder-muted-foreground ring-1 ring-input focus:outline-none focus:ring-2 focus:ring-ring`;
 
 const inputClass = (bg: string) =>
-  `w-full rounded ${bg} px-3 py-2 text-sm text-gray-900 placeholder-gray-400 ring-1 ring-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500`;
+  `w-full rounded ${bg} px-3 py-2 text-sm text-foreground placeholder-muted-foreground ring-1 ring-input focus:outline-none focus:ring-2 focus:ring-ring`;
 
 const selectClass = (bg: string) =>
-  `w-full rounded ${bg} px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500`;
+  `w-full rounded ${bg} px-3 py-2 text-sm text-foreground ring-1 ring-input focus:outline-none focus:ring-2 focus:ring-ring`;
 
 // ─── SutraForm ───────────────────────────────────────────────────────────────
 
 function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => void }) {
   const fetcher = useFetcher<{ success: boolean }>();
   const isSubmitting = fetcher.state === 'submitting';
-  const bg = 'bg-orange-50';
+  const bg = 'bg-background';
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success) onClose();
   }, [fetcher.state, fetcher.data, onClose]);
 
   return (
-    <div className="rounded-lg bg-yellow-700 p-5 text-white shadow-xl">
+    <div className="rounded-lg bg-primary p-5 text-primary-foreground shadow-xl">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-100">{sutra ? 'Edit Sutra' : 'Add New Sutra'}</h2>
-        <button type="button" onClick={onClose} className="text-gray-400 transition hover:text-white">
+        <h2 className="text-sm font-semibold text-primary-foreground">{sutra ? 'Edit Sutra' : 'Add New Sutra'}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-primary-foreground/60 transition hover:text-primary-foreground"
+        >
           <X size={16} />
         </button>
       </div>
@@ -240,10 +244,10 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* ── Original column ── */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-300">Original</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Original</p>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">
-                Title <span className="text-orange-400">*</span>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">
+                Title <span className="text-destructive">*</span>
               </label>
               <textarea
                 required
@@ -255,7 +259,7 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">Subtitle</label>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
               <textarea
                 rows={2}
                 name="originSubtitle"
@@ -265,8 +269,8 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">
-                Language <span className="text-orange-400">*</span>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">
+                Language <span className="text-destructive">*</span>
               </label>
               <select required name="originLang" className={selectClass(bg)} defaultValue={sutra?.language}>
                 {SUPPORTED_LANGUAGES.map((lang) => (
@@ -280,9 +284,9 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
 
           {/* ── Translation column ── */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-300">Translation</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Translation</p>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">Title</label>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Title</label>
               <textarea
                 rows={2}
                 name="translationTitle"
@@ -292,7 +296,7 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">Subtitle</label>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
               <textarea
                 rows={2}
                 name="translationSubtitle"
@@ -302,7 +306,7 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">Language</label>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Language</label>
               <select name="translationLang" className={selectClass(bg)} defaultValue={sutra?.children?.language ?? ''}>
                 <option value="">— none —</option>
                 {SUPPORTED_LANGUAGES.map((lang) => (
@@ -318,7 +322,7 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
         {/* Metadata row */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-300">Category</label>
+            <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Category</label>
             <input
               name="category"
               className={inputClass(bg)}
@@ -327,7 +331,7 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-300">Translator</label>
+            <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Translator</label>
             <input
               name="translator"
               className={inputClass(bg)}
@@ -336,19 +340,22 @@ function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: () => vo
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-300">CBETA Code</label>
+            <label className="mb-1 block text-xs font-medium text-primary-foreground/70">CBETA Code</label>
             <input name="cbeta" placeholder="e.g., T0001" className={inputClass(bg)} defaultValue={sutra?.cbeta} />
           </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-1">
-          <button type="reset" className="rounded px-4 py-2 text-sm text-gray-300 transition hover:text-white">
+          <button
+            type="reset"
+            className="rounded px-4 py-2 text-sm text-primary-foreground/70 transition hover:text-primary-foreground"
+          >
             Reset
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded bg-gray-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-900 disabled:opacity-50"
+            className="rounded bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
           >
             {isSubmitting ? 'Saving…' : sutra ? 'Update Sutra' : 'Create Sutra'}
           </button>
@@ -373,17 +380,21 @@ function RollForm({
 }) {
   const fetcher = useFetcher<{ success: boolean }>();
   const isSubmitting = fetcher.state === 'submitting';
-  const bg = 'bg-orange-50';
+  const bg = 'bg-background';
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success) onClose();
   }, [fetcher.state, fetcher.data, onClose]);
 
   return (
-    <div className="rounded-lg bg-yellow-700 p-5 text-base shadow-lg">
+    <div className="rounded-lg bg-primary p-5 text-primary-foreground shadow-lg">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-100">{roll ? 'Edit Roll' : 'Add New Roll'}</h2>
-        <button type="button" onClick={onClose} className="text-gray-300 transition hover:text-white">
+        <h2 className="text-sm font-semibold text-primary-foreground">{roll ? 'Edit Roll' : 'Add New Roll'}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-primary-foreground/60 transition hover:text-primary-foreground"
+        >
           <X size={16} />
         </button>
       </div>
@@ -398,10 +409,10 @@ function RollForm({
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* ── Original column ── */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-300">Original</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Original</p>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">
-                Title <span className="text-orange-400">*</span>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">
+                Title <span className="text-destructive">*</span>
               </label>
               <textarea
                 required
@@ -413,7 +424,7 @@ function RollForm({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">Subtitle</label>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
               <textarea
                 rows={2}
                 name="originSubtitle"
@@ -426,9 +437,9 @@ function RollForm({
 
           {/* ── Translation column ── */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-300">Translation</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Translation</p>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">Title</label>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Title</label>
               <textarea
                 rows={2}
                 name="translationTitle"
@@ -438,7 +449,7 @@ function RollForm({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-300">Subtitle</label>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
               <textarea
                 rows={2}
                 name="translationSubtitle"
@@ -451,13 +462,16 @@ function RollForm({
         </div>
 
         <div className="flex justify-end gap-3 pt-1">
-          <button type="reset" className="rounded px-4 py-2 text-sm text-gray-300 transition hover:text-white">
+          <button
+            type="reset"
+            className="rounded px-4 py-2 text-sm text-primary-foreground/70 transition hover:text-primary-foreground"
+          >
             Reset
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded bg-gray-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-900 disabled:opacity-50"
+            className="rounded bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
           >
             {isSubmitting ? 'Saving…' : roll ? 'Update Roll' : 'Create Roll'}
           </button>
@@ -479,10 +493,10 @@ export default function DataManagementIndex() {
   return (
     <div className="container mx-auto max-w-5xl p-6">
       {/* Page header */}
-      <div className="mb-6 flex items-start justify-between border-b border-gray-200 pb-4">
+      <div className="mb-6 flex items-start justify-between border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Data Management</h1>
-          <p className="mt-1 text-sm text-gray-500">Import translations, export data from rolls to Excel.</p>
+          <h1 className="text-2xl font-bold text-foreground">Data Management</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Import translations, export data from rolls to Excel.</p>
         </div>
         <button
           type="button"
@@ -491,7 +505,7 @@ export default function DataManagementIndex() {
             setShowAddSutraForm((v) => !v);
             setEditingSutraId(null);
           }}
-          className="flex items-center gap-1.5 rounded bg-yellow-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
+          className="flex items-center gap-1.5 rounded bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/80"
         >
           <Plus size={16} />
           Add Sutra
@@ -531,21 +545,21 @@ export default function DataManagementIndex() {
           };
 
           return (
-            <div key={sutra.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div key={sutra.id} className="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
               <details className="group">
-                <summary className="flex cursor-pointer items-center justify-between bg-gray-50 p-4 transition hover:bg-gray-100">
+                <summary className="flex cursor-pointer items-center justify-between bg-muted p-4 transition hover:bg-muted/80">
                   {/* Left: chevron + title + edit pencil */}
                   <div className="flex items-center gap-3">
-                    <div className="text-gray-400 transition-transform group-open:rotate-90">
+                    <div className="text-muted-foreground transition-transform group-open:rotate-90">
                       <ChevronRight size={20} />
                     </div>
                     <div>
-                      <h3 className="flex items-center gap-1.5 text-lg font-semibold text-gray-900">
+                      <h3 className="flex items-center gap-1.5 text-lg font-semibold text-foreground">
                         {sutra.title} {sutra.children?.title}
                         <button
                           type="button"
                           title="Edit sutra"
-                          className="rounded p-1 text-gray-400 transition hover:bg-gray-200 hover:text-gray-700"
+                          className="rounded p-1 text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -556,7 +570,7 @@ export default function DataManagementIndex() {
                           <Pencil size={13} />
                         </button>
                       </h3>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         {sutra.rolls?.length || 0} Rolls • {sutra.category}
                       </div>
                     </div>
@@ -566,7 +580,7 @@ export default function DataManagementIndex() {
                   <button
                     type="button"
                     title="Add roll"
-                    className="hidden items-center gap-1.5 rounded bg-yellow-600 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-gray-600 group-open:flex"
+                    className="hidden items-center gap-1.5 rounded bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/80 group-open:flex"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -587,7 +601,7 @@ export default function DataManagementIndex() {
                 )}
 
                 {/* Rolls list */}
-                <div className="divide-y divide-gray-100 border-t border-gray-200">
+                <div className="divide-y divide-border border-t border-border">
                   {sutra.rolls && sutra.rolls.length > 0 ? (
                     sutra.rolls.map((roll) => {
                       const isEditingRoll = editingRollId === roll.id;
@@ -602,16 +616,16 @@ export default function DataManagementIndex() {
 
                       return (
                         <div key={roll.id}>
-                          <div className="flex items-center justify-between p-4 hover:bg-gray-50">
+                          <div className="flex items-center justify-between p-4 hover:bg-muted/50">
                             <div className="flex items-center gap-3">
-                              <FileText size={18} className="text-gray-400" />
+                              <FileText size={18} className="text-muted-foreground" />
                               <div>
-                                <p className="flex items-center gap-1.5 font-medium text-gray-700">
+                                <p className="flex items-center gap-1.5 font-medium text-foreground">
                                   {roll.title} {roll.children?.title}
                                   <button
                                     type="button"
                                     title="Edit roll"
-                                    className="rounded p-0.5 text-gray-400 transition hover:bg-gray-200 hover:text-gray-700"
+                                    className="rounded p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground"
                                     onClick={() => {
                                       setEditingRollId(isEditingRoll ? null : roll.id);
                                       setAddingRollToSutraId(null);
@@ -620,7 +634,7 @@ export default function DataManagementIndex() {
                                     <Pencil size={12} />
                                   </button>
                                 </p>
-                                {roll.subtitle && <p className="text-xs text-gray-500">{roll.subtitle}</p>}
+                                {roll.subtitle && <p className="text-xs text-muted-foreground">{roll.subtitle}</p>}
                               </div>
                             </div>
                             <div className="flex flex-row justify-end gap-5">
@@ -628,7 +642,7 @@ export default function DataManagementIndex() {
                                 target="_blank"
                                 rel="noreferrer"
                                 href={`/data/import?sutraId=${sutra.id}&rollId=${roll.id}`}
-                                className="flex items-center gap-2 rounded bg-orange-50 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+                                className="flex items-center gap-2 rounded bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:bg-accent/80"
                               >
                                 <Upload size={14} />
                                 Import & Replace
@@ -637,7 +651,7 @@ export default function DataManagementIndex() {
                                 target="_blank"
                                 rel="noreferrer"
                                 href={`/resources/export/${roll.id}`}
-                                className="flex items-center gap-2 rounded bg-gray-200 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+                                className="flex items-center gap-2 rounded bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
                               >
                                 <Download size={14} />
                                 Export xlsx
@@ -660,14 +674,14 @@ export default function DataManagementIndex() {
                       );
                     })
                   ) : (
-                    <div className="p-4 text-center text-sm text-gray-500">No rolls found for this sutra.</div>
+                    <div className="p-4 text-center text-sm text-muted-foreground">No rolls found for this sutra.</div>
                   )}
                 </div>
               </details>
 
               {/* Add-roll form */}
               {isAddingRoll && (
-                <div className="border-t border-gray-200 p-4">
+                <div className="border-t border-border p-4">
                   <RollForm
                     sutraId={sutra.id}
                     childSutraId={childSutraId}
