@@ -190,8 +190,10 @@ export default function DataManagementIndex() {
       {/* Page header */}
       <div className="mb-6 flex items-start justify-between border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Data Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Import translations, export data from rolls to Excel.</p>
+          <h1 className="text-2xl font-bold text-foreground">Manage the data for translations</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Import translations, export data from rolls to Excel, edit sutra and roll metadata.
+          </p>
         </div>
         <button
           type="button"
