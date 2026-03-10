@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ExcelTranslationRow, ImportOptions } from '../file.service';
+import type { ExcelTranslationRow, ImportOptions } from '~/services/file.service';
 
 // ─── Import after mocks ───────────────────────────────────────────────────────
 
-import { buildImportData, replaceRollData } from '../file.server';
+import { buildImportData, replaceRollData } from '~/services/file.server';
 
 // ─── DB mock (must be hoisted before any imports that touch ~/lib/db.server) ─
 
@@ -46,11 +46,11 @@ const mocks = vi.hoisted(() => {
 vi.mock('~/lib/db.server', () => ({ getDb: () => mocks.mockDb }));
 
 // paragraph.service is a transitive dep; mock it to avoid its own DB bootstrap
-vi.mock('../paragraph.service', () => ({
+vi.mock('~/services/paragraph.service', () => ({
   readParagraphsByRollIdForLanguage: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('../search.server', () => ({
+vi.mock('~/services/search.server', () => ({
   saveParagraphToAlgolia: vi.fn().mockResolvedValue(undefined),
   updateParagraphToAlgolia: vi.fn().mockResolvedValue(undefined),
 }));

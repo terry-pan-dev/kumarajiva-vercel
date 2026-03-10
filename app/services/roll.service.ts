@@ -2,7 +2,7 @@ import type { CreateRoll } from '~/drizzle/schema';
 
 import 'dotenv/config';
 
-import type { ReadRollWithSutra, ReadRoll } from '~/drizzle/tables';
+import type { ReadRollWithSutra, ReadRoll, ReadUser } from '~/drizzle/tables';
 
 import { DbComments, DbRolls } from './crud.server';
 
@@ -38,4 +38,16 @@ export const createTargetRoll = async ({
 
 export const readRollWithComments = async () => {
   return DbComments.findAllUnresolvedWithRollParagraph();
+};
+
+export const createRoll = async (roll: Omit<CreateRoll, 'updatedBy' | 'createdBy'>, user: ReadUser) => {
+  return DbRolls.create({ ...roll, updatedBy: user.id, createdBy: user.id });
+};
+
+export const updateRoll = async (
+  id: string,
+  data: Partial<Omit<CreateRoll, 'updatedBy' | 'createdBy'>>,
+  user: ReadUser,
+) => {
+  return DbRolls.updateById(id, { ...data, updatedBy: user.id });
 };

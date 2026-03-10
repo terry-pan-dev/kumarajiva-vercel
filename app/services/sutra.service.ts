@@ -37,3 +37,14 @@ export const createSutra = async (sutra: Omit<CreateSutra, 'updatedBy' | 'create
     createdBy: user.id,
   });
 };
+
+export const updateSutra = async (
+  id: string,
+  data: Partial<Omit<CreateSutra, 'updatedBy' | 'createdBy'>>,
+  user: ReadUser,
+) => {
+  return DbSutras.updateById(id, {
+    ...data,
+    updatedBy: user.id,
+  });
+};
