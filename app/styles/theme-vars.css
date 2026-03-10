@@ -1,0 +1,85 @@
+:root {
+  --font-size: 14px;
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 34 37% 93%;
+  --card-foreground: 45 80% 98%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 244 12% 26%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 340 4% 86%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --highlight: 38 94% 40%;          /* yellow-600: active states, selection, brand accent */
+  --highlight-foreground: 0 0% 100%;
+  /* Status colors — bg/fg/border match bg-x-50 / text-x-800 / border-x-200 from Banner.tsx */
+  --success: 138 76% 97%;           /* bg-green-50 */
+  --success-foreground: 142 71% 29%; /* text-green-800 */
+  --success-border: 141 84% 85%;    /* border-green-200 */
+  --warning: 55 92% 95%;            /* bg-yellow-50 */
+  --warning-foreground: 32 81% 29%; /* text-yellow-800 */
+  --warning-border: 53 98% 77%;     /* border-yellow-200 */
+  --error: 0 86% 97%;               /* bg-red-50 */
+  --error-foreground: 0 70% 35%;    /* text-red-800 */
+  --error-border: 0 93% 89%;        /* border-red-200 */
+  --info: 214 100% 97%;             /* bg-blue-50 */
+  --info-foreground: 226 71% 40%;   /* text-blue-800 */
+  --info-border: 213 97% 87%;       /* border-blue-200 */
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --font-size: 14px;
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --highlight: 38 94% 50%;
+  --highlight-foreground: 0 0% 100%;
+  --success: 142 55% 8%;
+  --success-foreground: 141 84% 85%;  /* green-200 */
+  --success-border: 142 45% 22%;
+  --warning: 32 80% 8%;
+  --warning-foreground: 53 98% 77%;   /* yellow-200 */
+  --warning-border: 32 60% 22%;
+  --error: 0 70% 8%;
+  --error-foreground: 0 93% 89%;      /* red-200 */
+  --error-border: 0 55% 22%;
+  --info: 224 71% 8%;
+  --info-foreground: 213 97% 87%;     /* blue-200 */
+  --info-border: 226 50% 22%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+  --chart-1: 220 70% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+}

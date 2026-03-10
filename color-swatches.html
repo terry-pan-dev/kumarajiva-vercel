@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Theme Color Swatches</title>
+  <link rel="stylesheet" href="./app/styles/theme-vars.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 13px;
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      padding: 32px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 36px;
+    }
+
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.45; margin-bottom: 12px; margin-top: 28px; }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      border: 1px solid hsl(var(--border));
+      border-radius: 6px;
+      padding: 6px 12px;
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .swatch {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid hsl(var(--border));
+    }
+
+    .swatch-color {
+      height: 64px;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      padding: 6px 8px;
+    }
+
+    .swatch-fg-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
+
+    .swatch-label {
+      padding: 8px 10px;
+      background: hsl(var(--card));
+    }
+
+    .swatch-name {
+      font-weight: 600;
+      font-size: 12px;
+      color: hsl(var(--foreground));
+    }
+
+    .swatch-hsl {
+      font-size: 10px;
+      opacity: 0.5;
+      margin-top: 2px;
+      font-family: ui-monospace, monospace;
+    }
+
+    .pair-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    .pair-swatch {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pair-main {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.01em;
+    }
+
+    .pair-sub {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+      opacity: 0.7;
+    }
+
+    .pair-meta {
+      display: flex;
+    }
+
+    .pair-meta-item {
+      flex: 1;
+      padding: 6px 10px;
+      background: hsl(var(--card));
+    }
+
+    .pair-meta-item + .pair-meta-item {
+      border-left: 1px solid hsl(var(--border));
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Theme Colors</h1>
+    <label class="toggle">
+      <input type="checkbox" id="darkToggle" style="accent-color: hsl(var(--highlight));" />
+      Dark mode
+    </label>
+  </header>
+
+  <h2>Layout</h2>
+  <div class="grid" id="layout"></div>
+
+  <h2>Surface</h2>
+  <div class="grid" id="surface"></div>
+
+  <h2>Interactive</h2>
+  <div class="pair-grid" id="interactive"></div>
+
+  <h2>Status</h2>
+  <div class="pair-grid" id="status"></div>
+
+  <h2>Utility</h2>
+  <div class="grid" id="utility"></div>
+
+  <h2>Charts</h2>
+  <div class="grid" id="charts"></div>
+
+  <script>
+    const toggle = document.getElementById('darkToggle');
+    toggle.addEventListener('change', () => {
+      document.body.classList.toggle('dark', toggle.checked);
+      render();
+    });
+
+    function hsl(h, s, l) {
+      return `hsl(${h}, ${s}%, ${l}%)`;
+    }
+
+    // Color definitions: [name, cssVar, hslLight, hslDark]
+    const layout = [
+      ['background', '--background', 'hsl(0,0%,100%)', 'hsl(222.2,84%,4.9%)'],
+      ['foreground', '--foreground', 'hsl(222.2,84%,4.9%)', 'hsl(210,40%,98%)'],
+      ['border',     '--border',     'hsl(214.3,31.8%,91.4%)', 'hsl(217.2,32.6%,17.5%)'],
+      ['input',      '--input',      'hsl(214.3,31.8%,91.4%)', 'hsl(217.2,32.6%,17.5%)'],
+      ['ring',       '--ring',       'hsl(222.2,84%,4.9%)',    'hsl(212.7,26.8%,83.9%)'],
+    ];
+
+    const surface = [
+      ['card',              '--card',              'hsl(34,37%,93%)',      'hsl(222.2,84%,4.9%)'],
+      ['card-foreground',   '--card-foreground',   'hsl(45,80%,98%)',      'hsl(210,40%,98%)'],
+      ['popover',           '--popover',           'hsl(0,0%,100%)',       'hsl(222.2,84%,4.9%)'],
+      ['popover-foreground','--popover-foreground','hsl(222.2,84%,4.9%)',  'hsl(210,40%,98%)'],
+      ['muted',             '--muted',             'hsl(210,40%,96.1%)',   'hsl(217.2,32.6%,17.5%)'],
+      ['muted-foreground',  '--muted-foreground',  'hsl(215.4,16.3%,46.9%)','hsl(215,20.2%,65.1%)'],
+    ];
+
+    const interactive = [
+      ['primary',     '--primary',     'hsl(244,12%,26%)',   'hsl(210,40%,98%)',
+       'primary-foreground', '--primary-foreground', 'hsl(210,40%,98%)', 'hsl(222.2,47.4%,11.2%)'],
+      ['secondary',   '--secondary',   'hsl(340,4%,86%)',    'hsl(217.2,32.6%,17.5%)',
+       'secondary-foreground','--secondary-foreground','hsl(222.2,47.4%,11.2%)','hsl(210,40%,98%)'],
+      ['accent',      '--accent',      'hsl(210,40%,96.1%)', 'hsl(217.2,32.6%,17.5%)',
+       'accent-foreground','--accent-foreground','hsl(222.2,47.4%,11.2%)','hsl(210,40%,98%)'],
+    ];
+
+    const status = [
+      ['destructive', '--destructive', 'hsl(0,84.2%,60.2%)', 'hsl(0,62.8%,30.6%)',
+       'destructive-foreground','--destructive-foreground','hsl(210,40%,98%)','hsl(210,40%,98%)'],
+      ['highlight',   '--highlight',   'hsl(38,94%,40%)',    'hsl(38,94%,50%)',
+       'highlight-foreground','--highlight-foreground','hsl(0,0%,100%)','hsl(0,0%,100%)'],
+      ['success',     '--success',     'hsl(142,71%,45%)',   'hsl(142,71%,45%)',
+       'success-foreground','--success-foreground','hsl(0,0%,100%)','hsl(0,0%,100%)'],
+      ['warning',     '--warning',     'hsl(38,94%,55%)',    'hsl(38,94%,55%)',
+       'warning-foreground','--warning-foreground','hsl(38,60%,20%)','hsl(38,60%,20%)'],
+      ['info',        '--info',        'hsl(217,91%,60%)',   'hsl(217,91%,60%)',
+       'info-foreground','--info-foreground','hsl(0,0%,100%)','hsl(0,0%,100%)'],
+    ];
+
+    const utility = [
+      ['border', '--border', 'hsl(214.3,31.8%,91.4%)', 'hsl(217.2,32.6%,17.5%)'],
+    ];
+
+    const charts = [
+      ['chart-1','--chart-1','hsl(12,76%,61%)','hsl(220,70%,50%)'],
+      ['chart-2','--chart-2','hsl(173,58%,39%)','hsl(160,60%,45%)'],
+      ['chart-3','--chart-3','hsl(197,37%,24%)','hsl(30,80%,55%)'],
+      ['chart-4','--chart-4','hsl(43,74%,66%)','hsl(280,65%,60%)'],
+      ['chart-5','--chart-5','hsl(27,87%,67%)','hsl(340,75%,55%)'],
+    ];
+
+    function isDark() { return document.body.classList.contains('dark'); }
+
+    function contrastColor(hslStr) {
+      // Parse hsl and decide text color
+      const m = hslStr.match(/hsl\(([^,]+),([^,]+)%,([^)]+)%\)/);
+      if (!m) return '#000';
+      const l = parseFloat(m[3]);
+      return l > 50 ? '#111' : '#fff';
+    }
+
+    function makeSwatch(name, cssVar, hslLight, hslDark) {
+      const color = isDark() ? hslDark : hslLight;
+      const hslLabel = isDark() ? hslDark : hslLight;
+      const fg = contrastColor(color);
+      return `
+        <div class="swatch">
+          <div class="swatch-color" style="background:${color};">
+            <div class="swatch-fg-dot" style="background:${fg};"></div>
+          </div>
+          <div class="swatch-label">
+            <div class="swatch-name">${name}</div>
+            <div class="swatch-hsl">${hslLabel}</div>
+          </div>
+        </div>`;
+    }
+
+    function makePairSwatch(name, cssVar, hslLight, hslDark, fgName, fgVar, fgHslLight, fgHslDark) {
+      const bg = isDark() ? hslDark : hslLight;
+      const fg = isDark() ? fgHslDark : fgHslLight;
+      return `
+        <div class="pair-swatch">
+          <div class="pair-main" style="background:${bg}; color:${fg};">
+            ${name}
+          </div>
+          <div class="pair-sub" style="background:${bg}; color:${fg};">
+            ${isDark() ? hslDark : hslLight}
+          </div>
+          <div class="pair-meta">
+            <div class="pair-meta-item">
+              <div class="swatch-name">${name}</div>
+              <div class="swatch-hsl">${isDark() ? hslDark : hslLight}</div>
+            </div>
+            <div class="pair-meta-item">
+              <div class="swatch-name">${fgName}</div>
+              <div class="swatch-hsl">${isDark() ? fgHslDark : fgHslLight}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function render() {
+      document.getElementById('layout').innerHTML = layout.map(([n,...r]) => makeSwatch(n,...r)).join('');
+      document.getElementById('surface').innerHTML = surface.map(([n,...r]) => makeSwatch(n,...r)).join('');
+      document.getElementById('interactive').innerHTML = interactive.map(([...r]) => makePairSwatch(...r)).join('');
+      document.getElementById('status').innerHTML = status.map(([...r]) => makePairSwatch(...r)).join('');
+      document.getElementById('utility').innerHTML = charts.map(([n,...r]) => makeSwatch(n,...r)).join('');
+      document.getElementById('charts').innerHTML = charts.map(([n,...r]) => makeSwatch(n,...r)).join('');
+    }
+
+    render();
+  </script>
+</body>
+</html>

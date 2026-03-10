@@ -59,6 +59,30 @@ export default {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
+        highlight: {
+          DEFAULT: 'hsl(var(--highlight))',
+          foreground: 'hsl(var(--highlight-foreground))',
+        },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
+          border: 'hsl(var(--success-border))',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning))',
+          foreground: 'hsl(var(--warning-foreground))',
+          border: 'hsl(var(--warning-border))',
+        },
+        error: {
+          DEFAULT: 'hsl(var(--error))',
+          foreground: 'hsl(var(--error-foreground))',
+          border: 'hsl(var(--error-border))',
+        },
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
+          border: 'hsl(var(--info-border))',
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
