@@ -75,6 +75,15 @@ export function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: (
                 ))}
               </select>
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Translator</label>
+              <input
+                name="originTranslator"
+                className={inputClass(bg)}
+                placeholder="e.g., Xuanzang"
+                defaultValue={sutra?.translator}
+              />
+            </div>
           </div>
 
           {/* ── Translation column ── */}
@@ -111,11 +120,22 @@ export function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: (
                 ))}
               </select>
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Translator</label>
+              <input
+                className={inputClass(bg)}
+                name="translationTranslator"
+                placeholder="e.g., Bhikkhu Bodhi"
+                defaultValue={sutra?.children?.translator ?? ''}
+              />
+            </div>
           </div>
         </div>
 
+        <hr className="border-primary-foreground/20" />
+
         {/* Metadata row */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Category</label>
             <input
@@ -123,15 +143,6 @@ export function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: (
               className={inputClass(bg)}
               defaultValue={sutra?.category}
               placeholder="e.g., Prajnaparamita"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Translator</label>
-            <input
-              name="translator"
-              className={inputClass(bg)}
-              placeholder="e.g., Xuanzang"
-              defaultValue={sutra?.translator}
             />
           </div>
           <div>

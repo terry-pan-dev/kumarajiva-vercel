@@ -14,7 +14,15 @@ type Roll = {
   children?: { id: string; title: string; subtitle: string } | null;
 };
 
-type Sutra = SutraForForm & {
+type Sutra = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  language: string;
+  category: string;
+  translator: string;
+  cbeta: string;
+  children?: { id: string; title: string; subtitle: string | null; language: string; translator: string | null } | null;
   rolls?: Roll[] | null;
 };
 
@@ -49,7 +57,7 @@ export function SutraRow({
   const sutraForForm: SutraForForm = {
     id: sutra.id,
     title: sutra.title,
-    subtitle: sutra.subtitle,
+    subtitle: sutra.subtitle ?? '',
     language: sutra.language,
     category: sutra.category,
     translator: sutra.translator,
@@ -58,8 +66,9 @@ export function SutraRow({
       ? {
           id: sutra.children.id,
           title: sutra.children.title,
-          subtitle: sutra.children.subtitle,
+          subtitle: sutra.children.subtitle ?? '',
           language: sutra.children.language,
+          translator: sutra.children.translator ?? '',
         }
       : null,
   };
