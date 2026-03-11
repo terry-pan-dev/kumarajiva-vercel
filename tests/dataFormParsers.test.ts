@@ -20,11 +20,12 @@ describe('parseSutraCreate', () => {
       originTitle: '大般若波羅蜜多經',
       originSubtitle: 'Origin subtitle',
       originLang: 'chinese',
+      originTranslator: 'Xuanzang',
       translationTitle: 'The Great Prajnaparamita Sutra',
       translationSubtitle: 'Translation subtitle',
       translationLang: 'english',
+      translationTranslator: 'Bhikkhu Bodhi',
       category: 'Prajnaparamita',
-      translator: 'Xuanzang',
       cbeta: 'T0220',
     });
 
@@ -32,11 +33,12 @@ describe('parseSutraCreate', () => {
       originTitle: '大般若波羅蜜多經',
       originSubtitle: 'Origin subtitle',
       originLang: 'chinese',
+      originTranslator: 'Xuanzang',
       translationTitle: 'The Great Prajnaparamita Sutra',
       translationSubtitle: 'Translation subtitle',
       translationLang: 'english',
+      translationTranslator: 'Bhikkhu Bodhi',
       category: 'Prajnaparamita',
-      translator: 'Xuanzang',
       cbeta: 'T0220',
     });
   });
@@ -46,11 +48,12 @@ describe('parseSutraCreate', () => {
       originTitle: '大般若',
       originSubtitle: '',
       originLang: 'chinese',
+      originTranslator: '',
       translationTitle: '',
       translationSubtitle: '',
       translationLang: '',
+      translationTranslator: '',
       category: '',
-      translator: '',
       cbeta: '',
     });
 
@@ -69,7 +72,8 @@ describe('parseSutraCreate', () => {
 
     const result = parseSutraCreate(fd);
     expect(result.category).toBe('');
-    expect(result.translator).toBe('');
+    expect(result.originTranslator).toBe('');
+    expect(result.translationTranslator).toBe('');
     expect(result.cbeta).toBe('');
   });
 });
@@ -83,10 +87,11 @@ describe('parseSutraUpdate', () => {
       childSutraId: 'child-456',
       originTitle: '大般若',
       originLang: 'chinese',
+      originTranslator: '',
       translationTitle: 'Great Sutra',
       translationLang: 'english',
+      translationTranslator: '',
       category: '',
-      translator: '',
       cbeta: '',
     });
 

@@ -26,11 +26,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       originTitle,
       originSubtitle,
       originLang,
+      originTranslator,
       translationTitle,
       translationSubtitle,
       translationLang,
+      translationTranslator,
       category,
-      translator,
       cbeta,
     } = parseSutraCreate(formData);
 
@@ -40,7 +41,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         subtitle: originSubtitle,
         language: originLang,
         category,
-        translator,
+        translator: originTranslator,
         cbeta,
         teamId: user.teamId,
       },
@@ -54,7 +55,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           subtitle: translationSubtitle,
           language: translationLang,
           category,
-          translator,
+          translator: translationTranslator,
           cbeta,
           teamId: user.teamId,
           parentId: created.id,
@@ -74,17 +75,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       originTitle,
       originSubtitle,
       originLang,
+      originTranslator,
       translationTitle,
       translationSubtitle,
       translationLang,
+      translationTranslator,
       category,
-      translator,
       cbeta,
     } = parseSutraUpdate(formData);
 
     await updateSutra(
       sutraId,
-      { title: originTitle, subtitle: originSubtitle, language: originLang, category, translator, cbeta },
+      {
+        title: originTitle,
+        subtitle: originSubtitle,
+        language: originLang,
+        category,
+        translator: originTranslator,
+        cbeta,
+      },
       user,
     );
 
@@ -92,7 +101,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (childSutraId) {
         await updateSutra(
           childSutraId,
-          { title: translationTitle, subtitle: translationSubtitle, language: translationLang, category, translator },
+          {
+            title: translationTitle,
+            subtitle: translationSubtitle,
+            language: translationLang,
+            category,
+            translator: translationTranslator,
+          },
           user,
         );
       } else {
@@ -102,7 +117,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             subtitle: translationSubtitle,
             language: translationLang,
             category,
-            translator,
+            translator: translationTranslator,
             cbeta,
             teamId: user.teamId,
             parentId: sutraId,

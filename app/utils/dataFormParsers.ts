@@ -4,13 +4,14 @@ import type { Lang } from '~/utils/constants';
 
 export type SutraCreatePayload = {
   originTitle: string;
-  originSubtitle: string | null;
+  originSubtitle: string;
   originLang: Lang;
+  originTranslator: string;
   translationTitle: string;
-  translationSubtitle: string | null;
+  translationSubtitle: string;
   translationLang: Lang;
+  translationTranslator: string;
   category: string;
-  translator: string;
   cbeta: string;
 };
 
@@ -22,13 +23,14 @@ export type SutraUpdatePayload = SutraCreatePayload & {
 export function parseSutraCreate(formData: FormData): SutraCreatePayload {
   return {
     originTitle: formData.get('originTitle') as string,
-    originSubtitle: (formData.get('originSubtitle') as string) || null,
+    originSubtitle: (formData.get('originSubtitle') as string) || '',
     originLang: formData.get('originLang') as Lang,
+    originTranslator: (formData.get('originTranslator') as string) || '',
     translationTitle: formData.get('translationTitle') as string,
-    translationSubtitle: (formData.get('translationSubtitle') as string) || null,
+    translationSubtitle: (formData.get('translationSubtitle') as string) || '',
     translationLang: formData.get('translationLang') as Lang,
+    translationTranslator: (formData.get('translationTranslator') as string) || '',
     category: (formData.get('category') as string) || '',
-    translator: (formData.get('translator') as string) || '',
     cbeta: (formData.get('cbeta') as string) || '',
   };
 }
