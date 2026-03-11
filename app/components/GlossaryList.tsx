@@ -52,7 +52,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
         <div className="flex flex-col gap-4 pb-0 lg:flex-row lg:gap-4">
           <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-11rem)] lg:w-1/2">
             <ScrollArea className="h-full lg:pr-4">
-              <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
+              <div className="h-full rounded-lg bg-gradient-to-r from-highlight to-slate-700 p-0.5">
                 {selectedGlossary ? (
                   <ClientOnly fallback={<div>Loading...</div>}>
                     {() => <GlossaryDetail showEdit={showEdit} glossary={selectedGlossary} />}
@@ -71,7 +71,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
                     <li
                       key={glossary.id}
                       onClick={() => setSelectedIndex(index)}
-                      className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+                      className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-highlight to-slate-700 p-0.5' : ''}`}
                     >
                       <GlossaryItem glossary={glossary} />
                     </li>
@@ -192,7 +192,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
 
       // Add highlighted match
       result.push(
-        <mark key={`highlight-${matchCount}`} className="bg-transparent font-semibold text-yellow-600">
+        <mark key={`highlight-${matchCount}`} className="bg-transparent font-semibold text-highlight">
           {match[0]}
         </mark>,
       );

@@ -279,14 +279,14 @@ export default function TranslationRoll() {
         <div
           className={`${selectedParagraphIndex ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'} w-full gap-2 px-2 ${
             selectedParagraphIndex === paragraph.id
-              ? 'rounded-xl bg-gradient-to-r from-yellow-600 to-slate-700 p-2 shadow-xl'
+              ? 'rounded-xl bg-gradient-to-r from-highlight to-slate-700 p-2 shadow-xl'
               : ''
           }`}
         >
           <div onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}>
             <ContextMenuWrapper>
               <div className="relative">
-                <span className="absolute left-1.5 top-4 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
+                <span className="absolute left-1.5 top-4 z-10 text-sm font-medium text-highlight">{index + 1}</span>
                 <Paragraph isOrigin id={paragraph.id} text={paragraph.origin} comments={paragraph.originComments} />
               </div>
             </ContextMenuWrapper>
@@ -335,7 +335,7 @@ export default function TranslationRoll() {
           >
             <ContextMenuWrapper>
               <div className="relative">
-                <span className="absolute left-1.5 top-4 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
+                <span className="absolute left-1.5 top-4 z-10 text-sm font-medium text-highlight">{index + 1}</span>
                 <Paragraph
                   id={paragraph.id}
                   text={paragraph.origin}
@@ -365,7 +365,7 @@ export default function TranslationRoll() {
               </RadioGroup>
             </ScrollArea>
           </LeftPanel>
-          <ResizableHandle withHandle className="my-2 bg-yellow-600 lg:my-0" />
+          <ResizableHandle withHandle className="my-2 bg-highlight lg:my-0" />
           <RightPanel>
             <ScrollArea className="h-full w-full lg:pr-4">
               <Workspace paragraph={selectedParagraph} />

@@ -27,9 +27,9 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border bg-slate-100 text-yellow-600 border-yellow-600',
-        error: 'destructive group bg-primary text-yellow-600',
-        warning: 'warning group border-slate-100 bg-yellow-600 text-slate-100',
+        default: 'border bg-slate-100 text-highlight border-highlight',
+        error: 'destructive group bg-primary text-highlight',
+        warning: 'warning group border-slate-100 bg-highlight text-slate-100',
       },
       position: {
         default: 'top-0 right-0 flex fixed md:max-w-[420px] md:top-4 md:right-4',

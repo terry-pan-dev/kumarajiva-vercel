@@ -22,7 +22,7 @@ export default function AdminLayout() {
         <SideBarTrigger />
         Administration
       </div>
-      <Separator className="mb-2 bg-yellow-600" />
+      <Separator className="mb-2 bg-highlight" />
       <Outlet />
       <Toaster />
     </div>

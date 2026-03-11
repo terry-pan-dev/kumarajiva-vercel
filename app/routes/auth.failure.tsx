@@ -11,7 +11,7 @@ export default function OAuthLoginFailure({ errorMessage = 'An error occurred du
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="flex items-center justify-center text-gray-800">
-            <AlertTriangle className="mr-2 h-6 w-6 text-yellow-500" />
+            <AlertTriangle className="mr-2 h-6 w-6 text-warning" />
             Login Unsuccessful
           </CardTitle>
         </CardHeader>

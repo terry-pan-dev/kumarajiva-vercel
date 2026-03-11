@@ -26,7 +26,7 @@ export const ErrorInfo = ({ error }: ErrorBoundaryProps) => {
     <div className="mb-4 flex h-screen grow flex-col items-center justify-center rounded-lg bg-gray-100 px-4">
       <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
         {errorStatusCode === 404 ? (
-          <AlertTriangle className="mx-auto mb-4 h-16 w-16 text-yellow-500" />
+          <AlertTriangle className="mx-auto mb-4 h-16 w-16 text-warning" />
         ) : (
           <Bug className="mx-auto mb-4 h-16 w-16 text-red-500" />
         )}

@@ -107,7 +107,7 @@ export default function GlossaryLayout() {
           </div>
         </div>
       </div>
-      <Separator className="mb-4 bg-yellow-600" />
+      <Separator className="mb-4 bg-highlight" />
       <Outlet context={{ user, users }} />
       <Toaster />
     </div>

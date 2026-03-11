@@ -22,7 +22,7 @@ export default function DashboardLayout() {
         <SideBarTrigger />
         Dashboard
       </div>
-      <Separator className="mb-4 bg-yellow-600" />
+      <Separator className="mb-4 bg-highlight" />
       <Outlet />
     </div>
   );

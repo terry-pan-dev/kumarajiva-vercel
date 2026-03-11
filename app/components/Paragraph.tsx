@@ -200,7 +200,7 @@ export const CommentWorkspace = ({
           {userName}
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className="flex w-full max-w-md flex-col border-r-2 border-yellow-600">
+      <SheetContent side="left" className="flex w-full max-w-md flex-col border-r-2 border-highlight">
         <SheetHeader>
           <SheetTitle>Comment Thread</SheetTitle>
           <SheetDescription className="hidden">Comments</SheetDescription>
@@ -296,7 +296,7 @@ export const Paragraph = ({
       data-id={id}
       className={`relative h-full w-full rounded-xl ${
         isSelected
-          ? 'bg-gradient-to-r from-yellow-600 to-slate-700 p-2 shadow-xl'
+          ? 'bg-gradient-to-r from-highlight to-slate-700 p-2 shadow-xl'
           : `${isOrigin ? 'bg-card' : 'bg-card-foreground'} px-6 py-4 shadow-lg`
       } ${isUpdate ? 'animate-[pulse_1s_ease-in-out_1]' : ''}`}
     >

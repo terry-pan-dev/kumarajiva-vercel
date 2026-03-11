@@ -93,10 +93,10 @@ export function SideBarMenu({
             aria-label="Logo"
             className={cn('flex items-center', isOpen ? 'w-full justify-start' : 'w-full justify-center')}
           >
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-yellow-600 font-mono text-xl font-bold text-white">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-highlight font-mono text-xl font-bold text-white">
               <img width={32} height={32} src={favicon} sizes="32x32" alt="home favicon" />
               {navigation.state === 'loading' && !isOpen && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-yellow-600/80">
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-highlight/80">
                   <Icons.Loader className="h-5 w-5 animate-spin text-white" />
                 </div>
               )}
@@ -108,7 +108,7 @@ export function SideBarMenu({
           </Link>
         </div>
 
-        <nav className="flex w-full flex-1 flex-col gap-1 border-y border-yellow-600 py-4">
+        <nav className="flex w-full flex-1 flex-col gap-1 border-y border-highlight py-4">
           {menuItems
             .filter((item) => {
               if (item.href.includes('admin') && userRole !== 'admin') {
@@ -128,15 +128,15 @@ export function SideBarMenu({
                     className={cn(
                       'flex items-center py-3 text-md font-medium text-white',
                       isOpen ? 'justify-start px-6' : 'justify-center px-3',
-                      'hover:bg-slate-200/50 hover:text-yellow-600',
+                      'hover:bg-slate-200/50 hover:text-highlight',
                       pathname.startsWith(item.href)
-                        ? 'active rounded-md bg-slate-200 text-yellow-600'
+                        ? 'active rounded-md bg-slate-200 text-highlight'
                         : 'bg-transparent hover:rounded-md',
                     )}
                   >
                     {({ isActive }) => (
                       <>
-                        <item.icon className={cn('h-5 w-5', isOpen && 'mr-3', isActive && 'text-yellow-600')} />
+                        <item.icon className={cn('h-5 w-5', isOpen && 'mr-3', isActive && 'text-highlight')} />
                         {isOpen && <span>{item.label}</span>}
                       </>
                     )}
@@ -154,7 +154,7 @@ export function SideBarMenu({
                 className={cn(
                   'flex cursor-pointer items-center py-3 text-md font-medium text-white',
                   isOpen ? 'justify-start px-6' : 'justify-center px-3',
-                  'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                  'hover:rounded-md hover:bg-slate-200/50 hover:text-highlight',
                 )}
               >
                 <Search className={cn('h-5 w-5', isOpen && 'mr-3')} />
@@ -174,7 +174,7 @@ export function SideBarMenu({
             <Link to="/settings" aria-label="settings" className="flex items-center">
               <Avatar className="h-10 w-10 rounded-md">
                 <AvatarImage alt="avatar" src={avatarSrc || ''} />
-                <AvatarFallback className="rounded-md bg-yellow-600 text-white">{avatarFallback}</AvatarFallback>
+                <AvatarFallback className="rounded-md bg-highlight text-white">{avatarFallback}</AvatarFallback>
               </Avatar>
               {isOpen && (
                 <div className="ml-3 max-w-28">
@@ -189,7 +189,7 @@ export function SideBarMenu({
               <TooltipTrigger asChild>
                 <Form method="post" action="/logout">
                   <button type="submit">
-                    <LogOut className="h-5 w-5 text-white hover:text-yellow-600" />
+                    <LogOut className="h-5 w-5 text-white hover:text-highlight" />
                   </button>
                 </Form>
               </TooltipTrigger>
@@ -392,7 +392,7 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
   return (
     <div className="flex h-[calc(100vh-10rem)] flex-col gap-4 px-2 lg:flex-row lg:gap-4">
       <ScrollArea className="order-1 h-1/2 w-full lg:order-2 lg:h-full lg:w-1/2 lg:pr-4">
-        <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
+        <div className="h-full rounded-lg bg-gradient-to-r from-highlight to-slate-700 p-0.5">
           <ClientOnly fallback={<div>Loading...</div>}>
             {() =>
               match(selectedIndex[1])
@@ -415,7 +415,7 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
           <div
             key={result.id}
             onClick={() => setSelectedIndex([index, result.type])}
-            className={`mb-2 ${selectedIndex[0] === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+            className={`mb-2 ${selectedIndex[0] === index ? 'rounded-lg bg-gradient-to-r from-highlight to-slate-700 p-0.5' : ''}`}
           >
             {result.type === 'Glossary' ? <GlossaryItem glossary={result} /> : <ParagraphItem paragraph={result} />}
           </div>
