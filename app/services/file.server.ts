@@ -97,6 +97,7 @@ export function buildImportData(rows: ExcelTranslationRow[], options: ImportOpti
  */
 export async function replaceRollData(rows: ExcelTranslationRow[], options: ImportOptions): Promise<ImportResult> {
   const { rollId, originalLanguage, translationLanguage, userId } = options;
+  const { originParagraphs, targetParagraphs, referencesToInsert } = buildImportData(rows, options);
 
   try {
     const counts = await db.transaction(async (tx) => {
@@ -183,51 +184,21 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
 
           updatedCount++;
         } else {
-          // INSERT new origin paragraph
-          const newId = uuidv4();
-          const newParagraphData = {
-            id: newId,
-            rollId,
-            number: paraNumber,
-            order: paraOrder,
-            language: originalLanguage as (typeof paragraphsTable.language.enumValues)[number],
-            content: row.origin,
-            searchId: uuidv4(),
-            createdBy: userId,
-            updatedBy: userId,
-          };
+          // INSERT new origin paragraph using pre-built data from buildImportData
+          const newParagraphData = { ...originParagraphs[idx], searchId: uuidv4() };
           await tx.insert(paragraphsTable).values(newParagraphData);
           await saveParagraphToAlgolia(newParagraphData);
 
-          if (row.target) {
-            const newTargetData = {
-              id: uuidv4(),
-              rollId,
-              parentId: newId,
-              number: paraNumber,
-              order: paraOrder,
-              language: translationLanguage as (typeof paragraphsTable.language.enumValues)[number],
-              content: row.target,
-              searchId: uuidv4(),
-              createdBy: userId,
-              updatedBy: userId,
-            };
+          const builtTarget = targetParagraphs.find((t) => t.parentId === originParagraphs[idx].id);
+          if (builtTarget) {
+            const newTargetData = { ...builtTarget, searchId: uuidv4() };
             await tx.insert(paragraphsTable).values(newTargetData);
             await saveParagraphToAlgolia(newTargetData);
           }
 
-          const newRefs = row.references.filter((r) => r.sutraName && r.content);
+          const newRefs = referencesToInsert.filter((r) => r.paragraphId === originParagraphs[idx].id);
           if (newRefs.length > 0) {
-            await tx.insert(referencesTable).values(
-              newRefs.map((r) => ({
-                paragraphId: newId,
-                order: paraOrder,
-                sutraName: r.sutraName!,
-                content: r.content!,
-                createdBy: userId,
-                updatedBy: userId,
-              })),
-            );
+            await tx.insert(referencesTable).values(newRefs);
           }
 
           insertedCount++;
