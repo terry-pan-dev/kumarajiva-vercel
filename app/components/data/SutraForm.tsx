@@ -111,8 +111,7 @@ export function SutraForm({ sutra, onClose }: { sutra?: SutraForForm; onClose: (
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Language</label>
-              <select name="translationLang" className={selectClass(bg)} defaultValue={sutra?.children?.language ?? ''}>
-                <option value="">— none —</option>
+              <select name="translationLang" className={selectClass(bg)} defaultValue={sutra?.children?.language}>
                 {SUPPORTED_LANGUAGES.map((lang) => (
                   <option key={lang.value} value={lang.value}>
                     {lang.label}

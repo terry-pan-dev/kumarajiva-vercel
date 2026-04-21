@@ -38,8 +38,8 @@ export function RollRow({ roll, sutraId, childSutraId, isEditing, onEditToggle, 
           <a
             target="_blank"
             rel="noreferrer"
-            href={`/data/import?sutraId=${sutraId}&rollId=${roll.id}`}
             className="flex items-center gap-2 rounded bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:bg-accent/80"
+            href={`/data/import?originSutraId=${sutraId}&originRollId=${roll.id}${childSutraId ? `&targetSutraId=${childSutraId}` : ''}${roll.children?.id ? `&targetRollId=${roll.children.id}` : ''}`}
           >
             <Upload size={14} />
             Import & Replace

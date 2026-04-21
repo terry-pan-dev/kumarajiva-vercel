@@ -58,9 +58,8 @@ vi.mock('~/services/search.server', () => ({
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
 
 const BASE_OPTIONS: ImportOptions = {
-  sutraId: 'sutra-1',
-  rollId: 'roll-1',
-  sutraName: 'Test Sutra',
+  originRollId: 'roll-origin-1',
+  targetRollId: 'roll-target-1',
   originalLanguage: 'chinese',
   translationLanguage: 'english',
   userId: 'user-1',
@@ -87,7 +86,13 @@ describe('buildImportData', () => {
 
   it('assigns correct content and language to origin paragraphs', () => {
     const { originParagraphs } = buildImportData(TWO_ROWS, BASE_OPTIONS);
-    expect(originParagraphs[0]).toMatchObject({ content: '諸法因緣生', language: 'chinese', rollId: 'roll-1' });
+    expect(originParagraphs[0]).toMatchObject({ content: '諸法因緣生', language: 'chinese', rollId: 'roll-origin-1' });
+  });
+
+  it('assigns originRollId to origin paragraphs and targetRollId to target paragraphs', () => {
+    const { originParagraphs, targetParagraphs } = buildImportData(TWO_ROWS, BASE_OPTIONS);
+    expect(originParagraphs[0].rollId).toBe('roll-origin-1');
+    expect(targetParagraphs[0].rollId).toBe('roll-target-1');
   });
 
   it('creates target paragraphs only for rows with translations', () => {
