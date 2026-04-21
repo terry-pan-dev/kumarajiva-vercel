@@ -16,7 +16,7 @@
  */
 
 import 'dotenv/config';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 import { paragraphsTable, referencesTable } from '~/drizzle/schema';
@@ -121,6 +121,8 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
       const newOriginRows: any[] = [];
       const newTargetRows: any[] = [];
       const newRefRows: any[] = [];
+      const refDeleteIds: string[] = [];
+      const refInserts: any[] = [];
       const algoliaUpdates: { searchId: string; data: object }[] = [];
       const algoliaInserts: any[] = [];
 
@@ -178,12 +180,12 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
             }
           }
 
-          // Replace references only if the imported row provides new ones
+          // Collect reference replacements — bulk delete/insert after the loop.
           const newRefs = row.references.filter((r) => r.sutraName && r.content);
           if (newRefs.length > 0) {
-            await tx.delete(referencesTable).where(eq(referencesTable.paragraphId, existing.id));
-            await tx.insert(referencesTable).values(
-              newRefs.map((r) => ({
+            refDeleteIds.push(existing.id);
+            refInserts.push(
+              ...newRefs.map((r) => ({
                 paragraphId: existing.id,
                 order: paraOrder,
                 sutraName: r.sutraName!,
@@ -214,7 +216,13 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         }
       }
 
-      // ── 2b. Bulk-insert all collected new rows ────────────────────────────
+      // ── 2b. Bulk operations for all collected rows ────────────────────────
+      if (refDeleteIds.length > 0) {
+        await tx.delete(referencesTable).where(inArray(referencesTable.paragraphId, refDeleteIds));
+      }
+      if (refInserts.length > 0) {
+        await tx.insert(referencesTable).values(refInserts);
+      }
       if (newOriginRows.length > 0) {
         await tx.insert(paragraphsTable).values(newOriginRows);
       }
