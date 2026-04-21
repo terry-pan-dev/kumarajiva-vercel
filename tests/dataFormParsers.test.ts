@@ -43,7 +43,7 @@ describe('parseSutraCreate', () => {
     });
   });
 
-  it('coerces empty string subtitles to null', () => {
+  it('coerces empty string subtitles to empty string', () => {
     const fd = makeFormData({
       originTitle: '大般若',
       originSubtitle: '',
@@ -58,8 +58,8 @@ describe('parseSutraCreate', () => {
     });
 
     const result = parseSutraCreate(fd);
-    expect(result.originSubtitle).toBeNull();
-    expect(result.translationSubtitle).toBeNull();
+    expect(result.originSubtitle).toBe('');
+    expect(result.translationSubtitle).toBe('');
   });
 
   it('coerces absent optional fields to empty strings', () => {

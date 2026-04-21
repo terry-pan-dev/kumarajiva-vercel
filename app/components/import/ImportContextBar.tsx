@@ -1,6 +1,8 @@
 type Props = {
-  sutraName: string;
-  rollName: string;
+  originSutraName: string;
+  targetSutraName: string;
+  originRollName: string;
+  targetRollName: string;
   originalLanguage: string;
   translationLanguage: string;
 };
@@ -14,12 +16,21 @@ function ContextTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ImportContextBar({ sutraName, rollName, originalLanguage, translationLanguage }: Props) {
+export function ImportContextBar({
+  originSutraName,
+  targetSutraName,
+  originRollName,
+  targetRollName,
+  originalLanguage,
+  translationLanguage,
+}: Props) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <ContextTile label="Sutra" value={sutraName} />
-      <ContextTile label="Roll" value={rollName} />
+    <div className="grid grid-cols-3 gap-3">
+      <ContextTile label="Origin Sutra" value={originSutraName} />
+      <ContextTile label="Origin Roll" value={originRollName} />
       <ContextTile label="Origin Language" value={originalLanguage} />
+      <ContextTile label="Target Sutra" value={targetSutraName} />
+      <ContextTile label="Target Roll" value={targetRollName} />
       <ContextTile value={translationLanguage} label="Translation Language" />
     </div>
   );

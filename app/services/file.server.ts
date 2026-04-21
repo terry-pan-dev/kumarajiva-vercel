@@ -21,7 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { paragraphsTable, referencesTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
-import { DEFAULT_ORIGIN_LANG, PREVIEW_LIMIT } from '~/utils/constants';
+import { PREVIEW_LIMIT } from '~/utils/constants';
 
 import {
   type ExcelTranslationRow,
@@ -39,11 +39,11 @@ export const db = getDb();
  * options.  No DB I/O; safe to call and unit-test without a database.
  */
 export function buildImportData(rows: ExcelTranslationRow[], options: ImportOptions) {
-  const { rollId, originalLanguage, translationLanguage, userId } = options;
+  const { originRollId, targetRollId, originalLanguage, translationLanguage, userId } = options;
 
   const originParagraphs = rows.map((row, idx) => ({
     id: uuidv4(),
-    rollId,
+    rollId: originRollId,
     number: idx + 1,
     order: String(idx + 1),
     language: originalLanguage as (typeof paragraphsTable.language.enumValues)[number],
@@ -57,7 +57,7 @@ export function buildImportData(rows: ExcelTranslationRow[], options: ImportOpti
       if (!row.target) return null;
       return {
         id: uuidv4(),
-        rollId,
+        rollId: targetRollId,
         parentId: originParagraphs[idx].id,
         number: idx + 1,
         order: String(idx + 1),
@@ -96,14 +96,20 @@ export function buildImportData(rows: ExcelTranslationRow[], options: ImportOpti
  * `number >= 0` filter applied in crud.server.ts.
  */
 export async function replaceRollData(rows: ExcelTranslationRow[], options: ImportOptions): Promise<ImportResult> {
-  const { rollId, originalLanguage, translationLanguage, userId } = options;
+  const { originRollId, targetRollId, originalLanguage, translationLanguage, userId } = options;
+  const { originParagraphs, targetParagraphs, referencesToInsert } = buildImportData(rows, options);
 
   try {
     const counts = await db.transaction(async (tx) => {
       // ── 1. Load existing origin paragraphs (non-parked) sorted by position ─
       const existingOrigins = await tx.query.paragraphsTable.findMany({
         where: (p, { eq, and, gte, isNull }) =>
-          and(eq(p.rollId, rollId), eq(p.language, originalLanguage as any), isNull(p.parentId), gte(p.number, 0)),
+          and(
+            eq(p.rollId, originRollId),
+            eq(p.language, originalLanguage as any),
+            isNull(p.parentId),
+            gte(p.number, 0),
+          ),
         with: { children: true, references: true },
         orderBy: (p, { asc }) => [asc(p.number), asc(p.order)],
       });
@@ -150,7 +156,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
             } else {
               const newParagraphData = {
                 id: uuidv4(),
-                rollId,
+                rollId: targetRollId,
                 parentId: existing.id,
                 number: paraNumber,
                 order: paraOrder,
@@ -183,51 +189,21 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
 
           updatedCount++;
         } else {
-          // INSERT new origin paragraph
-          const newId = uuidv4();
-          const newParagraphData = {
-            id: newId,
-            rollId,
-            number: paraNumber,
-            order: paraOrder,
-            language: originalLanguage as (typeof paragraphsTable.language.enumValues)[number],
-            content: row.origin,
-            searchId: uuidv4(),
-            createdBy: userId,
-            updatedBy: userId,
-          };
+          // INSERT new origin paragraph using pre-built data from buildImportData
+          const newParagraphData = { ...originParagraphs[idx], searchId: uuidv4() };
           await tx.insert(paragraphsTable).values(newParagraphData);
           await saveParagraphToAlgolia(newParagraphData);
 
-          if (row.target) {
-            const newTargetData = {
-              id: uuidv4(),
-              rollId,
-              parentId: newId,
-              number: paraNumber,
-              order: paraOrder,
-              language: translationLanguage as (typeof paragraphsTable.language.enumValues)[number],
-              content: row.target,
-              searchId: uuidv4(),
-              createdBy: userId,
-              updatedBy: userId,
-            };
+          const builtTarget = targetParagraphs.find((t) => t.parentId === originParagraphs[idx].id);
+          if (builtTarget) {
+            const newTargetData = { ...builtTarget, searchId: uuidv4() };
             await tx.insert(paragraphsTable).values(newTargetData);
             await saveParagraphToAlgolia(newTargetData);
           }
 
-          const newRefs = row.references.filter((r) => r.sutraName && r.content);
+          const newRefs = referencesToInsert.filter((r) => r.paragraphId === originParagraphs[idx].id);
           if (newRefs.length > 0) {
-            await tx.insert(referencesTable).values(
-              newRefs.map((r) => ({
-                paragraphId: newId,
-                order: paraOrder,
-                sutraName: r.sutraName!,
-                content: r.content!,
-                createdBy: userId,
-                updatedBy: userId,
-              })),
-            );
+            await tx.insert(referencesTable).values(newRefs);
           }
 
           insertedCount++;
@@ -283,8 +259,11 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
  * aggregate counts so the UI can show what will be replaced before the
  * user confirms an import.
  */
-export async function getExistingDataPreviewForRollId(rollId: string): Promise<ExistingDataPreview> {
-  const databaseParagraphs = await readParagraphsByRollIdForLanguage({ rollId, language: DEFAULT_ORIGIN_LANG });
+export async function getExistingDataPreviewForRollId(
+  rollId: string,
+  language: (typeof paragraphsTable.language.enumValues)[number],
+): Promise<ExistingDataPreview> {
+  const databaseParagraphs = await readParagraphsByRollIdForLanguage({ rollId, language });
 
   const totalParagraphs = databaseParagraphs.length;
   const totalReferences = databaseParagraphs.reduce((sum, p) => sum + (p.references?.length || 0), 0);

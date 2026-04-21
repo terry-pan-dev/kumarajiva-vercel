@@ -10,7 +10,14 @@
  *
  * To also exercise replaceRollData against a real database, pass --db and make
  * sure the DATABASE_URL / POSTGRES_URL env vars are set (e.g. via .env):
- *   dotenv -e .env -- tsx scripts/test-import.ts --db
+ *   dotenv -e .env -- tsx functional/test-import.ts --db
+ *
+ * Required env vars for --db mode:
+ *   TEST_ORIGIN_ROLL_ID  — UUID of the origin roll
+ *   TEST_TARGET_ROLL_ID  — UUID of the target (translation) roll
+ *   TEST_USER_ID         — UUID of the user to stamp createdBy/updatedBy
+ *   TEST_ORIGIN_LANG     — language of the origin paragraphs (default: chinese)
+ *   TEST_TARGET_LANG     — language of the target paragraphs (default: english)
  */
 
 import 'dotenv/config';
@@ -95,15 +102,15 @@ async function testDB() {
   console.log('\n── DB import test ───────────────────────────────────');
   console.log('Requires ROLL_ID env var and a running database.');
 
-  const rollId = process.env.TEST_ROLL_ID;
-  if (!rollId) {
-    console.log('  Skipped — set TEST_ROLL_ID to run this section.');
+  const originRollId = process.env.TEST_ORIGIN_ROLL_ID;
+  const targetRollId = process.env.TEST_TARGET_ROLL_ID;
+  if (!originRollId || !targetRollId) {
+    console.log('  Skipped — set TEST_ORIGIN_ROLL_ID and TEST_TARGET_ROLL_ID to run this section.');
     return;
   }
 
   // Lazy import so it only bootstraps the DB when --db flag is passed
-  const { replaceRollData } = await import('../app/services/file.server');
-  const { buildImportData } = await import('../app/services/file.server');
+  const { replaceRollData, buildImportData } = await import('../app/services/file.server');
 
   const rows = [
     {
@@ -115,11 +122,10 @@ async function testDB() {
   ];
 
   const options = {
-    sutraId: process.env.TEST_SUTRA_ID ?? '',
-    rollId,
-    sutraName: 'Test Sutra',
-    originalLanguage: 'chinese',
-    translationLanguage: 'english',
+    originRollId,
+    targetRollId,
+    originalLanguage: process.env.TEST_ORIGIN_LANG ?? 'chinese',
+    translationLanguage: process.env.TEST_TARGET_LANG ?? 'english',
     userId: process.env.TEST_USER_ID ?? 'test-user',
   };
 

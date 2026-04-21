@@ -1,4 +1,4 @@
-import { eq, gte, inArray } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull } from 'drizzle-orm';
 import 'dotenv/config';
 
 import type {
@@ -359,9 +359,23 @@ export const DbSutras = {
     });
   },
 
+  findWithRolls: async () => {
+    return db.query.sutrasTable.findMany({
+      where: isNull(sutrasTable.parentId),
+      with: {
+        rolls: {
+          with: {
+            children: true,
+          },
+        },
+        children: true,
+      },
+    });
+  },
+
   findByLanguageWithRolls: async (language: string) => {
     return db.query.sutrasTable.findMany({
-      where: eq(sutrasTable.language, language as any),
+      where: and(eq(sutrasTable.language, language as any), isNull(sutrasTable.parentId)),
       with: {
         rolls: {
           with: {

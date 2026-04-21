@@ -117,8 +117,8 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
             <Form method="post">
               <input type="hidden" name="intent" value="replace" />
               <input name="rows" type="hidden" value={JSON.stringify(fileRows)} />
-              <input type="hidden" name="sutraId" value={formValues.sutraId} />
-              <input type="hidden" name="rollId" value={formValues.rollId} />
+              <input type="hidden" name="originRollId" value={formValues.originRollId} />
+              <input type="hidden" name="targetRollId" value={formValues.targetRollId} />
               <input type="hidden" name="originalLanguage" value={formValues.originalLanguage} />
               <input type="hidden" name="translationLanguage" value={formValues.translationLanguage} />
 

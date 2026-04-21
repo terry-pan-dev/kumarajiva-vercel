@@ -65,9 +65,8 @@ export interface ParagraphUnit {
 // =============================================================================
 
 export interface ImportOptions {
-  sutraId: string;
-  rollId: string;
-  sutraName: string;
+  originRollId: string;
+  targetRollId: string;
   originalLanguage: string;
   translationLanguage: string;
   userId: string;

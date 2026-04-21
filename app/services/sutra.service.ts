@@ -4,8 +4,8 @@ import 'dotenv/config';
 
 import { DbSutras } from './crud.server';
 
-export const readSutrasAndRolls = async ({ user }: { user: ReadUser }) => {
-  return DbSutras.findByLanguageWithRolls(user.originLang);
+export const readSutrasAndRolls = async () => {
+  return DbSutras.findWithRolls();
 };
 
 export const getSutra = async (id: string) => {

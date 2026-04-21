@@ -50,7 +50,13 @@
       "mcp__sentry__find_organizations",
       "mcp__sentry__find_issues",
       "mcp__sentry__update_issue",
-      "mcp__playwright__browser_press_key"
+      "mcp__playwright__browser_press_key",
+      "Bash(npx vitest *)",
+      "Bash(bun run *)",
+      "Read(//home/claudine/.nvm/versions/**)",
+      "Read(//usr/local/lib/**)",
+      "Read(//home/claudine/**)",
+      "Bash(pnpm test:run tests/file.server.test.ts)"
     ],
     "deny": []
   }

@@ -17,7 +17,6 @@ import {
 } from '~/services/file.service';
 import { getRoll } from '~/services/roll.service';
 import { getSutra } from '~/services/sutra.service';
-import { DEFAULT_ORIGIN_LANG, DEFAULT_TARGET_LANG } from '~/utils/constants';
 
 import { assertAuthUser } from '../auth.server';
 
@@ -35,26 +34,33 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (!user) return redirect('/login');
 
   const url = new URL(request.url);
-  const sutraId = url.searchParams.get('sutraId');
-  const rollId = url.searchParams.get('rollId');
+  const originSutraId = url.searchParams.get('originSutraId');
+  const targetSutraId = url.searchParams.get('targetSutraId');
+  const originRollId = url.searchParams.get('originRollId');
+  const targetRollId = url.searchParams.get('targetRollId');
 
-  if (!sutraId || !rollId) return redirect('/data');
+  if (!originSutraId || !targetSutraId || !originRollId || !targetRollId) return redirect('/data');
 
-  const [sutra, roll, existing] = await Promise.all([
-    getSutra(sutraId),
-    getRoll(rollId),
-    getExistingDataPreviewForRollId(rollId),
+  const [originSutra, originRoll, targetSutra, targetRoll] = await Promise.all([
+    getSutra(originSutraId),
+    getRoll(originRollId),
+    getSutra(targetSutraId),
+    getRoll(targetRollId),
   ]);
 
-  if (!sutra || !roll) return redirect('/data');
+  if (!originSutra || !originRoll || !targetSutra || !targetRoll) return redirect('/data');
+
+  const existing = await getExistingDataPreviewForRollId(originRollId, originSutra.language);
 
   return json({
-    sutraId,
-    rollId,
-    sutraName: sutra.title,
-    rollName: roll.title,
-    originalLanguage: DEFAULT_ORIGIN_LANG,
-    translationLanguage: DEFAULT_TARGET_LANG,
+    originRollId,
+    targetRollId: targetRoll.id,
+    originSutraName: originSutra.title,
+    targetSutraName: targetSutra.title,
+    originRollName: originRoll.title,
+    targetRollName: targetRoll.title,
+    originalLanguage: originSutra.language,
+    translationLanguage: targetSutra.language,
     existing,
     userId: user.id,
   });
@@ -72,9 +78,8 @@ export async function action({ request }: ActionFunctionArgs) {
   // ── Preview: parse file only ──
   if (intent === 'preview') {
     const file = formData.get('file') as File;
-    const sutraId = formData.get('sutraId') as string;
-    const rollId = formData.get('rollId') as string;
-    const sutraName = formData.get('sutraName') as string;
+    const originRollId = formData.get('originRollId') as string;
+    const targetRollId = formData.get('targetRollId') as string;
     const originalLanguage = formData.get('originalLanguage') as string;
     const translationLanguage = formData.get('translationLanguage') as string;
 
@@ -116,7 +121,7 @@ export async function action({ request }: ActionFunctionArgs) {
       return json<ActionResponse>({
         intent: 'preview',
         fileRows: rows,
-        formValues: { sutraId, rollId, sutraName, originalLanguage, translationLanguage, userId: user.id },
+        formValues: { originRollId, targetRollId, originalLanguage, translationLanguage, userId: user.id },
       });
     } catch (error) {
       console.error('Preview error:', error);
@@ -131,12 +136,12 @@ export async function action({ request }: ActionFunctionArgs) {
   // ── Replace: insert parsed rows into the database ──
   if (intent === 'replace') {
     const rowsJson = formData.get('rows') as string;
-    const sutraId = formData.get('sutraId') as string;
-    const rollId = formData.get('rollId') as string;
+    const originRollId = formData.get('originRollId') as string;
+    const targetRollId = formData.get('targetRollId') as string;
     const originalLanguage = formData.get('originalLanguage') as string;
     const translationLanguage = formData.get('translationLanguage') as string;
 
-    if (!rowsJson || !sutraId || !rollId || !originalLanguage || !translationLanguage) {
+    if (!rowsJson || !originRollId || !targetRollId || !originalLanguage || !translationLanguage) {
       return json<ActionResponse>(
         { intent: 'error', result: { success: false, message: 'Missing required data for replace operation.' } },
         { status: 400 },
@@ -145,9 +150,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const rows: ExcelTranslationRow[] = JSON.parse(rowsJson);
     const result = await replaceRollData(rows, {
-      sutraId,
-      rollId,
-      sutraName: '',
+      originRollId,
+      targetRollId,
       originalLanguage,
       translationLanguage,
       userId: user.id,
@@ -160,8 +164,17 @@ export async function action({ request }: ActionFunctionArgs) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DataImport() {
-  const { sutraId, rollId, sutraName, rollName, originalLanguage, translationLanguage, existing } =
-    useLoaderData<typeof loader>();
+  const {
+    originRollId,
+    targetRollId,
+    originSutraName,
+    targetSutraName,
+    originRollName,
+    targetRollName,
+    originalLanguage,
+    translationLanguage,
+    existing,
+  } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionResponse>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
@@ -186,17 +199,18 @@ export default function DataImport() {
         </CardHeader>
         <CardContent className="space-y-6">
           <ImportContextBar
-            rollName={rollName}
-            sutraName={sutraName}
+            originRollName={originRollName}
+            targetRollName={targetRollName}
+            originSutraName={originSutraName}
+            targetSutraName={targetSutraName}
             originalLanguage={originalLanguage}
             translationLanguage={translationLanguage}
           />
           <FileUploadForm
-            rollId={rollId}
-            sutraId={sutraId}
             fileName={fileName}
-            sutraName={sutraName}
             errorResult={errorResult}
+            originRollId={originRollId}
+            targetRollId={targetRollId}
             isSubmitting={isSubmitting}
             replaceResult={replaceResult}
             originalLanguage={originalLanguage}

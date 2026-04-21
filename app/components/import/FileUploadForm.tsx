@@ -9,9 +9,8 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 
 type Props = {
-  sutraId: string;
-  rollId: string;
-  sutraName: string;
+  originRollId: string;
+  targetRollId: string;
   originalLanguage: string;
   translationLanguage: string;
   isSubmitting: boolean;
@@ -23,9 +22,8 @@ type Props = {
 };
 
 export function FileUploadForm({
-  sutraId,
-  rollId,
-  sutraName,
+  originRollId,
+  targetRollId,
   originalLanguage,
   translationLanguage,
   isSubmitting,
@@ -38,9 +36,8 @@ export function FileUploadForm({
   return (
     <Form method="post" className="space-y-4" encType="multipart/form-data">
       <input type="hidden" name="intent" value="preview" />
-      <input type="hidden" name="sutraId" value={sutraId} />
-      <input type="hidden" name="rollId" value={rollId} />
-      <input type="hidden" name="sutraName" value={sutraName} />
+      <input type="hidden" name="originRollId" value={originRollId} />
+      <input type="hidden" name="targetRollId" value={targetRollId} />
       <input type="hidden" name="originalLanguage" value={originalLanguage} />
       <input type="hidden" name="translationLanguage" value={translationLanguage} />
 
