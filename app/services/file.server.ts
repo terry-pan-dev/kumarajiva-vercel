@@ -117,7 +117,10 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
       let updatedCount = 0;
       let insertedCount = 0;
 
-      // Collected during the loop; bulk-inserted / synced to Algolia after.
+      // Collected during the loop; executed in bulk after.
+      const originUpdateOps: { id: string; data: object }[] = [];
+      const childUpdateOps: { id: string; data: object }[] = [];
+      const childInsertRows: any[] = [];
       const newOriginRows: any[] = [];
       const newTargetRows: any[] = [];
       const newRefRows: any[] = [];
@@ -126,7 +129,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
       const algoliaUpdates: { searchId: string; data: object }[] = [];
       const algoliaInserts: any[] = [];
 
-      // ── 2. Update or insert one paragraph per imported row ────────────────
+      // ── 2. Classify rows into update vs insert buckets ────────────────────
       for (let idx = 0; idx < rows.length; idx++) {
         const row = rows[idx];
         const existing = existingOrigins[idx];
@@ -134,31 +137,17 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         const paraOrder = String(idx + 1);
 
         if (existing) {
-          // UPDATE existing origin paragraph
-          const paragraphData = {
-            content: row.origin,
-            number: paraNumber,
-            order: paraOrder,
-            updatedBy: userId,
-          };
-          await tx.update(paragraphsTable).set(paragraphData).where(eq(paragraphsTable.id, existing.id));
-
+          const paragraphData = { content: row.origin, number: paraNumber, order: paraOrder, updatedBy: userId };
+          originUpdateOps.push({ id: existing.id, data: paragraphData });
           if (existing.searchId) {
             algoliaUpdates.push({ searchId: existing.searchId, data: paragraphData });
           }
 
-          // UPDATE or INSERT translation child
           const child = existing.children;
           if (row.target) {
             if (child) {
-              const paragraphData = {
-                content: row.target,
-                number: paraNumber,
-                order: paraOrder,
-                updatedBy: userId,
-              };
-              await tx.update(paragraphsTable).set(paragraphData).where(eq(paragraphsTable.id, child.id));
-
+              const paragraphData = { content: row.target, number: paraNumber, order: paraOrder, updatedBy: userId };
+              childUpdateOps.push({ id: child.id, data: paragraphData });
               if (child.searchId) {
                 algoliaUpdates.push({ searchId: child.searchId, data: paragraphData });
               }
@@ -175,12 +164,11 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
                 createdBy: userId,
                 updatedBy: userId,
               };
-              await tx.insert(paragraphsTable).values(newParagraphData);
+              childInsertRows.push(newParagraphData);
               algoliaInserts.push(newParagraphData);
             }
           }
 
-          // Collect reference replacements — bulk delete/insert after the loop.
           const newRefs = row.references.filter((r) => r.sutraName && r.content);
           if (newRefs.length > 0) {
             refDeleteIds.push(existing.id);
@@ -217,11 +205,18 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
       }
 
       // ── 2b. Bulk operations for all collected rows ────────────────────────
+      await Promise.all([
+        ...originUpdateOps.map((op) => tx.update(paragraphsTable).set(op.data).where(eq(paragraphsTable.id, op.id))),
+        ...childUpdateOps.map((op) => tx.update(paragraphsTable).set(op.data).where(eq(paragraphsTable.id, op.id))),
+      ]);
       if (refDeleteIds.length > 0) {
         await tx.delete(referencesTable).where(inArray(referencesTable.paragraphId, refDeleteIds));
       }
       if (refInserts.length > 0) {
         await tx.insert(referencesTable).values(refInserts);
+      }
+      if (childInsertRows.length > 0) {
+        await tx.insert(paragraphsTable).values(childInsertRows);
       }
       if (newOriginRows.length > 0) {
         await tx.insert(paragraphsTable).values(newOriginRows);
@@ -235,25 +230,31 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
 
       // ── 3. Park extra existing paragraphs (negate number/order) ──────────
       const extras = existingOrigins.slice(rows.length);
-      for (const extra of extras) {
-        const negNumber = extra.number > 0 ? -extra.number : extra.number;
-        const negOrder = extra.order.startsWith('-') ? extra.order : `-${extra.order}`;
-        await tx
-          .update(paragraphsTable)
-          .set({ number: negNumber, order: negOrder, updatedBy: userId })
-          .where(eq(paragraphsTable.id, extra.id));
-
-        if (extra.children) {
-          const childNegNumber = extra.children.number > 0 ? -extra.children.number : extra.children.number;
-          const childNegOrder = extra.children.order.startsWith('-')
-            ? extra.children.order
-            : `-${extra.children.order}`;
-          await tx
-            .update(paragraphsTable)
-            .set({ number: childNegNumber, order: childNegOrder, updatedBy: userId })
-            .where(eq(paragraphsTable.id, extra.children.id));
-        }
-      }
+      await Promise.all(
+        extras.flatMap((extra) => {
+          const negNumber = extra.number > 0 ? -extra.number : extra.number;
+          const negOrder = extra.order.startsWith('-') ? extra.order : `-${extra.order}`;
+          const ops = [
+            tx
+              .update(paragraphsTable)
+              .set({ number: negNumber, order: negOrder, updatedBy: userId })
+              .where(eq(paragraphsTable.id, extra.id)),
+          ];
+          if (extra.children) {
+            const childNegNumber = extra.children.number > 0 ? -extra.children.number : extra.children.number;
+            const childNegOrder = extra.children.order.startsWith('-')
+              ? extra.children.order
+              : `-${extra.children.order}`;
+            ops.push(
+              tx
+                .update(paragraphsTable)
+                .set({ number: childNegNumber, order: childNegOrder, updatedBy: userId })
+                .where(eq(paragraphsTable.id, extra.children.id)),
+            );
+          }
+          return ops;
+        }),
+      );
 
       return { counts: { updatedCount, insertedCount, parkedCount: extras.length }, algoliaUpdates, algoliaInserts };
     });
