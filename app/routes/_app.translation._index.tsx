@@ -20,7 +20,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return redirect('/login');
   }
   try {
-    const sutras = await readSutrasAndRolls({ user });
+    const sutras = await readSutrasAndRolls();
     return json({ success: true, sutras });
   } catch (error) {
     console.error(error);
