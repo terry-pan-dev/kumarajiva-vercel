@@ -25,11 +25,11 @@ export function ImportContextBar({
   translationLanguage,
 }: Props) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-3 gap-3">
       <ContextTile label="Origin Sutra" value={originSutraName} />
-      <ContextTile label="Target Sutra" value={targetSutraName} />
-      <ContextTile label="Origin Language" value={originalLanguage} />
       <ContextTile label="Origin Roll" value={originRollName} />
+      <ContextTile label="Origin Language" value={originalLanguage} />
+      <ContextTile label="Target Sutra" value={targetSutraName} />
       <ContextTile label="Target Roll" value={targetRollName} />
       <ContextTile value={translationLanguage} label="Translation Language" />
     </div>
