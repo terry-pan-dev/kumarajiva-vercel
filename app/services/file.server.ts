@@ -30,7 +30,7 @@ import {
   type ImportResult,
 } from './file.service';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
-import { saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
+import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
 
 export const db = getDb();
 
@@ -100,7 +100,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
   const { originParagraphs, targetParagraphs, referencesToInsert } = buildImportData(rows, options);
 
   try {
-    const counts = await db.transaction(async (tx) => {
+    const { counts, algoliaUpdates, algoliaInserts } = await db.transaction(async (tx) => {
       // ── 1. Load existing origin paragraphs (non-parked) sorted by position ─
       const existingOrigins = await tx.query.paragraphsTable.findMany({
         where: (p, { eq, and, gte, isNull }) =>
@@ -116,6 +116,13 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
 
       let updatedCount = 0;
       let insertedCount = 0;
+
+      // Collected during the loop; bulk-inserted / synced to Algolia after.
+      const newOriginRows: any[] = [];
+      const newTargetRows: any[] = [];
+      const newRefRows: any[] = [];
+      const algoliaUpdates: { searchId: string; data: object }[] = [];
+      const algoliaInserts: any[] = [];
 
       // ── 2. Update or insert one paragraph per imported row ────────────────
       for (let idx = 0; idx < rows.length; idx++) {
@@ -135,7 +142,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
           await tx.update(paragraphsTable).set(paragraphData).where(eq(paragraphsTable.id, existing.id));
 
           if (existing.searchId) {
-            await updateParagraphToAlgolia(existing.searchId, paragraphData);
+            algoliaUpdates.push({ searchId: existing.searchId, data: paragraphData });
           }
 
           // UPDATE or INSERT translation child
@@ -151,7 +158,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
               await tx.update(paragraphsTable).set(paragraphData).where(eq(paragraphsTable.id, child.id));
 
               if (child.searchId) {
-                await updateParagraphToAlgolia(child.searchId, paragraphData);
+                algoliaUpdates.push({ searchId: child.searchId, data: paragraphData });
               }
             } else {
               const newParagraphData = {
@@ -167,7 +174,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
                 updatedBy: userId,
               };
               await tx.insert(paragraphsTable).values(newParagraphData);
-              await saveParagraphToAlgolia(newParagraphData);
+              algoliaInserts.push(newParagraphData);
             }
           }
 
@@ -189,25 +196,33 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
 
           updatedCount++;
         } else {
-          // INSERT new origin paragraph using pre-built data from buildImportData
-          const newParagraphData = { ...originParagraphs[idx], searchId: uuidv4() };
-          await tx.insert(paragraphsTable).values(newParagraphData);
-          await saveParagraphToAlgolia(newParagraphData);
+          // Collect new rows — bulk-inserted after the loop.
+          const newOrigin = { ...originParagraphs[idx], searchId: uuidv4() };
+          newOriginRows.push(newOrigin);
+          algoliaInserts.push(newOrigin);
 
           const builtTarget = targetParagraphs.find((t) => t.parentId === originParagraphs[idx].id);
           if (builtTarget) {
-            const newTargetData = { ...builtTarget, searchId: uuidv4() };
-            await tx.insert(paragraphsTable).values(newTargetData);
-            await saveParagraphToAlgolia(newTargetData);
+            const newTarget = { ...builtTarget, searchId: uuidv4() };
+            newTargetRows.push(newTarget);
+            algoliaInserts.push(newTarget);
           }
 
-          const newRefs = referencesToInsert.filter((r) => r.paragraphId === originParagraphs[idx].id);
-          if (newRefs.length > 0) {
-            await tx.insert(referencesTable).values(newRefs);
-          }
+          newRefRows.push(...referencesToInsert.filter((r) => r.paragraphId === originParagraphs[idx].id));
 
           insertedCount++;
         }
+      }
+
+      // ── 2b. Bulk-insert all collected new rows ────────────────────────────
+      if (newOriginRows.length > 0) {
+        await tx.insert(paragraphsTable).values(newOriginRows);
+      }
+      if (newTargetRows.length > 0) {
+        await tx.insert(paragraphsTable).values(newTargetRows);
+      }
+      if (newRefRows.length > 0) {
+        await tx.insert(referencesTable).values(newRefRows);
       }
 
       // ── 3. Park extra existing paragraphs (negate number/order) ──────────
@@ -232,14 +247,30 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         }
       }
 
-      return { updatedCount, insertedCount, parkedCount: extras.length };
+      return { counts: { updatedCount, insertedCount, parkedCount: extras.length }, algoliaUpdates, algoliaInserts };
     });
+
+    // ── 4. Sync to Algolia after the transaction commits ──────────────────
+    // Uses allSettled so search failures never roll back committed DB data.
+    const algoliaResults = await Promise.allSettled([
+      updateParagraphsToAlgolia(algoliaUpdates),
+      saveParagraphsToAlgolia(algoliaInserts),
+    ]);
+
+    const searchErrors = algoliaResults
+      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      .map((r) => `Search sync failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+
+    if (searchErrors.length > 0) {
+      console.error('Algolia sync errors after import:', searchErrors);
+    }
 
     return {
       success: true,
       inserted: counts.insertedCount,
       deleted: counts.parkedCount,
       message: `Updated ${counts.updatedCount} paragraph(s), inserted ${counts.insertedCount} new, parked ${counts.parkedCount} extra.`,
+      ...(searchErrors.length > 0 && { errors: searchErrors }),
     };
   } catch (error) {
     console.error('replaceRollData error:', error);

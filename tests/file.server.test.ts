@@ -51,8 +51,8 @@ vi.mock('~/services/paragraph.service', () => ({
 }));
 
 vi.mock('~/services/search.server', () => ({
-  saveParagraphToAlgolia: vi.fn().mockResolvedValue(undefined),
-  updateParagraphToAlgolia: vi.fn().mockResolvedValue(undefined),
+  saveParagraphsToAlgolia: vi.fn().mockResolvedValue(undefined),
+  updateParagraphsToAlgolia: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
@@ -271,8 +271,8 @@ describe('replaceRollData', () => {
 
     it('inserts only origin paragraphs (no target insert call)', async () => {
       await replaceRollData(originOnlyRows, BASE_OPTIONS);
-      // one insert call per origin row, no target inserts
-      expect(mocks.txInsert).toHaveBeenCalledTimes(originOnlyRows.length);
+      // one bulk insert for all origins, no target inserts
+      expect(mocks.txInsert).toHaveBeenCalledTimes(1);
     });
   });
 
