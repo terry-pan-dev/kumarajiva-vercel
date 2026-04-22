@@ -106,7 +106,9 @@ export default function TranslationLayout() {
         </div>
       </div>
       <Separator className="mb-2 bg-yellow-600" />
-      <Outlet context={{ user, users }} />
+      <div className="min-h-0 flex-1">
+        <Outlet context={{ user, users }} />
+      </div>
       <Toaster />
     </div>
   );
