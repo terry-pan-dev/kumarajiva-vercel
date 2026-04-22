@@ -1,10 +1,8 @@
 import { type LoaderFunctionArgs } from '@vercel/remix';
 
-import type { Lang } from '~/utils/constants';
-
 import { assertAuthUser } from '~/auth.server';
 import { buildExportFilename, buildExportWorkbook, toExcelRows } from '~/services/file.service';
-import { readParagraphsByRollIdForLanguage } from '~/services/paragraph.service';
+import { readParagraphsByRollId } from '~/services/paragraph.service';
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { rollId } = params;
@@ -13,7 +11,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) throw new Response('Unauthorized', { status: 401 });
 
-  const paragraphs = await readParagraphsByRollIdForLanguage({ rollId: rollId, language: user.originLang as Lang });
+  const paragraphs = await readParagraphsByRollId({ rollId: rollId });
 
   if (!paragraphs.length) {
     throw new Response('No data found for this roll', { status: 404 });

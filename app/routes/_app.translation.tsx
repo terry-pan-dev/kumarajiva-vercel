@@ -13,7 +13,7 @@ import { Toaster } from '~/components/ui/toaster';
 import { type ReadRollWithSutra } from '~/drizzle/tables';
 import { useDownloadDocx } from '~/lib/hooks';
 import { readUsers } from '~/services';
-import { type IParagraph, readParagraphsByRollIdForLanguage } from '~/services/paragraph.service';
+import { type IParagraph, readParagraphsByRollId } from '~/services/paragraph.service';
 import { readRollById } from '~/services/roll.service';
 
 export const meta: MetaFunction = () => {
@@ -43,7 +43,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   let rollInfo: ReadRollWithSutra | undefined = undefined;
   if (rollId) {
     [paragraphs, rollInfo] = await Promise.all([
-      readParagraphsByRollIdForLanguage({ rollId: rollId as string, language: user.originLang }),
+      readParagraphsByRollId({ rollId: rollId as string }),
       readRollById(rollId as string),
     ]);
   }
