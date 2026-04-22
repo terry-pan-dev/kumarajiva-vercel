@@ -16,7 +16,7 @@
  */
 
 import 'dotenv/config';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 import { paragraphsTable, referencesTable } from '~/drizzle/schema';
@@ -30,7 +30,7 @@ import {
   type ImportResult,
 } from './file.service';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
-import { saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
+import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
 
 export const db = getDb();
 
@@ -100,7 +100,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
   const { originParagraphs, targetParagraphs, referencesToInsert } = buildImportData(rows, options);
 
   try {
-    const counts = await db.transaction(async (tx) => {
+    const { counts, algoliaUpdates, algoliaInserts } = await db.transaction(async (tx) => {
       // ── 1. Load existing origin paragraphs (non-parked) sorted by position ─
       const existingOrigins = await tx.query.paragraphsTable.findMany({
         where: (p, { eq, and, gte, isNull }) =>
@@ -117,7 +117,19 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
       let updatedCount = 0;
       let insertedCount = 0;
 
-      // ── 2. Update or insert one paragraph per imported row ────────────────
+      // Collected during the loop; executed in bulk after.
+      const originUpdateOps: { id: string; data: object }[] = [];
+      const childUpdateOps: { id: string; data: object }[] = [];
+      const childInsertRows: any[] = [];
+      const newOriginRows: any[] = [];
+      const newTargetRows: any[] = [];
+      const newRefRows: any[] = [];
+      const refDeleteIds: string[] = [];
+      const refInserts: any[] = [];
+      const algoliaUpdates: { searchId: string; data: object }[] = [];
+      const algoliaInserts: any[] = [];
+
+      // ── 2. Classify rows into update vs insert buckets ────────────────────
       for (let idx = 0; idx < rows.length; idx++) {
         const row = rows[idx];
         const existing = existingOrigins[idx];
@@ -125,33 +137,19 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         const paraOrder = String(idx + 1);
 
         if (existing) {
-          // UPDATE existing origin paragraph
-          const paragraphData = {
-            content: row.origin,
-            number: paraNumber,
-            order: paraOrder,
-            updatedBy: userId,
-          };
-          await tx.update(paragraphsTable).set(paragraphData).where(eq(paragraphsTable.id, existing.id));
-
+          const paragraphData = { content: row.origin, number: paraNumber, order: paraOrder, updatedBy: userId };
+          originUpdateOps.push({ id: existing.id, data: paragraphData });
           if (existing.searchId) {
-            await updateParagraphToAlgolia(existing.searchId, paragraphData);
+            algoliaUpdates.push({ searchId: existing.searchId, data: paragraphData });
           }
 
-          // UPDATE or INSERT translation child
           const child = existing.children;
           if (row.target) {
             if (child) {
-              const paragraphData = {
-                content: row.target,
-                number: paraNumber,
-                order: paraOrder,
-                updatedBy: userId,
-              };
-              await tx.update(paragraphsTable).set(paragraphData).where(eq(paragraphsTable.id, child.id));
-
+              const paragraphData = { content: row.target, number: paraNumber, order: paraOrder, updatedBy: userId };
+              childUpdateOps.push({ id: child.id, data: paragraphData });
               if (child.searchId) {
-                await updateParagraphToAlgolia(child.searchId, paragraphData);
+                algoliaUpdates.push({ searchId: child.searchId, data: paragraphData });
               }
             } else {
               const newParagraphData = {
@@ -166,17 +164,16 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
                 createdBy: userId,
                 updatedBy: userId,
               };
-              await tx.insert(paragraphsTable).values(newParagraphData);
-              await saveParagraphToAlgolia(newParagraphData);
+              childInsertRows.push(newParagraphData);
+              algoliaInserts.push(newParagraphData);
             }
           }
 
-          // Replace references only if the imported row provides new ones
           const newRefs = row.references.filter((r) => r.sutraName && r.content);
           if (newRefs.length > 0) {
-            await tx.delete(referencesTable).where(eq(referencesTable.paragraphId, existing.id));
-            await tx.insert(referencesTable).values(
-              newRefs.map((r) => ({
+            refDeleteIds.push(existing.id);
+            refInserts.push(
+              ...newRefs.map((r) => ({
                 paragraphId: existing.id,
                 order: paraOrder,
                 sutraName: r.sutraName!,
@@ -189,57 +186,100 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
 
           updatedCount++;
         } else {
-          // INSERT new origin paragraph using pre-built data from buildImportData
-          const newParagraphData = { ...originParagraphs[idx], searchId: uuidv4() };
-          await tx.insert(paragraphsTable).values(newParagraphData);
-          await saveParagraphToAlgolia(newParagraphData);
+          // Collect new rows — bulk-inserted after the loop.
+          const newOrigin = { ...originParagraphs[idx], searchId: uuidv4() };
+          newOriginRows.push(newOrigin);
+          algoliaInserts.push(newOrigin);
 
           const builtTarget = targetParagraphs.find((t) => t.parentId === originParagraphs[idx].id);
           if (builtTarget) {
-            const newTargetData = { ...builtTarget, searchId: uuidv4() };
-            await tx.insert(paragraphsTable).values(newTargetData);
-            await saveParagraphToAlgolia(newTargetData);
+            const newTarget = { ...builtTarget, searchId: uuidv4() };
+            newTargetRows.push(newTarget);
+            algoliaInserts.push(newTarget);
           }
 
-          const newRefs = referencesToInsert.filter((r) => r.paragraphId === originParagraphs[idx].id);
-          if (newRefs.length > 0) {
-            await tx.insert(referencesTable).values(newRefs);
-          }
+          newRefRows.push(...referencesToInsert.filter((r) => r.paragraphId === originParagraphs[idx].id));
 
           insertedCount++;
         }
       }
 
-      // ── 3. Park extra existing paragraphs (negate number/order) ──────────
-      const extras = existingOrigins.slice(rows.length);
-      for (const extra of extras) {
-        const negNumber = extra.number > 0 ? -extra.number : extra.number;
-        const negOrder = extra.order.startsWith('-') ? extra.order : `-${extra.order}`;
-        await tx
-          .update(paragraphsTable)
-          .set({ number: negNumber, order: negOrder, updatedBy: userId })
-          .where(eq(paragraphsTable.id, extra.id));
-
-        if (extra.children) {
-          const childNegNumber = extra.children.number > 0 ? -extra.children.number : extra.children.number;
-          const childNegOrder = extra.children.order.startsWith('-')
-            ? extra.children.order
-            : `-${extra.children.order}`;
-          await tx
-            .update(paragraphsTable)
-            .set({ number: childNegNumber, order: childNegOrder, updatedBy: userId })
-            .where(eq(paragraphsTable.id, extra.children.id));
-        }
+      // ── 2b. Bulk operations for all collected rows ────────────────────────
+      await Promise.all([
+        ...originUpdateOps.map((op) => tx.update(paragraphsTable).set(op.data).where(eq(paragraphsTable.id, op.id))),
+        ...childUpdateOps.map((op) => tx.update(paragraphsTable).set(op.data).where(eq(paragraphsTable.id, op.id))),
+      ]);
+      if (refDeleteIds.length > 0) {
+        await tx.delete(referencesTable).where(inArray(referencesTable.paragraphId, refDeleteIds));
+      }
+      if (refInserts.length > 0) {
+        await tx.insert(referencesTable).values(refInserts);
+      }
+      if (childInsertRows.length > 0) {
+        await tx.insert(paragraphsTable).values(childInsertRows);
+      }
+      if (newOriginRows.length > 0) {
+        await tx.insert(paragraphsTable).values(newOriginRows);
+      }
+      if (newTargetRows.length > 0) {
+        await tx.insert(paragraphsTable).values(newTargetRows);
+      }
+      if (newRefRows.length > 0) {
+        await tx.insert(referencesTable).values(newRefRows);
       }
 
-      return { updatedCount, insertedCount, parkedCount: extras.length };
+      // ── 3. Park extra existing paragraphs (negate number/order) ──────────
+      const extras = existingOrigins.slice(rows.length);
+      await Promise.all(
+        extras.flatMap((extra) => {
+          const negNumber = extra.number > 0 ? -extra.number : extra.number;
+          const negOrder = extra.order.startsWith('-') ? extra.order : `-${extra.order}`;
+          const ops = [
+            tx
+              .update(paragraphsTable)
+              .set({ number: negNumber, order: negOrder, updatedBy: userId })
+              .where(eq(paragraphsTable.id, extra.id)),
+          ];
+          if (extra.children) {
+            const childNegNumber = extra.children.number > 0 ? -extra.children.number : extra.children.number;
+            const childNegOrder = extra.children.order.startsWith('-')
+              ? extra.children.order
+              : `-${extra.children.order}`;
+            ops.push(
+              tx
+                .update(paragraphsTable)
+                .set({ number: childNegNumber, order: childNegOrder, updatedBy: userId })
+                .where(eq(paragraphsTable.id, extra.children.id)),
+            );
+          }
+          return ops;
+        }),
+      );
+
+      return { counts: { updatedCount, insertedCount, parkedCount: extras.length }, algoliaUpdates, algoliaInserts };
     });
+
+    // ── 4. Sync to Algolia after the transaction commits ──────────────────
+    // Uses allSettled so search failures never roll back committed DB data.
+    const algoliaResults = await Promise.allSettled([
+      updateParagraphsToAlgolia(algoliaUpdates),
+      saveParagraphsToAlgolia(algoliaInserts),
+    ]);
+
+    const searchErrors = algoliaResults
+      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      .map((r) => `Search sync failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+
+    if (searchErrors.length > 0) {
+      console.error('Algolia sync errors after import:', searchErrors);
+    }
 
     return {
       success: true,
       inserted: counts.insertedCount,
       deleted: counts.parkedCount,
       message: `Updated ${counts.updatedCount} paragraph(s), inserted ${counts.insertedCount} new, parked ${counts.parkedCount} extra.`,
+      ...(searchErrors.length > 0 && { errors: searchErrors }),
     };
   } catch (error) {
     console.error('replaceRollData error:', error);

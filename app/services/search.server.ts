@@ -137,3 +137,21 @@ export const saveParagraphToAlgolia = async (paragraph: CreateParagraph): Promis
     body: { ...rest, id: id, objectID: paragraph.searchId },
   });
 };
+
+export const saveParagraphsToAlgolia = async (paragraphs: CreateParagraph[]): Promise<void> => {
+  if (!paragraphs.length) return;
+  await algoliaClient.saveObjects({
+    indexName: 'paragraphs',
+    objects: paragraphs.map(({ id, ...rest }) => ({ ...rest, id, objectID: rest.searchId })),
+  });
+};
+
+export const updateParagraphsToAlgolia = async (
+  updates: { searchId: string; data: Partial<CreateParagraph> }[],
+): Promise<void> => {
+  if (!updates.length) return;
+  await algoliaClient.partialUpdateObjects({
+    indexName: 'paragraphs',
+    objects: updates.map(({ searchId, data }) => ({ objectID: searchId, ...data })),
+  });
+};
