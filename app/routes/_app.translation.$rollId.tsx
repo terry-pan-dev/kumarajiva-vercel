@@ -9,7 +9,6 @@ import { ClientOnly } from 'remix-utils/client-only';
 import { ZodError } from 'zod';
 
 import type { ReadHistory } from '~/drizzle/tables/paragraph';
-import type { Lang } from '~/utils/constants';
 
 import { assertAuthUser } from '~/auth.server';
 import { Can } from '~/authorisation';
@@ -52,7 +51,7 @@ import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import {
   createComment,
   insertParagraph,
-  readParagraphsByRollIdForLanguage,
+  readParagraphsByRollId,
   updateComment,
   updateParagraph,
   type IParagraph,
@@ -80,7 +79,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   }
   const { rollId } = params;
   const [paragraphs, rollInfo] = await Promise.all([
-    readParagraphsByRollIdForLanguage({ rollId: rollId as string, language: user.originLang as Lang }),
+    readParagraphsByRollId({ rollId: rollId as string }),
     readRollById(rollId as string),
   ]);
 
