@@ -137,7 +137,13 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         const paraOrder = String(idx + 1);
 
         if (existing) {
-          const paragraphData = { content: row.origin, number: paraNumber, order: paraOrder, updatedBy: userId };
+          const paragraphData = {
+            rollId: originRollId,
+            content: row.origin,
+            number: paraNumber,
+            order: paraOrder,
+            updatedBy: userId,
+          };
           originUpdateOps.push({ id: existing.id, data: paragraphData });
           if (existing.searchId) {
             algoliaUpdates.push({ searchId: existing.searchId, data: paragraphData });
@@ -146,7 +152,13 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
           const child = existing.children;
           if (row.target) {
             if (child) {
-              const paragraphData = { content: row.target, number: paraNumber, order: paraOrder, updatedBy: userId };
+              const paragraphData = {
+                rollId: targetRollId,
+                content: row.target,
+                number: paraNumber,
+                order: paraOrder,
+                updatedBy: userId,
+              };
               childUpdateOps.push({ id: child.id, data: paragraphData });
               if (child.searchId) {
                 algoliaUpdates.push({ searchId: child.searchId, data: paragraphData });
