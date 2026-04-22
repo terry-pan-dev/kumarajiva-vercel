@@ -196,25 +196,25 @@ export default function TranslationIndex() {
       initial={false}
       transition={{ duration: 0.5 }}
       animate={{ flexDirection: sutraId ? 'row' : 'column' }}
-      className={`flex ${sutraId ? 'flex-row' : 'items-center justify-center'}`}
+      className={`flex h-full ${sutraId ? 'flex-row' : 'items-center justify-center'}`}
     >
       <motion.div
         transition={{ duration: 0.3 }}
         animate={{
-          height: sutraId ? 'auto' : '100%',
+          height: '100%',
         }}
-        className={`flex-col items-center justify-start ${sutraId ? 'w-1/2' : 'w-full'}`}
+        className={`flex-col items-center justify-start ${sutraId ? 'w-1/2 overflow-y-auto' : 'w-full'}`}
       >
         {Sutras}
       </motion.div>
       <AnimatePresence>
         {sutraId && (
           <motion.div
-            className="m-2 w-1/2"
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
             exit={{ opacity: 0, x: '100%' }}
             initial={{ opacity: 0, x: '100%' }}
+            className="m-2 w-1/2 overflow-y-auto"
           >
             {Rolls}
           </motion.div>
