@@ -1,5 +1,7 @@
+export * from './contributor';
 export * from './document';
 export * from './paragraph';
+export * from './project';
 export * from './reference';
 export * from './roll';
 export * from './sutra';
