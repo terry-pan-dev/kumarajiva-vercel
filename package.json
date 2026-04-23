@@ -19,6 +19,8 @@
     "get-hash-password": "tsx scripts/get-hash-password.ts",
     "db:seed": "tsx drizzle/seeds/dev/index.ts",
     "db:seed:prod": "dotenv -e .env.prod -- tsx drizzle/seeds/prod/index.ts",
+    "db:migrate:data": "dotenv -e .env -- tsx drizzle/migrations/data/01-works-and-documents.ts",
+    "db:migrate:data:prod": "dotenv -e .env.prod -- tsx drizzle/migrations/data/01-works-and-documents.ts",
     "read-glossary": "tsx scripts/read-glossary.ts",
     "read-paragraph": "tsx scripts/read-paragraph.ts",
     "test": "vitest",
