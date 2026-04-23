@@ -2,6 +2,7 @@
 export const LANG_VALUES = ['chinese', 'english', 'sanskrit', 'indonesian'] as const;
 export const ROLE_VALUES = ['admin', 'leader', 'editor', 'reader', 'assistant', 'manager'] as const;
 export const NOTIFICATION_VALUES = ['info', 'error', 'success', 'warning'] as const;
+export const CONTRIBUTOR_ROLE_VALUES = ['author', 'translator', 'commentator', 'editor'] as const;
 
 // The UI-friendly objects (Derived from the arrays)
 export const SUPPORTED_LANGUAGES = LANG_VALUES.map((val) => ({
@@ -16,6 +17,7 @@ export const DEFAULT_TARGET_LANG = 'english';
 export type Lang = (typeof LANG_VALUES)[number];
 export type UserRole = (typeof ROLE_VALUES)[number];
 export type NotificationType = (typeof NOTIFICATION_VALUES)[number];
+export type ContributorRole = (typeof CONTRIBUTOR_ROLE_VALUES)[number];
 
 // Import Preview
 export const PREVIEW_LIMIT = 5;

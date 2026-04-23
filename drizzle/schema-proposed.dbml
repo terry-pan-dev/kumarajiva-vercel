@@ -1,0 +1,85 @@
+Table works {
+  id uuid [pk]
+  title text [not null]
+  cbeta text [not null]
+  category text [not null]
+  passage_key_prefix text [not null, note: 'short identifier used to build passage_key: <prefix>s<section.order>p<paragraph.order>']
+  metadata json
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table documents {
+  id uuid [pk]
+  work_id uuid [not null, ref: > works.id]
+  title text [not null]
+  subtitle text
+  language varchar [not null, note: 'enum: chinese, english, sanskrit, indonesian']
+  metadata json
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table contributors {
+  id uuid [pk]
+  document_id uuid [not null, ref: > documents.id]
+  name text [not null]
+  role varchar [not null, note: 'enum: author, translator, commentator, editor']
+}
+
+Table sections {
+  id uuid [pk]
+  document_id uuid [not null, ref: > documents.id]
+  parent_id uuid [ref: > sections.id]
+  title text
+  order integer [not null, default: 0]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table paragraphs {
+  id uuid [pk]
+  document_id uuid [not null, ref: > documents.id]
+  section_id uuid [ref: > sections.id]
+  passage_key text [not null, note: 'unique within a work by convention; aligns equivalent passages across documents']
+  order integer [not null, default: 0]
+  content text [not null]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table projects {
+  id uuid [pk]
+  name text [not null]
+  source_document_id uuid [not null, ref: > documents.id]
+  target_document_id uuid [not null, ref: > documents.id]
+  finish boolean [not null, default: false]
+  team_id uuid [not null]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table project_references {
+  project_id uuid [not null, ref: > projects.id]
+  document_id uuid [not null, ref: > documents.id]
+  order integer [not null, default: 0]
+
+  indexes {
+    (project_id, document_id) [pk]
+  }
+}

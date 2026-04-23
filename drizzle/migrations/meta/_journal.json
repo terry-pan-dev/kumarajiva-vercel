@@ -71,6 +71,13 @@
       "when": 1747218275351,
       "tag": "0010_add-resolved-to-comments-table",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1776972638154,
+      "tag": "0011_add-works-documents-contributors-projects",
+      "breakpoints": true
     }
   ]
 }

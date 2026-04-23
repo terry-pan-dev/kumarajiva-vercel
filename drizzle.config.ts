@@ -7,6 +7,6 @@ export default defineConfig({
   out: './drizzle/migrations',
   dbCredentials: {
     url: process.env.POSTGRES_URL,
-    database: process.env.POSTGRES_DB,
+    database: process.env.POSTGRES_DATABASE,
   },
 });
