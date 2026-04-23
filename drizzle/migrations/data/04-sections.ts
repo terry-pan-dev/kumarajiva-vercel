@@ -4,7 +4,7 @@
  * Mapping:
  *   - id         reuses the roll UUID
  *   - document_id = roll.sutra_id (document IDs reuse sutra IDs from migration 01)
- *   - parent_id  reuses roll.parent_id
+ *   - parent_id  always null — roll.parent_id indicated translation direction, not nesting
  *   - title      from roll.title (roll.subtitle is dropped — it contained chapter names
  *                that were not structurally distinct from the title)
  *   - order      assigned 1, 2, 3... by sorting rolls within each document by
@@ -57,7 +57,7 @@ async function main() {
       sections.push({
         id: roll.id,
         documentId: roll.sutraId,
-        parentId: roll.parentId,
+        parentId: null,
         title: roll.title,
         order: index + 1,
         createdAt: roll.createdAt,
