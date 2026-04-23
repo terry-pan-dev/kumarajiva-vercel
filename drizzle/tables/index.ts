@@ -4,6 +4,7 @@ export * from './paragraph';
 export * from './project';
 export * from './reference';
 export * from './roll';
+export * from './section';
 export * from './sutra';
 export * from './work';
 export * from './team';
