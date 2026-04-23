@@ -108,10 +108,11 @@ export default function TranslationIndex() {
       {sutra.children ? (
         <div onClick={() => setSutraId(sutra.id)}>
           <TranslationCard
-            title={sutra.title}
-            subtitle={sutra.category}
-            translator={sutra.translator}
+            originTitle={sutra.title}
             isSelected={sutraId === sutra.id}
+            targetTitle={sutra.children.title}
+            originTranslator={sutra.translator}
+            targetTranslator={sutra.children.translator}
           />
         </div>
       ) : (
@@ -120,7 +121,7 @@ export default function TranslationIndex() {
           title={`Create ${context.user.targetLang} sutra`}
           trigger={
             <Link to={`/translation?sutraId=${sutra.id}`}>
-              <TranslationCard title={sutra.title} subtitle={sutra.category} translator={sutra.translator} />
+              <TranslationCard originTitle={sutra.title} originTranslator={sutra.translator} />
             </Link>
           }
         >
@@ -160,7 +161,7 @@ export default function TranslationIndex() {
     >
       {roll.children ? (
         <Link to={`/translation/${roll.id}`}>
-          <TranslationCard title={roll.title} subtitle={roll.subtitle} />
+          <TranslationCard originTitle={roll.title} targetTitle={roll.children.title} />
         </Link>
       ) : (
         <FormModal
@@ -168,7 +169,7 @@ export default function TranslationIndex() {
           title={`Create ${context.user.targetLang} roll`}
           trigger={
             <Link to={`/translation?sutraId=${targetSutraId}&rollId=${roll.id}`}>
-              <TranslationCard title={roll.title} subtitle={roll.subtitle} />
+              <TranslationCard originTitle={roll.title} />
             </Link>
           }
         >
