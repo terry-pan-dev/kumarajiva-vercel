@@ -4,6 +4,7 @@ Table works {
   cbeta text [not null]
   category text [not null]
   passage_key_prefix text [not null, note: 'short identifier used to build passage_key: <prefix>s<section.order>p<paragraph.order>']
+  metadata json
   created_at timestamp
   updated_at timestamp
   deleted_at timestamp
@@ -17,6 +18,7 @@ Table documents {
   title text [not null]
   subtitle text
   language varchar [not null, note: 'enum: chinese, english, sanskrit, indonesian']
+  metadata json
   created_at timestamp
   updated_at timestamp
   deleted_at timestamp

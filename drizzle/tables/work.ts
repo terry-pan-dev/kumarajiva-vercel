@@ -1,4 +1,4 @@
-import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { json, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
 
@@ -8,6 +8,7 @@ export const worksTable = pgTable('works', {
   cbeta: text('cbeta').notNull(),
   category: text('category').notNull(),
   passageKeyPrefix: text('passage_key_prefix').notNull(),
+  metadata: json('metadata').$type<Record<string, unknown>>(),
   ...auditAtFields,
   ...auditByFields,
 });

@@ -1,4 +1,4 @@
-import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { json, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
 import { langEnum } from './enums';
@@ -12,6 +12,7 @@ export const documentsTable = pgTable('documents', {
   title: text('title').notNull(),
   subtitle: text('subtitle'),
   language: langEnum('language').notNull(),
+  metadata: json('metadata').$type<Record<string, unknown>>(),
   ...auditAtFields,
   ...auditByFields,
 });
