@@ -1,0 +1,67 @@
+Table sutras {
+  id uuid [pk]
+  title text [not null]
+  subtitle text
+  category text [not null]
+  translator text [not null]
+  language varchar [not null, note: 'enum: chinese, english, sanskrit, indonesian']
+  parent_id uuid [ref: > sutras.id, note: 'self-referencing hierarchy; also used to link translations to source sutra']
+  finish boolean [not null, default: false]
+  cbeta text [not null]
+  team_id uuid [not null]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table rolls {
+  id uuid [pk]
+  title text [not null]
+  subtitle text [not null]
+  parent_id uuid [ref: > rolls.id]
+  sutra_id uuid [not null, ref: > sutras.id]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table paragraphs {
+  id uuid [pk]
+  parent_id uuid [ref: > paragraphs.id]
+  roll_id uuid [not null, ref: > rolls.id]
+  number integer [not null, default: 0]
+  order text [not null, default: '0', note: 'text to allow decimal ordering e.g. 5.1']
+  language varchar [not null, note: 'enum: chinese, english, sanskrit, indonesian']
+  content text [not null]
+  search_id text
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table references {
+  id uuid [pk]
+  paragraph_id uuid [not null, ref: > paragraphs.id]
+  order text [not null, default: '0']
+  sutra_name text [not null]
+  content text [not null]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+  created_by text [not null]
+  updated_by text [not null]
+}
+
+Table paragraphs_history {
+  paragraph_id uuid [not null, ref: > paragraphs.id]
+  updated_at timestamp [not null]
+  old_content text [not null]
+  new_content text [not null]
+  updated_by text [not null]
+}
