@@ -114,6 +114,7 @@ export const documentsTableRelations = relations(documentsTable, ({ one, many })
     fields: [documentsTable.workId],
     references: [worksTable.id],
   }),
+  sections: many(sectionsTable),
   contributors: many(contributorsTable),
   sourceProjects: many(projectsTable, { relationName: 'project_source_document' }),
   targetProjects: many(projectsTable, { relationName: 'project_target_document' }),
