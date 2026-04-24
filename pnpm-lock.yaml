@@ -26,9 +26,6 @@ importers:
       '@casl/react':
         specifier: ^4.0.0
         version: 4.0.0(@casl/ability@6.8.1)(react@18.3.1)
-      '@coji/remix-auth-google':
-        specifier: ^4.2.0
-        version: 4.2.0
       '@hookform/resolvers':
         specifier: ^3.9.0
         version: 3.9.0(react-hook-form@7.53.0(react@18.3.1))
@@ -965,9 +962,6 @@ packages:
 
   '@clack/prompts@0.8.2':
     resolution: {integrity: sha512-6b9Ab2UiZwJYA9iMyboYyW9yJvAO9V753ZhS+DHKEjZRKAxPPOb7MXXu84lsPFG+vZt6FRFniZ8rXi+zCIw4yQ==}
-
-  '@coji/remix-auth-google@4.2.0':
-    resolution: {integrity: sha512-H9i3fvVz0GE18GUZHpz7p7FQjuiuloTIBAPjW7cfv7lUEk+mI6WRTVLEHJBLLuTlAF1+0EbzvPRYKutxZiFdfw==}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -11896,8 +11890,6 @@ snapshots:
       '@clack/core': 0.3.5
       picocolors: 1.1.1
       sisteransi: 1.0.5
-
-  '@coji/remix-auth-google@4.2.0': {}
 
   '@colors/colors@1.5.0': {}
 
