@@ -1,7 +1,7 @@
 import 'dotenv/config';
-import { sql as vercelSql } from '@vercel/postgres';
+import { Pool } from '@neondatabase/serverless';
 import { sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { drizzle } from 'drizzle-orm/neon-serverless';
 
 import * as schema from '~/drizzle/schema';
 import { paragraphsTable, referencesTable, rollsTable, sutrasTable, teamsTable, usersTable } from '~/drizzle/tables';
@@ -15,7 +15,8 @@ import { paragraphs } from './4-paragraphs-seed';
 import { references } from './5-references-seed';
 import { glossaries } from './6-glossaries-seed';
 
-const dbClient = drizzle(vercelSql, { schema });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const dbClient = drizzle(pool, { schema });
 
 const main = async () => {
   // clean algolia index
