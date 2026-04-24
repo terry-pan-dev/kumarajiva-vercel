@@ -16,7 +16,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return redirect('/auth/failure');
   } catch (error) {
     if (error instanceof Response) throw error;
+    const message = error instanceof Error ? error.message : String(error);
     console.error('Google OAuth callback error:', error);
-    return redirect('/auth/failure');
+    return redirect(`/auth/failure?error=${encodeURIComponent(message)}`);
   }
 };
