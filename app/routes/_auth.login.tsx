@@ -2,7 +2,7 @@ import { Form, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { z } from 'zod';
 
-import { authenticator } from '~/auth.server';
+import { authenticator, SESSION_USER_KEY } from '~/auth.server';
 import AuthForm from '~/components/AuthForm';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { FormInput } from '~/components/FormModal';
@@ -33,7 +33,7 @@ export async function action({ request }: ActionFunctionArgs) {
     if (user) {
       const session = await getSession(request.headers.get('cookie'));
       logger.info('login route: ', 'setting session');
-      session.set(authenticator.sessionKey, user);
+      session.set(SESSION_USER_KEY, user);
 
       const headers = new Headers({ 'Set-Cookie': await commitSession(session) });
       if (user.firstLogin) {
