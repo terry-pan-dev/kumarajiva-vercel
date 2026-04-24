@@ -2,14 +2,19 @@ import { sql } from 'drizzle-orm';
 import { type AnyPgColumn, timestamp, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
+import { documentsTable } from './document';
 import { langEnum } from './enums';
 import { rollsTable } from './roll';
+import { sectionsTable } from './section';
 
 export const paragraphsTable = pgTable('paragraphs', {
   parentId: uuid('parent_id').references((): AnyPgColumn => paragraphsTable.id),
   rollId: uuid('roll_id')
     .references(() => rollsTable.id)
     .notNull(),
+  sectionId: uuid('section_id').references(() => sectionsTable.id),
+  documentId: uuid('document_id').references(() => documentsTable.id),
+  passageKey: text('passage_key'),
   // number of the paragraph in the roll, this is the main order
   number: integer('number').notNull().default(0),
   searchId: text('search_id').default(sql`NULL`),
