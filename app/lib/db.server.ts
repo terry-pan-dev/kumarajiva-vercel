@@ -1,5 +1,5 @@
-import { sql } from '@vercel/postgres';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { Pool } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
 
 import * as schema from '~/drizzle/schema';
 
@@ -9,7 +9,8 @@ let _db: ReturnType<typeof drizzle<typeof schema>> | undefined;
 
 export function getDb() {
   if (!_db) {
-    _db = drizzle(sql, { schema });
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    _db = drizzle(pool, { schema });
   }
   return _db;
 }

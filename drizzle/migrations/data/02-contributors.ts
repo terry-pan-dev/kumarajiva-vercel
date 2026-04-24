@@ -10,15 +10,16 @@
  */
 
 import 'dotenv/config';
-import { sql as vercelSql } from '@vercel/postgres';
+import { Pool } from '@neondatabase/serverless';
 import { count } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { drizzle } from 'drizzle-orm/neon-serverless';
 
 import * as schema from '~/drizzle/schema';
 import { contributorsTable, type CreateContributor } from '~/drizzle/tables/contributor';
 import { sutrasTable } from '~/drizzle/tables/sutra';
 
-const db = drizzle(vercelSql, { schema });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool, { schema });
 
 async function main() {
   const [{ value: existingCount }] = await db.select({ value: count() }).from(contributorsTable);
