@@ -1,0 +1,55 @@
+diff --git a/build/index.d.ts b/build/index.d.ts
+index 68dcd145160bbfe2c3c4a95ec363bee0187442b8..7ec68a006f58a7beb9a10d98cabcae1dc34cdd31 100644
+--- a/build/index.d.ts
++++ b/build/index.d.ts
+@@ -21,5 +21,8 @@ export interface FormStrategyVerifyParams {
+ export declare class FormStrategy<User> extends Strategy<User, FormStrategyVerifyParams> {
+     name: string;
+     authenticate(request: Request, sessionStorage: SessionStorage, options: AuthenticateOptions): Promise<User>;
+-    private readFormData;
++}
++export declare class BodyUsedError extends Error {
++    name: string;
++    constructor();
+ }
+diff --git a/build/index.js b/build/index.js
+index afe2433c6d0ab0d944addd5d74a99f67e286abfc..c526ceaad10ca1e2d021c0f02822b6f1f3d704c9 100644
+--- a/build/index.js
++++ b/build/index.js
+@@ -1,12 +1,13 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+-exports.FormStrategy = void 0;
++exports.BodyUsedError = exports.FormStrategy = void 0;
+ const remix_auth_1 = require("remix-auth");
+ class FormStrategy extends remix_auth_1.Strategy {
+     name = "form";
+     async authenticate(request, sessionStorage, options) {
+-        let form = await this.readFormData(request, options);
+         try {
++            if (request.bodyUsed) throw new BodyUsedError();
++            let form = await request.clone().formData();
+             let user = await this.verify({ form, context: options.context, request });
+             return this.success(user, request, sessionStorage, options);
+         }
+@@ -20,11 +21,14 @@ class FormStrategy extends remix_auth_1.Strategy {
+             return await this.failure("Unknown error", request, sessionStorage, options, new Error(JSON.stringify(error, null, 2)));
+         }
+     }
+-    async readFormData(request, options) {
+-        if (options.context?.formData instanceof FormData) {
+-            return options.context.formData;
+-        }
+-        return await request.formData();
+-    }
+ }
+ exports.FormStrategy = FormStrategy;
++class BodyUsedError extends Error {
++    name = "BodyUsedError";
++    constructor() {
++        super(
++            "Your request.body was already used. This means you called `request.formData()` or another way to read the body before using the Remix Auth's FormStrategy. Because FormStrategy needs to read the body, ensure that you either don't read it yourself by moving your logic to the strategy callback or clone the request before reading the body with `request.clone().formData()`.",
++        );
++    }
++}
++exports.BodyUsedError = BodyUsedError;
