@@ -1,7 +1,6 @@
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 
-import { assertAuthUser } from '~/auth.server';
-import { destroySession, getSession } from '~/session.server';
+import { assertAuthUser, authenticator } from '~/auth.server';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
@@ -12,8 +11,5 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   console.log('logout');
-  const session = await getSession(request.headers.get('Cookie'));
-  return redirect('/login', {
-    headers: { 'Set-Cookie': await destroySession(session) },
-  });
+  await authenticator.logout(request, { redirectTo: '/login' });
 };

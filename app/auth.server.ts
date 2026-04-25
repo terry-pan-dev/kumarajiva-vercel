@@ -1,23 +1,20 @@
 import type { LoaderFunctionArgs } from '@remix-run/node';
 
-import { GoogleStrategy } from '@coji/remix-auth-google';
-import { redirect } from '@remix-run/node';
 import bcrypt from 'bcryptjs';
 import { Authenticator } from 'remix-auth';
 import { FormStrategy } from 'remix-auth-form';
+import { GoogleStrategy } from 'remix-auth-google';
 
 import type { ReadUser } from '~/drizzle/tables';
 
 import { logger } from '~/lib/logger';
 import { readUserByEmail } from '~/services/user.service';
 
-import { destroySession, getSession } from './session.server';
+import { destroySession, getSession, sessionStorage } from './session.server';
 
-export const SESSION_USER_KEY = 'user';
+export const authenticator = new Authenticator<ReadUser | undefined>(sessionStorage);
 
-export const authenticator = new Authenticator<ReadUser | undefined>();
-
-const credentialStrategy = new FormStrategy(async ({ form }) => {
+const credentialStrategy = new FormStrategy(async ({ form, context }) => {
   const email = form.get('email');
   const password = form.get('password');
 
@@ -44,6 +41,7 @@ const credentialStrategy = new FormStrategy(async ({ form }) => {
     logger.info('authenticator', 'after bcrypt compare');
     logger.log('authenticator', 'isValid', isValid);
     if (isValid) {
+      // not need expose hashed password to frontend
       const newUser = { ...user, password: '', avatar: '' };
       return newUser;
     }
@@ -60,12 +58,11 @@ const envMapper = {
 
 const googleStrategy = new GoogleStrategy(
   {
-    clientId: process.env.GOOGLE_CLIENT_ID as string,
+    clientID: process.env.GOOGLE_CLIENT_ID as string,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-    redirectURI: `${envMapper[(process.env.VERCEL_ENV as keyof typeof envMapper) || 'development']}/auth/google/callback`,
+    callbackURL: `${envMapper[(process.env.VERCEL_ENV as keyof typeof envMapper) || 'development']}/auth/google/callback`,
   },
-  async ({ tokens }) => {
-    const profile = await GoogleStrategy.userProfile(tokens);
+  async ({ accessToken, refreshToken, extraParams, profile }) => {
     const user = await readUserByEmail(profile.emails[0].value);
     if (!user) {
       throw new Error('user not found');
@@ -77,14 +74,11 @@ const googleStrategy = new GoogleStrategy(
 authenticator.use(credentialStrategy, 'credential').use(googleStrategy, 'google');
 
 export const assertAuthUser = async (request: LoaderFunctionArgs['request']) => {
+  const prevUser = await authenticator.isAuthenticated(request, {
+    failureRedirect: '/login',
+  });
   const session = await getSession(request.headers.get('Cookie'));
-  const prevUser = session.get(SESSION_USER_KEY) as ReadUser | undefined;
-
-  if (!prevUser) {
-    throw redirect('/login');
-  }
-
-  const latestUser = await readUserByEmail(prevUser.email as string);
+  const latestUser = await readUserByEmail(prevUser?.email as string);
   if (
     !latestUser?.role.includes(prevUser?.role || '') ||
     latestUser?.originLang !== prevUser?.originLang ||
