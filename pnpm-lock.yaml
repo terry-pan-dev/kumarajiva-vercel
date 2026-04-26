@@ -171,8 +171,8 @@ importers:
         specifier: ^1.11.0
         version: 1.11.0(react@18.3.1)
       openai:
-        specifier: ^5.23.2
-        version: 5.23.2(ws@8.20.0(bufferutil@4.1.0))(zod@3.24.2)
+        specifier: ^6.34.0
+        version: 6.34.0(ws@8.20.0(bufferutil@4.1.0))(zod@3.24.2)
       pinyin-pro:
         specifier: ^3.26.0
         version: 3.26.0
@@ -8510,12 +8510,12 @@ packages:
     resolution: {integrity: sha512-NeaCX6WW2L8cRCSqy3bInlo5ojjQqu2fD3D+9W5qb5irwxhEyWKXeH2vZ8W9r6VxaMPUan+4/7NDwZMtouZxEw==}
     os: [win32, darwin, linux]
 
-  openai@5.23.2:
-    resolution: {integrity: sha512-MQBzmTulj+MM5O8SKEk/gL8a7s5mktS9zUtAkU257WjvobGc9nKcBuVwjyEEcb9SI8a8Y2G/mzn3vm9n1Jlleg==}
+  openai@6.34.0:
+    resolution: {integrity: sha512-yEr2jdGf4tVFYG6ohmr3pF6VJuveP0EA/sS8TBx+4Eq5NT10alu5zg2dmxMXMgqpihRDQlFGpRt2XwsGj+Fyxw==}
     hasBin: true
     peerDependencies:
       ws: ^8.18.0
-      zod: ^3.23.8
+      zod: ^3.25 || ^4.0
     peerDependenciesMeta:
       ws:
         optional: true
@@ -20428,7 +20428,7 @@ snapshots:
       onnxruntime-common: 1.21.0
       tar: 7.4.3
 
-  openai@5.23.2(ws@8.20.0(bufferutil@4.1.0))(zod@3.24.2):
+  openai@6.34.0(ws@8.20.0(bufferutil@4.1.0))(zod@3.24.2):
     optionalDependencies:
       ws: 8.20.0(bufferutil@4.1.0)
       zod: 3.24.2
