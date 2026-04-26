@@ -30,6 +30,13 @@ test('split panel renders after paragraph selection (react-resizable-panels)', a
   await expect(page.locator('[data-group]')).toBeVisible({ timeout: 10000 });
 });
 
+test('AI translation produces non-empty output after paragraph selection', async ({ page }) => {
+  await page.getByRole('radio').first().click();
+  await expect(page.getByText('AI Translation')).toBeVisible({ timeout: 15000 });
+  const card = page.locator('div').filter({ hasText: 'AI Translation' }).first();
+  await expect(card.locator('p').first()).not.toBeEmpty({ timeout: 60000 });
+});
+
 test('resize handle is attached and survives a drag (react-resizable-panels)', async ({ page }) => {
   await page.getByRole('radio').first().click();
   // PanelResizeHandle renders with data-separator in v4
