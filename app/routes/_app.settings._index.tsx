@@ -2,7 +2,7 @@ import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import AvatarEditor from 'react-avatar-editor';
+import AvatarEditor, { type AvatarEditorRef } from 'react-avatar-editor';
 import { ClientOnly } from 'remix-utils/client-only';
 
 import { assertAuthUser } from '~/auth.server';
@@ -80,7 +80,7 @@ export default function SettingsIndex() {
 function AvatarEditPage() {
   const [image, setImage] = useState<string | null>(null);
   const [scale, setScale] = useState<number>(1);
-  const editorRef = useRef<AvatarEditor | null>(null);
+  const editorRef = useRef<AvatarEditorRef | null>(null);
   const fetcher = useFetcher<{ success: boolean }>();
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -218,6 +218,8 @@ export default function TranslationRoll() {
   const { user } = useOutletContext<{ user: ReadUser }>();
 
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
+  const isSmallScreen = useScreenSize();
+  const panelOrientation = isSmallScreen ? 'vertical' : 'horizontal';
 
   const paragraphsWithHistory = useMemo(() => {
     return paragraphs.map((paragraph) => ({
@@ -352,7 +354,7 @@ export default function TranslationRoll() {
   if (selectedParagraph) {
     return (
       <Fragment>
-        <DragPanel>
+        <DragPanel orientation={panelOrientation}>
           <LeftPanel>
             <ScrollArea className="h-full w-full lg:pr-4">
               <RadioGroup
@@ -364,7 +366,7 @@ export default function TranslationRoll() {
               </RadioGroup>
             </ScrollArea>
           </LeftPanel>
-          <ResizableHandle withHandle className="my-2 bg-yellow-600 lg:my-0" />
+          <ResizableHandle withHandle orientation={panelOrientation} className="my-2 bg-yellow-600 lg:my-0" />
           <RightPanel>
             <ScrollArea className="h-full w-full lg:pr-4">
               <Workspace paragraph={selectedParagraph} />
@@ -776,13 +778,9 @@ const RightPanel = ({ children }: PropsWithChildren) => {
   );
 };
 
-const DragPanel = ({ children }: PropsWithChildren) => {
-  const isSmallScreen = useScreenSize();
+const DragPanel = ({ children, orientation }: PropsWithChildren<{ orientation: 'horizontal' | 'vertical' }>) => {
   return (
-    <ResizablePanelGroup
-      className="flex w-full rounded-lg lg:flex-row"
-      direction={isSmallScreen ? 'vertical' : 'horizontal'}
-    >
+    <ResizablePanelGroup orientation={orientation} className="flex w-full rounded-lg">
       {children}
     </ResizablePanelGroup>
   );
