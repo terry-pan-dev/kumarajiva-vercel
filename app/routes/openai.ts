@@ -47,7 +47,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const TokenizerSchema = z.object({
     tokens: z.array(z.string()),
   });
-  const tokenizer = await client.beta.chat.completions.parse({
+  const tokenizer = await client.chat.completions.parse({
     model: 'gpt-4o-2024-08-06',
     temperature: 0.2,
     messages: [
@@ -200,14 +200,12 @@ poetic ${targetLang} rendering.
           console.error('error in stream', error);
           controller.error(error);
         } finally {
-          console.debug('end stream, close controller and abort openai stream');
+          console.debug('end stream, close controller');
           controller.close();
-          chunks.controller.abort();
         }
       },
       async cancel() {
         console.debug('cancel stream');
-        chunks.controller.abort();
       },
     });
 
