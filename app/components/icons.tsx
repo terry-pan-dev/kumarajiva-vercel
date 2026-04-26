@@ -58,7 +58,6 @@ import {
   Table,
   Text,
   Trash,
-  Twitter,
   Underline,
   Ungroup,
   WrapText,
@@ -637,7 +636,6 @@ export const Icons = {
   ),
   moon: Moon,
   sun: SunMedium,
-  twitter: Twitter,
 };
 
 export const iconVariants = cva('', {
