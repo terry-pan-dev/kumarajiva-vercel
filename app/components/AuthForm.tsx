@@ -28,7 +28,9 @@ export default function AuthForm({ children, schema, defaultValues }: PropsWithC
   }, [fetcher.data, form]);
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>{children}</form>
+      <form noValidate onSubmit={form.handleSubmit(onSubmit)}>
+        {children}
+      </form>
     </FormProvider>
   );
 }

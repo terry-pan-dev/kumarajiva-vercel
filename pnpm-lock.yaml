@@ -10,13 +10,13 @@ importers:
     dependencies:
       '@ai-sdk/openai':
         specifier: ^1.3.4
-        version: 1.3.4(zod@3.24.2)
+        version: 1.3.4(zod@3.25.76)
       '@algolia/client-search':
         specifier: ^5.51.0
         version: 5.51.0
       '@anthropic-ai/sdk':
         specifier: ^0.91.1
-        version: 0.91.1(zod@3.24.2)
+        version: 0.91.1(zod@3.25.76)
       '@casl/ability':
         specifier: ^6.8.1
         version: 6.8.1
@@ -28,13 +28,13 @@ importers:
         version: 3.9.0(react-hook-form@7.53.0(react@18.3.1))
       '@mastra/core':
         specifier: ^0.9.1
-        version: 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)
+        version: 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)
       '@mastra/memory':
         specifier: ^0.3.1
         version: 0.3.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))
       '@mastra/pg':
         specifier: ^0.3.1
-        version: 0.3.1(bufferutil@4.1.0)(encoding@0.1.13)(pg-query-stream@4.14.0(pg@8.14.1))(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)
+        version: 0.3.1(bufferutil@4.1.0)(encoding@0.1.13)(pg-query-stream@4.14.0(pg@8.14.1))(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)
       '@neondatabase/serverless':
         specifier: ^1.1.0
         version: 1.1.0
@@ -172,7 +172,7 @@ importers:
         version: 1.11.0(react@18.3.1)
       openai:
         specifier: ^5.23.2
-        version: 5.23.2(ws@8.20.0(bufferutil@4.1.0))(zod@3.24.2)
+        version: 5.23.2(ws@8.20.0(bufferutil@4.1.0))(zod@3.25.76)
       pinyin-pro:
         specifier: ^3.26.0
         version: 3.26.0
@@ -208,7 +208,7 @@ importers:
         version: 2.0.0(@remix-run/server-runtime@2.17.4(typescript@5.6.3))(remix-auth@3.7.0(@remix-run/react@2.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/server-runtime@2.17.4(typescript@5.6.3)))
       remix-utils:
         specifier: ^7.7.0
-        version: 7.7.0(@remix-run/node@2.17.4(typescript@5.6.3))(@remix-run/react@2.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/router@1.23.2)(crypto-js@4.2.0)(react@18.3.1)(zod@3.24.2)
+        version: 7.7.0(@remix-run/node@2.17.4(typescript@5.6.3))(@remix-run/react@2.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/router@1.23.2)(crypto-js@4.2.0)(react@18.3.1)(zod@3.25.76)
       resend:
         specifier: ^6.12.2
         version: 6.12.2(@react-email/render@2.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
@@ -228,8 +228,8 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0
       zod:
-        specifier: ^3.24.2
-        version: 3.24.2
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@ianvs/prettier-plugin-sort-imports':
         specifier: ^4.7.1
@@ -286,8 +286,8 @@ importers:
         specifier: ^9.1.7
         version: 9.1.7
       lint-staged:
-        specifier: ^15.2.10
-        version: 15.2.10
+        specifier: ^15.5.2
+        version: 15.5.2
       mastra:
         specifier: ^0.6.0
         version: 0.6.0(@opentelemetry/api@1.9.0)(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(typescript@5.6.3)(valibot@1.3.1(typescript@5.6.3))
@@ -4309,8 +4309,8 @@ packages:
     resolution: {integrity: sha512-2zAagd1s6hAaI/ap6SXi5T3dDwBOczOMCSkkYzktqN1+tzbk1GAsHNAdo/1uzxz3Ky02jvZQwbi/vmDA6z4Oyg==}
     engines: {node: '>=18.0.0'}
 
-  '@smithy/middleware-retry@4.5.5':
-    resolution: {integrity: sha512-wnYOpB5vATFKWrY2Z9Alb0KhjZI6AbzU6Fbz3Hq2GnURdRYWB4q+qWivQtSTwXcmWUA3MZ6krfwL6Cq5MAbxsA==}
+  '@smithy/middleware-retry@4.5.6':
+    resolution: {integrity: sha512-5zhmo2AkstmM/RMKYP0NHfmuYWBR+/umlmSuALgajLxf0X0rLE6d17MfzTxpzkILWVhwvCJkCyPH0AfMlbaucQ==}
     engines: {node: '>=18.0.0'}
 
   '@smithy/middleware-serde@4.0.3':
@@ -4385,8 +4385,8 @@ packages:
     resolution: {integrity: sha512-LA86xeFpTKn270Hbkixqs5n73S+LVM0/VZco8dqd+JT75Dyx3Lcw/MraL7ybjmz786+160K8rPOmhsq0SocoJQ==}
     engines: {node: '>=18.0.0'}
 
-  '@smithy/service-error-classification@4.3.0':
-    resolution: {integrity: sha512-9jKsBYQRPR0xBLgc2415RsA5PIcP2sis4oBdN9s0D13cg1B1284mNTjx9Yc+BEERXzuPm5ObktI96OxsKh8E9A==}
+  '@smithy/service-error-classification@4.3.1':
+    resolution: {integrity: sha512-aUQuDGh760ts/8MU+APjIZhlLPKhIIfqyzZaJikLEIMrdxFvxuLYD0WxWzaYWpmLbQlXDe9p7EWM3HsBe0K6Gw==}
     engines: {node: '>=18.0.0'}
 
   '@smithy/shared-ini-file-loader@4.0.2':
@@ -4537,8 +4537,8 @@ packages:
     resolution: {integrity: sha512-Qryc+QG+7BCpvjloFLQrmlSd0RsVRHejRXd78jNO3+oREueCjwG1CCEH1vduw/ZkM1U9TztwIKVIi3+8MJScGg==}
     engines: {node: '>=18.0.0'}
 
-  '@smithy/util-retry@4.3.4':
-    resolution: {integrity: sha512-FY1UQQ1VFmMwiYp1GVS4MeaGD5O0blLNYK0xCRHU+mJgeoH/hSY8Ld8sJWKQ6uznkh14HveRGQJncgPyNl9J+A==}
+  '@smithy/util-retry@4.3.5':
+    resolution: {integrity: sha512-h1IJsbgMDA+jaTjrco/JsyfWOgHRJBv8myB1y4AEI2fjIzD6ktZ7pFAyTw+gwN9GKIAygvC6db0mq0j8N2rFOg==}
     engines: {node: '>=18.0.0'}
 
   '@smithy/util-stream@4.2.0':
@@ -5708,6 +5708,10 @@ packages:
 
   commander@12.1.0:
     resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
+    engines: {node: '>=18'}
+
+  commander@13.1.0:
+    resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
     engines: {node: '>=18'}
 
   commander@4.1.1:
@@ -7571,11 +7575,15 @@ packages:
     resolution: {integrity: sha512-eop+wDAvpItUys0FWkHIKeC9ybYrTGbU41U5K7+bttZZeohvnY7M9dZ5kB21GNWiFT2q1OoPTvncPCgSOVO5ow==}
     engines: {node: '>=14'}
 
+  lilconfig@3.1.3:
+    resolution: {integrity: sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==}
+    engines: {node: '>=14'}
+
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  lint-staged@15.2.10:
-    resolution: {integrity: sha512-5dY5t743e1byO19P9I4b3x8HJwalIznL5E1FWYnU6OWw33KxNBSLAc6Cy7F2PsFEO8FKnLwjwm5hx7aMF0jzZg==}
+  lint-staged@15.5.2:
+    resolution: {integrity: sha512-YUSOLq9VeRNAo/CTaVmhGDKG+LBtA8KF1X4K5+ykMSwWST1vDxJRB2kv2COgLb1fvpCo+A/y9A0G0znNVmdx4w==}
     engines: {node: '>=18.12.0'}
     hasBin: true
 
@@ -10425,11 +10433,6 @@ packages:
     resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
     engines: {node: '>=18'}
 
-  yaml@2.5.1:
-    resolution: {integrity: sha512-bLQOjaX/ADgQ20isPJRvF0iRUHIxVhYvr53Of7wGcWlO2jvtUlH5m87DsmulFVxRpNLOnI4tB6p/oh8D7kpn9Q==}
-    engines: {node: '>= 14'}
-    hasBin: true
-
   yaml@2.6.0:
     resolution: {integrity: sha512-a6ae//JvKDEra2kdi1qzCyrJW/WZCgFi8ydDV+eXExl95t+5R+ijnqHJbz9tmMh8FUjx3iv2fCQ4dclAQlO2UQ==}
     engines: {node: '>= 14'}
@@ -10485,47 +10488,47 @@ packages:
     peerDependencies:
       zod: ^3.24.1
 
-  zod@3.24.2:
-    resolution: {integrity: sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ==}
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
 
-  '@ai-sdk/openai@1.3.4(zod@3.24.2)':
+  '@ai-sdk/openai@1.3.4(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 1.1.0
-      '@ai-sdk/provider-utils': 2.2.1(zod@3.24.2)
-      zod: 3.24.2
+      '@ai-sdk/provider-utils': 2.2.1(zod@3.25.76)
+      zod: 3.25.76
 
-  '@ai-sdk/provider-utils@2.2.1(zod@3.24.2)':
+  '@ai-sdk/provider-utils@2.2.1(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 1.1.0
       nanoid: 3.3.11
       secure-json-parse: 2.7.0
-      zod: 3.24.2
+      zod: 3.25.76
 
   '@ai-sdk/provider@1.1.0':
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@1.2.2(react@18.3.1)(zod@3.24.2)':
+  '@ai-sdk/react@1.2.2(react@18.3.1)(zod@3.25.76)':
     dependencies:
-      '@ai-sdk/provider-utils': 2.2.1(zod@3.24.2)
-      '@ai-sdk/ui-utils': 1.2.1(zod@3.24.2)
+      '@ai-sdk/provider-utils': 2.2.1(zod@3.25.76)
+      '@ai-sdk/ui-utils': 1.2.1(zod@3.25.76)
       react: 18.3.1
       swr: 2.3.3(react@18.3.1)
       throttleit: 2.1.0
     optionalDependencies:
-      zod: 3.24.2
+      zod: 3.25.76
 
-  '@ai-sdk/ui-utils@1.2.1(zod@3.24.2)':
+  '@ai-sdk/ui-utils@1.2.1(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 1.1.0
-      '@ai-sdk/provider-utils': 2.2.1(zod@3.24.2)
-      zod: 3.24.2
-      zod-to-json-schema: 3.24.5(zod@3.24.2)
+      '@ai-sdk/provider-utils': 2.2.1(zod@3.25.76)
+      zod: 3.25.76
+      zod-to-json-schema: 3.24.5(zod@3.25.76)
 
   '@algolia/client-common@5.51.0': {}
 
@@ -10555,11 +10558,11 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
 
-  '@anthropic-ai/sdk@0.91.1(zod@3.24.2)':
+  '@anthropic-ai/sdk@0.91.1(zod@3.25.76)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
-      zod: 3.24.2
+      zod: 3.25.76
 
   '@anush008/tokenizers-darwin-universal@0.0.0':
     optional: true
@@ -10781,7 +10784,7 @@ snapshots:
       '@smithy/types': 4.14.1
       '@smithy/util-base64': 4.3.2
       '@smithy/util-middleware': 4.2.14
-      '@smithy/util-retry': 4.3.4
+      '@smithy/util-retry': 4.3.5
       '@smithy/util-utf8': 4.2.2
       tslib: 2.8.1
     optional: true
@@ -11000,7 +11003,7 @@ snapshots:
       '@smithy/core': 3.23.17
       '@smithy/protocol-http': 5.3.14
       '@smithy/types': 4.14.1
-      '@smithy/util-retry': 4.3.4
+      '@smithy/util-retry': 4.3.5
       tslib: 2.8.1
     optional: true
 
@@ -11069,7 +11072,7 @@ snapshots:
       '@smithy/invalid-dependency': 4.2.14
       '@smithy/middleware-content-length': 4.2.14
       '@smithy/middleware-endpoint': 4.4.32
-      '@smithy/middleware-retry': 4.5.5
+      '@smithy/middleware-retry': 4.5.6
       '@smithy/middleware-serde': 4.2.20
       '@smithy/middleware-stack': 4.2.14
       '@smithy/node-config-provider': 4.3.14
@@ -11085,7 +11088,7 @@ snapshots:
       '@smithy/util-defaults-mode-node': 4.2.54
       '@smithy/util-endpoints': 3.4.2
       '@smithy/util-middleware': 4.2.14
-      '@smithy/util-retry': 4.3.4
+      '@smithy/util-retry': 4.3.5
       '@smithy/util-utf8': 4.2.2
       tslib: 2.8.1
     transitivePeerDependencies:
@@ -12516,7 +12519,7 @@ snapshots:
     dependencies:
       '@lukeed/csprng': 1.1.0
 
-  '@mastra/core@0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)':
+  '@mastra/core@0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)':
     dependencies:
       '@libsql/client': 0.14.0(bufferutil@4.1.0)
       '@opentelemetry/api': 1.9.0
@@ -12532,13 +12535,13 @@ snapshots:
       '@opentelemetry/sdk-trace-base': 1.30.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-node': 1.30.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.30.0
-      ai: 4.2.5(react@18.3.1)(zod@3.24.2)
+      ai: 4.2.5(react@18.3.1)(zod@3.25.76)
       cohere-ai: 7.16.0(encoding@0.1.13)
       date-fns: 3.6.0
       dotenv: 16.6.1
       fastembed: 1.14.4
       hono: 4.7.5
-      hono-openapi: 0.4.6(hono@4.7.5)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)
+      hono-openapi: 0.4.6(hono@4.7.5)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)
       json-schema: 0.4.0
       json-schema-to-zod: 2.6.0
       pino: 9.6.0
@@ -12546,7 +12549,7 @@ snapshots:
       radash: 12.1.0
       sift: 17.1.3
       xstate: 5.19.2
-      zod: 3.24.2
+      zod: 3.25.76
     transitivePeerDependencies:
       - '@hono/arktype-validator'
       - '@hono/effect-validator'
@@ -12571,8 +12574,8 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.10
       '@babel/helper-module-imports': 7.25.9
-      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)
-      '@mastra/server': 2.0.1(@mastra/core@0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2))
+      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)
+      '@mastra/server': 2.0.1(@mastra/core@0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76))
       '@neon-rs/load': 0.1.82
       '@rollup/plugin-alias': 5.1.1(rollup@4.37.0)
       '@rollup/plugin-commonjs': 28.0.3(rollup@4.37.0)
@@ -12592,7 +12595,7 @@ snapshots:
       rollup-plugin-esbuild: 6.2.1(esbuild@0.25.1)(rollup@4.37.0)
       rollup-plugin-node-externals: 8.0.0(rollup@4.37.0)
       typescript-paths: 1.5.1(typescript@5.6.3)
-      zod: 3.24.2
+      zod: 3.25.76
     transitivePeerDependencies:
       - '@hono/arktype-validator'
       - '@hono/effect-validator'
@@ -12616,16 +12619,16 @@ snapshots:
 
   '@mastra/memory@0.3.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))':
     dependencies:
-      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)
+      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)
       '@upstash/redis': 1.34.8
-      ai: 4.2.5(react@18.3.1)(zod@3.24.2)
+      ai: 4.2.5(react@18.3.1)(zod@3.25.76)
       js-tiktoken: 1.0.20
       pg: 8.15.6
       pg-pool: 3.9.6(pg@8.15.6)
       postgres: 3.4.5
       redis: 4.7.0
       xxhash-wasm: 1.1.0
-      zod: 3.24.2
+      zod: 3.25.76
     transitivePeerDependencies:
       - '@hono/arktype-validator'
       - '@hono/effect-validator'
@@ -12647,9 +12650,9 @@ snapshots:
       - valibot
       - zod-openapi
 
-  '@mastra/pg@0.3.1(bufferutil@4.1.0)(encoding@0.1.13)(pg-query-stream@4.14.0(pg@8.14.1))(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)':
+  '@mastra/pg@0.3.1(bufferutil@4.1.0)(encoding@0.1.13)(pg-query-stream@4.14.0(pg@8.14.1))(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)':
     dependencies:
-      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)
+      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)
       async-mutex: 0.5.0
       pg: 8.15.6
       pg-promise: 11.13.0(pg-query-stream@4.14.0(pg@8.14.1))
@@ -12677,9 +12680,9 @@ snapshots:
       - zod
       - zod-openapi
 
-  '@mastra/server@2.0.1(@mastra/core@0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2))':
+  '@mastra/server@2.0.1(@mastra/core@0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76))':
     dependencies:
-      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)
+      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)
 
   '@mdx-js/mdx@2.3.0':
     dependencies:
@@ -15179,16 +15182,16 @@ snapshots:
       tslib: 2.8.1
       uuid: 9.0.1
 
-  '@smithy/middleware-retry@4.5.5':
+  '@smithy/middleware-retry@4.5.6':
     dependencies:
       '@smithy/core': 3.23.17
       '@smithy/node-config-provider': 4.3.14
       '@smithy/protocol-http': 5.3.14
-      '@smithy/service-error-classification': 4.3.0
+      '@smithy/service-error-classification': 4.3.1
       '@smithy/smithy-client': 4.12.13
       '@smithy/types': 4.14.1
       '@smithy/util-middleware': 4.2.14
-      '@smithy/util-retry': 4.3.4
+      '@smithy/util-retry': 4.3.5
       '@smithy/uuid': 1.1.2
       tslib: 2.8.1
     optional: true
@@ -15303,7 +15306,7 @@ snapshots:
     dependencies:
       '@smithy/types': 4.2.0
 
-  '@smithy/service-error-classification@4.3.0':
+  '@smithy/service-error-classification@4.3.1':
     dependencies:
       '@smithy/types': 4.14.1
     optional: true
@@ -15545,9 +15548,9 @@ snapshots:
       '@smithy/types': 4.2.0
       tslib: 2.8.1
 
-  '@smithy/util-retry@4.3.4':
+  '@smithy/util-retry@4.3.5':
     dependencies:
-      '@smithy/service-error-classification': 4.3.0
+      '@smithy/service-error-classification': 4.3.1
       '@smithy/types': 4.14.1
       tslib: 2.8.1
     optional: true
@@ -16285,15 +16288,15 @@ snapshots:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
-  ai@4.2.5(react@18.3.1)(zod@3.24.2):
+  ai@4.2.5(react@18.3.1)(zod@3.25.76):
     dependencies:
       '@ai-sdk/provider': 1.1.0
-      '@ai-sdk/provider-utils': 2.2.1(zod@3.24.2)
-      '@ai-sdk/react': 1.2.2(react@18.3.1)(zod@3.24.2)
-      '@ai-sdk/ui-utils': 1.2.1(zod@3.24.2)
+      '@ai-sdk/provider-utils': 2.2.1(zod@3.25.76)
+      '@ai-sdk/react': 1.2.2(react@18.3.1)(zod@3.25.76)
+      '@ai-sdk/ui-utils': 1.2.1(zod@3.25.76)
       '@opentelemetry/api': 1.9.0
       jsondiffpatch: 0.6.0
-      zod: 3.24.2
+      zod: 3.25.76
     optionalDependencies:
       react: 18.3.1
 
@@ -16835,6 +16838,8 @@ snapshots:
   comma-separated-tokens@2.0.3: {}
 
   commander@12.1.0: {}
+
+  commander@13.1.0: {}
 
   commander@4.1.1: {}
 
@@ -18458,13 +18463,13 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono-openapi@0.4.6(hono@4.7.5)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2):
+  hono-openapi@0.4.6(hono@4.7.5)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76):
     dependencies:
       json-schema-walker: 2.0.0
     optionalDependencies:
       hono: 4.7.5
       valibot: 1.3.1(typescript@5.6.3)
-      zod: 3.24.2
+      zod: 3.25.76
 
   hono@4.7.5: {}
 
@@ -18968,20 +18973,22 @@ snapshots:
 
   lilconfig@3.1.2: {}
 
+  lilconfig@3.1.3: {}
+
   lines-and-columns@1.2.4: {}
 
-  lint-staged@15.2.10:
+  lint-staged@15.5.2:
     dependencies:
-      chalk: 5.3.0
-      commander: 12.1.0
-      debug: 4.3.7
+      chalk: 5.6.2
+      commander: 13.1.0
+      debug: 4.4.3
       execa: 8.0.1
-      lilconfig: 3.1.2
+      lilconfig: 3.1.3
       listr2: 8.2.5
       micromatch: 4.0.8
       pidtree: 0.6.0
       string-argv: 0.3.2
-      yaml: 2.5.1
+      yaml: 2.8.3
     transitivePeerDependencies:
       - supports-color
 
@@ -19104,7 +19111,7 @@ snapshots:
     dependencies:
       '@clack/prompts': 0.8.2
       '@lukeed/uuid': 2.0.1
-      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.24.2)
+      '@mastra/core': 0.9.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(valibot@1.3.1(typescript@5.6.3))(zod@3.25.76)
       '@mastra/deployer': 0.3.1(bufferutil@4.1.0)(encoding@0.1.13)(react@18.3.1)(typescript@5.6.3)(valibot@1.3.1(typescript@5.6.3))
       '@opentelemetry/instrumentation': 0.57.2(@opentelemetry/api@1.9.0)
       '@webcontainer/env': 1.1.1
@@ -19122,8 +19129,8 @@ snapshots:
       swr: 2.3.3(react@18.3.1)
       tcp-port-used: 1.0.2
       yocto-spinner: 0.1.2
-      zod: 3.24.2
-      zod-to-json-schema: 3.24.5(zod@3.24.2)
+      zod: 3.25.76
+      zod-to-json-schema: 3.24.5(zod@3.25.76)
     transitivePeerDependencies:
       - '@hono/arktype-validator'
       - '@hono/effect-validator'
@@ -20144,10 +20151,10 @@ snapshots:
       onnxruntime-common: 1.21.0
       tar: 7.4.3
 
-  openai@5.23.2(ws@8.20.0(bufferutil@4.1.0))(zod@3.24.2):
+  openai@5.23.2(ws@8.20.0(bufferutil@4.1.0))(zod@3.25.76):
     optionalDependencies:
       ws: 8.20.0(bufferutil@4.1.0)
-      zod: 3.24.2
+      zod: 3.25.76
 
   opentelemetry-instrumentation-remix@0.8.0(@opentelemetry/api@1.9.0):
     dependencies:
@@ -21028,7 +21035,7 @@ snapshots:
       '@remix-run/server-runtime': 2.17.4(typescript@5.6.3)
       uuid: 8.3.2
 
-  remix-utils@7.7.0(@remix-run/node@2.17.4(typescript@5.6.3))(@remix-run/react@2.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/router@1.23.2)(crypto-js@4.2.0)(react@18.3.1)(zod@3.24.2):
+  remix-utils@7.7.0(@remix-run/node@2.17.4(typescript@5.6.3))(@remix-run/react@2.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3))(@remix-run/router@1.23.2)(crypto-js@4.2.0)(react@18.3.1)(zod@3.25.76):
     dependencies:
       type-fest: 4.26.1
     optionalDependencies:
@@ -21037,7 +21044,7 @@ snapshots:
       '@remix-run/router': 1.23.2
       crypto-js: 4.2.0
       react: 18.3.1
-      zod: 3.24.2
+      zod: 3.25.76
 
   require-directory@2.1.1: {}
 
@@ -22432,12 +22439,9 @@ snapshots:
 
   yallist@5.0.0: {}
 
-  yaml@2.5.1: {}
-
   yaml@2.6.0: {}
 
-  yaml@2.8.3:
-    optional: true
+  yaml@2.8.3: {}
 
   yargs-parser@20.2.9: {}
 
@@ -22480,10 +22484,10 @@ snapshots:
       compress-commons: 4.1.2
       readable-stream: 3.6.2
 
-  zod-to-json-schema@3.24.5(zod@3.24.2):
+  zod-to-json-schema@3.24.5(zod@3.25.76):
     dependencies:
-      zod: 3.24.2
+      zod: 3.25.76
 
-  zod@3.24.2: {}
+  zod@3.25.76: {}
 
   zwitch@2.0.4: {}
