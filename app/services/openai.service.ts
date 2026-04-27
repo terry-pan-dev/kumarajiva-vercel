@@ -1,4 +1,4 @@
-import type { Assistant } from 'openai/resources/beta/assistants.mjs';
+import type { Assistant } from 'openai/resources/beta/assistants';
 
 import { OpenAI } from 'openai';
 
