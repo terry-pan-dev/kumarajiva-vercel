@@ -1,18 +1,12 @@
-import { Link, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
+import { Link, useLoaderData, useRouteError } from '@remix-run/react';
+import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
 import { TranslationCard } from '~/components/Card';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { FormInput, FormModal } from '~/components/FormModal';
-import { type ReadRoll, type ReadSutra, type ReadUser } from '~/drizzle/schema';
-import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import { createTargetRoll } from '~/services/roll.service';
-import { createTargetSutra, readSutrasAndRolls } from '~/services/sutra.service';
-import { createRollSchema } from '~/validations/roll.validation';
-import { createSutraSchema } from '~/validations/sutra.validation';
+import { getProjects } from '~/services/project.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
@@ -20,138 +14,47 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return redirect('/login');
   }
   try {
-    const sutras = await readSutrasAndRolls();
-    return json({ success: true, sutras });
+    const projects = await getProjects();
+    return json({ success: true, projects });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
   }
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const user = await assertAuthUser(request);
-  if (!user) {
-    return redirect('/login');
-  }
-  const { searchParams } = new URL(request.url);
-  const sutraId = searchParams.get('sutraId');
-  const rollId = searchParams.get('rollId');
-  if (sutraId && !rollId) {
-    const formData = Object.fromEntries(await request.formData());
-    const result = validatePayloadOrThrow({
-      formData,
-      schema: createSutraSchema,
-    });
-    const targetSutra = {
-      ...result,
-      teamId: user.teamId,
-      subtitle: result.subtitle || null,
-      createdBy: user.id,
-      updatedBy: user.id,
-      parentId: sutraId,
-      language: user.targetLang,
-    };
-    await createTargetSutra({
-      originSutraId: sutraId,
-      targetSutra,
-    });
-  }
-  if (rollId && sutraId) {
-    const formData = Object.fromEntries(await request.formData());
-    const result = validatePayloadOrThrow({
-      formData,
-      schema: createRollSchema,
-    });
-    const targetRoll = {
-      ...result,
-      sutraId: sutraId,
-      parentId: rollId,
-      createdBy: user.id,
-      updatedBy: user.id,
-      finish: false,
-    };
-    await createTargetRoll({
-      originRollId: rollId,
-      targetRoll,
-    });
-  }
-  return json({ success: true });
-};
-
 export const ErrorBoundary = () => {
   const error = useRouteError();
-
   return <ErrorInfo error={error} />;
 };
 
 export default function TranslationIndex() {
-  const context = useOutletContext<{ user: ReadUser }>();
-  const { sutras: remoteSutras } = useLoaderData<typeof loader>();
-  const [sutraId, setSutraId] = useState('');
+  const { projects } = useLoaderData<typeof loader>();
+  const [projectId, setProjectId] = useState('');
 
-  const sutras = useMemo(() => {
-    return remoteSutras.map((sutra) => ({
-      ...sutra,
-      createdAt: new Date(sutra.createdAt),
-      updatedAt: new Date(sutra.updatedAt),
-      deletedAt: sutra.deletedAt ? new Date(sutra.deletedAt) : null,
-    }));
-  }, [remoteSutras]);
-
-  const Sutras = sutras.map((sutra) => (
+  const Projects = projects.map((project) => (
     <motion.div
-      key={sutra.id}
+      key={project.id}
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.3 }}
-      className={`m-2 cursor-pointer rounded-lg shadow-md`}
+      className="m-2 cursor-pointer rounded-lg shadow-md"
     >
-      {sutra.children ? (
-        <div onClick={() => setSutraId(sutra.id)}>
-          <TranslationCard
-            originTitle={sutra.title}
-            isSelected={sutraId === sutra.id}
-            targetTitle={sutra.children.title}
-            originTranslator={sutra.translator}
-            targetTranslator={sutra.children.translator}
-          />
-        </div>
-      ) : (
-        <FormModal
-          schema={createSutraSchema}
-          title={`Create ${context.user.targetLang} sutra`}
-          trigger={
-            <Link to={`/translation?sutraId=${sutra.id}`}>
-              <TranslationCard originTitle={sutra.title} originTranslator={sutra.translator} />
-            </Link>
-          }
-        >
-          <CreateSutraForm sutra={sutra} />
-        </FormModal>
-      )}
+      <div onClick={() => setProjectId(project.id)}>
+        <TranslationCard
+          isSelected={projectId === project.id}
+          originTitle={project.sourceDocument.title}
+          targetTitle={project.targetDocument.title}
+        />
+      </div>
     </motion.div>
   ));
 
-  const rolls = useMemo(() => {
-    const sutra = sutras.find((sutra) => sutra.id === sutraId);
-    const rolls = sutra?.rolls?.filter((roll) => roll.sutraId === sutraId);
-    return rolls?.map((roll) => ({
-      ...roll,
-      createdAt: new Date(roll.createdAt),
-      updatedAt: new Date(roll.updatedAt),
-      deletedAt: roll.deletedAt ? new Date(roll.deletedAt) : null,
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sutraId, sutras]);
+  const selectedProject = projects.find((p) => p.id === projectId);
+  const sourceSections = selectedProject?.sourceDocument?.sections ?? [];
+  const targetSections = selectedProject?.targetDocument?.sections ?? [];
 
-  const targetSutraId = useMemo(() => {
-    const sutra = sutras.find((sutra) => sutra.id === sutraId);
-    return sutra?.children?.id;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sutraId]);
-
-  const Rolls = rolls?.map((roll) => (
+  const Sections = sourceSections.map((section, index) => (
     <motion.div
-      key={roll.id}
+      key={section.id}
       whileHover={{ scale: 1.02 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
@@ -159,35 +62,17 @@ export default function TranslationIndex() {
       initial={{ opacity: 0, x: '100%' }}
       className="mb-2 cursor-pointer rounded-lg shadow-md"
     >
-      {roll.children ? (
-        <Link to={`/translation/${roll.id}`}>
-          <TranslationCard originTitle={roll.title} targetTitle={roll.children.title} />
-        </Link>
-      ) : (
-        <FormModal
-          schema={createRollSchema}
-          title={`Create ${context.user.targetLang} roll`}
-          trigger={
-            <Link to={`/translation?sutraId=${targetSutraId}&rollId=${roll.id}`}>
-              <TranslationCard originTitle={roll.title} />
-            </Link>
-          }
-        >
-          <CreateRollForm roll={roll} />
-        </FormModal>
-      )}
+      <Link to={`/translation/${section.id}`}>
+        <TranslationCard originTitle={section.title ?? ''} targetTitle={targetSections[index]?.title ?? undefined} />
+      </Link>
     </motion.div>
   ));
 
-  if (sutras.length === 0) {
+  if (projects.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-lg">
-        <p>
-          There is no <span className="font-semibold">{context.user.originLang.toUpperCase()}</span> sutra to translate
-          under your language.
-        </p>
-        <p>Please contact the administrator to update your language.</p>
-        <p>Or wait for new sutras to be added to your language.</p>
+        <p>There are no translation projects available.</p>
+        <p>Please contact the administrator to set up a project.</p>
       </div>
     );
   }
@@ -196,20 +81,18 @@ export default function TranslationIndex() {
     <motion.div
       initial={false}
       transition={{ duration: 0.5 }}
-      animate={{ flexDirection: sutraId ? 'row' : 'column' }}
-      className={`flex h-full ${sutraId ? 'flex-row' : 'items-center justify-center'}`}
+      animate={{ flexDirection: projectId ? 'row' : 'column' }}
+      className={`flex h-full ${projectId ? 'flex-row' : 'items-center justify-center'}`}
     >
       <motion.div
+        animate={{ height: '100%' }}
         transition={{ duration: 0.3 }}
-        animate={{
-          height: '100%',
-        }}
-        className={`flex-col items-center justify-start ${sutraId ? 'w-1/2 overflow-y-auto' : 'w-full'}`}
+        className={`flex-col items-center justify-start ${projectId ? 'w-1/2 overflow-y-auto' : 'w-full'}`}
       >
-        {Sutras}
+        {Projects}
       </motion.div>
       <AnimatePresence>
-        {sutraId && (
+        {projectId && (
           <motion.div
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
@@ -217,37 +100,10 @@ export default function TranslationIndex() {
             initial={{ opacity: 0, x: '100%' }}
             className="m-2 w-1/2 overflow-y-auto"
           >
-            {Rolls}
+            {Sections}
           </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
   );
 }
-
-const CreateSutraForm = ({ sutra }: { sutra: ReadSutra }) => {
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <FormInput required name="title" label={sutra.title} description="Translate the title of the sutra." />
-      {sutra.subtitle && (
-        <FormInput required name="subtitle" label={sutra.subtitle} description="Translate the subtitle of the sutra." />
-      )}
-      <FormInput required name="category" label={sutra.category} description="Translate the category of the sutra." />
-      <FormInput
-        required
-        name="translator"
-        label={sutra.translator}
-        description="Translate the translator of the sutra."
-      />
-    </div>
-  );
-};
-
-const CreateRollForm = ({ roll }: { roll: ReadRoll }) => {
-  return (
-    <div>
-      <FormInput required name="title" label={roll.title} description="Translate the title of the roll." />
-      <FormInput required name="subtitle" label={roll.subtitle} description="Translate the subtitle of the roll." />
-    </div>
-  );
-};

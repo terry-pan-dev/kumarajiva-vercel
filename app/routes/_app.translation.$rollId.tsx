@@ -56,7 +56,7 @@ import {
   updateParagraph,
   type IParagraph,
 } from '~/services/paragraph.service';
-import { readRollById } from '~/services/roll.service';
+import { getSection } from '~/services/text.service';
 import {
   createCommentActionSchema,
   paragraphActionSchema,
@@ -78,12 +78,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     return redirect('/login');
   }
   const { rollId } = params;
-  const [paragraphs, rollInfo] = await Promise.all([
+  const [paragraphs, sectionInfo] = await Promise.all([
     readParagraphsByRollId({ rollId: rollId as string }),
-    readRollById(rollId as string),
+    getSection(rollId as string),
   ]);
 
-  return json({ success: true, paragraphs: paragraphs ?? [], rollInfo });
+  return json({ success: true, paragraphs: paragraphs ?? [], sectionInfo });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -209,7 +209,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function TranslationRoll() {
-  const { paragraphs, rollInfo } = useLoaderData<typeof loader>();
+  const { paragraphs, sectionInfo } = useLoaderData<typeof loader>();
   const actionData = useActionData<{ success: boolean; message: string; kind: 'insert' | 'update'; id: string }>();
 
   const divRef = useRef<HTMLDivElement>(null);
@@ -287,13 +287,13 @@ export default function TranslationRoll() {
           <div onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}>
             <ContextMenuWrapper>
               <div className="relative">
-                <span className="absolute left-1.5 top-4 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
+                <span className="absolute top-4 left-1.5 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
                 <Paragraph isOrigin id={paragraph.id} text={paragraph.origin} comments={paragraph.originComments} />
               </div>
             </ContextMenuWrapper>
           </div>
           <div
-            className="flex h-auto text-md font-normal"
+            className="text-md flex h-auto font-normal"
             ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
             onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}
           >
@@ -331,12 +331,12 @@ export default function TranslationRoll() {
           />
           <Label
             htmlFor={paragraph.id}
-            className="w-full text-md font-normal"
+            className="text-md w-full font-normal"
             ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
           >
             <ContextMenuWrapper>
               <div className="relative">
-                <span className="absolute left-1.5 top-4 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
+                <span className="absolute top-4 left-1.5 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
                 <Paragraph
                   id={paragraph.id}
                   text={paragraph.origin}
@@ -388,8 +388,8 @@ export default function TranslationRoll() {
         >
           {paragraphs.length ? (
             <>
-              <p className="text-center text-lg lg:text-2xl">{rollInfo?.sutra.title}</p>
-              <p className="text-center text-md lg:text-lg">{rollInfo?.title}</p>
+              <p className="text-center text-lg lg:text-2xl">{sectionInfo?.document.title}</p>
+              <p className="text-md text-center lg:text-lg">{sectionInfo?.title}</p>
             </>
           ) : null}
           {paragraphs.length ? (
@@ -653,7 +653,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="absolute right-0 top-0"
+                    className="absolute top-0 right-0"
                     onClick={() => setIsEditingOrigin(true)}
                   >
                     <Pencil className="h-4 w-4" />
@@ -672,7 +672,7 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
                 name="translation"
                 value={translation}
                 ref={translationRef}
-                className="h-8 text-md"
+                className="text-md h-8"
                 disabled={isLoading || disabledEdit}
                 onChange={(e) => pasteTranslation(e.target.value)}
                 placeholder={
@@ -931,7 +931,7 @@ interface WorkspaceCardProps {
 
 const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
   return (
-    <div className="mt-4 flex flex-col justify-start rounded-xl bg-card-foreground p-4 shadow-lg">
+    <div className="bg-card-foreground mt-4 flex flex-col justify-start rounded-xl p-4 shadow-lg">
       <div className="flex items-center justify-between">
         <div className="text-md font-medium">{title}</div>
         <div className="flex items-center">{buttons}</div>
@@ -957,7 +957,7 @@ const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
 
 export const ParagraphHistory = ({ histories }: { histories: ReadHistory[] }) => {
   return histories.length ? (
-    <div className="absolute left-1 top-4">
+    <div className="absolute top-4 left-1">
       <ParagraphHistoryPopover>
         <ParagraphHistoryTimeline histories={histories} />
       </ParagraphHistoryPopover>
@@ -1005,7 +1005,7 @@ export const ParagraphHistoryTimeline = ({ histories }: ParagraphHistoryTimeline
       {/* Container for timeline content with relative positioning */}
       <div className="relative min-h-full">
         {/* Vertical timeline line - now positioned relative to the content container */}
-        <div className="absolute left-2 top-0 h-full w-[2px] bg-slate-300" />
+        <div className="absolute top-0 left-2 h-full w-[2px] bg-slate-300" />
 
         <div className="flex flex-col gap-4">
           {histories.map((history) => {
@@ -1028,16 +1028,16 @@ export const ParagraphHistoryTimeline = ({ histories }: ParagraphHistoryTimeline
             return (
               <div className="flex items-start gap-6 pl-4" key={history.updatedAt.toLocaleString()}>
                 {/* Timeline dot */}
-                <div className="relative -ml-[15px] mt-2 h-4 w-4">
+                <div className="relative mt-2 -ml-[15px] h-4 w-4">
                   <div className="absolute h-4 w-4 rounded-full border-2 border-slate-300 bg-white" />
-                  <div className="absolute left-1 top-1 h-2 w-2 rounded-full bg-slate-300" />
+                  <div className="absolute top-1 left-1 h-2 w-2 rounded-full bg-slate-300" />
                 </div>
 
                 {/* Content */}
                 <div className="flex flex-col">
                   <span className="text-md text-slate-500">{history.updatedAt.toLocaleString()}</span>
                   <span className="text-md font-medium">{user?.username || 'Unknown user'}</span>
-                  <pre className="mt-1 whitespace-pre-wrap text-sm">
+                  <pre className="mt-1 text-sm whitespace-pre-wrap">
                     <div className="grid-col-1 grid gap-4 rounded bg-slate-50 p-2 lg:grid-cols-2">
                       <div className="max-w-md border-r border-slate-200 pr-4 lg:max-w-lg">
                         {diffs.map((diff, i) => (

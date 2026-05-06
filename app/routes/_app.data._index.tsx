@@ -7,9 +7,8 @@ import { assertAuthUser } from '~/auth.server';
 import { SutraForm } from '~/components/data/SutraForm';
 import { SutraRow } from '~/components/data/SutraRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { createRoll, updateRoll } from '~/services/roll.service';
-import { createSutra, readSutrasAndRolls, updateSutra } from '~/services/sutra.service';
-import { parseRollCreate, parseRollUpdate, parseSutraCreate, parseSutraUpdate } from '~/utils/dataFormParsers';
+import { getProjects } from '~/services/project.service';
+import { createDocument, createSection, updateDocument, updateSection } from '~/services/text.service';
 
 // ─── Action ─────────────────────────────────────────────────────────────────
 
@@ -20,46 +19,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
 
-  // ── Sutra: create ──
+  // ── Document: create ──
   if (intent === 'create') {
-    const {
-      originTitle,
-      originSubtitle,
-      originLang,
-      originTranslator,
-      translationTitle,
-      translationSubtitle,
-      translationLang,
-      translationTranslator,
-      category,
-      cbeta,
-    } = parseSutraCreate(formData);
+    const workId = formData.get('workId') as string;
+    const originTitle = formData.get('originTitle') as string;
+    const originSubtitle = (formData.get('originSubtitle') as string) || undefined;
+    const originLang = formData.get('originLang') as string;
+    const translationTitle = formData.get('translationTitle') as string;
+    const translationSubtitle = (formData.get('translationSubtitle') as string) || undefined;
+    const translationLang = formData.get('translationLang') as string;
 
-    const [created] = await createSutra(
-      {
-        title: originTitle,
-        subtitle: originSubtitle,
-        language: originLang,
-        category,
-        translator: originTranslator,
-        cbeta,
-        teamId: user.teamId,
-      },
-      user,
-    );
+    await createDocument({ workId, title: originTitle, subtitle: originSubtitle, language: originLang as never }, user);
 
     if (translationTitle && translationLang) {
-      await createSutra(
-        {
-          title: translationTitle,
-          subtitle: translationSubtitle,
-          language: translationLang,
-          category,
-          translator: translationTranslator,
-          cbeta,
-          teamId: user.teamId,
-          parentId: created.id,
-        },
+      await createDocument(
+        { workId, title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
         user,
       );
     }
@@ -67,61 +41,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
-  // ── Sutra: update ──
+  // ── Document: update ──
   if (intent === 'update') {
-    const {
-      sutraId,
-      childSutraId,
-      originTitle,
-      originSubtitle,
-      originLang,
-      originTranslator,
-      translationTitle,
-      translationSubtitle,
-      translationLang,
-      translationTranslator,
-      category,
-      cbeta,
-    } = parseSutraUpdate(formData);
+    const documentId = formData.get('documentId') as string;
+    const childDocumentId = (formData.get('childDocumentId') as string) || null;
+    const workId = formData.get('workId') as string;
+    const originTitle = formData.get('originTitle') as string;
+    const originSubtitle = (formData.get('originSubtitle') as string) || undefined;
+    const originLang = formData.get('originLang') as string;
+    const translationTitle = formData.get('translationTitle') as string;
+    const translationSubtitle = (formData.get('translationSubtitle') as string) || undefined;
+    const translationLang = formData.get('translationLang') as string;
 
-    await updateSutra(
-      sutraId,
-      {
-        title: originTitle,
-        subtitle: originSubtitle,
-        language: originLang,
-        category,
-        translator: originTranslator,
-        cbeta,
-      },
+    await updateDocument(
+      documentId,
+      { title: originTitle, subtitle: originSubtitle, language: originLang as never },
       user,
     );
 
     if (translationTitle && translationLang) {
-      if (childSutraId) {
-        await updateSutra(
-          childSutraId,
-          {
-            title: translationTitle,
-            subtitle: translationSubtitle,
-            language: translationLang,
-            category,
-            translator: translationTranslator,
-          },
+      if (childDocumentId) {
+        await updateDocument(
+          childDocumentId,
+          { title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
           user,
         );
       } else {
-        await createSutra(
-          {
-            title: translationTitle,
-            subtitle: translationSubtitle,
-            language: translationLang,
-            category,
-            translator: translationTranslator,
-            cbeta,
-            teamId: user.teamId,
-            parentId: sutraId,
-          },
+        await createDocument(
+          { workId, title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
           user,
         );
       }
@@ -130,16 +77,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
-  // ── Roll: create ──
-  if (intent === 'create-roll') {
-    const { sutraId, childSutraId, originTitle, originSubtitle, translationTitle, translationSubtitle } =
-      parseRollCreate(formData);
+  // ── Section: create ──
+  if (intent === 'create-section') {
+    const documentId = formData.get('documentId') as string;
+    const targetDocumentId = (formData.get('targetDocumentId') as string) || null;
+    const originTitle = formData.get('originTitle') as string;
+    const translationTitle = (formData.get('translationTitle') as string) || '';
 
-    const [created] = await createRoll({ title: originTitle, subtitle: originSubtitle, sutraId }, user);
+    const [created] = await createSection({ documentId, title: originTitle, order: 0 }, user);
 
-    if (childSutraId && translationTitle) {
-      await createRoll(
-        { title: translationTitle, subtitle: translationSubtitle, sutraId: childSutraId, parentId: created.id },
+    if (targetDocumentId && translationTitle) {
+      await createSection(
+        { documentId: targetDocumentId, title: translationTitle, order: 0, parentId: created.id },
         user,
       );
     }
@@ -147,19 +96,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
-  // ── Roll: update ──
-  if (intent === 'update-roll') {
-    const { rollId, childRollId, childSutraId, originTitle, originSubtitle, translationTitle, translationSubtitle } =
-      parseRollUpdate(formData);
+  // ── Section: update ──
+  if (intent === 'update-section') {
+    const sectionId = formData.get('sectionId') as string;
+    const childSectionId = (formData.get('childSectionId') as string) || null;
+    const targetDocumentId = (formData.get('targetDocumentId') as string) || null;
+    const originTitle = formData.get('originTitle') as string;
+    const translationTitle = (formData.get('translationTitle') as string) || '';
 
-    await updateRoll(rollId, { title: originTitle, subtitle: originSubtitle }, user);
+    await updateSection(sectionId, { title: originTitle }, user);
 
     if (translationTitle) {
-      if (childRollId) {
-        await updateRoll(childRollId, { title: translationTitle, subtitle: translationSubtitle }, user);
-      } else if (childSutraId) {
-        await createRoll(
-          { title: translationTitle, subtitle: translationSubtitle, sutraId: childSutraId, parentId: rollId },
+      if (childSectionId) {
+        await updateSection(childSectionId, { title: translationTitle }, user);
+      } else if (targetDocumentId) {
+        await createSection(
+          { documentId: targetDocumentId, title: translationTitle, order: 0, parentId: sectionId },
           user,
         );
       }
@@ -178,8 +130,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!user) return redirect('/login');
 
   try {
-    const sutras = await readSutrasAndRolls();
-    return json({ success: true, sutras });
+    const projects = await getProjects();
+    return json({ success: true, projects });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
@@ -194,7 +146,7 @@ export const ErrorBoundary = () => {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DataManagementIndex() {
-  const { sutras } = useLoaderData<typeof loader>();
+  const { projects } = useLoaderData<typeof loader>();
   const [showAddSutraForm, setShowAddSutraForm] = useState(false);
   const [editingSutraId, setEditingSutraId] = useState<string | null>(null);
   const [addingRollToSutraId, setAddingRollToSutraId] = useState<string | null>(null);
@@ -203,10 +155,10 @@ export default function DataManagementIndex() {
   return (
     <div className="container mx-auto max-w-5xl p-6">
       {/* Page header */}
-      <div className="mb-6 flex items-start justify-between border-b border-border pb-4">
+      <div className="border-border mb-6 flex items-start justify-between border-b pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Manage the data for translations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-foreground text-2xl font-bold">Manage the data for translations</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Import translations, export data from rolls to Excel, edit sutra and roll metadata.
           </p>
         </div>
@@ -217,7 +169,7 @@ export default function DataManagementIndex() {
             setShowAddSutraForm((v) => !v);
             setEditingSutraId(null);
           }}
-          className="flex items-center gap-1.5 rounded bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/80"
+          className="bg-primary text-primary-foreground hover:bg-primary/80 flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium transition"
         >
           <Plus size={16} />
           Add Sutra
@@ -231,29 +183,29 @@ export default function DataManagementIndex() {
         </div>
       )}
 
-      {/* Sutra list */}
+      {/* Project list */}
       <div className="space-y-4">
-        {sutras.map((sutra) => (
+        {projects.map((project) => (
           <SutraRow
-            sutra={sutra}
-            key={sutra.id}
+            key={project.id}
+            sutra={project as never}
             editingRollId={editingRollId}
-            isEditingSutra={editingSutraId === sutra.id}
+            isEditingSutra={editingSutraId === project.id}
             onEditRollClose={() => setEditingRollId(null)}
-            isAddingRoll={addingRollToSutraId === sutra.id}
             onEditSutraClose={() => setEditingSutraId(null)}
+            isAddingRoll={addingRollToSutraId === project.id}
             onAddRollClose={() => setAddingRollToSutraId(null)}
-            onAddRollToggle={() => {
-              setAddingRollToSutraId((id) => (id === sutra.id ? null : sutra.id));
-              setEditingRollId(null);
-            }}
-            onEditSutraToggle={() => {
-              setEditingSutraId((id) => (id === sutra.id ? null : sutra.id));
-              setShowAddSutraForm(false);
-            }}
             onEditRollToggle={(rollId) => {
               setEditingRollId((id) => (id === rollId ? null : rollId));
               setAddingRollToSutraId(null);
+            }}
+            onAddRollToggle={() => {
+              setAddingRollToSutraId((id) => (id === project.id ? null : project.id));
+              setEditingRollId(null);
+            }}
+            onEditSutraToggle={() => {
+              setEditingSutraId((id) => (id === project.id ? null : project.id));
+              setShowAddSutraForm(false);
             }}
           />
         ))}

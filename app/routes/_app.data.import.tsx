@@ -15,8 +15,7 @@ import {
   type ImportOptions,
   type ImportResult,
 } from '~/services/file.service';
-import { getRoll } from '~/services/roll.service';
-import { getSutra } from '~/services/sutra.service';
+import { getDocument, getSection } from '~/services/text.service';
 
 import { assertAuthUser } from '../auth.server';
 
@@ -34,33 +33,33 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (!user) return redirect('/login');
 
   const url = new URL(request.url);
-  const originSutraId = url.searchParams.get('originSutraId');
-  const targetSutraId = url.searchParams.get('targetSutraId');
-  const originRollId = url.searchParams.get('originRollId');
-  const targetRollId = url.searchParams.get('targetRollId');
+  const originDocumentId = url.searchParams.get('originDocumentId');
+  const targetDocumentId = url.searchParams.get('targetDocumentId');
+  const originSectionId = url.searchParams.get('originSectionId');
+  const targetSectionId = url.searchParams.get('targetSectionId');
 
-  if (!originSutraId || !targetSutraId || !originRollId || !targetRollId) return redirect('/data');
+  if (!originDocumentId || !targetDocumentId || !originSectionId || !targetSectionId) return redirect('/data');
 
-  const [originSutra, originRoll, targetSutra, targetRoll] = await Promise.all([
-    getSutra(originSutraId),
-    getRoll(originRollId),
-    getSutra(targetSutraId),
-    getRoll(targetRollId),
+  const [originDocument, originSection, targetDocument, targetSection] = await Promise.all([
+    getDocument(originDocumentId),
+    getSection(originSectionId),
+    getDocument(targetDocumentId),
+    getSection(targetSectionId),
   ]);
 
-  if (!originSutra || !originRoll || !targetSutra || !targetRoll) return redirect('/data');
+  if (!originDocument || !originSection || !targetDocument || !targetSection) return redirect('/data');
 
-  const existing = await getExistingDataPreviewForRollId(originRollId, originSutra.language);
+  const existing = await getExistingDataPreviewForRollId(originSectionId, originDocument.language);
 
   return json({
-    originRollId,
-    targetRollId: targetRoll.id,
-    originSutraName: originSutra.title,
-    targetSutraName: targetSutra.title,
-    originRollName: originRoll.title,
-    targetRollName: targetRoll.title,
-    originalLanguage: originSutra.language,
-    translationLanguage: targetSutra.language,
+    originSectionId,
+    targetSectionId: targetSection.id,
+    originDocumentName: originDocument.title,
+    targetDocumentName: targetDocument.title,
+    originSectionName: originSection.title ?? '',
+    targetSectionName: targetSection.title ?? '',
+    originalLanguage: originDocument.language,
+    translationLanguage: targetDocument.language,
     existing,
     userId: user.id,
   });
@@ -78,8 +77,8 @@ export async function action({ request }: ActionFunctionArgs) {
   // ── Preview: parse file only ──
   if (intent === 'preview') {
     const file = formData.get('file') as File;
-    const originRollId = formData.get('originRollId') as string;
-    const targetRollId = formData.get('targetRollId') as string;
+    const originSectionId = formData.get('originSectionId') as string;
+    const targetSectionId = formData.get('targetSectionId') as string;
     const originalLanguage = formData.get('originalLanguage') as string;
     const translationLanguage = formData.get('translationLanguage') as string;
 
@@ -121,7 +120,13 @@ export async function action({ request }: ActionFunctionArgs) {
       return json<ActionResponse>({
         intent: 'preview',
         fileRows: rows,
-        formValues: { originRollId, targetRollId, originalLanguage, translationLanguage, userId: user.id },
+        formValues: {
+          originRollId: originSectionId,
+          targetRollId: targetSectionId,
+          originalLanguage,
+          translationLanguage,
+          userId: user.id,
+        },
       });
     } catch (error) {
       console.error('Preview error:', error);
@@ -136,12 +141,12 @@ export async function action({ request }: ActionFunctionArgs) {
   // ── Replace: insert parsed rows into the database ──
   if (intent === 'replace') {
     const rowsJson = formData.get('rows') as string;
-    const originRollId = formData.get('originRollId') as string;
-    const targetRollId = formData.get('targetRollId') as string;
+    const originSectionId = formData.get('originSectionId') as string;
+    const targetSectionId = formData.get('targetSectionId') as string;
     const originalLanguage = formData.get('originalLanguage') as string;
     const translationLanguage = formData.get('translationLanguage') as string;
 
-    if (!rowsJson || !originRollId || !targetRollId || !originalLanguage || !translationLanguage) {
+    if (!rowsJson || !originSectionId || !targetSectionId || !originalLanguage || !translationLanguage) {
       return json<ActionResponse>(
         { intent: 'error', result: { success: false, message: 'Missing required data for replace operation.' } },
         { status: 400 },
@@ -150,8 +155,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const rows: ExcelTranslationRow[] = JSON.parse(rowsJson);
     const result = await replaceRollData(rows, {
-      originRollId,
-      targetRollId,
+      originRollId: originSectionId,
+      targetRollId: targetSectionId,
       originalLanguage,
       translationLanguage,
       userId: user.id,
@@ -165,12 +170,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function DataImport() {
   const {
-    originRollId,
-    targetRollId,
-    originSutraName,
-    targetSutraName,
-    originRollName,
-    targetRollName,
+    originSectionId,
+    targetSectionId,
+    originDocumentName,
+    targetDocumentName,
+    originSectionName,
+    targetSectionName,
     originalLanguage,
     translationLanguage,
     existing,
@@ -191,7 +196,7 @@ export default function DataImport() {
     <div className="container mx-auto max-w-5xl p-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl text-primary">Import Data</CardTitle>
+          <CardTitle className="text-primary text-2xl">Import Data</CardTitle>
           <CardDescription className="text-base">
             Upload a CSV or XLSX file with columns: <strong>origin</strong>, <strong>translation</strong> (optional).
             This will replace all existing data for the selected roll.
@@ -199,20 +204,20 @@ export default function DataImport() {
         </CardHeader>
         <CardContent className="space-y-6">
           <ImportContextBar
-            originRollName={originRollName}
-            targetRollName={targetRollName}
-            originSutraName={originSutraName}
-            targetSutraName={targetSutraName}
+            originRollName={originSectionName}
+            targetRollName={targetSectionName}
             originalLanguage={originalLanguage}
+            originSutraName={originDocumentName}
+            targetSutraName={targetDocumentName}
             translationLanguage={translationLanguage}
           />
           <FileUploadForm
             fileName={fileName}
             errorResult={errorResult}
-            originRollId={originRollId}
-            targetRollId={targetRollId}
             isSubmitting={isSubmitting}
             replaceResult={replaceResult}
+            originRollId={originSectionId}
+            targetRollId={targetSectionId}
             originalLanguage={originalLanguage}
             navigationIntent={navigationIntent}
             translationLanguage={translationLanguage}

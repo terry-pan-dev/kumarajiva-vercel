@@ -1,12 +1,17 @@
 import { relations } from 'drizzle-orm';
 
 import { commentsTable } from './tables/comment';
+import { contributorsTable } from './tables/contributor';
+import { documentsTable } from './tables/document';
 import { paragraphsTable, paragraphsHistoryTable } from './tables/paragraph';
+import { projectsTable } from './tables/project';
 import { referencesTable } from './tables/reference';
 import { rollsTable } from './tables/roll';
+import { sectionsTable } from './tables/section';
 import { sutrasTable } from './tables/sutra';
 import { teamsTable } from './tables/team';
 import { usersTable } from './tables/user';
+import { worksTable } from './tables/work';
 
 export const paragraphsHistoryTableRelations = relations(paragraphsHistoryTable, ({ one }) => ({
   paragraph: one(paragraphsTable, {
@@ -86,11 +91,68 @@ export const commentsTableRelations = relations(commentsTable, ({ one, many }) =
 export const teamsTableRelations = relations(teamsTable, ({ many }) => ({
   sutras: many(sutrasTable),
   users: many(usersTable),
+  projects: many(projectsTable),
 }));
 
 export const usersTableRelations = relations(usersTable, ({ one }) => ({
   team: one(teamsTable, {
     fields: [usersTable.teamId],
+    references: [teamsTable.id],
+  }),
+}));
+
+// ─── New table relations ─────────────────────────────────────────────────────
+
+export const worksTableRelations = relations(worksTable, ({ many }) => ({
+  documents: many(documentsTable),
+}));
+
+export const documentsTableRelations = relations(documentsTable, ({ one, many }) => ({
+  work: one(worksTable, {
+    fields: [documentsTable.workId],
+    references: [worksTable.id],
+  }),
+  sections: many(sectionsTable),
+  contributors: many(contributorsTable),
+  sourceProjects: many(projectsTable, { relationName: 'project_source_document' }),
+  targetProjects: many(projectsTable, { relationName: 'project_target_document' }),
+}));
+
+export const sectionsTableRelations = relations(sectionsTable, ({ one, many }) => ({
+  document: one(documentsTable, {
+    fields: [sectionsTable.documentId],
+    references: [documentsTable.id],
+  }),
+  parent: one(sectionsTable, {
+    fields: [sectionsTable.parentId],
+    references: [sectionsTable.id],
+    relationName: 'section_parent_child',
+  }),
+  children: many(sectionsTable, {
+    relationName: 'section_parent_child',
+  }),
+}));
+
+export const contributorsTableRelations = relations(contributorsTable, ({ one }) => ({
+  document: one(documentsTable, {
+    fields: [contributorsTable.documentId],
+    references: [documentsTable.id],
+  }),
+}));
+
+export const projectsTableRelations = relations(projectsTable, ({ one }) => ({
+  sourceDocument: one(documentsTable, {
+    fields: [projectsTable.sourceDocumentId],
+    references: [documentsTable.id],
+    relationName: 'project_source_document',
+  }),
+  targetDocument: one(documentsTable, {
+    fields: [projectsTable.targetDocumentId],
+    references: [documentsTable.id],
+    relationName: 'project_target_document',
+  }),
+  team: one(teamsTable, {
+    fields: [projectsTable.teamId],
     references: [teamsTable.id],
   }),
 }));
