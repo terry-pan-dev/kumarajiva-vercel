@@ -1,97 +1,108 @@
 import { ChevronRight, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 
-import type { SutraForForm } from './types';
+import type { ProjectForForm, SectionForForm } from './types';
 
 import { RollForm } from './RollForm';
 import { RollRow } from './RollRow';
 import { SutraForm } from './SutraForm';
 
-type Roll = {
+type Section = {
   id: string;
-  title: string;
-  subtitle: string;
-  children?: { id: string; title: string; subtitle: string } | null;
+  title: string | null;
+  children: { id: string; title: string | null }[];
 };
 
-type Sutra = {
+type Document = {
   id: string;
+  workId: string;
   title: string;
   subtitle: string | null;
   language: string;
-  category: string;
-  translator: string;
-  cbeta: string;
-  children?: { id: string; title: string; subtitle: string | null; language: string; translator: string | null } | null;
-  rolls?: Roll[] | null;
+  contributors: { id: string; name: string; role: string }[];
+  sections: Section[];
+};
+
+type Project = {
+  id: string;
+  sourceDocument: Document;
+  targetDocument: Document | null;
 };
 
 type Props = {
-  sutra: Sutra;
+  project: Project;
   isEditingSutra: boolean;
-  isAddingRoll: boolean;
-  editingRollId: string | null;
+  isAddingSection: boolean;
+  editingSectionId: string | null;
   onEditSutraToggle: () => void;
   onEditSutraClose: () => void;
-  onAddRollToggle: () => void;
-  onAddRollClose: () => void;
-  onEditRollToggle: (rollId: string) => void;
-  onEditRollClose: () => void;
+  onAddSectionToggle: () => void;
+  onAddSectionClose: () => void;
+  onEditSectionToggle: (sectionId: string) => void;
+  onEditSectionClose: () => void;
 };
 
 export function SutraRow({
-  sutra,
+  project,
   isEditingSutra,
-  isAddingRoll,
-  editingRollId,
+  isAddingSection,
+  editingSectionId,
   onEditSutraToggle,
   onEditSutraClose,
-  onAddRollToggle,
-  onAddRollClose,
-  onEditRollToggle,
-  onEditRollClose,
+  onAddSectionToggle,
+  onAddSectionClose,
+  onEditSectionToggle,
+  onEditSectionClose,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const childSutraId = sutra.children?.id ?? null;
 
-  const sutraForForm: SutraForForm = {
-    id: sutra.id,
-    title: sutra.title,
-    subtitle: sutra.subtitle ?? '',
-    language: sutra.language,
-    category: sutra.category,
-    translator: sutra.translator,
-    cbeta: sutra.cbeta,
-    children: sutra.children
+  const projectForForm: ProjectForForm = {
+    id: project.id,
+    sourceDocument: {
+      id: project.sourceDocument.id,
+      workId: project.sourceDocument.workId,
+      title: project.sourceDocument.title,
+      subtitle: project.sourceDocument.subtitle ?? '',
+      language: project.sourceDocument.language,
+      contributors: project.sourceDocument.contributors,
+    },
+    targetDocument: project.targetDocument
       ? {
-          id: sutra.children.id,
-          title: sutra.children.title,
-          subtitle: sutra.children.subtitle ?? '',
-          language: sutra.children.language,
-          translator: sutra.children.translator ?? '',
+          id: project.targetDocument.id,
+          workId: project.targetDocument.workId,
+          title: project.targetDocument.title,
+          subtitle: project.targetDocument.subtitle ?? '',
+          language: project.targetDocument.language,
+          contributors: project.targetDocument.contributors,
         }
       : null,
   };
 
+  const sections: SectionForForm[] = project.sourceDocument.sections.map((section) => ({
+    id: section.id,
+    title: section.title ?? '',
+    children: section.children?.[0] ? { id: section.children[0].id, title: section.children[0].title ?? '' } : null,
+  }));
+
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+    <div className="border-border bg-background overflow-hidden rounded-lg border shadow-sm">
       {/* Header */}
       <div
         onClick={() => setIsOpen((v) => !v)}
-        className="flex cursor-pointer items-center justify-between bg-muted p-4 transition hover:bg-muted/80"
+        className="bg-muted hover:bg-muted/80 flex cursor-pointer items-center justify-between p-4 transition"
       >
-        {/* Left: chevron + title + edit pencil */}
         <div className="flex items-center gap-3">
           <div className={`text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''}`}>
             <ChevronRight size={20} />
           </div>
           <div>
-            <h3 className="flex items-center gap-1.5 text-lg font-semibold text-foreground">
-              {sutra.title} {sutra.children?.title}
+            <h3 className="text-foreground flex items-center gap-1.5 text-lg font-semibold">
+              {project.sourceDocument.title}
+              {project.targetDocument?.title ? ` · ${project.targetDocument.title}` : ''}
               <button
                 type="button"
-                title="Edit sutra"
-                className="rounded p-1 text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground"
+                title="Edit project"
+                className="text-muted-foreground hover:bg-secondary hover:text-secondary-foreground rounded p-1 transition"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEditSutraToggle();
@@ -100,61 +111,59 @@ export function SutraRow({
                 <Pencil size={13} />
               </button>
             </h3>
-            <div className="text-xs text-muted-foreground">
-              {sutra.rolls?.length || 0} Rolls • {sutra.category}
-            </div>
+            <div className="text-muted-foreground text-xs">{project.sourceDocument.sections.length} Sections</div>
           </div>
         </div>
 
-        {/* Right: Add Roll button — only visible when expanded */}
         {isOpen && (
           <button
             type="button"
-            title="Add roll"
+            title="Add section"
             onClick={(e) => {
               e.stopPropagation();
-              onAddRollToggle();
+              onAddSectionToggle();
             }}
-            className="flex items-center gap-1.5 rounded bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/80"
+            className="bg-primary text-primary-foreground hover:bg-primary/80 flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition"
           >
             <Plus size={13} />
-            Add Roll
+            Add Section
           </button>
         )}
       </div>
 
-      {/* Edit-sutra form — always visible when editing, above rolls */}
       {isEditingSutra && (
-        <div className="border-t border-border p-4">
-          <SutraForm sutra={sutraForForm} onClose={onEditSutraClose} />
+        <div className="border-border border-t p-4">
+          <SutraForm project={projectForForm} onClose={onEditSutraClose} />
         </div>
       )}
 
-      {/* Rolls list */}
       {isOpen && (
         <>
-          <div className="divide-y divide-border border-t border-border">
-            {sutra.rolls && sutra.rolls.length > 0 ? (
-              sutra.rolls.map((roll) => (
+          <div className="divide-border border-border divide-y border-t">
+            {sections.length > 0 ? (
+              sections.map((section) => (
                 <RollRow
-                  roll={roll}
-                  key={roll.id}
-                  sutraId={sutra.id}
-                  childSutraId={childSutraId}
-                  onEditClose={onEditRollClose}
-                  isEditing={editingRollId === roll.id}
-                  onEditToggle={() => onEditRollToggle(roll.id)}
+                  roll={section}
+                  key={section.id}
+                  onEditClose={onEditSectionClose}
+                  isEditing={editingSectionId === section.id}
+                  sourceDocumentId={project.sourceDocument.id}
+                  onEditToggle={() => onEditSectionToggle(section.id)}
+                  targetDocumentId={project.targetDocument?.id ?? null}
                 />
               ))
             ) : (
-              <div className="p-4 text-center text-sm text-muted-foreground">No rolls found for this sutra.</div>
+              <div className="text-muted-foreground p-4 text-center text-sm">No sections found for this project.</div>
             )}
           </div>
 
-          {/* Add-roll form */}
-          {isAddingRoll && (
-            <div className="border-t border-border p-4">
-              <RollForm sutraId={sutra.id} onClose={onAddRollClose} childSutraId={childSutraId} />
+          {isAddingSection && (
+            <div className="border-border border-t p-4">
+              <RollForm
+                onClose={onAddSectionClose}
+                sourceDocumentId={project.sourceDocument.id}
+                targetDocumentId={project.targetDocument?.id ?? null}
+              />
             </div>
           )}
         </>

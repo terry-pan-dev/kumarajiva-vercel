@@ -1,17 +1,26 @@
-export type SutraForForm = {
+export type ContributorForForm = {
   id: string;
+  name: string;
+  role: string;
+};
+
+export type DocumentForForm = {
+  id: string;
+  workId: string;
   title: string;
   subtitle: string;
   language: string;
-  category: string;
-  translator: string;
-  cbeta: string;
-  children?: { id: string; title: string; subtitle: string; language: string; translator: string } | null;
+  contributors: ContributorForForm[];
 };
 
-export type RollForForm = {
+export type ProjectForForm = {
+  id: string;
+  sourceDocument: DocumentForForm;
+  targetDocument: DocumentForForm | null;
+};
+
+export type SectionForForm = {
   id: string;
   title: string;
-  subtitle: string;
-  children?: { id: string; title: string; subtitle: string } | null;
+  children?: { id: string; title: string } | null;
 };

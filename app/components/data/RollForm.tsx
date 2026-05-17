@@ -2,7 +2,7 @@ import { useFetcher } from '@remix-run/react';
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
 
-import type { RollForForm } from './types';
+import type { SectionForForm } from './types';
 
 import { textareaClass } from './fieldClasses';
 
@@ -10,13 +10,13 @@ const bg = 'bg-background';
 
 export function RollForm({
   roll,
-  sutraId,
-  childSutraId,
+  sourceDocumentId,
+  targetDocumentId,
   onClose,
 }: {
-  roll?: RollForForm;
-  sutraId: string;
-  childSutraId?: string | null;
+  roll?: SectionForForm;
+  sourceDocumentId: string;
+  targetDocumentId?: string | null;
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ success: boolean }>();
@@ -27,31 +27,31 @@ export function RollForm({
   }, [fetcher.state, fetcher.data, onClose]);
 
   return (
-    <div className="rounded-lg bg-primary p-5 text-primary-foreground shadow-lg">
+    <div className="bg-primary text-primary-foreground rounded-lg p-5 shadow-lg">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-primary-foreground">{roll ? 'Edit Roll' : 'Add New Roll'}</h2>
+        <h2 className="text-primary-foreground text-sm font-semibold">{roll ? 'Edit Section' : 'Add New Section'}</h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-primary-foreground/60 transition hover:text-primary-foreground"
+          className="text-primary-foreground/60 hover:text-primary-foreground transition"
         >
           <X size={16} />
         </button>
       </div>
 
       <fetcher.Form method="post" className="space-y-4">
-        <input type="hidden" name="intent" value={roll ? 'update-roll' : 'create-roll'} />
-        <input type="hidden" name="sutraId" value={sutraId} />
-        {childSutraId && <input type="hidden" name="childSutraId" value={childSutraId} />}
-        {roll && <input type="hidden" name="rollId" value={roll.id} />}
-        {roll?.children && <input type="hidden" name="childRollId" value={roll.children.id} />}
+        <input type="hidden" name="intent" value={roll ? 'update-section' : 'create-section'} />
+        <input type="hidden" name="documentId" value={sourceDocumentId} />
+        {targetDocumentId && <input type="hidden" name="targetDocumentId" value={targetDocumentId} />}
+        {roll && <input type="hidden" value={roll.id} name="sectionId" />}
+        {roll?.children && <input type="hidden" name="childSectionId" value={roll.children.id} />}
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {/* ── Original column ── */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Original</p>
+            <p className="text-primary-foreground/70 text-xs font-semibold tracking-wider uppercase">Original</p>
             <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">
+              <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
                 Title <span className="text-destructive">*</span>
               </label>
               <textarea
@@ -63,23 +63,13 @@ export function RollForm({
                 defaultValue={roll?.title ?? ''}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
-              <textarea
-                rows={2}
-                name="originSubtitle"
-                className={textareaClass(bg)}
-                placeholder="Optional subtitle"
-                defaultValue={roll?.subtitle ?? ''}
-              />
-            </div>
           </div>
 
           {/* ── Translation column ── */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/70">Translation</p>
+            <p className="text-primary-foreground/70 text-xs font-semibold tracking-wider uppercase">Translation</p>
             <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Title</label>
+              <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">Title</label>
               <textarea
                 rows={2}
                 name="translationTitle"
@@ -88,32 +78,22 @@ export function RollForm({
                 defaultValue={roll?.children?.title ?? ''}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-primary-foreground/70">Subtitle</label>
-              <textarea
-                rows={2}
-                name="translationSubtitle"
-                className={textareaClass(bg)}
-                placeholder="Optional subtitle"
-                defaultValue={roll?.children?.subtitle ?? ''}
-              />
-            </div>
           </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-1">
           <button
             type="reset"
-            className="rounded px-4 py-2 text-sm text-primary-foreground/70 transition hover:text-primary-foreground"
+            className="text-primary-foreground/70 hover:text-primary-foreground rounded px-4 py-2 text-sm transition"
           >
             Reset
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
+            className="bg-background text-foreground hover:bg-muted rounded px-4 py-2 text-sm font-medium transition disabled:opacity-50"
           >
-            {isSubmitting ? 'Saving…' : roll ? 'Update Roll' : 'Create Roll'}
+            {isSubmitting ? 'Saving…' : roll ? 'Update Section' : 'Create Section'}
           </button>
         </div>
       </fetcher.Form>

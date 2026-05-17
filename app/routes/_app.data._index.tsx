@@ -8,7 +8,15 @@ import { SutraForm } from '~/components/data/SutraForm';
 import { SutraRow } from '~/components/data/SutraRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { getProjects } from '~/services/project.service';
-import { createDocument, createSection, updateDocument, updateSection } from '~/services/text.service';
+import {
+  createContributor,
+  createDocument,
+  createSection,
+  deleteContributor,
+  updateDocument,
+  updateSection,
+} from '~/services/text.service';
+import { type ContributorRole } from '~/utils/constants';
 
 // ─── Action ─────────────────────────────────────────────────────────────────
 
@@ -44,7 +52,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // ── Document: update ──
   if (intent === 'update') {
     const documentId = formData.get('documentId') as string;
-    const childDocumentId = (formData.get('childDocumentId') as string) || null;
+    const targetDocumentId = (formData.get('targetDocumentId') as string) || null;
     const workId = formData.get('workId') as string;
     const originTitle = formData.get('originTitle') as string;
     const originSubtitle = (formData.get('originSubtitle') as string) || undefined;
@@ -60,9 +68,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
 
     if (translationTitle && translationLang) {
-      if (childDocumentId) {
+      if (targetDocumentId) {
         await updateDocument(
-          childDocumentId,
+          targetDocumentId,
           { title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
           user,
         );
@@ -120,6 +128,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
+  if (intent === 'create-contributor') {
+    const documentId = formData.get('documentId') as string;
+    const name = formData.get('name') as string;
+    const role = formData.get('role') as string;
+    await createContributor({ documentId, name, role: role as ContributorRole });
+    return json({ success: true });
+  }
+
+  if (intent === 'delete-contributor') {
+    const contributorId = formData.get('contributorId') as string;
+    await deleteContributor(contributorId);
+    return json({ success: true });
+  }
+
   return json({ success: false, error: 'Unknown intent' }, { status: 400 });
 };
 
@@ -149,8 +171,8 @@ export default function DataManagementIndex() {
   const { projects } = useLoaderData<typeof loader>();
   const [showAddSutraForm, setShowAddSutraForm] = useState(false);
   const [editingSutraId, setEditingSutraId] = useState<string | null>(null);
-  const [addingRollToSutraId, setAddingRollToSutraId] = useState<string | null>(null);
-  const [editingRollId, setEditingRollId] = useState<string | null>(null);
+  const [addingSectionToProjectId, setAddingSectionToProjectId] = useState<string | null>(null);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
   return (
     <div className="container mx-auto max-w-5xl p-6">
@@ -188,24 +210,24 @@ export default function DataManagementIndex() {
         {projects.map((project) => (
           <SutraRow
             key={project.id}
-            sutra={project as never}
-            editingRollId={editingRollId}
+            project={project}
+            editingSectionId={editingSectionId}
             isEditingSutra={editingSutraId === project.id}
-            onEditRollClose={() => setEditingRollId(null)}
             onEditSutraClose={() => setEditingSutraId(null)}
-            isAddingRoll={addingRollToSutraId === project.id}
-            onAddRollClose={() => setAddingRollToSutraId(null)}
-            onEditRollToggle={(rollId) => {
-              setEditingRollId((id) => (id === rollId ? null : rollId));
-              setAddingRollToSutraId(null);
-            }}
-            onAddRollToggle={() => {
-              setAddingRollToSutraId((id) => (id === project.id ? null : project.id));
-              setEditingRollId(null);
-            }}
+            onEditSectionClose={() => setEditingSectionId(null)}
+            isAddingSection={addingSectionToProjectId === project.id}
+            onAddSectionClose={() => setAddingSectionToProjectId(null)}
             onEditSutraToggle={() => {
               setEditingSutraId((id) => (id === project.id ? null : project.id));
               setShowAddSutraForm(false);
+            }}
+            onAddSectionToggle={() => {
+              setAddingSectionToProjectId((id) => (id === project.id ? null : project.id));
+              setEditingSectionId(null);
+            }}
+            onEditSectionToggle={(sectionId) => {
+              setEditingSectionId((id) => (id === sectionId ? null : sectionId));
+              setAddingSectionToProjectId(null);
             }}
           />
         ))}

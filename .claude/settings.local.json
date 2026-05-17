@@ -56,7 +56,13 @@
       "Read(//home/claudine/.nvm/versions/**)",
       "Read(//usr/local/lib/**)",
       "Read(//home/claudine/**)",
-      "Bash(pnpm test:run tests/file.server.test.ts)"
+      "Bash(pnpm test:run tests/file.server.test.ts)",
+      "Bash(npm info *)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(pnpm tsc *)",
+      "Bash(pg_isready -h localhost -p 5432)",
+      "Bash(pg_isready -h localhost -p 5433)"
     ],
     "deny": []
   }

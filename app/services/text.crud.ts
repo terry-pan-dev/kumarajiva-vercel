@@ -93,6 +93,10 @@ export const DbContributors = {
   deleteByDocumentId: async (documentId: string) => {
     return db.delete(contributorsTable).where(eq(contributorsTable.documentId, documentId));
   },
+
+  deleteById: async (id: string) => {
+    return db.delete(contributorsTable).where(eq(contributorsTable.id, id));
+  },
 };
 
 export const DbSections = {

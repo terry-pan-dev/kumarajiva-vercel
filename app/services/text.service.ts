@@ -1,4 +1,4 @@
-import type { CreateDocument, CreateSection } from '~/drizzle/schema';
+import type { CreateContributor, CreateDocument, CreateSection } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
 import { DbContributors, DbDocuments, DbSections } from './text.crud';
@@ -45,4 +45,12 @@ export const updateSection = async (
 
 export const getContributorsByDocument = async (documentId: string) => {
   return DbContributors.findByDocumentId(documentId);
+};
+
+export const createContributor = async (contributor: CreateContributor) => {
+  return DbContributors.create(contributor);
+};
+
+export const deleteContributor = async (id: string) => {
+  return DbContributors.deleteById(id);
 };
