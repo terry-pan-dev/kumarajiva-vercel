@@ -11,7 +11,7 @@ export const meta: MetaFunction = () => {
   return [{ title: 'Data Management' }];
 };
 
-export const loader = async ({ request, params }: LoaderFunctionArgs) => {
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
@@ -26,7 +26,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 export default function DataManagementLayout() {
   const { user, users } = useLoaderData<typeof loader>();
   return (
-    <div className="flex h-auto min-h-screen flex-col bg-secondary px-4">
+    <div className="bg-secondary flex h-auto min-h-screen flex-col px-4">
       <div className="my-2 flex h-10 items-center gap-2 text-xl font-semibold">
         <SideBarTrigger />
         Data Management

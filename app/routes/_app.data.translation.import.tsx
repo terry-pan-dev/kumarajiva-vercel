@@ -191,7 +191,7 @@ export default function DataImport() {
     <div className="container mx-auto max-w-5xl p-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl text-primary">Import Data</CardTitle>
+          <CardTitle className="text-primary text-2xl">Import Data</CardTitle>
           <CardDescription className="text-base">
             Upload a CSV or XLSX file with columns: <strong>origin</strong>, <strong>translation</strong> (optional).
             This will replace all existing data for the selected roll.
