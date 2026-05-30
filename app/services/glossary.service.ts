@@ -8,6 +8,9 @@ import algoliaClient from '~/providers/algolia';
 
 const dbClient = getDb();
 
+// Max parallel DB + Algolia calls per import batch.
+export const IMPORT_CONCURRENCY = 10;
+
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -267,6 +270,120 @@ export const getAllGlossaries = async (): Promise<ReadGlossary[]> => {
     orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
   });
   return glossaries;
+};
+
+export type GlossaryImportRow = {
+  uuid: string;
+  chineseTerm: string;
+  englishTerm: string;
+  chineseSutraText: string;
+  englishSutraText: string;
+  sutraName: string;
+  volume: string;
+  cbetaFrequency: string;
+  author: string;
+  phonetic: string;
+};
+
+export type ImportGlossaryResult = {
+  created: number;
+  updated: number;
+  failed: number;
+};
+
+export const importGlossaries = async (rows: GlossaryImportRow[], userId: string): Promise<ImportGlossaryResult> => {
+  // Group rows by UUID (falling back to chineseTerm as the dedup key)
+  const byKey = new Map<string, GlossaryImportRow[]>();
+  for (const row of rows) {
+    const key = row.uuid || `term:${row.chineseTerm}`;
+    const bucket = byKey.get(key) ?? [];
+    bucket.push(row);
+    byKey.set(key, bucket);
+  }
+
+  const uuidKeys = [...byKey.keys()].filter((k) => !k.startsWith('term:'));
+  // Collect every Chinese term across all groups (UUID-keyed and term-keyed alike) for a single term lookup.
+  const allTerms = [...byKey.values()].map((rows) => rows[0].chineseTerm);
+
+  const [existingByUuid, existingByTerm] = await Promise.all([
+    uuidKeys.length > 0 ? readGlossariesByIds(uuidKeys) : Promise.resolve([]),
+    allTerms.length > 0 ? getGlossariesByGivenGlossaries(allTerms) : Promise.resolve([]),
+  ]);
+
+  const idMap = new Map(existingByUuid.map((g) => [g.id, g]));
+  // termMap covers all groups, so UUID-keyed rows can fall back to it when the UUID is unknown.
+  const termMap = new Map(existingByTerm.map((g) => [g.glossary, g]));
+
+  let created = 0;
+  let updated = 0;
+  let failed = 0;
+  const now = new Date().toISOString();
+
+  const entries = [...byKey.entries()];
+
+  for (let i = 0; i < entries.length; i += IMPORT_CONCURRENCY) {
+    const batch = entries.slice(i, i + IMPORT_CONCURRENCY);
+
+    const results = await Promise.allSettled(
+      batch.map(async ([key, csvRows]) => {
+        const first = csvRows[0];
+        const translations = csvRows
+          .filter((r) => r.englishTerm)
+          .map((r) => ({
+            glossary: r.englishTerm,
+            language: 'english' as const,
+            sutraName: r.sutraName,
+            volume: r.volume,
+            updatedBy: userId,
+            updatedAt: now,
+            originSutraText: r.chineseSutraText || null,
+            targetSutraText: r.englishSutraText || null,
+            author: r.author || null,
+          }));
+
+        const isUUID = !key.startsWith('term:');
+        // For UUID-keyed rows: match by ID first, fall back to term in case the record exists under a different/no ID.
+        const existing = isUUID ? (idMap.get(key) ?? termMap.get(first.chineseTerm)) : termMap.get(first.chineseTerm);
+
+        if (existing) {
+          await updateGlossaryTranslations({
+            id: existing.id,
+            phonetic: first.phonetic || null,
+            author: first.author || null,
+            cbetaFrequency: first.cbetaFrequency || null,
+            discussion: existing.discussion ?? null,
+            translations,
+            updatedBy: userId,
+          });
+          return 'updated' as const;
+        } else {
+          await createGlossaryAndIndexInAlgolia({
+            ...(isUUID ? { id: key } : {}),
+            glossary: first.chineseTerm,
+            phonetic: first.phonetic || null,
+            cbetaFrequency: first.cbetaFrequency || null,
+            author: first.author || null,
+            translations,
+            createdBy: userId,
+            updatedBy: userId,
+          });
+          return 'created' as const;
+        }
+      }),
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        if (result.value === 'updated') updated++;
+        else created++;
+      } else {
+        console.error('Glossary import failed:', result.reason);
+        failed++;
+      }
+    }
+  }
+
+  return { created, updated, failed };
 };
 
 export const deleteGlossariesByUserId = async (userId: string) => {

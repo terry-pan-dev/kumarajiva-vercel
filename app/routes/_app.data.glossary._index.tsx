@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs } from '@remix-run/node';
 
 import { redirect } from '@remix-run/node';
+import { Link } from '@remix-run/react';
 import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
@@ -51,6 +52,22 @@ function DownloadGlossaryButton() {
   );
 }
 
+function ImportGlossaryLink() {
+  return (
+    <div className="flex items-center gap-3">
+      <Button asChild>
+        <Link to="/data/glossary/import">
+          <Icons.Add className="mr-2 h-4 w-4" />
+          Go to Import Page
+        </Link>
+      </Button>
+      <p className="text-muted-foreground text-sm">
+        Upload a CSV, review entries side-by-side, and import in chunks of 15 terms.
+      </p>
+    </div>
+  );
+}
+
 export default function DataGlossary() {
   return (
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
@@ -70,11 +87,11 @@ export default function DataGlossary() {
         <CardHeader>
           <CardTitle className="text-primary text-2xl">Import Glossary</CardTitle>
           <CardDescription className="text-base">
-            Upload a CSV or XLSX file to bulk-import glossary entries.
+            Upload a CSV file to bulk-import glossary entries. The file must match the downloaded format.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Glossary import coming soon.</p>
+          <ImportGlossaryLink />
         </CardContent>
       </Card>
     </div>
