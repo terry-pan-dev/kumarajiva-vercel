@@ -1,5 +1,4 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
-import type ExcelJS from 'exceljs';
 
 import { json, redirect } from '@remix-run/node';
 import { Form, useActionData, useFetcher, useNavigation } from '@remix-run/react';
@@ -59,12 +58,33 @@ type GlossaryGroup = GroupedTerm & {
 };
 
 type ActionResponse =
-  | { intent: 'preview'; groups: GlossaryGroup[]; totalRows: number }
+  | { intent: 'fetch-existing'; existing: Record<string, ExistingGlossary> }
   | { intent: 'import-chunk'; created: number; updated: number; failed: number }
   | { intent: 'error'; message: string };
 
-// ─── CSV Parser ───────────────────────────────────────────────────────────────
+// ─── Parsers (client-side) ────────────────────────────────────────────────────
 
+// Maps lowercase header variants to canonical GlossaryImportRow field names.
+const XLSX_COLUMNS: Record<string, keyof GlossaryImportRow> = {
+  uuid: 'uuid',
+  chineseterm: 'chineseTerm',
+  'chinese term': 'chineseTerm',
+  englishterm: 'englishTerm',
+  'english term': 'englishTerm',
+  chinesesutratext: 'chineseSutraText',
+  'chinese sutra text': 'chineseSutraText',
+  englishsutratext: 'englishSutraText',
+  'english sutra text': 'englishSutraText',
+  sutraname: 'sutraName',
+  'sutra name': 'sutraName',
+  volume: 'volume',
+  cbetafrequency: 'cbetaFrequency',
+  'cbeta frequency': 'cbetaFrequency',
+  author: 'author',
+  phonetic: 'phonetic',
+};
+
+// PapaParse is isomorphic — safe to call in browser event handlers.
 function parseGlossaryCSV(csvText: string): GlossaryImportRow[] {
   const result = Papa.parse<Record<string, string>>(csvText, {
     header: true,
@@ -86,83 +106,50 @@ function parseGlossaryCSV(csvText: string): GlossaryImportRow[] {
     }));
 }
 
-// Maps lowercase XLSX header variants to canonical field names.
-const XLSX_COLUMNS: Record<string, keyof GlossaryImportRow> = {
-  uuid: 'uuid',
-  chineseterm: 'chineseTerm',
-  'chinese term': 'chineseTerm',
-  englishterm: 'englishTerm',
-  'english term': 'englishTerm',
-  chinesesutratext: 'chineseSutraText',
-  'chinese sutra text': 'chineseSutraText',
-  englishsutratext: 'englishSutraText',
-  'english sutra text': 'englishSutraText',
-  sutraname: 'sutraName',
-  'sutra name': 'sutraName',
-  volume: 'volume',
-  cbetafrequency: 'cbetaFrequency',
-  'cbeta frequency': 'cbetaFrequency',
-  author: 'author',
-  phonetic: 'phonetic',
-};
-
-function getCellText(value: ExcelJS.CellValue): string {
-  if (value == null) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object' && 'richText' in value && Array.isArray(value.richText)) {
-    return (value.richText as Array<{ text?: string }>).map((p) => p.text ?? '').join('');
-  }
-  if (typeof value === 'object' && 'formula' in value) {
-    return getCellText((value as ExcelJS.CellFormulaValue).result as ExcelJS.CellValue);
-  }
-  if (typeof value === 'object' && 'hyperlink' in value) {
-    return (value as ExcelJS.CellHyperlinkValue).text?.toString() ?? '';
-  }
-  return String(value);
-}
-
-async function parseGlossaryXLSX(fileBuffer: ArrayBuffer): Promise<GlossaryImportRow[]> {
-  const ExcelJSModule = await import('exceljs');
-  const workbook = new ExcelJSModule.default.Workbook();
-  await workbook.xlsx.load(Buffer.from(fileBuffer));
-
-  const worksheet = workbook.worksheets[0];
+// SheetJS is dynamically imported so it's only bundled when the user actually clicks Preview on an XLSX.
+async function parseGlossaryXLSX(file: File): Promise<GlossaryImportRow[]> {
+  const { read, utils } = await import('xlsx');
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = read(new Uint8Array(arrayBuffer), { type: 'array' });
+  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
   if (!worksheet) return [];
 
-  // Build column-number → field-name map from the header row.
-  const colMap = new Map<number, keyof GlossaryImportRow>();
-  worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-    const field = XLSX_COLUMNS[getCellText(cell.value).trim().toLowerCase()];
-    if (field) colMap.set(colNumber, field);
+  // aoa[0] = header row; aoa[1..] = data rows.
+  const aoa = utils.sheet_to_json<string[]>(worksheet, { header: 1, defval: '', raw: false });
+  if (aoa.length === 0) return [];
+
+  const colMap: Record<number, keyof GlossaryImportRow> = {};
+  aoa[0].forEach((header, idx) => {
+    const field =
+      XLSX_COLUMNS[
+        String(header ?? '')
+          .trim()
+          .toLowerCase()
+      ];
+    if (field) colMap[idx] = field;
   });
 
-  const rows: GlossaryImportRow[] = [];
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-
-    const entry: GlossaryImportRow = {
-      uuid: '',
-      chineseTerm: '',
-      englishTerm: '',
-      chineseSutraText: '',
-      englishSutraText: '',
-      sutraName: '',
-      volume: '',
-      cbetaFrequency: '',
-      author: '',
-      phonetic: '',
-    };
-
-    colMap.forEach((field, colNumber) => {
-      entry[field] = getCellText(row.getCell(colNumber).value).trim();
-    });
-
-    if (entry.chineseTerm) rows.push(entry);
-  });
-
-  return rows;
+  return aoa
+    .slice(1)
+    .map((row) => {
+      const entry: GlossaryImportRow = {
+        uuid: '',
+        chineseTerm: '',
+        englishTerm: '',
+        chineseSutraText: '',
+        englishSutraText: '',
+        sutraName: '',
+        volume: '',
+        cbetaFrequency: '',
+        author: '',
+        phonetic: '',
+      };
+      Object.entries(colMap).forEach(([idxStr, field]) => {
+        entry[field] = String(row[Number(idxStr)] ?? '').trim();
+      });
+      return entry;
+    })
+    .filter((entry) => entry.chineseTerm);
 }
 
 // Groups CSV/XLSX rows by UUID (if present) or Chinese term. One group = one glossary entry.
@@ -194,60 +181,21 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
 
-  // ── Preview: parse CSV, group by term, fetch all existing DB entries ──
-  if (intent === 'preview') {
-    const file = formData.get('file') as File | null;
+  // ── Fetch existing DB entries for a single chunk (bounded payload) ──
+  if (intent === 'fetch-existing') {
+    const uuids: string[] = JSON.parse((formData.get('uuids') as string) || '[]');
+    const terms: string[] = JSON.parse((formData.get('terms') as string) || '[]');
 
-    if (!file || file.size === 0) {
-      return json<ActionResponse>({ intent: 'error', message: 'Please select a CSV file.' }, { status: 400 });
-    }
-
-    const fileName = file.name.toLowerCase();
-    let rows: GlossaryImportRow[];
-    try {
-      if (fileName.endsWith('.csv')) {
-        rows = parseGlossaryCSV(await file.text());
-      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-        rows = await parseGlossaryXLSX(await file.arrayBuffer());
-      } else {
-        return json<ActionResponse>(
-          { intent: 'error', message: 'Invalid file type. Please upload a CSV or XLSX file.' },
-          { status: 400 },
-        );
-      }
-    } catch {
-      return json<ActionResponse>({ intent: 'error', message: 'Failed to parse file.' }, { status: 400 });
-    }
-
-    if (rows.length === 0) {
-      return json<ActionResponse>(
-        { intent: 'error', message: 'No valid rows found. Ensure the file has a ChineseTerm column.' },
-        { status: 400 },
-      );
-    }
-
-    const grouped = groupRows(rows);
-
-    // Rows with a UUID are matched by ID; rows without are matched by Chinese term.
-    const withUUID = grouped.filter((g) => g.rows[0].uuid);
-    const withoutUUID = grouped.filter((g) => !g.rows[0].uuid);
-
-    const [existingByUuid, existingByTerm] = await Promise.all([
-      withUUID.length ? readGlossariesByIds(withUUID.map((g) => g.key)) : Promise.resolve([]),
-      withoutUUID.length
-        ? getGlossariesByGivenGlossaries(withoutUUID.map((g) => g.rows[0].chineseTerm))
-        : Promise.resolve([]),
+    const [byUuid, byTerm] = await Promise.all([
+      uuids.length ? readGlossariesByIds(uuids) : Promise.resolve([]),
+      terms.length ? getGlossariesByGivenGlossaries(terms) : Promise.resolve([]),
     ]);
 
-    const idMap = new Map(existingByUuid.map((g) => [g.id, g]));
-    const termMap = new Map(existingByTerm.map((g) => [g.glossary, g]));
+    const existing: Record<string, ExistingGlossary> = {};
+    for (const g of byUuid) existing[g.id] = g;
+    for (const g of byTerm) existing[g.glossary] = g;
 
-    const groups: GlossaryGroup[] = grouped.map((g) => ({
-      ...g,
-      existing: g.rows[0].uuid ? (idMap.get(g.key) ?? null) : (termMap.get(g.rows[0].chineseTerm) ?? null),
-    }));
-
-    return json<ActionResponse>({ intent: 'preview', groups, totalRows: rows.length });
+    return json<ActionResponse>({ intent: 'fetch-existing', existing });
   }
 
   // ── Import chunk: write a batch of rows to the database ──
@@ -424,8 +372,9 @@ function ImportInstructions() {
           <p className="text-foreground mb-1 font-medium">Chunked import process</p>
           <ol className="ml-4 list-decimal space-y-1">
             <li>
-              <strong>Upload</strong> — select your CSV and click <em>Preview</em>. The server parses every row, groups
-              them by UUID or Chinese term, and fetches all matching entries from the database in one pass.
+              <strong>Upload</strong> — select your CSV or XLSX file and click <em>Preview</em>. Both file types are
+              parsed locally in your browser — no file data is sent to the server, so large files are handled without
+              hitting upload size limits.
             </li>
             <li>
               <strong>Chunk display</strong> — the file is divided into chunks of{' '}
@@ -473,24 +422,44 @@ export default function GlossaryImportPage() {
   const isSubmitting = navigation.state === 'submitting';
   const navigationIntent = navigation.formData?.get('intent') as string | null;
 
+  // Per-chunk DB lookups — keeps payloads bounded to CHUNK_SIZE entries.
+  const existingFetcher = useFetcher<ActionResponse>();
+
   const autoFetcher = useFetcher<ActionResponse>();
   const autoQueueRef = useRef<GlossaryImportRow[][]>([]);
   const lastAutoDataRef = useRef<typeof autoFetcher.data>(undefined);
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
-  const [groups, setGroups] = useState<GlossaryGroup[]>([]);
+  const [isParsing, setIsParsing] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  // groups holds parsed-and-grouped data without DB entries (avoids large server payloads).
+  const [groups, setGroups] = useState<GroupedTerm[]>([]);
+  const [totalRows, setTotalRows] = useState(0);
+  // Existing DB entries for the currently displayed chunk only.
+  const [chunkExisting, setChunkExisting] = useState<Record<string, ExistingGlossary>>({});
+
   const [chunkIndex, setChunkIndex] = useState(0);
   const [chunkResults, setChunkResults] = useState<ChunkResult[]>([]);
   const [isFullyImported, setIsFullyImported] = useState(false);
   const [isAutoImporting, setIsAutoImporting] = useState(false);
 
   const totalGroups = groups.length;
-  const totalCsvRows = groups.reduce((a, g) => a + g.rows.length, 0);
+  const totalCsvRows = totalRows;
   const totalChunks = Math.ceil(totalGroups / CHUNK_SIZE);
-  const currentChunk = groups.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
-  const currentChunkRows = currentChunk.flatMap((g) => g.rows);
+
+  const currentChunkGroups = groups.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
+  // Merge grouped terms with per-chunk DB data for the comparison panel.
+  const currentChunk: GlossaryGroup[] = currentChunkGroups.map((g) => {
+    const first = g.rows[0];
+    const existing = first.uuid ? (chunkExisting[first.uuid] ?? null) : (chunkExisting[first.chineseTerm] ?? null);
+    return { ...g, existing };
+  });
+  const currentChunkRows = currentChunkGroups.flatMap((g) => g.rows);
   const remainingRows = groups.slice(chunkIndex * CHUNK_SIZE).flatMap((g) => g.rows);
   const isAllDone = isFullyImported || (totalChunks > 0 && chunkIndex >= totalChunks);
+  const isLoadingExisting = existingFetcher.state !== 'idle';
 
   const totals = chunkResults.reduce(
     (acc, r) => ({ created: acc.created + r.created, updated: acc.updated + r.updated, failed: acc.failed + r.failed }),
@@ -499,25 +468,74 @@ export default function GlossaryImportPage() {
 
   const resetState = () => {
     setGroups([]);
+    setTotalRows(0);
+    setChunkExisting({});
     setChunkIndex(0);
     setChunkResults([]);
     setIsFullyImported(false);
     setIsAutoImporting(false);
+    setParseError(null);
     autoQueueRef.current = [];
     lastAutoDataRef.current = undefined;
   };
 
-  // ── Manual chunk-by-chunk imports ──
-  useEffect(() => {
-    if (actionData?.intent === 'preview') {
-      setGroups(actionData.groups);
-      setChunkIndex(0);
-      setChunkResults([]);
-      setIsFullyImported(false);
-      setIsAutoImporting(false);
-    }
-  }, [actionData]);
+  // ── Both CSV and XLSX are parsed client-side — no file upload ──
+  const handlePreview = async () => {
+    if (!selectedFile) return;
+    resetState();
 
+    const lowerName = selectedFile.name.toLowerCase();
+    setIsParsing(true);
+    try {
+      let rows: GlossaryImportRow[];
+      if (lowerName.endsWith('.csv')) {
+        rows = parseGlossaryCSV(await selectedFile.text());
+      } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+        rows = await parseGlossaryXLSX(selectedFile);
+      } else {
+        setParseError('Invalid file type. Please upload a CSV or XLSX file.');
+        return;
+      }
+
+      if (rows.length === 0) {
+        setParseError('No valid rows found. Ensure the file has a ChineseTerm column.');
+        return;
+      }
+
+      const grouped = groupRows(rows);
+      setGroups(grouped);
+      setTotalRows(rows.length);
+    } catch {
+      setParseError('Failed to parse file.');
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  // ── Fetch DB entries for the current chunk whenever groups or chunkIndex changes ──
+  const existingFetcherSubmit = existingFetcher.submit;
+  useEffect(() => {
+    if (groups.length === 0 || isAutoImporting) return;
+    const chunk = groups.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
+    if (chunk.length === 0) return;
+
+    const uuids = chunk.filter((g) => g.rows[0].uuid).map((g) => g.rows[0].uuid);
+    const terms = chunk.filter((g) => !g.rows[0].uuid).map((g) => g.rows[0].chineseTerm);
+
+    existingFetcherSubmit(
+      { intent: 'fetch-existing', uuids: JSON.stringify(uuids), terms: JSON.stringify(terms) },
+      { method: 'post' },
+    );
+  }, [groups, chunkIndex, isAutoImporting, existingFetcherSubmit]);
+
+  // ── Update chunkExisting when fetch-existing returns ──
+  useEffect(() => {
+    if (existingFetcher.data?.intent === 'fetch-existing') {
+      setChunkExisting(existingFetcher.data.existing);
+    }
+  }, [existingFetcher.data]);
+
+  // ── Manual chunk-by-chunk imports ──
   useEffect(() => {
     if (actionData?.intent === 'import-chunk') {
       setChunkResults((prev) => [
@@ -527,6 +545,11 @@ export default function GlossaryImportPage() {
       setChunkIndex((prev) => prev + 1);
     }
   }, [actionData]);
+
+  const handleCancelAutoImport = () => {
+    autoQueueRef.current = [];
+    setIsAutoImporting(false);
+  };
 
   // ── Auto-import: submit one chunk at a time via fetcher ──
   const handleImportAll = () => {
@@ -538,7 +561,7 @@ export default function GlossaryImportPage() {
     if (queue.length === 0) return;
 
     autoQueueRef.current = queue;
-    lastAutoDataRef.current = autoFetcher.data; // mark current data as already seen
+    lastAutoDataRef.current = autoFetcher.data;
     setIsAutoImporting(true);
 
     const formData = new FormData();
@@ -573,7 +596,7 @@ export default function GlossaryImportPage() {
     }
   }, [isAutoImporting, autoFetcher.state, autoFetcher.data, autoFetcher]);
 
-  const errorMessage = actionData?.intent === 'error' ? actionData.message : null;
+  const errorMessage = parseError || (actionData?.intent === 'error' ? actionData.message : null);
 
   return (
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
@@ -586,8 +609,7 @@ export default function GlossaryImportPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Form method="post" encType="multipart/form-data" className="flex items-center gap-3">
-            <input type="hidden" name="intent" value="preview" />
+          <div className="flex items-center gap-3">
             <label
               htmlFor="glossary-import-file"
               className="hover:bg-accent text-foreground flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium"
@@ -602,12 +624,14 @@ export default function GlossaryImportPage() {
               accept=".csv,.xlsx,.xls"
               id="glossary-import-file"
               onChange={(e) => {
-                setFileName(e.target.files?.[0]?.name ?? '');
+                const file = e.target.files?.[0] ?? null;
+                setSelectedFile(file);
+                setFileName(file?.name ?? '');
                 resetState();
               }}
             />
-            <Button type="submit" disabled={isSubmitting || !fileName}>
-              {isSubmitting && navigationIntent === 'preview' ? (
+            <Button onClick={handlePreview} disabled={isParsing || !fileName}>
+              {isParsing ? (
                 <>
                   <Icons.Loader className="mr-2 h-4 w-4 animate-spin" />
                   Parsing…
@@ -616,7 +640,7 @@ export default function GlossaryImportPage() {
                 'Preview'
               )}
             </Button>
-          </Form>
+          </div>
 
           {errorMessage && (
             <Alert variant="destructive">
@@ -650,21 +674,15 @@ export default function GlossaryImportPage() {
                 {remainingRows.length} rows remaining across {totalChunks - chunkIndex}{' '}
                 {totalChunks - chunkIndex === 1 ? 'chunk' : 'chunks'}
               </p>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleImportAll}
-                disabled={isSubmitting || isAutoImporting}
-              >
-                {isAutoImporting ? (
-                  <>
-                    <Icons.Loader className="mr-2 h-3 w-3 animate-spin" />
-                    Importing all…
-                  </>
-                ) : (
-                  'Import All'
-                )}
-              </Button>
+              {isAutoImporting ? (
+                <Button size="sm" variant="outline" onClick={handleCancelAutoImport}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button size="sm" variant="secondary" disabled={isSubmitting} onClick={handleImportAll}>
+                  Import All
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -718,47 +736,53 @@ export default function GlossaryImportPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Left: current database state */}
-              <div>
-                <h4 className="text-primary mb-3 text-base font-medium">Current Database</h4>
-                <div className="space-y-2">
-                  {currentChunk.map((group) => (
-                    <GlossaryTermCard group={group} key={group.key} variant="existing" />
-                  ))}
-                </div>
+            {isLoadingExisting ? (
+              <div className="text-muted-foreground flex items-center justify-center gap-2 py-8 text-sm">
+                <Icons.Loader className="h-4 w-4 animate-spin" />
+                Loading comparison data…
               </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {/* Left: current database state */}
+                <div>
+                  <h4 className="text-primary mb-3 text-base font-medium">Current Database</h4>
+                  <div className="space-y-2">
+                    {currentChunk.map((group) => (
+                      <GlossaryTermCard group={group} key={group.key} variant="existing" />
+                    ))}
+                  </div>
+                </div>
 
-              {/* Right: incoming from file */}
-              <div>
-                <h4 className="text-primary mb-3 text-base font-medium">
-                  Incoming from File{' '}
-                  <span className="text-muted-foreground text-sm font-normal">
-                    ({currentChunk.filter((g) => !g.existing).length} new,{' '}
-                    {currentChunk.filter((g) => g.existing).length} updates)
-                  </span>
-                </h4>
-                <div className="space-y-2">
-                  {currentChunk.map((group) => (
-                    <GlossaryTermCard group={group} key={group.key} variant="incoming" />
-                  ))}
+                {/* Right: incoming from file */}
+                <div>
+                  <h4 className="text-primary mb-3 text-base font-medium">
+                    Incoming from File{' '}
+                    <span className="text-muted-foreground text-sm font-normal">
+                      ({currentChunk.filter((g) => !g.existing).length} new,{' '}
+                      {currentChunk.filter((g) => g.existing).length} updates)
+                    </span>
+                  </h4>
+                  <div className="space-y-2">
+                    {currentChunk.map((group) => (
+                      <GlossaryTermCard group={group} key={group.key} variant="incoming" />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <Separator />
 
             <div className="flex items-center justify-end gap-3">
-              <Button variant="secondary" onClick={handleImportAll} disabled={isSubmitting || isAutoImporting}>
-                {isAutoImporting ? (
-                  <>
-                    <Icons.Loader className="h-4 w-4 animate-spin" />
-                    Importing all…
-                  </>
-                ) : (
-                  'Import All'
-                )}
-              </Button>
+              {isAutoImporting ? (
+                <Button variant="outline" onClick={handleCancelAutoImport}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button variant="secondary" disabled={isSubmitting} onClick={handleImportAll}>
+                  Import All
+                </Button>
+              )}
               <Form method="post">
                 <input type="hidden" name="intent" value="import-chunk" />
                 <input name="rows" type="hidden" value={JSON.stringify(currentChunkRows)} />

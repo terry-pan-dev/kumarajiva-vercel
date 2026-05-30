@@ -197,7 +197,7 @@ export function SideBarMenu({
                     to="/data/translation"
                     className={({ isActive }) =>
                       cn(
-                        'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
+                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
                         'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                         isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
                       )
@@ -210,7 +210,7 @@ export function SideBarMenu({
                     to="/data/glossary"
                     className={({ isActive }) =>
                       cn(
-                        'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
+                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
                         'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                         isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
                       )
