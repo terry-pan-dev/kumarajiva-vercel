@@ -5,6 +5,7 @@ import { json, Outlet, redirect, useLoaderData } from '@remix-run/react';
 import { assertAuthUser } from '~/auth.server';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Separator } from '~/components/ui/separator';
+import { Toaster } from '~/components/ui/toaster';
 import { readUsers } from '~/services';
 
 export const meta: MetaFunction = () => {
@@ -33,6 +34,7 @@ export default function DataManagementLayout() {
       </div>
       <Separator className="mb-2 bg-yellow-600" />
       <Outlet context={{ user, users }} />
+      <Toaster />
     </div>
   );
 }
