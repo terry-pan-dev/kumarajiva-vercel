@@ -1,7 +1,7 @@
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Form, Link, NavLink, useFetcher, useLocation, useNavigation } from '@remix-run/react';
 import { useDebounce } from '@uidotdev/usehooks';
-import { Book, Cog, Home, LogOut, Search, Sheet, MessageSquare, Database } from 'lucide-react';
+import { Book, ChevronDown, Cog, Database, Home, LogOut, MessageSquare, Search, Sheet } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { match } from 'ts-pattern';
@@ -41,7 +41,6 @@ const menuItems = [
   { icon: Home, label: 'Home', href: '/dashboard' },
   { icon: Book, label: 'Translation', href: '/translation' },
   { icon: Sheet, label: 'Glossary', href: '/glossary' },
-  { icon: Database, label: 'Data Management', href: '/data' },
   { icon: MessageSquare, label: 'Assistant', href: '/assistant' },
   { icon: Cog, label: 'Admin', href: '/admin' },
 ];
@@ -63,7 +62,14 @@ export function SideBarMenu({
   const pathname = useLocation().pathname;
   const avatarFallback = userName.charAt(0).toUpperCase();
   const { setOpen, open } = useSearchContext();
-  const { isOpen } = useSideBarMenuContext();
+  const { isOpen, setIsOpen } = useSideBarMenuContext();
+  const [dataMenuOpen, setDataMenuOpen] = useState(() => pathname.startsWith('/data'));
+
+  useEffect(() => {
+    if (pathname.startsWith('/data')) {
+      setDataMenuOpen(true);
+    }
+  }, [pathname]);
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey && event.key === 'k') {
@@ -83,7 +89,7 @@ export function SideBarMenu({
     <TooltipProvider>
       <div
         className={cn(
-          'flex min-h-screen flex-col bg-primary shadow-md transition-all duration-300',
+          'bg-primary flex min-h-screen flex-col shadow-md transition-all duration-300',
           isOpen ? 'w-64 items-stretch px-4' : 'w-14 items-center px-2',
         )}
       >
@@ -114,9 +120,6 @@ export function SideBarMenu({
               if (item.href.includes('admin') && userRole !== 'admin') {
                 return false;
               }
-              if (item.href.includes('data') && userRole !== 'admin' && userRole !== 'manager') {
-                return false;
-              }
               return true;
             })
             .map((item) => (
@@ -126,7 +129,7 @@ export function SideBarMenu({
                     to={item.href}
                     aria-label={item.label}
                     className={cn(
-                      'flex items-center py-3 text-md font-medium text-white',
+                      'text-md flex items-center py-3 font-medium text-white',
                       isOpen ? 'justify-start px-6' : 'justify-center px-3',
                       'hover:bg-slate-200/50 hover:text-yellow-600',
                       pathname.startsWith(item.href)
@@ -147,12 +150,85 @@ export function SideBarMenu({
                 </TooltipContent>
               </Tooltip>
             ))}
+
+          {(userRole === 'admin' || userRole === 'manager') && (
+            <div>
+              <Tooltip delayDuration={500}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Data Management"
+                    onClick={() => {
+                      if (!isOpen) {
+                        setIsOpen(true);
+                        setDataMenuOpen(true);
+                      } else {
+                        setDataMenuOpen((v) => !v);
+                      }
+                    }}
+                    className={cn(
+                      'text-md flex w-full items-center py-3 font-medium text-white',
+                      isOpen ? 'justify-start px-6' : 'justify-center px-3',
+                      'hover:bg-slate-200/50 hover:text-yellow-600',
+                      pathname.startsWith('/data')
+                        ? 'active rounded-md bg-slate-200 text-yellow-600'
+                        : 'bg-transparent hover:rounded-md',
+                    )}
+                  >
+                    <Database
+                      className={cn('h-5 w-5', isOpen && 'mr-3', pathname.startsWith('/data') && 'text-yellow-600')}
+                    />
+                    {isOpen && <span className="flex-1 text-left">Data Management</span>}
+                    {isOpen && (
+                      <ChevronDown
+                        className={cn('h-4 w-4 transition-transform duration-200', dataMenuOpen && 'rotate-180')}
+                      />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className={cn(isOpen && 'hidden')}>
+                  <p>Data Management</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {isOpen && dataMenuOpen && (
+                <div className="flex flex-col gap-0.5 pb-1">
+                  <NavLink
+                    to="/data/translation"
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
+                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                      )
+                    }
+                  >
+                    Translation Data
+                  </NavLink>
+                  <NavLink
+                    end
+                    to="/data/glossary"
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
+                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                      )
+                    }
+                  >
+                    Glossary
+                  </NavLink>
+                </div>
+              )}
+            </div>
+          )}
+
           <Tooltip>
             <TooltipTrigger asChild>
               <div
                 onClick={() => setOpen(true)}
                 className={cn(
-                  'flex cursor-pointer items-center py-3 text-md font-medium text-white',
+                  'text-md flex cursor-pointer items-center py-3 font-medium text-white',
                   isOpen ? 'justify-start px-6' : 'justify-center px-3',
                   'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                 )}
@@ -178,10 +254,10 @@ export function SideBarMenu({
               </Avatar>
               {isOpen && (
                 <div className="ml-3 max-w-28">
-                  <p className="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-white">
+                  <p className="overflow-hidden font-medium text-ellipsis whitespace-nowrap text-white">
                     {userRole.toUpperCase()}
                   </p>
-                  <p className="overflow-hidden text-ellipsis whitespace-nowrap text-sm text-slate-200">{userEmail}</p>
+                  <p className="overflow-hidden text-sm text-ellipsis whitespace-nowrap text-slate-200">{userEmail}</p>
                 </div>
               )}
             </Link>
@@ -271,7 +347,7 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
     <ClientOnly fallback={<div className="h-0 w-0">Loading...</div>}>
       {() => (
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent showClose={false} className="top-[5%] max-w-2xl translate-y-0 bg-secondary p-0.5 lg:max-w-4xl">
+          <DialogContent showClose={false} className="bg-secondary top-[5%] max-w-2xl translate-y-0 p-0.5 lg:max-w-4xl">
             <VisuallyHidden>
               <DialogHeader>
                 <DialogTitle>Search</DialogTitle>
@@ -288,17 +364,17 @@ const SearchBar = ({ open, setOpen }: SearchBarProps) => {
                   onFilterClick={setFilter}
                   placeholder="Type to search...(max 50 characters)"
                   isLoading={fetcher.state === 'loading' || fetcher.state === 'submitting'}
-                  className="w-full rounded-xl border-none text-md focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="text-md w-full rounded-xl border-none focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
               </div>
               {debouncedSearch.length > 0 && filteredResults?.length === 0 && fetcher.data?.success && (
-                <div className="h-full bg-secondary">
+                <div className="bg-secondary h-full">
                   <p className="p-4 text-center text-sm text-gray-500">No results found.</p>
                 </div>
               )}
 
               {debouncedSearch.length > 0 && fetcher.state === 'idle' && filteredResults?.length > 0 && (
-                <div className="h-full bg-secondary">
+                <div className="bg-secondary h-full">
                   <div className="h-2"></div>
                   <SearchResultList
                     results={filteredResults}

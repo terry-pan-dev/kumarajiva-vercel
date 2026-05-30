@@ -16,30 +16,30 @@ type Props = {
 export function RollRow({ roll, sutraId, childSutraId, isEditing, onEditToggle, onEditClose }: Props) {
   return (
     <div>
-      <div className="flex items-center justify-between p-4 hover:bg-muted/50">
+      <div className="hover:bg-muted/50 flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <FileText size={18} className="text-muted-foreground" />
           <div>
-            <p className="flex items-center gap-1.5 font-medium text-foreground">
+            <p className="text-foreground flex items-center gap-1.5 font-medium">
               {roll.title} {roll.children?.title}
               <button
                 type="button"
                 title="Edit roll"
                 onClick={onEditToggle}
-                className="rounded p-0.5 text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground"
+                className="text-muted-foreground hover:bg-secondary hover:text-secondary-foreground rounded p-0.5 transition"
               >
                 <Pencil size={12} />
               </button>
             </p>
-            {roll.subtitle && <p className="text-xs text-muted-foreground">{roll.subtitle}</p>}
+            {roll.subtitle && <p className="text-muted-foreground text-xs">{roll.subtitle}</p>}
           </div>
         </div>
         <div className="flex flex-row justify-end gap-5">
           <a
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 rounded bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:bg-accent/80"
-            href={`/data/import?originSutraId=${sutraId}&originRollId=${roll.id}${childSutraId ? `&targetSutraId=${childSutraId}` : ''}${roll.children?.id ? `&targetRollId=${roll.children.id}` : ''}`}
+            className="bg-accent text-accent-foreground hover:bg-accent/80 flex items-center gap-2 rounded px-3 py-1.5 text-xs font-medium"
+            href={`/data/translation/import?originSutraId=${sutraId}&originRollId=${roll.id}${childSutraId ? `&targetSutraId=${childSutraId}` : ''}${roll.children?.id ? `&targetRollId=${roll.children.id}` : ''}`}
           >
             <Upload size={14} />
             Import & Replace
@@ -48,7 +48,7 @@ export function RollRow({ roll, sutraId, childSutraId, isEditing, onEditToggle, 
             target="_blank"
             rel="noreferrer"
             href={`/resources/export/${roll.id}`}
-            className="flex items-center gap-2 rounded bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
+            className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2 rounded px-3 py-1.5 text-xs font-medium"
           >
             <Download size={14} />
             Export xlsx

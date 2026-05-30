@@ -42,7 +42,7 @@ export function FileUploadForm({
       <input type="hidden" name="translationLanguage" value={translationLanguage} />
 
       <div className="space-y-2">
-        <Label htmlFor="file" className="text-lg text-primary">
+        <Label htmlFor="file" className="text-primary text-lg">
           Data File *
         </Label>
         <div className="flex items-center gap-3">
@@ -58,8 +58,8 @@ export function FileUploadForm({
         </div>
         {fileName && (
           <p>
-            <span className="text-lg text-muted-foreground">Selected: </span>
-            <span className="text-base font-semibold text-foreground">{fileName}</span>
+            <span className="text-muted-foreground text-lg">Selected: </span>
+            <span className="text-foreground text-base font-semibold">{fileName}</span>
           </p>
         )}
       </div>
@@ -95,8 +95,8 @@ export function FileUploadForm({
       )}
 
       <div className="flex justify-end gap-3">
-        <Button asChild type="button" variant="outline" className="text-base text-muted-foreground">
-          <a href="/data">Cancel</a>
+        <Button asChild type="button" variant="outline" className="text-muted-foreground text-base">
+          <a href="/data/translation">Cancel</a>
         </Button>
         <Button type="submit" className="text-base" disabled={isSubmitting}>
           {isSubmitting && navigationIntent === 'preview' ? 'Reading file...' : 'Preview Import'}
