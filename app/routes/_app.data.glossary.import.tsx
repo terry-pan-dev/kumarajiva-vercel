@@ -546,6 +546,11 @@ export default function GlossaryImportPage() {
     }
   }, [actionData]);
 
+  const handleCancelAutoImport = () => {
+    autoQueueRef.current = [];
+    setIsAutoImporting(false);
+  };
+
   // ── Auto-import: submit one chunk at a time via fetcher ──
   const handleImportAll = () => {
     const remaining = groups.slice(chunkIndex * CHUNK_SIZE);
@@ -669,21 +674,15 @@ export default function GlossaryImportPage() {
                 {remainingRows.length} rows remaining across {totalChunks - chunkIndex}{' '}
                 {totalChunks - chunkIndex === 1 ? 'chunk' : 'chunks'}
               </p>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleImportAll}
-                disabled={isSubmitting || isAutoImporting}
-              >
-                {isAutoImporting ? (
-                  <>
-                    <Icons.Loader className="mr-2 h-3 w-3 animate-spin" />
-                    Importing all…
-                  </>
-                ) : (
-                  'Import All'
-                )}
-              </Button>
+              {isAutoImporting ? (
+                <Button size="sm" variant="outline" onClick={handleCancelAutoImport}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button size="sm" variant="secondary" disabled={isSubmitting} onClick={handleImportAll}>
+                  Import All
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -775,16 +774,15 @@ export default function GlossaryImportPage() {
             <Separator />
 
             <div className="flex items-center justify-end gap-3">
-              <Button variant="secondary" onClick={handleImportAll} disabled={isSubmitting || isAutoImporting}>
-                {isAutoImporting ? (
-                  <>
-                    <Icons.Loader className="h-4 w-4 animate-spin" />
-                    Importing all…
-                  </>
-                ) : (
-                  'Import All'
-                )}
-              </Button>
+              {isAutoImporting ? (
+                <Button variant="outline" onClick={handleCancelAutoImport}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button variant="secondary" disabled={isSubmitting} onClick={handleImportAll}>
+                  Import All
+                </Button>
+              )}
               <Form method="post">
                 <input type="hidden" name="intent" value="import-chunk" />
                 <input name="rows" type="hidden" value={JSON.stringify(currentChunkRows)} />
