@@ -1,5 +1,4 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
-import type ExcelJS from 'exceljs';
 
 import { json, redirect } from '@remix-run/node';
 import { Form, useActionData, useFetcher, useNavigation } from '@remix-run/react';
@@ -59,14 +58,33 @@ type GlossaryGroup = GroupedTerm & {
 };
 
 type ActionResponse =
-  | { intent: 'parse-xlsx'; groups: GroupedTerm[]; totalRows: number }
   | { intent: 'fetch-existing'; existing: Record<string, ExistingGlossary> }
   | { intent: 'import-chunk'; created: number; updated: number; failed: number }
   | { intent: 'error'; message: string };
 
-// ─── CSV Parser ───────────────────────────────────────────────────────────────
+// ─── Parsers (client-side) ────────────────────────────────────────────────────
 
-// Called client-side (on Preview click) — PapaParse works in both environments.
+// Maps lowercase header variants to canonical GlossaryImportRow field names.
+const XLSX_COLUMNS: Record<string, keyof GlossaryImportRow> = {
+  uuid: 'uuid',
+  chineseterm: 'chineseTerm',
+  'chinese term': 'chineseTerm',
+  englishterm: 'englishTerm',
+  'english term': 'englishTerm',
+  chinesesutratext: 'chineseSutraText',
+  'chinese sutra text': 'chineseSutraText',
+  englishsutratext: 'englishSutraText',
+  'english sutra text': 'englishSutraText',
+  sutraname: 'sutraName',
+  'sutra name': 'sutraName',
+  volume: 'volume',
+  cbetafrequency: 'cbetaFrequency',
+  'cbeta frequency': 'cbetaFrequency',
+  author: 'author',
+  phonetic: 'phonetic',
+};
+
+// PapaParse is isomorphic — safe to call in browser event handlers.
 function parseGlossaryCSV(csvText: string): GlossaryImportRow[] {
   const result = Papa.parse<Record<string, string>>(csvText, {
     header: true,
@@ -88,83 +106,50 @@ function parseGlossaryCSV(csvText: string): GlossaryImportRow[] {
     }));
 }
 
-// Maps lowercase XLSX header variants to canonical field names.
-const XLSX_COLUMNS: Record<string, keyof GlossaryImportRow> = {
-  uuid: 'uuid',
-  chineseterm: 'chineseTerm',
-  'chinese term': 'chineseTerm',
-  englishterm: 'englishTerm',
-  'english term': 'englishTerm',
-  chinesesutratext: 'chineseSutraText',
-  'chinese sutra text': 'chineseSutraText',
-  englishsutratext: 'englishSutraText',
-  'english sutra text': 'englishSutraText',
-  sutraname: 'sutraName',
-  'sutra name': 'sutraName',
-  volume: 'volume',
-  cbetafrequency: 'cbetaFrequency',
-  'cbeta frequency': 'cbetaFrequency',
-  author: 'author',
-  phonetic: 'phonetic',
-};
-
-function getCellText(value: ExcelJS.CellValue): string {
-  if (value == null) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object' && 'richText' in value && Array.isArray(value.richText)) {
-    return (value.richText as Array<{ text?: string }>).map((p) => p.text ?? '').join('');
-  }
-  if (typeof value === 'object' && 'formula' in value) {
-    return getCellText((value as ExcelJS.CellFormulaValue).result as ExcelJS.CellValue);
-  }
-  if (typeof value === 'object' && 'hyperlink' in value) {
-    return (value as ExcelJS.CellHyperlinkValue).text?.toString() ?? '';
-  }
-  return String(value);
-}
-
-async function parseGlossaryXLSX(fileBuffer: ArrayBuffer): Promise<GlossaryImportRow[]> {
-  const ExcelJSModule = await import('exceljs');
-  const workbook = new ExcelJSModule.default.Workbook();
-  await workbook.xlsx.load(Buffer.from(fileBuffer) as unknown as Buffer);
-
-  const worksheet = workbook.worksheets[0];
+// SheetJS is dynamically imported so it's only bundled when the user actually clicks Preview on an XLSX.
+async function parseGlossaryXLSX(file: File): Promise<GlossaryImportRow[]> {
+  const { read, utils } = await import('xlsx');
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = read(new Uint8Array(arrayBuffer), { type: 'array' });
+  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
   if (!worksheet) return [];
 
-  // Build column-number → field-name map from the header row.
-  const colMap = new Map<number, keyof GlossaryImportRow>();
-  worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-    const field = XLSX_COLUMNS[getCellText(cell.value).trim().toLowerCase()];
-    if (field) colMap.set(colNumber, field);
+  // aoa[0] = header row; aoa[1..] = data rows.
+  const aoa = utils.sheet_to_json<string[]>(worksheet, { header: 1, defval: '', raw: false });
+  if (aoa.length === 0) return [];
+
+  const colMap: Record<number, keyof GlossaryImportRow> = {};
+  aoa[0].forEach((header, idx) => {
+    const field =
+      XLSX_COLUMNS[
+        String(header ?? '')
+          .trim()
+          .toLowerCase()
+      ];
+    if (field) colMap[idx] = field;
   });
 
-  const rows: GlossaryImportRow[] = [];
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-
-    const entry: GlossaryImportRow = {
-      uuid: '',
-      chineseTerm: '',
-      englishTerm: '',
-      chineseSutraText: '',
-      englishSutraText: '',
-      sutraName: '',
-      volume: '',
-      cbetaFrequency: '',
-      author: '',
-      phonetic: '',
-    };
-
-    colMap.forEach((field, colNumber) => {
-      entry[field] = getCellText(row.getCell(colNumber).value).trim();
-    });
-
-    if (entry.chineseTerm) rows.push(entry);
-  });
-
-  return rows;
+  return aoa
+    .slice(1)
+    .map((row) => {
+      const entry: GlossaryImportRow = {
+        uuid: '',
+        chineseTerm: '',
+        englishTerm: '',
+        chineseSutraText: '',
+        englishSutraText: '',
+        sutraName: '',
+        volume: '',
+        cbetaFrequency: '',
+        author: '',
+        phonetic: '',
+      };
+      Object.entries(colMap).forEach(([idxStr, field]) => {
+        entry[field] = String(row[Number(idxStr)] ?? '').trim();
+      });
+      return entry;
+    })
+    .filter((entry) => entry.chineseTerm);
 }
 
 // Groups CSV/XLSX rows by UUID (if present) or Chinese term. One group = one glossary entry.
@@ -195,29 +180,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
-
-  // ── Parse XLSX server-side (CSV is parsed client-side to avoid upload size limits) ──
-  if (intent === 'parse-xlsx') {
-    const file = formData.get('file') as File | null;
-
-    if (!file || file.size === 0) {
-      return json<ActionResponse>({ intent: 'error', message: 'Please select an XLSX file.' }, { status: 400 });
-    }
-
-    try {
-      const rows = await parseGlossaryXLSX(await file.arrayBuffer());
-      if (rows.length === 0) {
-        return json<ActionResponse>(
-          { intent: 'error', message: 'No valid rows found. Ensure the file has a ChineseTerm column.' },
-          { status: 400 },
-        );
-      }
-      const grouped = groupRows(rows);
-      return json<ActionResponse>({ intent: 'parse-xlsx', groups: grouped, totalRows: rows.length });
-    } catch {
-      return json<ActionResponse>({ intent: 'error', message: 'Failed to parse XLSX file.' }, { status: 400 });
-    }
-  }
 
   // ── Fetch existing DB entries for a single chunk (bounded payload) ──
   if (intent === 'fetch-existing') {
@@ -410,9 +372,9 @@ function ImportInstructions() {
           <p className="text-foreground mb-1 font-medium">Chunked import process</p>
           <ol className="ml-4 list-decimal space-y-1">
             <li>
-              <strong>Upload</strong> — select your CSV or XLSX file and click <em>Preview</em>. CSV files are parsed
-              locally in your browser; XLSX files are sent to the server for parsing. Either way, only{' '}
-              <strong>{CHUNK_SIZE} terms at a time</strong> are fetched from the database for comparison.
+              <strong>Upload</strong> — select your CSV or XLSX file and click <em>Preview</em>. Both file types are
+              parsed locally in your browser — no file data is sent to the server, so large files are handled without
+              hitting upload size limits.
             </li>
             <li>
               <strong>Chunk display</strong> — the file is divided into chunks of{' '}
@@ -460,9 +422,7 @@ export default function GlossaryImportPage() {
   const isSubmitting = navigation.state === 'submitting';
   const navigationIntent = navigation.formData?.get('intent') as string | null;
 
-  // Fetcher for XLSX server-side parsing (CSV is parsed client-side).
-  const parseFetcher = useFetcher<ActionResponse>();
-  // Fetcher for per-chunk DB lookups — keeps payloads bounded to CHUNK_SIZE entries.
+  // Per-chunk DB lookups — keeps payloads bounded to CHUNK_SIZE entries.
   const existingFetcher = useFetcher<ActionResponse>();
 
   const autoFetcher = useFetcher<ActionResponse>();
@@ -474,7 +434,7 @@ export default function GlossaryImportPage() {
   const [isParsing, setIsParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
 
-  // groups holds parsed-and-grouped CSV/XLSX data without DB entries (avoids large payloads).
+  // groups holds parsed-and-grouped data without DB entries (avoids large server payloads).
   const [groups, setGroups] = useState<GroupedTerm[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   // Existing DB entries for the currently displayed chunk only.
@@ -489,9 +449,8 @@ export default function GlossaryImportPage() {
   const totalCsvRows = totalRows;
   const totalChunks = Math.ceil(totalGroups / CHUNK_SIZE);
 
-  // Current chunk as GroupedTerms (no DB data yet).
   const currentChunkGroups = groups.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
-  // Merge with per-chunk DB lookups for display.
+  // Merge grouped terms with per-chunk DB data for the comparison panel.
   const currentChunk: GlossaryGroup[] = currentChunkGroups.map((g) => {
     const first = g.rows[0];
     const existing = first.uuid ? (chunkExisting[first.uuid] ?? null) : (chunkExisting[first.chineseTerm] ?? null);
@@ -520,51 +479,38 @@ export default function GlossaryImportPage() {
     lastAutoDataRef.current = undefined;
   };
 
-  // ── CSV preview: parse client-side on button click ──
+  // ── Both CSV and XLSX are parsed client-side — no file upload ──
   const handlePreview = async () => {
     if (!selectedFile) return;
     resetState();
 
     const lowerName = selectedFile.name.toLowerCase();
-
-    if (lowerName.endsWith('.csv')) {
-      setIsParsing(true);
-      try {
-        const text = await selectedFile.text();
-        const rows = parseGlossaryCSV(text);
-        if (rows.length === 0) {
-          setParseError('No valid rows found. Ensure the file has a ChineseTerm column.');
-          return;
-        }
-        const grouped = groupRows(rows);
-        setGroups(grouped);
-        setTotalRows(rows.length);
-      } catch {
-        setParseError('Failed to parse CSV file.');
-      } finally {
-        setIsParsing(false);
+    setIsParsing(true);
+    try {
+      let rows: GlossaryImportRow[];
+      if (lowerName.endsWith('.csv')) {
+        rows = parseGlossaryCSV(await selectedFile.text());
+      } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+        rows = await parseGlossaryXLSX(selectedFile);
+      } else {
+        setParseError('Invalid file type. Please upload a CSV or XLSX file.');
+        return;
       }
-    } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
-      const fd = new FormData();
-      fd.set('intent', 'parse-xlsx');
-      fd.set('file', selectedFile);
-      parseFetcher.submit(fd, { method: 'post', encType: 'multipart/form-data' });
-    } else {
-      setParseError('Invalid file type. Please upload a CSV or XLSX file.');
+
+      if (rows.length === 0) {
+        setParseError('No valid rows found. Ensure the file has a ChineseTerm column.');
+        return;
+      }
+
+      const grouped = groupRows(rows);
+      setGroups(grouped);
+      setTotalRows(rows.length);
+    } catch {
+      setParseError('Failed to parse file.');
+    } finally {
+      setIsParsing(false);
     }
   };
-
-  // ── Handle XLSX parse result from server ──
-  useEffect(() => {
-    if (parseFetcher.data?.intent === 'parse-xlsx') {
-      setGroups(parseFetcher.data.groups);
-      setTotalRows(parseFetcher.data.totalRows);
-      setChunkIndex(0);
-      setChunkResults([]);
-      setIsFullyImported(false);
-      setIsAutoImporting(false);
-    }
-  }, [parseFetcher.data]);
 
   // ── Fetch DB entries for the current chunk whenever groups or chunkIndex changes ──
   const existingFetcherSubmit = existingFetcher.submit;
@@ -645,11 +591,7 @@ export default function GlossaryImportPage() {
     }
   }, [isAutoImporting, autoFetcher.state, autoFetcher.data, autoFetcher]);
 
-  const isPreviewLoading = isParsing || parseFetcher.state === 'submitting';
-  const errorMessage =
-    parseError ||
-    (parseFetcher.data?.intent === 'error' ? parseFetcher.data.message : null) ||
-    (actionData?.intent === 'error' ? actionData.message : null);
+  const errorMessage = parseError || (actionData?.intent === 'error' ? actionData.message : null);
 
   return (
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
@@ -683,8 +625,8 @@ export default function GlossaryImportPage() {
                 resetState();
               }}
             />
-            <Button onClick={handlePreview} disabled={isPreviewLoading || !fileName}>
-              {isPreviewLoading ? (
+            <Button onClick={handlePreview} disabled={isParsing || !fileName}>
+              {isParsing ? (
                 <>
                   <Icons.Loader className="mr-2 h-4 w-4 animate-spin" />
                   Parsing…
