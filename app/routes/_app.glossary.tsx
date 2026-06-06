@@ -88,7 +88,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function GlossaryLayout() {
   const { user, users } = useLoaderData<typeof loader>();
   return (
-    <div className="flex h-auto min-h-screen flex-col bg-secondary px-2 lg:px-4">
+    <div className="bg-secondary flex h-auto min-h-screen flex-col px-2 lg:px-4">
       <div className="flex items-center justify-between">
         <div className="my-2 flex h-10 w-full items-center justify-between gap-2 text-xl font-semibold">
           <div className="flex items-center gap-2">
@@ -121,7 +121,7 @@ const GlossaryCreateModal = () => {
       title="Create Glossary For Chinese And English"
       trigger={
         <Button className="w-20" variant="default">
-          New
+          Add New Entry
         </Button>
       }
     >
@@ -159,8 +159,8 @@ const GlossaryCreateForm = () => {
       <div className="grid grid-cols-2 gap-4">
         <FormInput
           required
+          label="Chinese Term"
           name="glossaryChinese"
-          label="Glossary Chinese"
           onBlur={handleGlossaryChineseOnBlur}
           description="The Chinese glossary term."
         />
@@ -175,12 +175,12 @@ const GlossaryCreateForm = () => {
                 name="cbetaFrequencyChinese"
                 description="The frequency of the sutra in CBETA."
               />
-              <FormTextarea label="Author" name="authorChinese" description="The author of the glossary." />
+              <FormTextarea label="Author" name="authorChinese" description="The author of the glossary term." />
               <span className="col-span-2">
                 <FormTextarea
                   label="Discussion"
                   name="discussionChinese"
-                  description="Any additional discussion about the glossary."
+                  description="Any additional discussion about the glossary term."
                 />
               </span>
             </div>
@@ -194,7 +194,7 @@ const GlossaryCreateForm = () => {
         <FormInput
           required
           name="glossary"
-          label="Glossary English"
+          label="English Term"
           description={`The ${user?.targetLang} glossary term.`}
         />
         <CustomAccordion
@@ -212,7 +212,7 @@ const GlossaryCreateForm = () => {
             <FormTextarea
               name="partOfSpeech"
               label="Part of Speech"
-              description="The part of speech of the glossary."
+              description="The part of speech of the glossary term."
             />
             <FormTextarea name="sutraText" label="Sutra Text" description="The text of the sutra." />
             <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
@@ -249,7 +249,7 @@ export function CustomAccordion({
       >
         <div className="flex w-full items-center">
           <div className="flex-1 border-t border-dashed border-blue-600" />
-          <span className="mx-4 whitespace-nowrap text-center text-sm font-semibold">{title}</span>
+          <span className="mx-4 text-center text-sm font-semibold whitespace-nowrap">{title}</span>
           <div className="flex-1 border-t border-dashed border-blue-600" />
         </div>
         <div className="flex w-full justify-center">
