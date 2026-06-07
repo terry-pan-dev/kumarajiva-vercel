@@ -1,6 +1,6 @@
 import { eq, inArray } from 'drizzle-orm';
 
-import type { CreateContributor, CreateDocument, CreateSection } from '~/drizzle/schema';
+import type { CreateContributor, CreateDocument, CreateSection, CreateWork } from '~/drizzle/schema';
 
 import { contributorsTable, documentsTable, sectionsTable, worksTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
@@ -11,14 +11,22 @@ export const DbWorks = {
   findById: async (id: string) => {
     return db.query.worksTable.findFirst({
       where: eq(worksTable.id, id),
-      with: { documents: true },
+      with: { documents: { with: { contributors: true } } },
     });
   },
 
   findAll: async () => {
     return db.query.worksTable.findMany({
-      with: { documents: true },
+      with: { documents: { with: { contributors: true } } },
     });
+  },
+
+  create: async (work: CreateWork) => {
+    return db.insert(worksTable).values(work).returning({ id: worksTable.id });
+  },
+
+  updateById: async (id: string, data: Partial<CreateWork>) => {
+    return db.update(worksTable).set(data).where(eq(worksTable.id, id));
   },
 };
 
