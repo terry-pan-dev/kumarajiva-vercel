@@ -1,7 +1,23 @@
-import type { CreateDocument, CreateSection } from '~/drizzle/schema';
+import type { CreateDocument, CreateSection, CreateWork } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
-import { DbContributors, DbDocuments, DbSections } from './text.crud';
+import { DbDocuments, DbSections, DbWorks } from './text.crud';
+
+export const getWorks = async () => {
+  return DbWorks.findAll();
+};
+
+export const createWork = async (work: Omit<CreateWork, 'createdBy' | 'updatedBy'>, user: ReadUser) => {
+  return DbWorks.create({ ...work, createdBy: user.id, updatedBy: user.id });
+};
+
+export const updateWork = async (
+  id: string,
+  data: Partial<Omit<CreateWork, 'createdBy' | 'updatedBy'>>,
+  user: ReadUser,
+) => {
+  return DbWorks.updateById(id, { ...data, updatedBy: user.id });
+};
 
 export const getDocument = async (id: string) => {
   return DbDocuments.findById(id);
@@ -41,8 +57,4 @@ export const updateSection = async (
   user: ReadUser,
 ) => {
   return DbSections.updateById(id, { ...data, updatedBy: user.id });
-};
-
-export const getContributorsByDocument = async (documentId: string) => {
-  return DbContributors.findByDocumentId(documentId);
 };

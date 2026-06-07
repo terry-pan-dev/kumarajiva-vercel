@@ -194,18 +194,6 @@ export function SideBarMenu({
               {isOpen && dataMenuOpen && (
                 <div className="flex flex-col gap-0.5 pb-1">
                   <NavLink
-                    to="/data/translation"
-                    className={({ isActive }) =>
-                      cn(
-                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
-                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
-                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
-                      )
-                    }
-                  >
-                    Translation Data
-                  </NavLink>
-                  <NavLink
                     end
                     to="/data/glossary"
                     className={({ isActive }) =>
@@ -217,6 +205,30 @@ export function SideBarMenu({
                     }
                   >
                     Glossary
+                  </NavLink>
+                  <NavLink
+                    to="/data/translation"
+                    className={({ isActive }) =>
+                      cn(
+                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                      )
+                    }
+                  >
+                    Translation Projects
+                  </NavLink>
+                  <NavLink
+                    to="/data/documents"
+                    className={({ isActive }) =>
+                      cn(
+                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                      )
+                    }
+                  >
+                    Works and Documents
                   </NavLink>
                 </div>
               )}
