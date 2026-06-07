@@ -1,10 +1,9 @@
 import { Link, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
-import { TranslationCard } from '~/components/Card';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { FormInput, FormModal } from '~/components/FormModal';
 import { type ReadRoll, type ReadSutra, type ReadUser } from '~/drizzle/schema';
@@ -80,14 +79,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export const ErrorBoundary = () => {
   const error = useRouteError();
-
   return <ErrorInfo error={error} />;
 };
 
 export default function TranslationIndex() {
   const context = useOutletContext<{ user: ReadUser }>();
   const { sutras: remoteSutras } = useLoaderData<typeof loader>();
-  const [sutraId, setSutraId] = useState('');
+  const [openSutras, setOpenSutras] = useState<Set<string>>(new Set());
 
   const sutras = useMemo(() => {
     return remoteSutras.map((sutra) => ({
@@ -98,86 +96,14 @@ export default function TranslationIndex() {
     }));
   }, [remoteSutras]);
 
-  const Sutras = sutras.map((sutra) => (
-    <motion.div
-      key={sutra.id}
-      whileHover={{ scale: 1.02 }}
-      transition={{ duration: 0.3 }}
-      className={`m-2 cursor-pointer rounded-lg shadow-md`}
-    >
-      {sutra.children ? (
-        <div onClick={() => setSutraId(sutra.id)}>
-          <TranslationCard
-            originTitle={sutra.title}
-            isSelected={sutraId === sutra.id}
-            targetTitle={sutra.children.title}
-            originTranslator={sutra.translator}
-            targetTranslator={sutra.children.translator}
-          />
-        </div>
-      ) : (
-        <FormModal
-          schema={createSutraSchema}
-          title={`Create ${context.user.targetLang} sutra`}
-          trigger={
-            <Link to={`/translation?sutraId=${sutra.id}`}>
-              <TranslationCard originTitle={sutra.title} originTranslator={sutra.translator} />
-            </Link>
-          }
-        >
-          <CreateSutraForm sutra={sutra} />
-        </FormModal>
-      )}
-    </motion.div>
-  ));
-
-  const rolls = useMemo(() => {
-    const sutra = sutras.find((sutra) => sutra.id === sutraId);
-    const rolls = sutra?.rolls?.filter((roll) => roll.sutraId === sutraId);
-    return rolls?.map((roll) => ({
-      ...roll,
-      createdAt: new Date(roll.createdAt),
-      updatedAt: new Date(roll.updatedAt),
-      deletedAt: roll.deletedAt ? new Date(roll.deletedAt) : null,
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sutraId, sutras]);
-
-  const targetSutraId = useMemo(() => {
-    const sutra = sutras.find((sutra) => sutra.id === sutraId);
-    return sutra?.children?.id;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sutraId]);
-
-  const Rolls = rolls?.map((roll) => (
-    <motion.div
-      key={roll.id}
-      whileHover={{ scale: 1.02 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3 }}
-      exit={{ opacity: 0, x: '100%' }}
-      initial={{ opacity: 0, x: '100%' }}
-      className="mb-2 cursor-pointer rounded-lg shadow-md"
-    >
-      {roll.children ? (
-        <Link to={`/translation/${roll.id}`}>
-          <TranslationCard originTitle={roll.title} targetTitle={roll.children.title} />
-        </Link>
-      ) : (
-        <FormModal
-          schema={createRollSchema}
-          title={`Create ${context.user.targetLang} roll`}
-          trigger={
-            <Link to={`/translation?sutraId=${targetSutraId}&rollId=${roll.id}`}>
-              <TranslationCard originTitle={roll.title} />
-            </Link>
-          }
-        >
-          <CreateRollForm roll={roll} />
-        </FormModal>
-      )}
-    </motion.div>
-  ));
+  const toggleSutra = (sutraId: string) => {
+    setOpenSutras((prev) => {
+      const next = new Set(prev);
+      if (next.has(sutraId)) next.delete(sutraId);
+      else next.add(sutraId);
+      return next;
+    });
+  };
 
   if (sutras.length === 0) {
     return (
@@ -193,35 +119,105 @@ export default function TranslationIndex() {
   }
 
   return (
-    <motion.div
-      initial={false}
-      transition={{ duration: 0.5 }}
-      animate={{ flexDirection: sutraId ? 'row' : 'column' }}
-      className={`flex h-full ${sutraId ? 'flex-row' : 'items-center justify-center'}`}
-    >
-      <motion.div
-        transition={{ duration: 0.3 }}
-        animate={{
-          height: '100%',
-        }}
-        className={`flex-col items-center justify-start ${sutraId ? 'w-1/2 overflow-y-auto' : 'w-full'}`}
-      >
-        {Sutras}
-      </motion.div>
-      <AnimatePresence>
-        {sutraId && (
-          <motion.div
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3 }}
-            exit={{ opacity: 0, x: '100%' }}
-            initial={{ opacity: 0, x: '100%' }}
-            className="m-2 w-1/2 overflow-y-auto"
-          >
-            {Rolls}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-3xl space-y-3 p-4">
+        {sutras.map((sutra) => {
+          const isOpen = openSutras.has(sutra.id);
+          const targetSutraId = sutra.children?.id ?? null;
+
+          return (
+            <div key={sutra.id} className="border-border bg-background overflow-hidden rounded-lg border shadow-sm">
+              {/* Sutra header */}
+              <div
+                onClick={() => sutra.children && toggleSutra(sutra.id)}
+                className={`bg-muted hover:bg-muted/80 flex items-center justify-between p-4 transition ${sutra.children ? 'cursor-pointer' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${!sutra.children ? 'opacity-30' : ''}`}
+                  >
+                    <ChevronRight size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-foreground text-lg font-semibold">
+                      {sutra.title}
+                      {sutra.children && (
+                        <span className="text-muted-foreground ml-2 font-normal">/ {sutra.children.title}</span>
+                      )}
+                    </h3>
+                    <div className="text-muted-foreground text-xs">
+                      {sutra.rolls?.length || 0} rolls • {sutra.category}
+                    </div>
+                  </div>
+                </div>
+
+                {!sutra.children && (
+                  <FormModal
+                    schema={createSutraSchema}
+                    title={`Create ${context.user.targetLang} sutra`}
+                    trigger={
+                      <Link to={`/translation?sutraId=${sutra.id}`}>
+                        <span className="bg-primary text-primary-foreground hover:bg-primary/80 rounded px-2.5 py-1.5 text-xs font-medium transition">
+                          Create translation
+                        </span>
+                      </Link>
+                    }
+                  >
+                    <CreateSutraForm sutra={sutra} />
+                  </FormModal>
+                )}
+              </div>
+
+              {/* Rolls list */}
+              {isOpen && (
+                <div className="divide-border border-border divide-y border-t">
+                  {sutra.rolls && sutra.rolls.length > 0 ? (
+                    sutra.rolls.map((roll) => (
+                      <div key={roll.id} className="hover:bg-muted/50 flex items-center justify-between p-4">
+                        <div>
+                          <p className="text-foreground font-medium">
+                            {roll.title}
+                            {roll.children && (
+                              <span className="text-muted-foreground ml-2 font-normal">/ {roll.children.title}</span>
+                            )}
+                          </p>
+                          {roll.subtitle && <p className="text-muted-foreground text-xs">{roll.subtitle}</p>}
+                        </div>
+
+                        {roll.children ? (
+                          <Link
+                            to={`/translation/${roll.id}`}
+                            className="bg-primary text-primary-foreground hover:bg-primary/80 rounded px-3 py-1.5 text-xs font-medium transition"
+                          >
+                            Translate
+                          </Link>
+                        ) : (
+                          <FormModal
+                            schema={createRollSchema}
+                            title={`Create ${context.user.targetLang} roll`}
+                            trigger={
+                              <Link to={`/translation?sutraId=${targetSutraId}&rollId=${roll.id}`}>
+                                <span className="bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded px-3 py-1.5 text-xs font-medium transition">
+                                  Create translation
+                                </span>
+                              </Link>
+                            }
+                          >
+                            <CreateRollForm roll={roll} />
+                          </FormModal>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-muted-foreground p-4 text-center text-sm">No rolls found for this sutra.</div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -243,7 +239,7 @@ const CreateSutraForm = ({ sutra }: { sutra: ReadSutra }) => {
   );
 };
 
-const CreateRollForm = ({ roll }: { roll: ReadRoll }) => {
+const CreateRollForm = ({ roll }: { roll: Pick<ReadRoll, 'title' | 'subtitle'> }) => {
   return (
     <div>
       <FormInput required name="title" label={roll.title} description="Translate the title of the roll." />
