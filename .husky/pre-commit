@@ -1,1 +1,1 @@
-pnpm typecheck && pnpm dlx lint-staged --verbose
+pnpm typecheck && pnpm dlx lint-staged --verbose && pnpm vitest run
