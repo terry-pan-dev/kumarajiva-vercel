@@ -292,11 +292,13 @@ describe('replaceRollData', () => {
 
   describe('when the transaction throws', () => {
     it('returns a failure result instead of re-throwing', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
       mocks.mockTransaction.mockRejectedValueOnce(new Error('DB connection failed'));
       const result = await replaceRollData(TWO_ROWS, BASE_OPTIONS);
       expect(result.success).toBe(false);
       expect(result.message).toContain('DB connection failed');
       expect(result.errors).toHaveLength(1);
+      vi.restoreAllMocks();
     });
   });
 });
