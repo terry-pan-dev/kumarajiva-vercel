@@ -10,11 +10,10 @@ import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Button } from '~/components/ui/button';
 import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
-import { type ReadRollWithSutra } from '~/drizzle/tables';
 import { useDownloadDocx } from '~/lib/hooks';
 import { readUsers } from '~/services';
 import { type IParagraph, readParagraphsByRollId } from '~/services/paragraph.service';
-import { readRollById } from '~/services/roll.service';
+import { getSection } from '~/services/text.service';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Translation' }];
@@ -38,19 +37,22 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     return redirect('/login');
   }
   const formData = await request.formData();
-  const rollId = formData.get('rollId');
+  const sectionId = formData.get('rollId');
   let paragraphs: IParagraph[] = [];
-  let rollInfo: ReadRollWithSutra | undefined = undefined;
-  if (rollId) {
-    [paragraphs, rollInfo] = await Promise.all([
-      readParagraphsByRollId({ rollId: rollId as string }),
-      readRollById(rollId as string),
+  let sectionInfo: { documentTitle: string; sectionTitle: string | null } | undefined = undefined;
+  if (sectionId) {
+    const [fetchedParagraphs, section] = await Promise.all([
+      readParagraphsByRollId({ rollId: sectionId as string }),
+      getSection(sectionId as string),
     ]);
+    paragraphs = fetchedParagraphs;
+    if (section) {
+      sectionInfo = { documentTitle: section.document?.title ?? '', sectionTitle: section.title ?? null };
+    }
   }
-  console.log('downloading for rollId', rollId);
   return json({
     paragraphs,
-    rollInfo,
+    sectionInfo,
   });
 };
 
@@ -62,8 +64,8 @@ export default function TranslationLayout() {
   const [isDownload, setIsDownload] = useState(false);
 
   useEffect(() => {
-    if (fetcher.data && fetcher.data.paragraphs.length && fetcher.data.rollInfo && isDownload) {
-      downloadDocx(fetcher.data.paragraphs, fetcher.data.rollInfo);
+    if (fetcher.data && fetcher.data.paragraphs.length && fetcher.data.sectionInfo && isDownload) {
+      downloadDocx(fetcher.data.paragraphs, fetcher.data.sectionInfo);
       setIsDownload(false);
     }
   }, [fetcher.data, isDownload, downloadDocx]);
@@ -81,7 +83,7 @@ export default function TranslationLayout() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-secondary px-2 lg:px-4">
+    <div className="bg-secondary flex h-full w-full flex-col px-2 lg:px-4">
       <div className="my-2 flex h-10 w-full items-center justify-between gap-8 text-xl font-semibold">
         <div className="flex h-10 items-center gap-2">
           <SideBarTrigger />

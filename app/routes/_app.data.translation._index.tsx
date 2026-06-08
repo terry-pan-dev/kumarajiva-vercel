@@ -4,12 +4,19 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
-import { SutraForm } from '~/components/data/SutraForm';
-import { SutraRow } from '~/components/data/SutraRow';
+import { ProjectForm } from '~/components/data/ProjectForm';
+import { ProjectRow } from '~/components/data/ProjectRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { createRoll, updateRoll } from '~/services/roll.service';
-import { createSutra, readSutrasAndRolls, updateSutra } from '~/services/sutra.service';
-import { parseRollCreate, parseRollUpdate, parseSutraCreate, parseSutraUpdate } from '~/utils/dataFormParsers';
+import { createProject, getProjects } from '~/services/project.service';
+import {
+  createDocument,
+  createSection,
+  getAllWorks,
+  getSectionsByDocument,
+  reorderSections,
+  updateDocument,
+  updateSection,
+} from '~/services/text.service';
 
 // ─── Action ─────────────────────────────────────────────────────────────────
 
@@ -20,44 +27,83 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
 
-  // ── Sutra: create ──
+  // ── Document: create ──
   if (intent === 'create') {
-    const {
-      originTitle,
-      originSubtitle,
-      originLang,
-      originTranslator,
-      translationTitle,
-      translationSubtitle,
-      translationLang,
-      translationTranslator,
-      category,
-      cbeta,
-    } = parseSutraCreate(formData);
+    const workId = formData.get('workId') as string;
+    const originTitle = formData.get('originTitle') as string;
+    const originSubtitle = (formData.get('originSubtitle') as string) || undefined;
+    const originLang = formData.get('originLang') as string;
+    const translationTitle = formData.get('translationTitle') as string;
+    const translationSubtitle = (formData.get('translationSubtitle') as string) || undefined;
+    const translationLang = formData.get('translationLang') as string;
 
-    const [created] = await createSutra(
-      {
-        title: originTitle,
-        subtitle: originSubtitle,
-        language: originLang,
-        category,
-        translator: originTranslator,
-        cbeta,
-        teamId: user.teamId,
-      },
+    await createDocument({ workId, title: originTitle, subtitle: originSubtitle, language: originLang as never }, user);
+
+    if (translationTitle && translationLang) {
+      await createDocument(
+        { workId, title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
+        user,
+      );
+    }
+
+    return json({ success: true });
+  }
+
+  // ── Document: update ──
+  if (intent === 'update') {
+    const documentId = formData.get('documentId') as string;
+    const childDocumentId = (formData.get('childDocumentId') as string) || null;
+    const workId = formData.get('workId') as string;
+    const originTitle = formData.get('originTitle') as string;
+    const originSubtitle = (formData.get('originSubtitle') as string) || undefined;
+    const originLang = formData.get('originLang') as string;
+    const translationTitle = formData.get('translationTitle') as string;
+    const translationSubtitle = (formData.get('translationSubtitle') as string) || undefined;
+    const translationLang = formData.get('translationLang') as string;
+
+    await updateDocument(
+      documentId,
+      { title: originTitle, subtitle: originSubtitle, language: originLang as never },
       user,
     );
 
     if (translationTitle && translationLang) {
-      await createSutra(
+      if (childDocumentId) {
+        await updateDocument(
+          childDocumentId,
+          { title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
+          user,
+        );
+      } else {
+        await createDocument(
+          { workId, title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
+          user,
+        );
+      }
+    }
+
+    return json({ success: true });
+  }
+
+  // ── Section: create ──
+  if (intent === 'create-section') {
+    const documentId = formData.get('documentId') as string;
+    const targetDocumentId = (formData.get('targetDocumentId') as string) || null;
+    const originTitle = formData.get('originTitle') as string;
+    const translationTitle = (formData.get('translationTitle') as string) || '';
+
+    const existingSections = await getSectionsByDocument(documentId);
+    const nextOrder = existingSections.length + 1;
+
+    const [created] = await createSection({ documentId, title: originTitle, order: nextOrder }, user);
+
+    if (targetDocumentId && translationTitle) {
+      const targetSections = await getSectionsByDocument(targetDocumentId);
+      await createSection(
         {
+          documentId: targetDocumentId,
           title: translationTitle,
-          subtitle: translationSubtitle,
-          language: translationLang,
-          category,
-          translator: translationTranslator,
-          cbeta,
-          teamId: user.teamId,
+          order: targetSections.length + 1,
           parentId: created.id,
         },
         user,
@@ -67,104 +113,46 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
-  // ── Sutra: update ──
-  if (intent === 'update') {
-    const {
-      sutraId,
-      childSutraId,
-      originTitle,
-      originSubtitle,
-      originLang,
-      originTranslator,
-      translationTitle,
-      translationSubtitle,
-      translationLang,
-      translationTranslator,
-      category,
-      cbeta,
-    } = parseSutraUpdate(formData);
+  // ── Section: update ──
+  if (intent === 'update-section') {
+    const sectionId = formData.get('sectionId') as string;
+    const childSectionId = (formData.get('childSectionId') as string) || null;
+    const targetDocumentId = (formData.get('targetDocumentId') as string) || null;
+    const originTitle = formData.get('originTitle') as string;
+    const translationTitle = (formData.get('translationTitle') as string) || '';
 
-    await updateSutra(
-      sutraId,
-      {
-        title: originTitle,
-        subtitle: originSubtitle,
-        language: originLang,
-        category,
-        translator: originTranslator,
-        cbeta,
-      },
-      user,
-    );
-
-    if (translationTitle && translationLang) {
-      if (childSutraId) {
-        await updateSutra(
-          childSutraId,
-          {
-            title: translationTitle,
-            subtitle: translationSubtitle,
-            language: translationLang,
-            category,
-            translator: translationTranslator,
-          },
-          user,
-        );
-      } else {
-        await createSutra(
-          {
-            title: translationTitle,
-            subtitle: translationSubtitle,
-            language: translationLang,
-            category,
-            translator: translationTranslator,
-            cbeta,
-            teamId: user.teamId,
-            parentId: sutraId,
-          },
-          user,
-        );
-      }
-    }
-
-    return json({ success: true });
-  }
-
-  // ── Roll: create ──
-  if (intent === 'create-roll') {
-    const { sutraId, childSutraId, originTitle, originSubtitle, translationTitle, translationSubtitle } =
-      parseRollCreate(formData);
-
-    const [created] = await createRoll({ title: originTitle, subtitle: originSubtitle, sutraId }, user);
-
-    if (childSutraId && translationTitle) {
-      await createRoll(
-        { title: translationTitle, subtitle: translationSubtitle, sutraId: childSutraId, parentId: created.id },
-        user,
-      );
-    }
-
-    return json({ success: true });
-  }
-
-  // ── Roll: update ──
-  if (intent === 'update-roll') {
-    const { rollId, childRollId, childSutraId, originTitle, originSubtitle, translationTitle, translationSubtitle } =
-      parseRollUpdate(formData);
-
-    await updateRoll(rollId, { title: originTitle, subtitle: originSubtitle }, user);
+    await updateSection(sectionId, { title: originTitle }, user);
 
     if (translationTitle) {
-      if (childRollId) {
-        await updateRoll(childRollId, { title: translationTitle, subtitle: translationSubtitle }, user);
-      } else if (childSutraId) {
-        await createRoll(
-          { title: translationTitle, subtitle: translationSubtitle, sutraId: childSutraId, parentId: rollId },
+      if (childSectionId) {
+        await updateSection(childSectionId, { title: translationTitle }, user);
+      } else if (targetDocumentId) {
+        await createSection(
+          { documentId: targetDocumentId, title: translationTitle, order: 0, parentId: sectionId },
           user,
         );
       }
     }
 
+    return json({ success: true });
+  }
+
+  // ── Project: create from existing documents ──
+  if (intent === 'create-project') {
+    const sourceDocumentId = formData.get('sourceDocumentId') as string;
+    const targetDocumentId = formData.get('targetDocumentId') as string;
+    const name = (formData.get('name') as string) || '';
+
+    await createProject({ name, sourceDocumentId, targetDocumentId, teamId: user.teamId, finish: false }, user);
+
+    return json({ success: true });
+  }
+
+  // ── Sections: reorder ──
+  if (intent === 'reorder-sections') {
+    const sectionsJson = formData.get('sections') as string;
+    const sections = JSON.parse(sectionsJson) as Array<{ id: string; order: number }>;
+    await reorderSections(sections, user);
     return json({ success: true });
   }
 
@@ -178,8 +166,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!user) return redirect('/login');
 
   try {
-    const sutras = await readSutrasAndRolls();
-    return json({ success: true, sutras });
+    const [projects, works] = await Promise.all([getProjects(), getAllWorks()]);
+    return json({ success: true, projects, works });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
@@ -194,11 +182,11 @@ export const ErrorBoundary = () => {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DataManagementIndex() {
-  const { sutras } = useLoaderData<typeof loader>();
-  const [showAddSutraForm, setShowAddSutraForm] = useState(false);
-  const [editingSutraId, setEditingSutraId] = useState<string | null>(null);
-  const [addingRollToSutraId, setAddingRollToSutraId] = useState<string | null>(null);
-  const [editingRollId, setEditingRollId] = useState<string | null>(null);
+  const { projects, works } = useLoaderData<typeof loader>();
+  const [showAddProjectForm, setShowAddProjectForm] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [addingSectionToProjectId, setAddingSectionToProjectId] = useState<string | null>(null);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
   return (
     <div className="container mx-auto max-w-5xl p-6">
@@ -207,53 +195,53 @@ export default function DataManagementIndex() {
         <div>
           <h1 className="text-foreground text-2xl font-bold">Manage the data for translations</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Import translations, export data from rolls to Excel, edit sutra and roll metadata.
+            Import translations, export data from sections to Excel, edit project and section metadata.
           </p>
         </div>
         <button
           type="button"
-          title="Add new sutra"
+          title="Add new project"
           onClick={() => {
-            setShowAddSutraForm((v) => !v);
-            setEditingSutraId(null);
+            setShowAddProjectForm((v) => !v);
+            setEditingProjectId(null);
           }}
           className="bg-primary text-primary-foreground hover:bg-primary/80 flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium transition"
         >
           <Plus size={16} />
-          Add Sutra
+          Add Project
         </button>
       </div>
 
-      {/* Add-sutra form */}
-      {showAddSutraForm && (
+      {/* Add-project form */}
+      {showAddProjectForm && (
         <div className="mb-6">
-          <SutraForm onClose={() => setShowAddSutraForm(false)} />
+          <ProjectForm works={works} onClose={() => setShowAddProjectForm(false)} />
         </div>
       )}
 
-      {/* Sutra list */}
+      {/* Project list */}
       <div className="space-y-4">
-        {sutras.map((sutra) => (
-          <SutraRow
-            sutra={sutra}
-            key={sutra.id}
-            editingRollId={editingRollId}
-            isEditingSutra={editingSutraId === sutra.id}
-            onEditRollClose={() => setEditingRollId(null)}
-            isAddingRoll={addingRollToSutraId === sutra.id}
-            onEditSutraClose={() => setEditingSutraId(null)}
-            onAddRollClose={() => setAddingRollToSutraId(null)}
-            onAddRollToggle={() => {
-              setAddingRollToSutraId((id) => (id === sutra.id ? null : sutra.id));
-              setEditingRollId(null);
+        {projects.map((project) => (
+          <ProjectRow
+            key={project.id}
+            project={project}
+            editingSectionId={editingSectionId}
+            isEditing={editingProjectId === project.id}
+            onEditClose={() => setEditingProjectId(null)}
+            onEditSectionClose={() => setEditingSectionId(null)}
+            isAddingSection={addingSectionToProjectId === project.id}
+            onAddSectionClose={() => setAddingSectionToProjectId(null)}
+            onEditToggle={() => {
+              setEditingProjectId((id) => (id === project.id ? null : project.id));
+              setShowAddProjectForm(false);
             }}
-            onEditSutraToggle={() => {
-              setEditingSutraId((id) => (id === sutra.id ? null : sutra.id));
-              setShowAddSutraForm(false);
+            onAddSectionToggle={() => {
+              setAddingSectionToProjectId((id) => (id === project.id ? null : project.id));
+              setEditingSectionId(null);
             }}
-            onEditRollToggle={(rollId) => {
-              setEditingRollId((id) => (id === rollId ? null : rollId));
-              setAddingRollToSutraId(null);
+            onEditSectionToggle={(sectionId) => {
+              setEditingSectionId((id) => (id === sectionId ? null : sectionId));
+              setAddingSectionToProjectId(null);
             }}
           />
         ))}

@@ -1,7 +1,7 @@
 import type { CreateDocument, CreateSection, CreateWork } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
-import { DbDocuments, DbSections, DbWorks } from './text.crud';
+import { DbContributors, DbDocuments, DbSections, DbWorks } from './text.crud';
 
 export const getWorks = async () => {
   return DbWorks.findAll();
@@ -57,4 +57,16 @@ export const updateSection = async (
   user: ReadUser,
 ) => {
   return DbSections.updateById(id, { ...data, updatedBy: user.id });
+};
+
+export const getAllWorks = async () => {
+  return DbWorks.findAll();
+};
+
+export const getContributorsByDocument = async (documentId: string) => {
+  return DbContributors.findByDocumentId(documentId);
+};
+
+export const reorderSections = async (updates: Array<{ id: string; order: number }>, user: ReadUser) => {
+  return Promise.all(updates.map(({ id, order }) => DbSections.updateById(id, { order, updatedBy: user.id })));
 };
