@@ -223,7 +223,7 @@ test('create comprehensive glossary with all fields', async ({ page }) => {
  * 9. Assert the cbeta frequency is 101 on the bottom of the detail panel
  * 10. Assert the author is "Translation Team" on the bottom of the detail panel
  */
-test.only('update comprehensive glossary with all fields', async ({ page }) => {
+test('update comprehensive glossary with all fields', async ({ page }) => {
   // Arrange & Act: Navigate to glossary and click New button to create initial glossary
   await page.getByRole('button', { name: 'New' }).click();
 
