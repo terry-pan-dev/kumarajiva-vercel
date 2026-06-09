@@ -1,4 +1,4 @@
-import { integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
 import { documentsTable } from './document';
@@ -9,9 +9,10 @@ export const sectionTitlesTable = pgTable('section_titles', {
   documentId: uuid('document_id')
     .references(() => documentsTable.id)
     .notNull(),
-  sectionId: uuid('section_id').references(() => sectionsTable.id).notNull(),
+  sectionId: uuid('section_id')
+    .references(() => sectionsTable.id)
+    .notNull(),
   title: text('title'),
-  order: integer('order').notNull().default(1),
   ...auditAtFields,
   ...auditByFields,
 });
