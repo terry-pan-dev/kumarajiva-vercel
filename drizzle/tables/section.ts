@@ -10,7 +10,7 @@ export const sectionsTable = pgTable('sections', {
     .notNull(),
   parentId: uuid('parent_id').references((): AnyPgColumn => sectionsTable.id),
   key: text('key'),
-  order: integer('order').notNull().default(0),
+  order: integer('order').notNull().default(1),
   ...auditAtFields,
   ...auditByFields,
 });

@@ -18,7 +18,6 @@
  *     - section_id  the section whose order matches this roll's position
  *     - document_id the document this title belongs to (reuses sutra id)
  *     - title       roll.title
- *     - order       matches section.order
  *
  * Run once: exits early if sections table already contains rows.
  */
@@ -136,7 +135,6 @@ async function main() {
         sectionId,
         documentId,
         title: roll.title,
-        order: idx + 1,
         createdAt: roll.createdAt,
         updatedAt: roll.updatedAt,
         deletedAt: roll.deletedAt,
