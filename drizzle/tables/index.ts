@@ -5,6 +5,7 @@ export * from './project';
 export * from './reference';
 export * from './roll';
 export * from './section';
+export * from './sectionTitle';
 export * from './sutra';
 export * from './work';
 export * from './team';
