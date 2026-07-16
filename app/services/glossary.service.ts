@@ -6,7 +6,7 @@ import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlo
 import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
-import { type GlossaryImportRow } from './glossary.parse';
+import { groupRows, type GlossaryImportRow } from './glossary.parse';
 
 // Re-exported so callers of importGlossaries can reach the row type from one place.
 // The parsers themselves live in glossary.parse.ts because they run in the browser.
@@ -285,26 +285,18 @@ export type ImportGlossaryResult = {
 };
 
 export const importGlossaries = async (rows: GlossaryImportRow[], userId: string): Promise<ImportGlossaryResult> => {
-  // Group rows by UUID (falling back to chineseTerm as the dedup key)
-  const byKey = new Map<string, GlossaryImportRow[]>();
-  for (const row of rows) {
-    const key = row.uuid || `term:${row.chineseTerm}`;
-    const bucket = byKey.get(key) ?? [];
-    bucket.push(row);
-    byKey.set(key, bucket);
-  }
+  // Same grouping the preview uses, so what gets written matches what was reviewed.
+  const groups = groupRows(rows);
 
-  const uuidKeys = [...byKey.keys()].filter((k) => !k.startsWith('term:'));
-  // Collect every Chinese term across all groups (UUID-keyed and term-keyed alike) for a single term lookup.
-  const allTerms = [...byKey.values()].map((rows) => rows[0].chineseTerm);
+  const uuids = groups.map((g) => g.uuid).filter(Boolean);
+  const terms = groups.map((g) => g.key);
 
   const [existingByUuid, existingByTerm] = await Promise.all([
-    uuidKeys.length > 0 ? readGlossariesByIds(uuidKeys) : Promise.resolve([]),
-    allTerms.length > 0 ? getGlossariesByGivenGlossaries(allTerms) : Promise.resolve([]),
+    uuids.length > 0 ? readGlossariesByIds(uuids) : Promise.resolve([]),
+    terms.length > 0 ? getGlossariesByGivenGlossaries(terms) : Promise.resolve([]),
   ]);
 
   const idMap = new Map(existingByUuid.map((g) => [g.id, g]));
-  // termMap covers all groups, so UUID-keyed rows can fall back to it when the UUID is unknown.
   const termMap = new Map(existingByTerm.map((g) => [g.glossary, g]));
 
   let created = 0;
@@ -312,15 +304,13 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
   let failed = 0;
   const now = new Date().toISOString();
 
-  const entries = [...byKey.entries()];
-
-  for (let i = 0; i < entries.length; i += IMPORT_CONCURRENCY) {
-    const batch = entries.slice(i, i + IMPORT_CONCURRENCY);
+  for (let i = 0; i < groups.length; i += IMPORT_CONCURRENCY) {
+    const batch = groups.slice(i, i + IMPORT_CONCURRENCY);
 
     const results = await Promise.allSettled(
-      batch.map(async ([key, csvRows]) => {
-        const first = csvRows[0];
-        const translations = csvRows
+      batch.map(async (group) => {
+        const first = group.rows[0];
+        const translations = group.rows
           .filter((r) => r.englishTerm)
           .map((r) => ({
             glossary: r.englishTerm,
@@ -334,9 +324,9 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
             author: r.author || null,
           }));
 
-        const isUUID = !key.startsWith('term:');
-        // For UUID-keyed rows: match by ID first, fall back to term in case the record exists under a different/no ID.
-        const existing = isUUID ? (idMap.get(key) ?? termMap.get(first.chineseTerm)) : termMap.get(first.chineseTerm);
+        // Match on the supplied id first, then fall back to the term, which is what the
+        // unique index actually constrains.
+        const existing = (group.uuid ? idMap.get(group.uuid) : undefined) ?? termMap.get(group.key);
 
         if (existing) {
           await updateGlossaryTranslations({
@@ -351,8 +341,8 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
           return 'updated' as const;
         } else {
           await createGlossaryAndIndexInAlgolia({
-            ...(isUUID ? { id: key } : {}),
-            glossary: first.chineseTerm,
+            ...(group.uuid ? { id: group.uuid } : {}),
+            glossary: group.key,
             phonetic: first.phonetic || null,
             cbetaFrequency: first.cbetaFrequency || null,
             author: first.author || null,

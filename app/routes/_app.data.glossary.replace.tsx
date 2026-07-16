@@ -259,6 +259,9 @@ export default function GlossaryReplacePage() {
   const totalGroups = groups.length;
   const totalChunks = Math.ceil(totalGroups / CHUNK_SIZE);
 
+  // A term whose rows carry more than one UUID is ambiguous — groupRows keeps the first.
+  const uuidConflicts = groups.filter((g) => g.uuidConflict);
+
   const currentChunkGroups = groups.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
   const currentChunkRows = currentChunkGroups.flatMap((g) => g.rows);
   const remainingRows = groups.slice(chunkIndex * CHUNK_SIZE).flatMap((g) => g.rows);
@@ -427,6 +430,23 @@ export default function GlossaryReplacePage() {
         </CardContent>
       </Card>
 
+      {/* ── Ambiguous UUIDs in the uploaded file ── */}
+      {uuidConflicts.length > 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {uuidConflicts.length} {uuidConflicts.length === 1 ? 'term carries' : 'terms carry'} more than one UUID in
+            this file (
+            {uuidConflicts
+              .slice(0, 5)
+              .map((g) => g.key)
+              .join('、')}
+            {uuidConflicts.length > 5 ? '…' : ''}). Each term can only be one entry, so the first UUID is kept and the
+            others are discarded. Fix the file if those ids matter.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* ── Progress + Import All ── */}
       {totalGroups > 0 && (
         <div className="space-y-3 rounded-lg border p-4">
@@ -485,8 +505,8 @@ export default function GlossaryReplacePage() {
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{totals.updated}</p>
-                <p className="text-foreground mt-1 text-sm font-medium">Merged</p>
-                <p className="text-muted-foreground text-xs">duplicate keys in file</p>
+                <p className="text-foreground mt-1 text-sm font-medium">Updated</p>
+                <p className="text-muted-foreground text-xs">already existed — expected 0</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-destructive text-3xl font-bold">{totals.failed}</p>

@@ -344,8 +344,8 @@ export default function GlossaryImportPage() {
   const currentChunkGroups = groups.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
   // Merge grouped terms with per-chunk DB data for the comparison panel.
   const currentChunk: GlossaryGroup[] = currentChunkGroups.map((g) => {
-    const first = g.rows[0];
-    const existing = first.uuid ? (chunkExisting[first.uuid] ?? null) : (chunkExisting[first.chineseTerm] ?? null);
+    // Mirrors the server's match order in importGlossaries: id first, then term.
+    const existing = (g.uuid ? chunkExisting[g.uuid] : null) ?? chunkExisting[g.key] ?? null;
     return { ...g, existing };
   });
   const currentChunkRows = currentChunkGroups.flatMap((g) => g.rows);
@@ -395,8 +395,10 @@ export default function GlossaryImportPage() {
     const chunk = groups.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
     if (chunk.length === 0) return;
 
-    const uuids = chunk.filter((g) => g.rows[0].uuid).map((g) => g.rows[0].uuid);
-    const terms = chunk.filter((g) => !g.rows[0].uuid).map((g) => g.rows[0].chineseTerm);
+    // Every group has a term; only some carry a UUID. Look both up — a group's id may be
+    // unknown to the database while its term already exists.
+    const uuids = chunk.map((g) => g.uuid).filter(Boolean);
+    const terms = chunk.map((g) => g.key);
 
     existingFetcherSubmit(
       { intent: 'fetch-existing', uuids: JSON.stringify(uuids), terms: JSON.stringify(terms) },

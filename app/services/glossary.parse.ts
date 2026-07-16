@@ -24,7 +24,12 @@ export type GlossaryImportRow = {
 };
 
 export type GroupedTerm = {
+  // The Chinese term. This is the group's identity — see groupRows.
   key: string;
+  // First non-empty UUID among the rows; '' when the file supplied none.
+  uuid: string;
+  // Set when the rows for this term disagree on UUID, which makes the file ambiguous.
+  uuidConflict: boolean;
   rows: GlossaryImportRow[];
 };
 
@@ -139,17 +144,33 @@ export async function parseGlossaryFile(file: File): Promise<GlossaryImportRow[]
   return rows;
 }
 
-// Groups CSV/XLSX rows by UUID (if present) or Chinese term. One group = one glossary entry.
-// Mirrors the keying importGlossaries uses server-side, so the preview matches what gets written.
+// Groups rows into one entry per Chinese term. One group = one glossary entry.
+//
+// The term — not the UUID — is the identity, because `unique_glossary_idx` permits only one
+// row per term. Keying on UUID instead would let a UUID-bearing row and a bare row for the
+// same term become two groups that the database can never hold at once. A UUID is still
+// carried along so a newly created entry can keep the id from the file.
+//
+// Sorted by term so chunk boundaries are deterministic and the preview reads alphabetically.
 export function groupRows(rows: GlossaryImportRow[]): GroupedTerm[] {
-  const byKey = new Map<string, GlossaryImportRow[]>();
+  const byTerm = new Map<string, GlossaryImportRow[]>();
   for (const row of rows) {
-    const key = row.uuid || `term:${row.chineseTerm}`;
-    const bucket = byKey.get(key) ?? [];
+    const bucket = byTerm.get(row.chineseTerm) ?? [];
     bucket.push(row);
-    byKey.set(key, bucket);
+    byTerm.set(row.chineseTerm, bucket);
   }
-  return [...byKey.entries()].map(([key, groupRows]) => ({ key, rows: groupRows }));
+
+  return [...byTerm.entries()]
+    .map(([term, termRows]) => {
+      const uuids = [...new Set(termRows.map((r) => r.uuid).filter(Boolean))];
+      return {
+        key: term,
+        uuid: uuids[0] ?? '',
+        uuidConflict: uuids.length > 1,
+        rows: termRows,
+      };
+    })
+    .sort((a, b) => a.key.localeCompare(b.key, 'zh-Hans-CN'));
 }
 
 // Splits groups into CHUNK_SIZE-term batches, flattened back to rows for posting.
