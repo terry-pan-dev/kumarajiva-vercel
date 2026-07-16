@@ -1,10 +1,16 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import OpenAI from 'openai';
 import 'dotenv/config';
 
 import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlossary } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
+
+import { type GlossaryImportRow } from './glossary.parse';
+
+// Re-exported so callers of importGlossaries can reach the row type from one place.
+// The parsers themselves live in glossary.parse.ts because they run in the browser.
+export type { GlossaryImportRow } from './glossary.parse';
 
 const dbClient = getDb();
 
@@ -272,19 +278,6 @@ export const getAllGlossaries = async (): Promise<ReadGlossary[]> => {
   return glossaries;
 };
 
-export type GlossaryImportRow = {
-  uuid: string;
-  chineseTerm: string;
-  englishTerm: string;
-  chineseSutraText: string;
-  englishSutraText: string;
-  sutraName: string;
-  volume: string;
-  cbetaFrequency: string;
-  author: string;
-  phonetic: string;
-};
-
 export type ImportGlossaryResult = {
   created: number;
   updated: number;
@@ -397,4 +390,24 @@ export const deleteGlossariesByUserId = async (userId: string) => {
     objectIDs: glossaryIds,
   });
   return await dbClient.delete(glossariesTable).where(eq(glossariesTable.createdBy, userId));
+};
+
+// Empties the glossary table and drops its objects from the Algolia index.
+// Destructive and irreversible — callers must gate this on the appropriate ability.
+export const deleteAllGlossaries = async (): Promise<{ deleted: number }> => {
+  // Only rows that were actually indexed carry a searchId.
+  const rows = await dbClient
+    .select({ searchId: glossariesTable.searchId })
+    .from(glossariesTable)
+    .where(isNotNull(glossariesTable.searchId));
+
+  const objectIDs = rows.map((r) => r.searchId).filter((id): id is string => Boolean(id));
+
+  // Remove only the objects this table owns rather than clearing the shared index. deleteObjects auto-batches.
+  if (objectIDs.length > 0) {
+    await algoliaClient.deleteObjects({ indexName: 'glossaries', objectIDs });
+  }
+
+  const deleted = await dbClient.delete(glossariesTable).returning({ id: glossariesTable.id });
+  return { deleted: deleted.length };
 };

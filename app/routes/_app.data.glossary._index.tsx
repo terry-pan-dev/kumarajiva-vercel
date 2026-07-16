@@ -68,6 +68,22 @@ function ImportGlossaryLink() {
   );
 }
 
+function ReplaceGlossaryLink() {
+  return (
+    <div className="flex items-center gap-3">
+      <Button asChild>
+        <Link to="/data/glossary/replace">
+          <Icons.Add className="mr-2 h-4 w-4" />
+          Go to Replace Page
+        </Link>
+      </Button>
+      <p className="text-muted-foreground text-sm">
+        Upload a CSV to discard the current glossary and replace it with the file&apos;s entries.
+      </p>
+    </div>
+  );
+}
+
 export default function DataGlossary() {
   return (
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
@@ -92,6 +108,21 @@ export default function DataGlossary() {
         </CardHeader>
         <CardContent>
           <ImportGlossaryLink />
+        </CardContent>
+      </Card>
+
+      <Separator />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-primary text-2xl">Replace Glossary</CardTitle>
+          <CardDescription className="text-base">
+            Upload a CSV file to completely replace the glossary. Every existing entry is deleted first, so download a
+            backup before you start.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ReplaceGlossaryLink />
         </CardContent>
       </Card>
     </div>
