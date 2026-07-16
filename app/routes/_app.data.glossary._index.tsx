@@ -19,20 +19,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return null;
 }
 
-function DownloadGlossaryButton() {
+function DownloadGlossaryButton({
+  format,
+  label,
+  variant,
+}: {
+  format: 'csv' | 'xlsx';
+  label: string;
+  variant?: 'default' | 'secondary';
+}) {
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
 
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch('/data/glossary/download');
+      const response = await fetch(`/data/glossary/download?format=${format}`);
       if (!response.ok) throw new Error('Download failed');
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'glossary.csv';
+      a.download = format === 'csv' ? 'glossary.csv' : 'glossary.xlsx';
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -43,13 +51,13 @@ function DownloadGlossaryButton() {
   };
 
   return (
-    <Button onClick={handleDownload} disabled={isDownloading}>
+    <Button variant={variant} onClick={handleDownload} disabled={isDownloading}>
       {isDownloading ? (
         <Icons.Loader className="mr-2 h-4 w-4 animate-spin" />
       ) : (
         <Icons.Download className="mr-2 h-4 w-4" />
       )}
-      {isDownloading ? 'Preparing download…' : 'Download CSV'}
+      {isDownloading ? 'Preparing download…' : label}
     </Button>
   );
 }
@@ -100,10 +108,14 @@ export default function DataGlossary() {
         <Card>
           <CardHeader>
             <CardTitle className="text-primary text-2xl">Download Glossary</CardTitle>
-            <CardDescription className="text-base">Export the full glossary as a CSV file.</CardDescription>
+            <CardDescription className="text-base">
+              Export the full glossary as an Excel or CSV file. Either can be re-uploaded on the import and replace
+              pages.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <DownloadGlossaryButton />
+          <CardContent className="flex items-center gap-3">
+            <DownloadGlossaryButton format="xlsx" label="Download Excel" />
+            <DownloadGlossaryButton format="csv" variant="secondary" label="Download CSV" />
           </CardContent>
         </Card>
       )}

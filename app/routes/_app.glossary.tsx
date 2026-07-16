@@ -97,7 +97,7 @@ export default function GlossaryLayout() {
           </div>
           <div className="flex items-center gap-2">
             <Can I="Download" this="Glossary">
-              <Link reloadDocument to="/glossary/download" download="glossary.csv">
+              <Link reloadDocument to="/glossary/download" download="glossary.xlsx">
                 <Icons.Download className="h-6 w-6 text-slate-800" />
               </Link>
             </Can>
