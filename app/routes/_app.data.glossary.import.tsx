@@ -6,6 +6,7 @@ import { AlertCircle, ArrowLeftRight, CheckCircle2, ChevronRight, FileText } fro
 import { useEffect, useRef, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { Icons } from '~/components/icons';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Badge } from '~/components/ui/badge';
@@ -61,6 +62,9 @@ type ActionResponse =
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  // Import creates entries as well as updating them, so Create is the gate.
+  if (defineAbilityFor(user).cannot('Create', 'Glossary')) throw redirect('/data/glossary');
+
   return json({ userId: user.id });
 }
 
@@ -69,6 +73,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  // Covers both intents — fetch-existing reads glossary rows, import-chunk writes them.
+  if (defineAbilityFor(user).cannot('Create', 'Glossary')) {
+    return json<ActionResponse>({ intent: 'error', message: 'Not allowed.' }, { status: 403 });
+  }
 
   const formData = await request.formData();
   const intent = formData.get('intent') as string;

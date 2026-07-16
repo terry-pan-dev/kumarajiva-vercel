@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs, MetaFunction } from '@vercel/remix';
 import { json, Outlet, redirect, useLoaderData, useLocation } from '@remix-run/react';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
@@ -23,6 +24,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
+  }
+  // Guards every /data/* route in one place, and makes the sidebar hiding this menu meaningful
+  // rather than cosmetic. Individual routes still gate their own specific actions on top.
+  if (defineAbilityFor(user).cannot('Read', 'DataManagement')) {
+    throw redirect('/dashboard');
   }
   const allUsers = await readUsers();
   return json({

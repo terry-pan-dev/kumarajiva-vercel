@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, ChevronRight, FileText } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { Icons } from '~/components/icons';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
@@ -33,6 +34,10 @@ type ActionResponse =
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  // Replacing the glossary is admin-only. The index page hides the link, but that's cosmetic —
+  // this check and the one in the action are what actually hold.
+  if (defineAbilityFor(user).cannot('Delete', 'Glossary')) throw redirect('/data/glossary');
+
   return json({ userId: user.id });
 }
 
@@ -41,6 +46,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  // The gate that matters: a non-admin POSTing here directly must not reach deleteAllGlossaries.
+  if (defineAbilityFor(user).cannot('Delete', 'Glossary')) {
+    return json<ActionResponse>({ intent: 'error', message: 'Not allowed.' }, { status: 403 });
+  }
 
   const formData = await request.formData();
   const intent = formData.get('intent') as string;

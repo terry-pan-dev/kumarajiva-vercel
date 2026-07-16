@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs } from '@remix-run/node';
 import { redirect } from '@remix-run/node';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { getAllGlossaries } from '~/services/glossary.service';
 
 function escapeCSVValue(value: unknown): string {
@@ -32,6 +33,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
+  }
+  if (defineAbilityFor(user).cannot('Download', 'Glossary')) {
+    throw redirect('/data/glossary');
   }
   const glossaries = await getAllGlossaries();
   const reformedGlossaries = glossaries.reduce((acc, glossary) => {

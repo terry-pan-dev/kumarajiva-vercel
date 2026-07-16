@@ -1,10 +1,12 @@
 import type { LoaderFunctionArgs } from '@remix-run/node';
 
+import { useAbility } from '@casl/react';
 import { redirect } from '@remix-run/node';
 import { Link } from '@remix-run/react';
 import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { AbilityContext } from '~/authorisation';
 import { Icons } from '~/components/icons';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
@@ -85,46 +87,63 @@ function ReplaceGlossaryLink() {
 }
 
 export default function DataGlossary() {
+  // Cosmetic only — each route gates itself server-side. These just avoid offering a card
+  // that would redirect on click.
+  const ability = useAbility(AbilityContext);
+  const canDownload = ability.can('Download', 'Glossary');
+  const canImport = ability.can('Create', 'Glossary');
+  const canReplace = ability.can('Delete', 'Glossary');
+
   return (
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-primary text-2xl">Download Glossary</CardTitle>
-          <CardDescription className="text-base">Export the full glossary as a CSV file.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DownloadGlossaryButton />
-        </CardContent>
-      </Card>
+      {canDownload && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-primary text-2xl">Download Glossary</CardTitle>
+            <CardDescription className="text-base">Export the full glossary as a CSV file.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DownloadGlossaryButton />
+          </CardContent>
+        </Card>
+      )}
 
-      <Separator />
+      {canImport && (
+        <>
+          {canDownload && <Separator />}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-primary text-2xl">Import Glossary</CardTitle>
-          <CardDescription className="text-base">
-            Upload a CSV file to bulk-import glossary entries. The file must match the downloaded format.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ImportGlossaryLink />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-primary text-2xl">Import Glossary</CardTitle>
+              <CardDescription className="text-base">
+                Upload a CSV file to bulk-import glossary entries. The file must match the downloaded format.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ImportGlossaryLink />
+            </CardContent>
+          </Card>
+        </>
+      )}
 
-      <Separator />
+      {canReplace && (
+        <>
+          <Separator />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-primary text-2xl">Replace Glossary</CardTitle>
-          <CardDescription className="text-base">
-            Upload a CSV file to completely replace the glossary. Every existing entry is deleted first, so download a
-            backup before you start.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ReplaceGlossaryLink />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-primary text-2xl">Replace Glossary</CardTitle>
+              <CardDescription className="text-base">
+                Upload a CSV file to completely replace the glossary. Every existing entry is deleted first, so download
+                a backup before you start.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ReplaceGlossaryLink />
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
