@@ -8,6 +8,7 @@ import { projectsTable } from './tables/project';
 import { referencesTable } from './tables/reference';
 import { rollsTable } from './tables/roll';
 import { sectionsTable } from './tables/section';
+import { sectionTitlesTable } from './tables/sectionTitle';
 import { sutrasTable } from './tables/sutra';
 import { teamsTable } from './tables/team';
 import { usersTable } from './tables/user';
@@ -105,6 +106,8 @@ export const usersTableRelations = relations(usersTable, ({ one }) => ({
 
 export const worksTableRelations = relations(worksTable, ({ many }) => ({
   documents: many(documentsTable),
+  sections: many(sectionsTable),
+  projects: many(projectsTable),
 }));
 
 export const documentsTableRelations = relations(documentsTable, ({ one, many }) => ({
@@ -112,16 +115,16 @@ export const documentsTableRelations = relations(documentsTable, ({ one, many })
     fields: [documentsTable.workId],
     references: [worksTable.id],
   }),
-  sections: many(sectionsTable),
+  sectionTitles: many(sectionTitlesTable),
   contributors: many(contributorsTable),
   sourceProjects: many(projectsTable, { relationName: 'project_source_document' }),
   targetProjects: many(projectsTable, { relationName: 'project_target_document' }),
 }));
 
 export const sectionsTableRelations = relations(sectionsTable, ({ one, many }) => ({
-  document: one(documentsTable, {
-    fields: [sectionsTable.documentId],
-    references: [documentsTable.id],
+  work: one(worksTable, {
+    fields: [sectionsTable.workId],
+    references: [worksTable.id],
   }),
   parent: one(sectionsTable, {
     fields: [sectionsTable.parentId],
@@ -130,6 +133,18 @@ export const sectionsTableRelations = relations(sectionsTable, ({ one, many }) =
   }),
   children: many(sectionsTable, {
     relationName: 'section_parent_child',
+  }),
+  sectionTitles: many(sectionTitlesTable),
+}));
+
+export const sectionTitlesTableRelations = relations(sectionTitlesTable, ({ one }) => ({
+  section: one(sectionsTable, {
+    fields: [sectionTitlesTable.sectionId],
+    references: [sectionsTable.id],
+  }),
+  document: one(documentsTable, {
+    fields: [sectionTitlesTable.documentId],
+    references: [documentsTable.id],
   }),
 }));
 
@@ -141,6 +156,10 @@ export const contributorsTableRelations = relations(contributorsTable, ({ one })
 }));
 
 export const projectsTableRelations = relations(projectsTable, ({ one }) => ({
+  work: one(worksTable, {
+    fields: [projectsTable.workId],
+    references: [worksTable.id],
+  }),
   sourceDocument: one(documentsTable, {
     fields: [projectsTable.sourceDocumentId],
     references: [documentsTable.id],
