@@ -3,10 +3,14 @@ import { boolean, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { auditAtFields, auditByFields } from '../audit';
 import { documentsTable } from './document';
 import { teamsTable } from './team';
+import { worksTable } from './work';
 
 export const projectsTable = pgTable('projects', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
+  workId: uuid('work_id')
+    .references(() => worksTable.id)
+    .notNull(),
   sourceDocumentId: uuid('source_document_id')
     .references(() => documentsTable.id)
     .notNull(),
