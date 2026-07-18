@@ -8,7 +8,6 @@ import { projectsTable } from './tables/project';
 import { referencesTable } from './tables/reference';
 import { rollsTable } from './tables/roll';
 import { sectionsTable } from './tables/section';
-import { sectionTitlesTable } from './tables/sectionTitle';
 import { sutrasTable } from './tables/sutra';
 import { teamsTable } from './tables/team';
 import { usersTable } from './tables/user';
@@ -115,7 +114,6 @@ export const documentsTableRelations = relations(documentsTable, ({ one, many })
     fields: [documentsTable.workId],
     references: [worksTable.id],
   }),
-  sectionTitles: many(sectionTitlesTable),
   contributors: many(contributorsTable),
   sourceProjects: many(projectsTable, { relationName: 'project_source_document' }),
   targetProjects: many(projectsTable, { relationName: 'project_target_document' }),
@@ -126,6 +124,10 @@ export const sectionsTableRelations = relations(sectionsTable, ({ one, many }) =
     fields: [sectionsTable.workId],
     references: [worksTable.id],
   }),
+  document: one(documentsTable, {
+    fields: [sectionsTable.documentId],
+    references: [documentsTable.id],
+  }),
   parent: one(sectionsTable, {
     fields: [sectionsTable.parentId],
     references: [sectionsTable.id],
@@ -133,18 +135,6 @@ export const sectionsTableRelations = relations(sectionsTable, ({ one, many }) =
   }),
   children: many(sectionsTable, {
     relationName: 'section_parent_child',
-  }),
-  sectionTitles: many(sectionTitlesTable),
-}));
-
-export const sectionTitlesTableRelations = relations(sectionTitlesTable, ({ one }) => ({
-  section: one(sectionsTable, {
-    fields: [sectionTitlesTable.sectionId],
-    references: [sectionsTable.id],
-  }),
-  document: one(documentsTable, {
-    fields: [sectionTitlesTable.documentId],
-    references: [documentsTable.id],
   }),
 }));
 
