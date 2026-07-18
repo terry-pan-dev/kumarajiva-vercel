@@ -35,11 +35,11 @@ Table contributors {
 
 Table sections {
   id uuid [pk]
-  document_id uuid [not null, ref: > documents.id]
   work_id uuid [not null, ref: > works.id]
+  document_id uuid [not null, ref: > documents.id]
   parent_id uuid [ref: > sections.id]
   title text
-  order integer [not null, default: 0]
+  order integer [not null, default: 1]
   created_at timestamp
   updated_at timestamp
   deleted_at timestamp
@@ -52,7 +52,7 @@ Table paragraphs {
   document_id uuid [not null, ref: > documents.id]
   section_id uuid [ref: > sections.id]
   passage_key text [not null, note: 'unique within a work by convention; aligns equivalent passages across documents']
-  order integer [not null, default: 0]
+  order integer [not null, default: 1]
   content text [not null]
   created_at timestamp
   updated_at timestamp
@@ -79,7 +79,7 @@ Table projects {
 Table project_references {
   project_id uuid [not null, ref: > projects.id]
   document_id uuid [not null, ref: > documents.id]
-  order integer [not null, default: 0]
+  order integer [not null, default: 1]
 
   indexes {
     (project_id, document_id) [pk]
