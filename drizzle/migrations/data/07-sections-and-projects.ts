@@ -124,7 +124,6 @@ async function populateSections() {
         id: roll.id,
         workId,
         documentId: roll.sutraId,
-        parentId: roll.parentId,
         title: roll.title,
         order: index + 1,
         createdAt: roll.createdAt,
