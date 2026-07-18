@@ -106,6 +106,13 @@
       "when": 1784267465226,
       "tag": "0015_add-work-to-project",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1784334395777,
+      "tag": "0016_revert-to-document-sections",
+      "breakpoints": true
     }
   ]
 }
