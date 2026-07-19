@@ -2,17 +2,15 @@ import { Document, Paragraph, TextRun, HeadingLevel, Packer } from 'docx';
 
 import type { IParagraph } from '~/services/paragraph.service';
 
-interface RollInfo {
-  sutra: {
-    title: string;
-  };
-  title: string;
+interface SectionInfo {
+  documentTitle: string;
+  sectionTitle: string | null;
 }
 
 export const useDownloadDocx = () => {
   const downloadDocx = async (
     paragraphs: Omit<IParagraph, 'references' | 'histories' | 'originComments' | 'targetComments'>[],
-    rollInfo: RollInfo,
+    sectionInfo: SectionInfo,
     fileName: string = 'translation.docx',
   ) => {
     // Create new document
@@ -21,7 +19,7 @@ export const useDownloadDocx = () => {
         {
           properties: {},
           children: [
-            // Sutra Title as H1
+            // Document Title as H1
             new Paragraph({
               heading: HeadingLevel.HEADING_1,
               alignment: 'center',
@@ -30,13 +28,13 @@ export const useDownloadDocx = () => {
               },
               children: [
                 new TextRun({
-                  text: rollInfo?.sutra.title || '',
+                  text: sectionInfo?.documentTitle || '',
                   bold: true,
                   size: 32,
                 }),
               ],
             }),
-            // Roll Title as H2
+            // Section Title as H2
             new Paragraph({
               heading: HeadingLevel.HEADING_2,
               alignment: 'center',
@@ -45,7 +43,7 @@ export const useDownloadDocx = () => {
               },
               children: [
                 new TextRun({
-                  text: rollInfo?.title || '',
+                  text: sectionInfo?.sectionTitle || '',
                   bold: true,
                   size: 28,
                 }),
