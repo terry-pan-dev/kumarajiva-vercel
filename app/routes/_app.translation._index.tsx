@@ -133,12 +133,11 @@ export default function TranslationIndex() {
                     <ChevronRight size={20} />
                   </div>
                   <div>
-                    <h3 className="text-foreground text-lg font-semibold">
+                    <h3 className="text-foreground text-lg font-semibold">{project.name || 'Untitled project'}</h3>
+                    <div className="text-muted-foreground text-sm">
                       {project.sourceDocument?.title}
-                      {project.targetDocument && (
-                        <span className="text-muted-foreground ml-2 font-normal">/ {project.targetDocument.title}</span>
-                      )}
-                    </h3>
+                      {project.targetDocument && <span className="font-normal"> / {project.targetDocument.title}</span>}
+                    </div>
                     <div className="text-muted-foreground text-xs">{sourceSections.length} sections</div>
                   </div>
                 </div>

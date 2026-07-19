@@ -3,7 +3,7 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
-import type { ContributorRole, Lang } from '~/utils/constants';
+import type { Lang } from '~/utils/constants';
 
 import { assertAuthUser } from '~/auth.server';
 import { WorkForm } from '~/components/data/WorkForm';
@@ -11,22 +11,8 @@ import { WorkRow } from '~/components/data/WorkRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { DbContributors } from '~/services/text.crud';
 import { createDocument, createWork, getWorks, updateDocument, updateWork } from '~/services/text.service';
-import { CONTRIBUTOR_ROLE_VALUES, LANG_VALUES } from '~/utils/constants';
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function parseContributors(formData: FormData) {
-  const count = parseInt(formData.get('contributorCount') as string, 10) || 0;
-  const contributors: { name: string; role: ContributorRole }[] = [];
-  for (let i = 0; i < count; i++) {
-    const name = (formData.get(`contributorName_${i}`) as string)?.trim();
-    const role = formData.get(`contributorRole_${i}`) as string;
-    if (name && CONTRIBUTOR_ROLE_VALUES.includes(role as ContributorRole)) {
-      contributors.push({ name, role: role as ContributorRole });
-    }
-  }
-  return contributors;
-}
+import { LANG_VALUES } from '~/utils/constants';
+import { parseContributors } from '~/utils/contributors';
 
 // ─── Action ─────────────────────────────────────────────────────────────────
 

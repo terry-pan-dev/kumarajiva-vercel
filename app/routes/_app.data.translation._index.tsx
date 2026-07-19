@@ -3,11 +3,14 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import type { Lang } from '~/utils/constants';
+
 import { assertAuthUser } from '~/auth.server';
 import { ProjectForm } from '~/components/data/ProjectForm';
 import { ProjectRow } from '~/components/data/ProjectRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { createProject, getProjects } from '~/services/project.service';
+import { DbContributors } from '~/services/text.crud';
 import {
   createDocument,
   createSection,
@@ -17,6 +20,8 @@ import {
   updateDocument,
   updateSection,
 } from '~/services/text.service';
+import { LANG_VALUES } from '~/utils/constants';
+import { parseContributors } from '~/utils/contributors';
 
 // ─── Action ─────────────────────────────────────────────────────────────────
 
@@ -136,7 +141,28 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
-  // ── Project: create from existing documents ──
+  // ── Document: create (inline "new document" panel in ProjectForm) ──
+  if (intent === 'create-document') {
+    const workId = formData.get('workId') as string;
+    const title = (formData.get('title') as string).trim();
+    const subtitle = ((formData.get('subtitle') as string) ?? '').trim() || null;
+    const language = formData.get('language') as string;
+
+    if (!LANG_VALUES.includes(language as Lang)) {
+      return json({ success: false, error: 'Invalid language' }, { status: 400 });
+    }
+
+    const [created] = await createDocument({ workId, title, subtitle, language: language as Lang }, user);
+
+    const contributors = parseContributors(formData);
+    if (contributors.length) {
+      await DbContributors.createMany(contributors.map((c) => ({ ...c, documentId: created.id })));
+    }
+
+    return json({ success: true });
+  }
+
+  // ── Project: create from two existing documents of one work ──
   if (intent === 'create-project') {
     const sourceDocumentId = formData.get('sourceDocumentId') as string;
     const targetDocumentId = formData.get('targetDocumentId') as string;

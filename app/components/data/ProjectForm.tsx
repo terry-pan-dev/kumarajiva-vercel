@@ -1,9 +1,10 @@
 import { useFetcher } from '@remix-run/react';
-import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { Plus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { SUPPORTED_LANGUAGES } from '~/utils/constants';
 
+import { DocumentForm } from './DocumentForm';
 import { inputClass, selectClass, textareaClass } from './fieldClasses';
 
 const bg = 'bg-background';
@@ -50,7 +51,14 @@ export function ProjectForm({
     if (fetcher.state === 'idle' && fetcher.data?.success) onClose();
   }, [fetcher.state, fetcher.data, onClose]);
 
-  const allDocuments = works?.flatMap((w) => w.documents.map((d) => ({ ...d, workTitle: w.title }))) ?? [];
+  // Create-mode selection state. A project's source and target must belong to
+  // the same work, so we pick the work first and scope both document pickers to
+  // it — the DB's composite FKs then can never be violated.
+  const [workId, setWorkId] = useState('');
+  const [sourceId, setSourceId] = useState('');
+  const [showNewDocument, setShowNewDocument] = useState(false);
+
+  const workDocuments = works?.find((w) => w.id === workId)?.documents ?? [];
 
   return (
     <div className="bg-primary text-primary-foreground rounded-lg p-5 shadow-xl">
@@ -157,7 +165,7 @@ export function ProjectForm({
             </div>
           </>
         ) : (
-          // ── Create mode: select existing documents ──
+          // ── Create mode: build a project from documents of one work ──
           <>
             <input type="hidden" name="intent" value="create-project" />
 
@@ -166,35 +174,67 @@ export function ProjectForm({
               <input name="name" className={inputClass(bg)} placeholder="e.g., Great Prajnaparamita Sutra" />
             </div>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
-                  Source Document <span className="text-destructive">*</span>
-                </label>
-                <select required name="sourceDocumentId" className={selectClass(bg)}>
-                  <option value="">Select source document…</option>
-                  {allDocuments.map((doc) => (
-                    <option key={doc.id} value={doc.id}>
-                      {doc.workTitle} — {doc.title} ({doc.language})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
-                  Target Document <span className="text-destructive">*</span>
-                </label>
-                <select required name="targetDocumentId" className={selectClass(bg)}>
-                  <option value="">Select target document…</option>
-                  {allDocuments.map((doc) => (
-                    <option key={doc.id} value={doc.id}>
-                      {doc.workTitle} — {doc.title} ({doc.language})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
+                Work <span className="text-destructive">*</span>
+              </label>
+              <select
+                required
+                value={workId}
+                className={selectClass(bg)}
+                onChange={(e) => {
+                  setWorkId(e.target.value);
+                  setSourceId('');
+                }}
+              >
+                <option value="">Select work…</option>
+                {works?.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.title}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {workId && (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
+                    Source Document <span className="text-destructive">*</span>
+                  </label>
+                  <select
+                    required
+                    value={sourceId}
+                    name="sourceDocumentId"
+                    className={selectClass(bg)}
+                    onChange={(e) => setSourceId(e.target.value)}
+                  >
+                    <option value="">Select source document…</option>
+                    {workDocuments.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.title} ({doc.language})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
+                    Target Document <span className="text-destructive">*</span>
+                  </label>
+                  <select required name="targetDocumentId" className={selectClass(bg)}>
+                    <option value="">Select target document…</option>
+                    {workDocuments
+                      .filter((doc) => doc.id !== sourceId)
+                      .map((doc) => (
+                        <option key={doc.id} value={doc.id}>
+                          {doc.title} ({doc.language})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -214,6 +254,28 @@ export function ProjectForm({
           </button>
         </div>
       </fetcher.Form>
+
+      {/* Create-mode only: reuse DocumentForm to add a document to the selected
+          work inline. Kept OUTSIDE the project <form> (forms can't nest) and
+          collapsed by default. On success DocumentForm revalidates the loader,
+          so the new document appears in both source/target lists automatically. */}
+      {!project && workId && (
+        <div className="border-primary-foreground/20 mt-4 border-t pt-4">
+          <button
+            type="button"
+            onClick={() => setShowNewDocument((v) => !v)}
+            className="text-primary-foreground/70 hover:text-primary-foreground flex items-center gap-1.5 text-xs font-medium transition"
+          >
+            <Plus size={14} className={showNewDocument ? 'rotate-45 transition' : 'transition'} />
+            Create new document in this work
+          </button>
+          {showNewDocument && (
+            <div className="mt-3">
+              <DocumentForm workId={workId} onClose={() => setShowNewDocument(false)} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -144,10 +144,7 @@ export function ProjectRow({
           </div>
           <div>
             <h3 className="text-foreground flex items-center gap-1.5 text-lg font-semibold">
-              {project.sourceDocument.title}
-              {project.targetDocument.title && (
-                <span className="text-muted-foreground font-normal"> / {project.targetDocument.title}</span>
-              )}
+              {project.name || 'Untitled project'}
               <button
                 type="button"
                 title="Edit project"
@@ -160,6 +157,10 @@ export function ProjectRow({
                 <Pencil size={13} />
               </button>
             </h3>
+            <div className="text-muted-foreground text-sm">
+              {project.sourceDocument.title}
+              {project.targetDocument.title && <span className="font-normal"> / {project.targetDocument.title}</span>}
+            </div>
             <div className="text-muted-foreground text-xs">{project.sourceDocument.sections.length} Sections</div>
           </div>
         </div>
