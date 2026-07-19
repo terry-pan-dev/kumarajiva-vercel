@@ -47,20 +47,26 @@ export const getSectionsByDocument = async (documentId: string) => {
   return DbSections.findByDocumentId(documentId);
 };
 
-export const createSection = async (section: Omit<CreateSection, 'createdBy' | 'updatedBy'>, user: ReadUser) => {
-  return DbSections.create({ ...section, createdBy: user.id, updatedBy: user.id });
+export const createSection = async (
+  section: Omit<CreateSection, 'createdBy' | 'updatedBy' | 'workId'>,
+  user: ReadUser,
+) => {
+  const workId = await DbDocuments.findWorkId(section.documentId);
+  if (!workId) {
+    throw new Error(`Cannot create section: document ${section.documentId} not found`);
+  }
+  return DbSections.create({ ...section, workId, createdBy: user.id, updatedBy: user.id });
 };
 
 export const updateSection = async (
   id: string,
-  data: Partial<Omit<CreateSection, 'createdBy' | 'updatedBy'>>,
+  data: Partial<Omit<CreateSection, 'createdBy' | 'updatedBy' | 'workId'>>,
   user: ReadUser,
 ) => {
-  return DbSections.updateById(id, { ...data, updatedBy: user.id });
-};
-
-export const getAllWorks = async () => {
-  return DbWorks.findAll();
+  // If the section is moved to another document, keep the denormalised
+  // work_id in step with its new document.
+  const workId = data.documentId ? await DbDocuments.findWorkId(data.documentId) : undefined;
+  return DbSections.updateById(id, { ...data, ...(workId ? { workId } : {}), updatedBy: user.id });
 };
 
 export const getContributorsByDocument = async (documentId: string) => {

@@ -69,6 +69,17 @@ export const DbDocuments = {
     });
   },
 
+  // A document's work is its single source of truth; sections and projects
+  // denormalise work_id, so they derive it from the document rather than
+  // asking callers to pass it. This is the lightweight lookup for that.
+  findWorkId: async (id: string): Promise<string | null> => {
+    const document = await db.query.documentsTable.findFirst({
+      where: eq(documentsTable.id, id),
+      columns: { workId: true },
+    });
+    return document?.workId ?? null;
+  },
+
   create: async (document: CreateDocument) => {
     return db.insert(documentsTable).values(document).returning({ id: documentsTable.id });
   },
