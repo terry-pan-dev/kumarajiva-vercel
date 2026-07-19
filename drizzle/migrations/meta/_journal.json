@@ -113,6 +113,13 @@
       "when": 1784334395777,
       "tag": "0016_revert-to-document-sections",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784361099922,
+      "tag": "0017_composite-foreign-keys",
+      "breakpoints": true
     }
   ]
 }
