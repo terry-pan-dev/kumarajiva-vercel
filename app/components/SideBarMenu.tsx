@@ -1,3 +1,4 @@
+import { useAbility } from '@casl/react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Form, Link, NavLink, useFetcher, useLocation, useNavigation } from '@remix-run/react';
 import { useDebounce } from '@uidotdev/usehooks';
@@ -6,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { match } from 'ts-pattern';
 
+import { AbilityContext } from '~/authorisation';
 import {
   Avatar,
   AvatarFallback,
@@ -65,6 +67,12 @@ export function SideBarMenu({
   const { isOpen, setIsOpen } = useSideBarMenuContext();
   const [dataMenuOpen, setDataMenuOpen] = useState(() => pathname.startsWith('/data'));
 
+  // Which entries appear is decided by ability.ts, not by role checks spelled out here,
+  // so the menu can't drift from what the routes actually allow.
+  const ability = useAbility(AbilityContext);
+  const canReadAdmin = ability.can('Read', 'Administration');
+  const canManageData = ability.can('Read', 'DataManagement');
+
   useEffect(() => {
     if (pathname.startsWith('/data')) {
       setDataMenuOpen(true);
@@ -116,12 +124,7 @@ export function SideBarMenu({
 
         <nav className="flex w-full flex-1 flex-col gap-1 border-y border-yellow-600 py-4">
           {menuItems
-            .filter((item) => {
-              if (item.href.includes('admin') && userRole !== 'admin') {
-                return false;
-              }
-              return true;
-            })
+            .filter((item) => item.href !== '/admin' || canReadAdmin)
             .map((item) => (
               <Tooltip key={item.href} delayDuration={500}>
                 <TooltipTrigger asChild>
@@ -151,7 +154,7 @@ export function SideBarMenu({
               </Tooltip>
             ))}
 
-          {(userRole === 'admin' || userRole === 'manager') && (
+          {canManageData && (
             <div>
               <Tooltip delayDuration={500}>
                 <TooltipTrigger asChild>

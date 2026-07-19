@@ -1,10 +1,12 @@
 import type { LoaderFunctionArgs } from '@remix-run/node';
 
+import { useAbility } from '@casl/react';
 import { redirect } from '@remix-run/node';
 import { Link } from '@remix-run/react';
 import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { AbilityContext } from '~/authorisation';
 import { Icons } from '~/components/icons';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
@@ -17,20 +19,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return null;
 }
 
-function DownloadGlossaryButton() {
+function DownloadGlossaryButton({
+  format,
+  label,
+  variant,
+}: {
+  format: 'csv' | 'xlsx';
+  label: string;
+  variant?: 'default' | 'secondary';
+}) {
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
 
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch('/data/glossary/download');
+      const response = await fetch(`/data/glossary/download?format=${format}`);
       if (!response.ok) throw new Error('Download failed');
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'glossary.csv';
+      a.download = format === 'csv' ? 'glossary.csv' : 'glossary.xlsx';
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -41,13 +51,13 @@ function DownloadGlossaryButton() {
   };
 
   return (
-    <Button onClick={handleDownload} disabled={isDownloading}>
+    <Button variant={variant} onClick={handleDownload} disabled={isDownloading}>
       {isDownloading ? (
         <Icons.Loader className="mr-2 h-4 w-4 animate-spin" />
       ) : (
         <Icons.Download className="mr-2 h-4 w-4" />
       )}
-      {isDownloading ? 'Preparing download…' : 'Download CSV'}
+      {isDownloading ? 'Preparing download…' : label}
     </Button>
   );
 }
@@ -68,32 +78,84 @@ function ImportGlossaryLink() {
   );
 }
 
+function ReplaceGlossaryLink() {
+  return (
+    <div className="flex items-center gap-3">
+      <Button asChild>
+        <Link to="/data/glossary/replace">
+          <Icons.Add className="mr-2 h-4 w-4" />
+          Go to Replace Page
+        </Link>
+      </Button>
+      <p className="text-muted-foreground text-sm">
+        Upload a CSV to discard the current glossary and replace it with the file&apos;s entries.
+      </p>
+    </div>
+  );
+}
+
 export default function DataGlossary() {
+  // Cosmetic only — each route gates itself server-side. These just avoid offering a card
+  // that would redirect on click.
+  const ability = useAbility(AbilityContext);
+  const canDownload = ability.can('Download', 'Glossary');
+  const canImport = ability.can('Create', 'Glossary');
+  const canReplace = ability.can('Delete', 'Glossary');
+
   return (
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-primary text-2xl">Download Glossary</CardTitle>
-          <CardDescription className="text-base">Export the full glossary as a CSV file.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DownloadGlossaryButton />
-        </CardContent>
-      </Card>
+      {canDownload && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-primary text-2xl">Download Glossary</CardTitle>
+            <CardDescription className="text-base">
+              Export the full glossary as an Excel or CSV file. Either can be re-uploaded on the import and replace
+              pages.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center gap-3">
+            <DownloadGlossaryButton format="xlsx" label="Download Excel" />
+            <DownloadGlossaryButton format="csv" variant="secondary" label="Download CSV" />
+          </CardContent>
+        </Card>
+      )}
 
-      <Separator />
+      {canImport && (
+        <>
+          {canDownload && <Separator />}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-primary text-2xl">Import Glossary</CardTitle>
-          <CardDescription className="text-base">
-            Upload a CSV file to bulk-import glossary entries. The file must match the downloaded format.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ImportGlossaryLink />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-primary text-2xl">Import Glossary</CardTitle>
+              <CardDescription className="text-base">
+                Upload a CSV file to bulk-import glossary entries. The file must match the downloaded format.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ImportGlossaryLink />
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {canReplace && (
+        <>
+          <Separator />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-primary text-2xl">Replace Glossary</CardTitle>
+              <CardDescription className="text-base">
+                Upload a CSV file to completely replace the glossary. Every existing entry is deleted first, so download
+                a backup before you start.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ReplaceGlossaryLink />
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

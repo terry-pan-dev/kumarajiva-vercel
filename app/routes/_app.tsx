@@ -12,7 +12,6 @@ import { ErrorInfo } from '~/components/ErrorInfo';
 import { SearchProvider } from '~/components/SearchContext';
 import { SideBarMenu } from '~/components/SideBarMenu';
 import { SideBarMenuContextProvider } from '~/components/SideBarMenuContext';
-import { type ReadUser } from '~/drizzle/schema';
 import { readActiveNotifications } from '~/services/notification.service';
 import { readUsers } from '~/services/user.service';
 
@@ -59,7 +58,7 @@ export default function AppLayout() {
     return <Outlet />;
   }
 
-  const ability = defineAbilityFor(user as unknown as ReadUser);
+  const ability = defineAbilityFor(user);
 
   const handleDismiss = async (notificationId: string) => {
     fetcher.submit({ notificationId, kind: 'dismiss-notification' }, { method: 'POST', action: '/admin?index' });
@@ -73,7 +72,7 @@ export default function AppLayout() {
             <BannerStack banners={notifications} onDismiss={handleDismiss} />
             <div className="flex h-screen">
               <SideBarMenu avatarSrc={avatar} userRole={user.role} userEmail={user.email} userName={user.username} />
-              <main className="flex-1 overflow-y-auto bg-secondary">
+              <main className="bg-secondary flex-1 overflow-y-auto">
                 <Outlet />
               </main>
             </div>
