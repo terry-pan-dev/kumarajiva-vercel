@@ -11,8 +11,8 @@ import type {
 } from '~/drizzle/schema';
 import type { Lang } from '~/utils/constants';
 
-import { DbComments, DbParagraphs } from './crud.server';
-import { saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
+import { DbComments, DbHistory, DbParagraphs, DbReferences } from './crud.server';
+import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
 
 export interface IParagraph {
   id: string;
@@ -134,6 +134,84 @@ export const insertParagraph = async ({
   await saveParagraphToAlgolia(newParagraphData);
 
   return result;
+};
+
+export interface IParagraphDebugRow {
+  id: string;
+  parentId: string | null;
+  rollId: string;
+  number: number;
+  order: string;
+  language: string;
+  searchId: string | null;
+  content: string;
+  isOrigin: boolean;
+  referenceCount: number;
+  commentCount: number;
+  historyCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Reads every paragraph in a roll — including corrupt rows the reader views
+// hide (negative order/number, duplicates, orphans) — for the paragraph debug
+// page. See [[crud.server]] `findAllByRollIdForDebug`.
+export const readParagraphsForDebug = async (rollId: string): Promise<IParagraphDebugRow[]> => {
+  const paragraphs = await DbParagraphs.findAllByRollIdForDebug(rollId);
+
+  return paragraphs.map((paragraph) => ({
+    id: paragraph.id,
+    parentId: paragraph.parentId,
+    rollId: paragraph.rollId,
+    number: paragraph.number,
+    order: paragraph.order,
+    language: paragraph.language,
+    searchId: paragraph.searchId,
+    content: paragraph.content,
+    isOrigin: paragraph.parentId === null,
+    referenceCount: paragraph.references.length,
+    commentCount: paragraph.comments.length,
+    historyCount: paragraph.history.length,
+    createdAt: paragraph.createdAt.toISOString(),
+    updatedAt: paragraph.updatedAt.toISOString(),
+  }));
+};
+
+export interface DeleteParagraphResult {
+  deletedParagraphIds: string[];
+  deletedChild: boolean;
+}
+
+// Cleanly removes a paragraph and everything that hangs off it: its translation
+// child (when an origin is removed), plus the references, comments, history
+// rows, and Algolia search entries for every deleted paragraph. Used by the
+// paragraph debug page to clear corrupt data without leaving orphans behind.
+export const deleteParagraphCleanly = async ({ id }: { id: string }): Promise<DeleteParagraphResult> => {
+  const paragraph = await DbParagraphs.findByIdWithChildren(id);
+  if (!paragraph) {
+    throw new Error('Paragraph not found');
+  }
+
+  const child = paragraph.children ?? null;
+  const childIds = child ? [child.id] : [];
+  const allIds = [id, ...childIds];
+  const searchIds = [paragraph.searchId, child?.searchId ?? null];
+
+  // Remove dependent rows before the paragraphs they reference.
+  await DbReferences.deleteByParagraphIds(allIds);
+  await DbComments.deleteByParagraphIds(allIds);
+  await DbHistory.deleteByParagraphIds(allIds);
+
+  // Delete the translation child first — it references the origin via parent_id.
+  if (childIds.length) {
+    await DbParagraphs.deleteByIds(childIds);
+  }
+  await DbParagraphs.deleteById(id);
+
+  // Drop the search-index entries last; the DB is the source of truth.
+  await deleteParagraphsFromAlgolia(searchIds);
+
+  return { deletedParagraphIds: allIds, deletedChild: childIds.length > 0 };
 };
 
 export const createComment = async (newComment: CreateComment) => {
