@@ -12,7 +12,14 @@ import type {
 } from '~/drizzle/schema';
 import type { Lang } from '~/utils/constants';
 
-import { commentsTable, paragraphsTable, referencesTable, rollsTable, sutrasTable } from '~/drizzle/schema';
+import {
+  commentsTable,
+  paragraphsHistoryTable,
+  paragraphsTable,
+  referencesTable,
+  rollsTable,
+  sutrasTable,
+} from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
 
 export const db = getDb();
@@ -147,6 +154,22 @@ export const DbParagraphs = {
     });
   },
 
+  // Debug read: every paragraph for a roll, INCLUDING corrupt rows the normal
+  // views hide (negative `number`, orphaned orders, duplicates). No number>=0
+  // filter on purpose. Pulls relation counts so the debug UI can flag rows that
+  // carry references/comments/history before they are cleanly deleted.
+  findAllByRollIdForDebug: async (rollId: string) => {
+    return db.query.paragraphsTable.findMany({
+      where: (paragraphs, { eq }) => eq(paragraphs.rollId, rollId),
+      with: {
+        references: { columns: { id: true } },
+        comments: { columns: { id: true } },
+        history: { columns: { updatedAt: true } },
+      },
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.number), asc(paragraphs.order)],
+    });
+  },
+
   // ---- CREATE ----
 
   create: async (paragraph: CreateParagraph) => {
@@ -241,6 +264,11 @@ export const DbReferences = {
   deleteByIds: async (ids: string[]) => {
     if (!ids.length) return;
     return db.delete(referencesTable).where(inArray(referencesTable.id, ids));
+  },
+
+  deleteByParagraphIds: async (paragraphIds: string[]) => {
+    if (!paragraphIds.length) return;
+    return db.delete(referencesTable).where(inArray(referencesTable.paragraphId, paragraphIds));
   },
 };
 
@@ -490,5 +518,21 @@ export const DbComments = {
   deleteByIds: async (ids: string[]) => {
     if (!ids.length) return;
     return db.delete(commentsTable).where(inArray(commentsTable.id, ids));
+  },
+
+  deleteByParagraphIds: async (paragraphIds: string[]) => {
+    if (!paragraphIds.length) return;
+    return db.delete(commentsTable).where(inArray(commentsTable.paragraphId, paragraphIds));
+  },
+};
+
+// --------------------------------------------------
+// PARAGRAPH HISTORY — CRUD
+// --------------------------------------------------
+
+export const DbHistory = {
+  deleteByParagraphIds: async (paragraphIds: string[]) => {
+    if (!paragraphIds.length) return;
+    return db.delete(paragraphsHistoryTable).where(inArray(paragraphsHistoryTable.paragraphId, paragraphIds));
   },
 };

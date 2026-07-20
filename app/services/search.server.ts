@@ -146,6 +146,12 @@ export const saveParagraphsToAlgolia = async (paragraphs: CreateParagraph[]): Pr
   });
 };
 
+export const deleteParagraphsFromAlgolia = async (searchIds: (string | null | undefined)[]): Promise<void> => {
+  const objectIDs = searchIds.filter((id): id is string => Boolean(id));
+  if (!objectIDs.length) return;
+  await algoliaClient.deleteObjects({ indexName: 'paragraphs', objectIDs });
+};
+
 export const updateParagraphsToAlgolia = async (
   updates: { searchId: string; data: Partial<CreateParagraph> }[],
 ): Promise<void> => {
