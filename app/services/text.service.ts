@@ -1,7 +1,19 @@
-import type { CreateDocument, CreateSection, CreateWork } from '~/drizzle/schema';
+import { v4 as uuidv4 } from 'uuid';
+
+import type {
+  CreateDocument,
+  CreateParagraphNew,
+  CreateSection,
+  CreateWork,
+  ReadComment,
+  ReadHistory,
+  ReadParagraphNew,
+  ReadReference,
+} from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
-import { DbContributors, DbDocuments, DbSections, DbWorks } from './text.crud';
+import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
+import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
 
 export const getWorks = async () => {
   return DbWorks.findAll();
@@ -75,4 +87,178 @@ export const getContributorsByDocument = async (documentId: string) => {
 
 export const reorderSections = async (updates: Array<{ id: string; order: number }>, user: ReadUser) => {
   return Promise.all(updates.map(({ id, order }) => DbSections.updateById(id, { order, updatedBy: user.id })));
+};
+
+// ─── Paragraphs (paragraphs_new) ─────────────────────────────────────────────
+//
+// Mirrors the legacy paragraph.service API during the migration, but against
+// the refactored tables (work / document / section / paragraphs_new /
+// contributors). The legacy origin→children pairing is replaced by passage_key
+// alignment: a translation lives in the project's target document and carries
+// the same passage_key as its source paragraph.
+
+// Same consumer-facing shape as the legacy IParagraph so readers can swap over.
+export interface IParagraphNew {
+  id: string;
+  order: number;
+  passageKey: string | null;
+  documentId: string;
+  sectionId: string;
+  origin: string;
+  target: string | null;
+  targetId?: string;
+  references: ReadReference[];
+  histories: ReadHistory[];
+  originComments: ReadComment[];
+  targetComments: ReadComment[];
+}
+
+const toIParagraph = (paragraph: ReadParagraphNew, target?: ReadParagraphNew): IParagraphNew => ({
+  ...paragraph,
+  origin: paragraph.content,
+  target: target?.content ?? null,
+  targetId: target?.id,
+  // References, comments and history still hang off the legacy paragraphs
+  // table; they move over in a later migration step.
+  references: [],
+  histories: [],
+  originComments: [],
+  targetComments: [],
+});
+
+// Legacy readParagraphsByRollId analog: a section takes the roll's place. Pass
+// targetDocumentId (from the project) to pair each source paragraph with its
+// translation by passage_key.
+export const readParagraphsBySectionId = async ({
+  sectionId,
+  targetDocumentId,
+  limit,
+}: {
+  sectionId: string;
+  targetDocumentId?: string;
+  limit?: number;
+}): Promise<IParagraphNew[]> => {
+  const paragraphs = await DbParagraphsNew.findBySectionId(sectionId, limit);
+
+  const targetByPassageKey = await findTargetsByPassageKey(paragraphs, targetDocumentId);
+
+  return paragraphs.map((paragraph) =>
+    toIParagraph(paragraph, paragraph.passageKey ? targetByPassageKey.get(paragraph.passageKey) : undefined),
+  );
+};
+
+// Legacy readParagraphsByRollIdForLanguage analog: language now lives on the
+// document, so reading one language's text means reading its document.
+export const readParagraphsByDocumentId = async ({
+  documentId,
+  targetDocumentId,
+  limit,
+}: {
+  documentId: string;
+  targetDocumentId?: string;
+  limit?: number;
+}): Promise<IParagraphNew[]> => {
+  const paragraphs = await DbParagraphsNew.findByDocumentId(documentId, limit);
+
+  const targetByPassageKey = await findTargetsByPassageKey(paragraphs, targetDocumentId);
+
+  return paragraphs.map((paragraph) =>
+    toIParagraph(paragraph, paragraph.passageKey ? targetByPassageKey.get(paragraph.passageKey) : undefined),
+  );
+};
+
+const findTargetsByPassageKey = async (paragraphs: ReadParagraphNew[], targetDocumentId?: string) => {
+  if (!targetDocumentId) return new Map<string, ReadParagraphNew>();
+  const passageKeys = paragraphs.map((p) => p.passageKey).filter((key): key is string => Boolean(key));
+  const targets = await DbParagraphsNew.findByDocumentIdAndPassageKeys(targetDocumentId, passageKeys);
+  return new Map(targets.filter((t) => t.passageKey).map((t) => [t.passageKey as string, t]));
+};
+
+export const getParagraph = async (id: string) => {
+  return DbParagraphsNew.findById(id);
+};
+
+// Legacy updateParagraph analog — same signature, same Algolia sync.
+export const updateParagraph = async ({
+  id,
+  newContent,
+  updatedBy,
+}: {
+  id: string;
+  newContent: string;
+  updatedBy: string;
+}) => {
+  const existingParagraph = await DbParagraphsNew.findById(id);
+  if (!existingParagraph) {
+    throw new Error('Paragraph not found');
+  }
+
+  const paragraphData = {
+    content: newContent,
+    updatedBy: updatedBy,
+  };
+
+  const result = await DbParagraphsNew.updateById(existingParagraph.id, paragraphData);
+
+  if (existingParagraph.searchId) {
+    await updateParagraphToAlgolia(existingParagraph.searchId, paragraphData);
+  }
+
+  return result;
+};
+
+// Legacy insertParagraph analog: creates the translation of a source paragraph.
+// Instead of hanging off parentId, the new row goes into the target document's
+// section and inherits the source paragraph's order and passage_key.
+export const insertParagraph = async ({
+  sourceId,
+  documentId,
+  sectionId,
+  newParagraph,
+}: {
+  sourceId: string;
+  documentId: string;
+  sectionId: string;
+  newParagraph: Pick<CreateParagraphNew, 'content' | 'createdBy' | 'updatedBy'>;
+}) => {
+  const sourceParagraph = await DbParagraphsNew.findById(sourceId);
+  if (!sourceParagraph) {
+    throw new Error('Paragraph not found');
+  }
+
+  const newParagraphData: CreateParagraphNew = {
+    id: uuidv4(),
+    ...newParagraph,
+    documentId,
+    sectionId,
+    order: sourceParagraph.order,
+    passageKey: sourceParagraph.passageKey,
+    searchId: uuidv4(),
+  };
+
+  const result = await DbParagraphsNew.create(newParagraphData);
+  await saveParagraphToAlgolia(newParagraphData);
+
+  return result;
+};
+
+export const createParagraphs = async (
+  paragraphs: Array<Omit<CreateParagraphNew, 'createdBy' | 'updatedBy'>>,
+  user: ReadUser,
+) => {
+  return DbParagraphsNew.createMany(paragraphs.map((p) => ({ ...p, createdBy: user.id, updatedBy: user.id })));
+};
+
+// Legacy deleteParagraphCleanly analog. No parent/child rows to cascade here;
+// dependents (references/comments/history) still live on the legacy tables.
+export const deleteParagraph = async ({ id }: { id: string }) => {
+  const paragraph = await DbParagraphsNew.findById(id);
+  if (!paragraph) {
+    throw new Error('Paragraph not found');
+  }
+
+  await DbParagraphsNew.deleteById(id);
+  await deleteParagraphsFromAlgolia([paragraph.searchId]);
+
+  return { deletedParagraphIds: [id] };
 };

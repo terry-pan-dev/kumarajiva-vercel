@@ -1,8 +1,14 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
-import type { CreateContributor, CreateDocument, CreateSection, CreateWork } from '~/drizzle/schema';
+import type {
+  CreateContributor,
+  CreateDocument,
+  CreateParagraphNew,
+  CreateSection,
+  CreateWork,
+} from '~/drizzle/schema';
 
-import { contributorsTable, documentsTable, sectionsTable, worksTable } from '~/drizzle/schema';
+import { contributorsTable, documentsTable, paragraphsTableNew, sectionsTable, worksTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
 
 const db = getDb();
@@ -156,5 +162,114 @@ export const DbSections = {
 
   deleteById: async (id: string) => {
     return db.delete(sectionsTable).where(eq(sectionsTable.id, id));
+  },
+};
+
+// Mirrors the legacy DbParagraphs (crud.server.ts) against paragraphs_new while
+// the migration is in flight. The old parent/child pairing does not exist here:
+// a translation lives in the counterpart document of the same work and shares
+// the source paragraph's passage_key.
+export const DbParagraphsNew = {
+  // ---- READ ----
+
+  findById: async (id: string) => {
+    return db.query.paragraphsTableNew.findFirst({
+      where: eq(paragraphsTableNew.id, id),
+    });
+  },
+
+  findByIds: async (ids: string[], limit?: number) => {
+    if (!ids.length) return [];
+    return db.query.paragraphsTableNew.findMany({
+      where: inArray(paragraphsTableNew.id, ids),
+      limit: limit,
+    });
+  },
+
+  // Legacy findByIdsWithChildrenAndRelations analog: pulls the location context
+  // (section → document → work, plus contributors) used to label search hits.
+  findByIdsWithRelations: async (ids: string[], limit?: number) => {
+    if (!ids.length) return [];
+    return db.query.paragraphsTableNew.findMany({
+      where: inArray(paragraphsTableNew.id, ids),
+      limit: limit,
+      with: {
+        section: {
+          columns: { title: true },
+        },
+        document: {
+          columns: { title: true, language: true },
+          with: {
+            work: {
+              columns: { title: true },
+            },
+            contributors: true,
+          },
+        },
+      },
+    });
+  },
+
+  findBySectionId: async (sectionId: string, limit?: number) => {
+    return db.query.paragraphsTableNew.findMany({
+      where: eq(paragraphsTableNew.sectionId, sectionId),
+      limit: limit,
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  findByDocumentId: async (documentId: string, limit?: number) => {
+    return db.query.paragraphsTableNew.findMany({
+      where: eq(paragraphsTableNew.documentId, documentId),
+      limit: limit,
+      with: { section: true },
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  // Cross-document lookup used to pair a source paragraph with its translation.
+  findByDocumentIdAndPassageKeys: async (documentId: string, passageKeys: string[]) => {
+    if (!passageKeys.length) return [];
+    return db.query.paragraphsTableNew.findMany({
+      where: and(eq(paragraphsTableNew.documentId, documentId), inArray(paragraphsTableNew.passageKey, passageKeys)),
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  // ---- CREATE ----
+
+  create: async (paragraph: CreateParagraphNew) => {
+    return db.insert(paragraphsTableNew).values(paragraph).returning({ id: paragraphsTableNew.id });
+  },
+
+  createMany: async (paragraphs: CreateParagraphNew[]) => {
+    if (!paragraphs.length) return [];
+    return db.insert(paragraphsTableNew).values(paragraphs).returning({ id: paragraphsTableNew.id });
+  },
+
+  // ---- UPDATE ----
+
+  updateById: async (id: string, data: Partial<CreateParagraphNew>) => {
+    return db.update(paragraphsTableNew).set(data).where(eq(paragraphsTableNew.id, id));
+  },
+
+  updateByIds: async (ids: string[], data: Partial<CreateParagraphNew>) => {
+    if (!ids.length) return;
+    return db.update(paragraphsTableNew).set(data).where(inArray(paragraphsTableNew.id, ids));
+  },
+
+  // ---- DELETE ----
+
+  deleteById: async (id: string) => {
+    return db.delete(paragraphsTableNew).where(eq(paragraphsTableNew.id, id));
+  },
+
+  deleteByIds: async (ids: string[]) => {
+    if (!ids.length) return;
+    return db.delete(paragraphsTableNew).where(inArray(paragraphsTableNew.id, ids));
+  },
+
+  deleteBySectionId: async (sectionId: string) => {
+    return db.delete(paragraphsTableNew).where(eq(paragraphsTableNew.sectionId, sectionId));
   },
 };

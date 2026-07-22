@@ -4,7 +4,7 @@ import { eq, getTableColumns, inArray } from 'drizzle-orm';
 import 'dotenv/config';
 import { alias } from 'drizzle-orm/pg-core';
 
-import type { CreateParagraph, ReadParagraph, ReadGlossary } from '~/drizzle/schema';
+import type { CreateParagraph, CreateParagraphNew, ReadParagraph, ReadGlossary } from '~/drizzle/schema';
 
 import { type SearchResultListProps } from '~/components/SideBarMenu';
 import { glossariesTable, paragraphsTable, rollsTable, sutrasTable } from '~/drizzle/schema';
@@ -130,7 +130,7 @@ export const updateParagraphToAlgolia = async (searchId: string, dataToUpdate: P
   });
 };
 
-export const saveParagraphToAlgolia = async (paragraph: CreateParagraph): Promise<void> => {
+export const saveParagraphToAlgolia = async (paragraph: CreateParagraph | CreateParagraphNew): Promise<void> => {
   const { id, ...rest } = paragraph;
   await algoliaClient.saveObject({
     indexName: 'paragraphs',
