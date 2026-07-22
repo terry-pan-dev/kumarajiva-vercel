@@ -120,6 +120,13 @@
       "when": 1784361099922,
       "tag": "0017_composite-foreign-keys",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784759555563,
+      "tag": "0018_create-new-paragraph-table",
+      "breakpoints": true
     }
   ]
 }

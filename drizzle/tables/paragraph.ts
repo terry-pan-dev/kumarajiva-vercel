@@ -2,8 +2,10 @@ import { sql } from 'drizzle-orm';
 import { type AnyPgColumn, timestamp, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
+import { documentsTable } from './document';
 import { langEnum } from './enums';
 import { rollsTable } from './roll';
+import { sectionsTable } from './section';
 
 export const paragraphsTable = pgTable('paragraphs', {
   parentId: uuid('parent_id').references((): AnyPgColumn => paragraphsTable.id),
@@ -23,6 +25,22 @@ export const paragraphsTable = pgTable('paragraphs', {
   ...auditByFields,
 });
 
+export const paragraphsTableNew = pgTable('paragraphs_new', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  order: integer('order').notNull().default(1),
+  passageKey: text('passage_key'),
+  documentId: uuid('document_id')
+    .references(() => documentsTable.id)
+    .notNull(),
+  sectionId: uuid('section_id')
+    .references(() => sectionsTable.id)
+    .notNull(),
+  content: text('content').notNull(),
+  searchId: text('search_id').default(sql`NULL`),
+  ...auditAtFields,
+  ...auditByFields,
+});
+
 export const paragraphsHistoryTable = pgTable('paragraphs_history', {
   paragraphId: uuid('paragraph_id')
     .references(() => paragraphsTable.id)
@@ -37,3 +55,7 @@ export type CreateParagraph = typeof paragraphsTable.$inferInsert;
 export type ReadParagraph = typeof paragraphsTable.$inferSelect;
 export type UpdateParagraph = Partial<CreateParagraph>;
 export type ReadHistory = typeof paragraphsHistoryTable.$inferSelect;
+
+export type CreateParagraphNew = typeof paragraphsTableNew.$inferInsert;
+export type ReadParagraphNew = typeof paragraphsTableNew.$inferSelect;
+export type UpdateParagraphNew = Partial<CreateParagraphNew>;
