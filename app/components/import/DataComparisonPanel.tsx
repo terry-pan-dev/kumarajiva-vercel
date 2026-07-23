@@ -1,7 +1,7 @@
 import { Form } from '@remix-run/react';
 import { AlertCircle, ArrowLeftRight } from 'lucide-react';
 
-import type { ExcelTranslationRow, ExistingDataPreview, ImportOptions } from '~/services/file.service';
+import type { ExcelTranslationRow, ExistingDataPreview, ImportOptionsNew } from '~/services/file.service';
 
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
@@ -13,7 +13,7 @@ import { ParagraphPreviewCard } from './ParagraphPreviewCard';
 type Props = {
   existing: ExistingDataPreview;
   fileRows: ExcelTranslationRow[] | null;
-  formValues: ImportOptions | null;
+  formValues: ImportOptionsNew | null;
   isSubmitting: boolean;
   navigationIntent: string | null;
 };
@@ -22,29 +22,29 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
   return (
     <Card className="mt-6">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl text-primary">
+        <CardTitle className="text-primary flex items-center gap-2 text-xl">
           <ArrowLeftRight className="h-5 w-5" />
           Data Comparison
         </CardTitle>
         <CardDescription className="text-base">
           {fileRows
             ? 'Review the existing data and the imported file data before replacing.'
-            : 'Existing data for this roll. Upload a file above to compare.'}
+            : 'Existing data for this section. Upload a file above to compare.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           {/* Existing data — always shown */}
           <div>
-            <h4 className="mb-3 text-base font-medium text-primary">
+            <h4 className="text-primary mb-3 text-base font-medium">
               Existing Data{' '}
-              <span className="text-sm font-normal text-muted-foreground">
+              <span className="text-muted-foreground text-sm font-normal">
                 (first {Math.min(PREVIEW_LIMIT, existing.paragraphs.length)} of {existing.totalParagraphs})
               </span>
             </h4>
             {existing.paragraphs.length === 0 ? (
-              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-                No existing data for this roll
+              <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
+                No existing data for this section
               </p>
             ) : (
               <div className="space-y-2">
@@ -59,7 +59,7 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
                   />
                 ))}
                 {existing.totalParagraphs > PREVIEW_LIMIT && (
-                  <p className="text-center text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-center text-xs">
                     ... and {existing.totalParagraphs - PREVIEW_LIMIT} more paragraphs
                   </p>
                 )}
@@ -69,10 +69,10 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
 
           {/* File data — placeholder until a file is previewed */}
           <div>
-            <h4 className="mb-3 text-base font-medium text-primary">
+            <h4 className="text-primary mb-3 text-base font-medium">
               File Data{' '}
               {fileRows && (
-                <span className="text-sm font-normal text-muted-foreground">
+                <span className="text-muted-foreground text-sm font-normal">
                   (first {Math.min(PREVIEW_LIMIT, fileRows.length)} of {fileRows.length})
                 </span>
               )}
@@ -90,13 +90,13 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
                   />
                 ))}
                 {fileRows.length > PREVIEW_LIMIT && (
-                  <p className="text-center text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-center text-xs">
                     ... and {fileRows.length - PREVIEW_LIMIT} more rows
                   </p>
                 )}
               </div>
             ) : (
-              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+              <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
                 Upload and preview a file to see incoming data here
               </p>
             )}
@@ -110,17 +110,16 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 <strong>Warning:</strong> Clicking "Replace Data" will permanently delete all existing paragraphs and
-                references for this roll and replace them with the file data. This action cannot be undone.
+                references for this section and replace them with the file data. This action cannot be undone.
               </AlertDescription>
             </Alert>
 
             <Form method="post">
               <input type="hidden" name="intent" value="replace" />
               <input name="rows" type="hidden" value={JSON.stringify(fileRows)} />
-              <input type="hidden" name="originRollId" value={formValues.originRollId} />
-              <input type="hidden" name="targetRollId" value={formValues.targetRollId} />
-              <input type="hidden" name="originalLanguage" value={formValues.originalLanguage} />
-              <input type="hidden" name="translationLanguage" value={formValues.translationLanguage} />
+              <input type="hidden" name="originDocumentId" value={formValues.originDocumentId} />
+              <input type="hidden" name="originSectionId" value={formValues.originSectionId} />
+              <input type="hidden" name="targetDocumentId" value={formValues.targetDocumentId} />
 
               <div className="flex justify-end gap-3">
                 <Button type="submit" variant="destructive" className="text-base" disabled={isSubmitting}>

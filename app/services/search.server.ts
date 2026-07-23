@@ -138,7 +138,7 @@ export const saveParagraphToAlgolia = async (paragraph: CreateParagraph | Create
   });
 };
 
-export const saveParagraphsToAlgolia = async (paragraphs: CreateParagraph[]): Promise<void> => {
+export const saveParagraphsToAlgolia = async (paragraphs: (CreateParagraph | CreateParagraphNew)[]): Promise<void> => {
   if (!paragraphs.length) return;
   await algoliaClient.saveObjects({
     indexName: 'paragraphs',

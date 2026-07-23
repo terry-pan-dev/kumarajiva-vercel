@@ -19,7 +19,9 @@ import 'dotenv/config';
 import { eq, inArray } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
-import { paragraphsTable, referencesTable } from '~/drizzle/schema';
+import type { CreateParagraphNew } from '~/drizzle/schema';
+
+import { paragraphsTable, paragraphsTableNew, referencesTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
 import { PREVIEW_LIMIT } from '~/utils/constants';
 
@@ -27,10 +29,12 @@ import {
   type ExcelTranslationRow,
   type ExistingDataPreview,
   type ImportOptions,
+  type ImportOptionsNew,
   type ImportResult,
 } from './file.service';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
 import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
+import { findOrCreateTargetSection, getDocument, getSection, readParagraphsBySectionId } from './text.service';
 
 export const db = getDb();
 
@@ -336,5 +340,232 @@ export async function getExistingDataPreviewForRollId(
     })),
     totalParagraphs,
     totalReferences,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Refactored data model (paragraphs_new)
+//
+// The helpers below mirror replaceRollData / getExistingDataPreviewForRollId
+// against the new tables (work / document / section / paragraphs_new). Imports
+// go here so no more data accumulates in the legacy tables; the legacy helpers
+// above stay for debugging until the migration completes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Upsert imported rows into a section of the new data model, matching by order
+ * position — same interaction as replaceRollData:
+ *   - Existing origin paragraph at position N → UPDATE content (and its target)
+ *   - No existing paragraph at position N → INSERT origin (and target)
+ *   - Extra existing paragraphs beyond imported count → "park" by negating order
+ *
+ * Origin/target pairing uses passage_key instead of parent_id: the target row
+ * lives in the target document's counterpart section (matched by order, created
+ * on demand) and carries the same passage_key as its origin. Keys for new rows
+ * are generated as `<work prefix>.<section order>.<row number>`.
+ *
+ * References are NOT imported — they still belong to the legacy tables and are
+ * reported as skipped until they move over in a later migration step.
+ */
+export async function replaceSectionData(
+  rows: ExcelTranslationRow[],
+  options: ImportOptionsNew,
+): Promise<ImportResult> {
+  const { originDocumentId, originSectionId, targetDocumentId, userId } = options;
+
+  try {
+    const [originDocument, originSection] = await Promise.all([
+      getDocument(originDocumentId),
+      getSection(originSectionId),
+    ]);
+    if (!originDocument || !originSection) {
+      return { success: false, message: 'Origin document or section not found.' };
+    }
+
+    const passageKeyPrefix = originDocument.work?.passageKeyPrefix ?? originDocument.workId;
+    const targetSection = await findOrCreateTargetSection({
+      sourceSection: { order: originSection.order, title: originSection.title },
+      targetDocumentId,
+      userId,
+    });
+
+    const { counts, algoliaUpdates, algoliaInserts } = await db.transaction(async (tx) => {
+      // ── 1. Load existing rows (non-parked) for both sides ────────────────
+      const existingOrigins = await tx.query.paragraphsTableNew.findMany({
+        where: (p, { eq, and, gte }) => and(eq(p.sectionId, originSectionId), gte(p.order, 0)),
+        orderBy: (p, { asc }) => [asc(p.order)],
+      });
+      const existingTargets = await tx.query.paragraphsTableNew.findMany({
+        where: (p, { eq, and, gte }) => and(eq(p.sectionId, targetSection.id), gte(p.order, 0)),
+        orderBy: (p, { asc }) => [asc(p.order)],
+      });
+      const targetsByPassageKey = new Map(
+        existingTargets.filter((t) => t.passageKey).map((t) => [t.passageKey as string, t]),
+      );
+
+      let updatedCount = 0;
+      let insertedCount = 0;
+
+      // Collected during the loop; executed in bulk after.
+      const updateOps: { id: string; data: Partial<CreateParagraphNew> }[] = [];
+      const insertRows: CreateParagraphNew[] = [];
+      const algoliaUpdates: { searchId: string; data: object }[] = [];
+      const algoliaInserts: CreateParagraphNew[] = [];
+
+      // ── 2. Classify rows into update vs insert buckets ───────────────────
+      for (let idx = 0; idx < rows.length; idx++) {
+        const row = rows[idx];
+        const existing = existingOrigins[idx];
+        const paraOrder = idx + 1;
+        // Keep an existing origin's key so its target stays attached; only new
+        // rows get a generated key.
+        const passageKey = existing?.passageKey ?? `${passageKeyPrefix}.${originSection.order}.${paraOrder}`;
+
+        if (existing) {
+          const originData = { content: row.origin, order: paraOrder, passageKey, updatedBy: userId };
+          updateOps.push({ id: existing.id, data: originData });
+          if (existing.searchId) {
+            algoliaUpdates.push({ searchId: existing.searchId, data: originData });
+          }
+          updatedCount++;
+        } else {
+          const newOrigin: CreateParagraphNew = {
+            id: uuidv4(),
+            documentId: originDocumentId,
+            sectionId: originSectionId,
+            order: paraOrder,
+            passageKey,
+            content: row.origin,
+            searchId: uuidv4(),
+            createdBy: userId,
+            updatedBy: userId,
+          };
+          insertRows.push(newOrigin);
+          algoliaInserts.push(newOrigin);
+          insertedCount++;
+        }
+
+        if (row.target) {
+          const existingTarget = targetsByPassageKey.get(passageKey);
+          if (existingTarget) {
+            const targetData = { content: row.target, order: paraOrder, updatedBy: userId };
+            updateOps.push({ id: existingTarget.id, data: targetData });
+            if (existingTarget.searchId) {
+              algoliaUpdates.push({ searchId: existingTarget.searchId, data: targetData });
+            }
+          } else {
+            const newTarget: CreateParagraphNew = {
+              id: uuidv4(),
+              documentId: targetDocumentId,
+              sectionId: targetSection.id,
+              order: paraOrder,
+              passageKey,
+              content: row.target,
+              searchId: uuidv4(),
+              createdBy: userId,
+              updatedBy: userId,
+            };
+            insertRows.push(newTarget);
+            algoliaInserts.push(newTarget);
+          }
+        }
+      }
+
+      // ── 2b. Bulk operations for all collected rows ───────────────────────
+      await Promise.all(
+        updateOps.map((op) => tx.update(paragraphsTableNew).set(op.data).where(eq(paragraphsTableNew.id, op.id))),
+      );
+      if (insertRows.length > 0) {
+        await tx.insert(paragraphsTableNew).values(insertRows);
+      }
+
+      // ── 3. Park extra existing paragraphs (negate order) ─────────────────
+      const extras = existingOrigins.slice(rows.length);
+      const parkOps: { id: string; order: number }[] = [];
+      for (const extra of extras) {
+        parkOps.push({ id: extra.id, order: extra.order > 0 ? -extra.order : extra.order });
+        const extraTarget = extra.passageKey ? targetsByPassageKey.get(extra.passageKey) : undefined;
+        if (extraTarget) {
+          parkOps.push({ id: extraTarget.id, order: extraTarget.order > 0 ? -extraTarget.order : extraTarget.order });
+        }
+      }
+      await Promise.all(
+        parkOps.map((op) =>
+          tx
+            .update(paragraphsTableNew)
+            .set({ order: op.order, updatedBy: userId })
+            .where(eq(paragraphsTableNew.id, op.id)),
+        ),
+      );
+
+      return { counts: { updatedCount, insertedCount, parkedCount: extras.length }, algoliaUpdates, algoliaInserts };
+    });
+
+    // ── 4. Sync to Algolia after the transaction commits ─────────────────
+    // Uses allSettled so search failures never roll back committed DB data.
+    const algoliaResults = await Promise.allSettled([
+      updateParagraphsToAlgolia(algoliaUpdates),
+      saveParagraphsToAlgolia(algoliaInserts),
+    ]);
+
+    const searchErrors = algoliaResults
+      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      .map((r) => `Search sync failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+
+    if (searchErrors.length > 0) {
+      console.error('Algolia sync errors after import:', searchErrors);
+    }
+
+    // References still live on the legacy tables — surface what was skipped.
+    const skippedReferences = rows.reduce((n, r) => n + r.references.filter((x) => x.sutraName && x.content).length, 0);
+
+    return {
+      success: true,
+      inserted: counts.insertedCount,
+      deleted: counts.parkedCount,
+      message:
+        `Updated ${counts.updatedCount} paragraph(s), inserted ${counts.insertedCount} new, parked ${counts.parkedCount} extra.` +
+        (skippedReferences > 0
+          ? ` ${skippedReferences} reference cell(s) were skipped — references are not yet part of the new data model.`
+          : ''),
+      ...(searchErrors.length > 0 && { errors: searchErrors }),
+    };
+  } catch (error) {
+    console.error('replaceSectionData error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      message: `Failed to replace data: ${errorMessage}`,
+      errors: [errorMessage],
+    };
+  }
+}
+
+/**
+ * Preview of the existing paragraphs_new data for a section — what the import
+ * page shows before the user confirms a replace. Targets are paired from the
+ * project's target document via passage_key; references are always empty here
+ * (still legacy-only).
+ */
+export async function getExistingDataPreviewForSection(
+  sectionId: string,
+  targetDocumentId?: string | null,
+): Promise<ExistingDataPreview> {
+  const paragraphs = await readParagraphsBySectionId({
+    sectionId,
+    targetDocumentId: targetDocumentId ?? undefined,
+  });
+
+  return {
+    paragraphs: paragraphs.slice(0, PREVIEW_LIMIT).map((p) => ({
+      id: p.id,
+      order: String(p.order),
+      origin: p.origin,
+      targetId: p.targetId,
+      target: p.target,
+      references: [],
+    })),
+    totalParagraphs: paragraphs.length,
+    totalReferences: 0,
   };
 }

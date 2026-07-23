@@ -68,6 +68,25 @@ export const DbProjects = {
     });
   },
 
+  // The translation pages resolve a source section's counterpart by looking up
+  // the project that translates its document; target sections are matched by
+  // order within the target document.
+  findBySourceDocumentId: async (sourceDocumentId: string) => {
+    return db.query.projectsTable.findFirst({
+      where: eq(projectsTable.sourceDocumentId, sourceDocumentId),
+      with: {
+        sourceDocument: true,
+        targetDocument: {
+          with: {
+            sections: {
+              orderBy: (sections, { asc }) => [asc(sections.order)],
+            },
+          },
+        },
+      },
+    });
+  },
+
   create: async (project: CreateProject) => {
     return db.insert(projectsTable).values(project).returning({ id: projectsTable.id });
   },

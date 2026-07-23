@@ -1,3 +1,7 @@
+// Section listing for the paragraphs_new data-management page — the
+// counterpart of _app.data.paragraphs._index.tsx for the refactored data
+// model. Same project/section tree, but each section links to the
+// paragraphs_new inspector.
 import { Link, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { ChevronRight } from 'lucide-react';
@@ -78,27 +82,20 @@ function SectionRow({ section, depth }: { section: SectionNode; depth: number })
   }
 
   return (
-    <div
+    <Link
+      to={`/data/paragraphs-new/${section.id}`}
       style={{ paddingLeft: `${depth * 20 + 16}px` }}
-      className="hover:bg-muted/50 flex items-center justify-between gap-2 py-3 pr-4 transition"
+      className="hover:bg-muted/50 flex items-center justify-between py-3 pr-4 transition"
     >
-      <Link to={`/translation/${section.id}`} className="text-foreground flex-1">
+      <span className="text-foreground">
         <SectionTitle title={section.title} targetTitle={section.targetTitle} />
-      </Link>
-      {/* status badge — added once translation_progress table is available */}
-      {/* Temporary while the paragraph migration is in flight: same workspace
-          backed by the new paragraphs table. */}
-      <Link
-        to={`/translation/new/${section.id}`}
-        className="text-muted-foreground hover:text-foreground border-border shrink-0 rounded border px-2 py-0.5 text-xs"
-      >
-        new data
-      </Link>
-    </div>
+      </span>
+      <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+    </Link>
   );
 }
 
-export default function TranslationIndex() {
+export default function ParagraphsNewIndex() {
   const { projects } = useLoaderData<typeof loader>();
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set());
 
@@ -114,8 +111,8 @@ export default function TranslationIndex() {
   if (projects.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-lg">
-        <p>No projects available for translation.</p>
-        <p>Please ask an administrator to set up a project in Data Management.</p>
+        <p>No projects available.</p>
+        <p>Please set up a project in Data Management first.</p>
       </div>
     );
   }
@@ -123,6 +120,10 @@ export default function TranslationIndex() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-3 p-4">
+        <div className="text-muted-foreground text-sm">
+          Select a section to inspect its paragraph data in the new data model (paragraphs_new) — order, passage key,
+          UUIDs and content — including parked rows hidden from readers.
+        </div>
         {projects.map((project) => {
           const isOpen = openProjects.has(project.id);
           const sourceSections = project.sourceDocument?.sections ?? [];

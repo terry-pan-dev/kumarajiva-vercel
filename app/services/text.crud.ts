@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, gte, inArray } from 'drizzle-orm';
 
 import type {
   CreateContributor,
@@ -210,9 +210,12 @@ export const DbParagraphsNew = {
     });
   },
 
+  // Reader views hide "parked" rows (order < 0) — the analog of the legacy
+  // `number >= 0` filter. Rows are parked instead of deleted when an import
+  // replaces a section with fewer paragraphs.
   findBySectionId: async (sectionId: string, limit?: number) => {
     return db.query.paragraphsTableNew.findMany({
-      where: eq(paragraphsTableNew.sectionId, sectionId),
+      where: and(eq(paragraphsTableNew.sectionId, sectionId), gte(paragraphsTableNew.order, 0)),
       limit: limit,
       orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
     });
@@ -220,7 +223,7 @@ export const DbParagraphsNew = {
 
   findByDocumentId: async (documentId: string, limit?: number) => {
     return db.query.paragraphsTableNew.findMany({
-      where: eq(paragraphsTableNew.documentId, documentId),
+      where: and(eq(paragraphsTableNew.documentId, documentId), gte(paragraphsTableNew.order, 0)),
       limit: limit,
       with: { section: true },
       orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
@@ -231,7 +234,20 @@ export const DbParagraphsNew = {
   findByDocumentIdAndPassageKeys: async (documentId: string, passageKeys: string[]) => {
     if (!passageKeys.length) return [];
     return db.query.paragraphsTableNew.findMany({
-      where: and(eq(paragraphsTableNew.documentId, documentId), inArray(paragraphsTableNew.passageKey, passageKeys)),
+      where: and(
+        eq(paragraphsTableNew.documentId, documentId),
+        inArray(paragraphsTableNew.passageKey, passageKeys),
+        gte(paragraphsTableNew.order, 0),
+      ),
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  // Debug read: every paragraph for a section INCLUDING parked rows (order < 0)
+  // that the reader views hide. Legacy findAllByRollIdForDebug analog.
+  findAllBySectionIdForDebug: async (sectionId: string) => {
+    return db.query.paragraphsTableNew.findMany({
+      where: eq(paragraphsTableNew.sectionId, sectionId),
       orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
     });
   },

@@ -249,6 +249,71 @@ export const createParagraphs = async (
   return DbParagraphsNew.createMany(paragraphs.map((p) => ({ ...p, createdBy: user.id, updatedBy: user.id })));
 };
 
+// A source section's counterpart in the target document is matched by order
+// (the same convention the index pages use to show source/target titles side
+// by side). Creates the target section on first use so translating or
+// importing into a fresh document just works.
+export const findOrCreateTargetSection = async ({
+  sourceSection,
+  targetDocumentId,
+  userId,
+}: {
+  sourceSection: { order: number; title: string | null };
+  targetDocumentId: string;
+  userId: string;
+}): Promise<{ id: string; created: boolean }> => {
+  const sections = await DbSections.findByDocumentId(targetDocumentId);
+  const existing = sections.find((s) => s.order === sourceSection.order);
+  if (existing) {
+    return { id: existing.id, created: false };
+  }
+
+  const workId = await DbDocuments.findWorkId(targetDocumentId);
+  if (!workId) {
+    throw new Error(`Cannot create target section: document ${targetDocumentId} not found`);
+  }
+  const [created] = await DbSections.create({
+    documentId: targetDocumentId,
+    workId,
+    title: sourceSection.title,
+    order: sourceSection.order,
+    createdBy: userId,
+    updatedBy: userId,
+  });
+  return { id: created.id, created: true };
+};
+
+export interface IParagraphNewDebugRow {
+  id: string;
+  documentId: string;
+  sectionId: string;
+  order: number;
+  passageKey: string | null;
+  searchId: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Every paragraph in a section, INCLUDING parked rows (order < 0) that reader
+// views hide — for the paragraphs data-management page. Legacy
+// readParagraphsForDebug analog.
+export const readParagraphsForDebugBySectionId = async (sectionId: string): Promise<IParagraphNewDebugRow[]> => {
+  const paragraphs = await DbParagraphsNew.findAllBySectionIdForDebug(sectionId);
+
+  return paragraphs.map((paragraph) => ({
+    id: paragraph.id,
+    documentId: paragraph.documentId,
+    sectionId: paragraph.sectionId,
+    order: paragraph.order,
+    passageKey: paragraph.passageKey,
+    searchId: paragraph.searchId,
+    content: paragraph.content,
+    createdAt: paragraph.createdAt.toISOString(),
+    updatedAt: paragraph.updatedAt.toISOString(),
+  }));
+};
+
 // Legacy deleteParagraphCleanly analog. No parent/child rows to cascade here;
 // dependents (references/comments/history) still live on the legacy tables.
 export const deleteParagraph = async ({ id }: { id: string }) => {
