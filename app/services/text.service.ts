@@ -360,6 +360,34 @@ export const findTargetSection = async ({
   return sections.find((s) => s.order === sourceSection.order) ?? null;
 };
 
+// Where a translation for the given source section should be written: the
+// project's target document, in the counterpart section matched by order. Both
+// the project and the counterpart section must already exist — sections are set
+// up and named in Data Management and never created implicitly. The caller maps
+// each failure reason to a user-facing message.
+export type TranslationTarget =
+  | { ok: true; targetDocumentId: string; targetSectionId: string }
+  | { ok: false; reason: 'section-not-found' | 'no-project' | 'no-target-section' };
+
+export const resolveTranslationTarget = async (sectionId: string): Promise<TranslationTarget> => {
+  const section = await getSection(sectionId);
+  if (!section) {
+    return { ok: false, reason: 'section-not-found' };
+  }
+  const project = await DbProjects.findBySourceDocumentId(section.documentId);
+  if (!project?.targetDocumentId) {
+    return { ok: false, reason: 'no-project' };
+  }
+  const targetSection = await findTargetSection({
+    sourceSection: { order: section.order },
+    targetDocumentId: project.targetDocumentId,
+  });
+  if (!targetSection) {
+    return { ok: false, reason: 'no-target-section' };
+  }
+  return { ok: true, targetDocumentId: project.targetDocumentId, targetSectionId: targetSection.id };
+};
+
 export interface IParagraphNewDebugRow {
   id: string;
   documentId: string;

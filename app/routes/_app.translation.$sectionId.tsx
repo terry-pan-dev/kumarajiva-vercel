@@ -6,45 +6,29 @@
 // Comments, references and history still hang off the legacy tables (viewable
 // via the legacy /data/paragraphs debug page) and return here once they
 // migrate.
-import { Form, useActionData, useLoaderData, useNavigation, useOutletContext, useRouteError } from '@remix-run/react';
+import { useActionData, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { motion } from 'framer-motion';
-import { Copy, Pencil, Check, X } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren, useCallback, Fragment } from 'react';
-import Markdown from 'react-markdown';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { ZodError } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
-import { Can } from '~/authorisation';
 import ContextMenuWrapper from '~/components/ContextMenu';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { Icons } from '~/components/icons';
 import { Paragraph } from '~/components/Paragraph';
-import {
-  Button,
-  Label,
-  RadioGroup,
-  RadioGroupItem,
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-  ScrollArea,
-  Textarea,
-} from '~/components/ui';
+import { DragPanel, LeftPanel, RightPanel } from '~/components/translation/panels';
+import { Workspace } from '~/components/translation/Workspace';
+import { Label, RadioGroup, RadioGroupItem, ResizableHandle, ScrollArea } from '~/components/ui';
 import { type ReadUser } from '~/drizzle/tables/user';
-import { useToast } from '~/hooks/use-toast';
 import { useScreenSize } from '~/lib/hooks/useScreenSizeHook';
-import { useTextAreaAutoHeight } from '~/lib/hooks/useTextAreaAutoHeight';
-import { useTranslation } from '~/lib/hooks/useTranslation';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { getProjectBySourceDocumentId } from '~/services/project.service';
 import {
-  findTargetSection,
   getSection,
   insertParagraph,
   readParagraphsBySectionId,
+  resolveTranslationTarget,
   updateParagraph,
-  type IParagraphNew,
 } from '~/services/text.service';
 import { paragraphActionSchema } from '~/validations/paragraph.validation';
 
@@ -129,61 +113,38 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
     if (result.kind === 'insert') {
       // Resolve where the translation goes: the project's target document, in
-      // the section matching this source section's order. The counterpart must
-      // already exist (created and named in Data Management) — sections are
-      // never created implicitly.
-      const section = await getSection(sectionId as string);
-      if (!section) {
-        throw new Error('Section not found');
-      }
-      const project = await getProjectBySourceDocumentId(section.documentId);
-      if (!project?.targetDocumentId) {
-        return json(
-          { success: false, errors: [{ message: 'No translation project is set up for this document.' }] },
-          { status: 400 },
-        );
-      }
-      const targetSection = await findTargetSection({
-        sourceSection: { order: section.order },
-        targetDocumentId: project.targetDocumentId,
-      });
-      if (!targetSection) {
-        return json(
-          {
-            success: false,
-            errors: [
-              {
-                message:
-                  'The translation section has not been created yet. Create and name it in Data Management → Translation Projects first.',
-              },
-            ],
-          },
-          { status: 400 },
-        );
+      // the section matching this source section's order. Both must already
+      // exist — sections are never created implicitly.
+      const target = await resolveTranslationTarget(sectionId as string);
+      if (!target.ok) {
+        if (target.reason === 'section-not-found') {
+          throw new Error('Section not found');
+        }
+        const message =
+          target.reason === 'no-project'
+            ? 'No translation project is set up for this document.'
+            : 'The translation section has not been created yet. Create and name it in Data Management → Translation Projects first.';
+        return json({ success: false, errors: [{ message }] }, { status: 400 });
       }
 
-      console.time('insertParagraph');
       await insertParagraph({
         sourceId: result.paragraphId,
-        documentId: project.targetDocumentId,
-        sectionId: targetSection.id,
+        documentId: target.targetDocumentId,
+        sectionId: target.targetSectionId,
         newParagraph: {
           content: result.translation,
           createdBy: user.id,
           updatedBy: user.id,
         },
       });
-      console.timeEnd('insertParagraph');
       return json({ success: true, message: 'Paragraph created successfully', kind: 'insert', id: result.paragraphId });
     }
     if (result.kind === 'update') {
-      console.time('updateParagraph');
       await updateParagraph({
         id: result.paragraphId,
         newContent: result.translation,
         updatedBy: user.id,
       });
-      console.timeEnd('updateParagraph');
       return json({ success: true, message: 'Paragraph updated successfully', kind: 'update', id: result.paragraphId });
     }
   } catch (error) {
@@ -361,347 +322,3 @@ export default function TranslationSection() {
     </Fragment>
   );
 }
-
-// Only the fields the workspace uses — loader data is JSON-serialised, so the
-// Date-typed relation arrays (empty until they migrate) are not part of it.
-type WorkspaceParagraph = Pick<IParagraphNew, 'id' | 'origin' | 'target' | 'sectionId' | 'targetId'>;
-
-const Workspace = ({ paragraph }: { paragraph: WorkspaceParagraph }) => {
-  const { id, origin, target, sectionId, targetId } = paragraph;
-
-  const { translation, pasteTranslation, disabledEdit, cleanTranslation } = useTranslation({ originId: id, target });
-
-  const actionData = useActionData<{
-    success: boolean;
-    message: string;
-    kind: 'insert' | 'update';
-    errors: ZodError['errors'];
-  }>();
-
-  const navigation = useNavigation();
-
-  const isLoading = navigation.state === 'submitting' || navigation.state === 'loading';
-
-  const { toast } = useToast();
-
-  const [isEditingOrigin, setIsEditingOrigin] = useState(false);
-  const [editedOrigin, setEditedOrigin] = useState(origin);
-
-  useEffect(() => {
-    setEditedOrigin(origin);
-    setIsEditingOrigin(false);
-  }, [origin]);
-
-  useEffect(() => {
-    if (!actionData) return;
-    if (actionData.success) {
-      toast({
-        variant: 'default',
-        title: actionData.message,
-        position: 'top-right',
-        description: actionData.message,
-      });
-    } else {
-      toast({
-        variant: 'error',
-        title: 'Oops!',
-        position: 'top-right',
-        description: actionData.errors?.map((error) => error.message).join(', '),
-      });
-    }
-  }, [actionData, toast]);
-
-  const originRef = useTextAreaAutoHeight(editedOrigin);
-  const translationRef = useTextAreaAutoHeight(translation);
-
-  return (
-    <div className="flex h-full flex-col justify-start gap-4 px-1">
-      <motion.div
-        className="flex flex-col"
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
-        exit={{ opacity: 0, x: '100%' }}
-        initial={{ opacity: 0, x: '100%' }}
-      >
-        <ContextMenuWrapper>
-          <div className="relative">
-            {isEditingOrigin ? (
-              <Form method="post" onSubmit={() => setIsEditingOrigin(false)}>
-                <input name="kind" type="hidden" value="updateOrigin" />
-                <input value={id} type="hidden" name="paragraphId" />
-                <Textarea
-                  ref={originRef}
-                  name="originText"
-                  className="text-md"
-                  value={editedOrigin}
-                  onChange={(e) => setEditedOrigin(e.target.value)}
-                />
-                <div className="mt-2 flex gap-2">
-                  <Button size="icon" type="submit" variant="ghost" name="acceptEdit">
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                    name="cancelEdit"
-                    onClick={() => {
-                      setEditedOrigin(origin); // reset to original
-                      setIsEditingOrigin(false);
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </Form>
-            ) : (
-              <>
-                <Paragraph id={id} text={origin} title="Origin" />
-                <Can I="Update" this="OriginText">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute top-0 right-0"
-                    onClick={() => setIsEditingOrigin(true)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </Can>
-              </>
-            )}
-          </div>
-        </ContextMenuWrapper>
-        <Form method="post" className="mt-4" onSubmit={() => cleanTranslation()}>
-          <div className="mt-auto grid w-full gap-2">
-            <input type="hidden" name="paragraphId" value={targetId || id} />
-            <input name="kind" type="hidden" value={targetId ? 'update' : 'insert'} />
-            <Can I="Read" this="Paragraph">
-              <Textarea
-                name="translation"
-                value={translation}
-                ref={translationRef}
-                className="text-md h-8"
-                disabled={isLoading || disabledEdit}
-                onChange={(e) => pasteTranslation(e.target.value)}
-                placeholder={
-                  disabledEdit
-                    ? 'Please select a new paragraph to edit or double click translated paragraph.'
-                    : 'Type your translation here.'
-                }
-              />
-              <Button type="submit" disabled={translation === '' || isLoading}>
-                {isLoading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Save Translation'}
-              </Button>
-            </Can>
-          </div>
-        </Form>
-      </motion.div>
-      <ContextMenuWrapper>
-        <OpenAIStreamCard
-          originId={id}
-          text={origin}
-          sectionId={sectionId}
-          title="AI Translation"
-          disabled={disabledEdit}
-          pasteTranslation={pasteTranslation}
-          interrupt={navigation.state === 'submitting'}
-        />
-      </ContextMenuWrapper>
-      <div className="flex-grow"></div>
-    </div>
-  );
-};
-
-const PANEL_IDS = { left: 'translation-left', right: 'translation-right' };
-const DEFAULT_LAYOUT = { [PANEL_IDS.left]: 50, [PANEL_IDS.right]: 50 };
-
-const LeftPanel = ({ children }: PropsWithChildren) => {
-  return (
-    <ResizablePanel minSize={30} defaultSize={50} id={PANEL_IDS.left}>
-      <div className="flex h-full items-center justify-center pr-2">{children}</div>
-    </ResizablePanel>
-  );
-};
-
-const RightPanel = ({ children }: PropsWithChildren) => {
-  return (
-    <ResizablePanel minSize={40} defaultSize={50} id={PANEL_IDS.right}>
-      <div className="flex h-full items-center justify-center pb-2 lg:pl-8">{children}</div>
-    </ResizablePanel>
-  );
-};
-
-const DragPanel = ({ children, orientation }: PropsWithChildren<{ orientation: 'horizontal' | 'vertical' }>) => {
-  return (
-    <ResizablePanelGroup orientation={orientation} defaultLayout={DEFAULT_LAYOUT} className="flex w-full rounded-lg">
-      {children}
-    </ResizablePanelGroup>
-  );
-};
-
-interface StreamCardProps {
-  text: string;
-  title: string;
-  originId: string;
-  sectionId: string;
-  disabled: boolean;
-  interrupt: boolean;
-  pasteTranslation: (text: string) => void;
-}
-
-const OpenAIStreamCard = React.memo(
-  ({ text, title, originId, sectionId, disabled, pasteTranslation, interrupt }: StreamCardProps) => {
-    const [translationResult, setTranslationResult] = useState<string>('');
-    const [refresh, setRefresh] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const textRef = useRef<string>('');
-
-    // Add AbortController ref to manage request lifecycle
-    const abortControllerRef = useRef<AbortController | null>(null);
-
-    // Cleanup function to abort ongoing requests
-    const cleanupStream = useCallback(() => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    }, []);
-
-    // Cleanup on unmount or text change
-    useEffect(() => {
-      return () => cleanupStream();
-    }, [cleanupStream]);
-
-    useEffect(() => {
-      if (interrupt) {
-        abortControllerRef.current?.abort();
-        setLoading(false);
-      }
-    }, [interrupt]);
-
-    useEffect(() => {
-      setTranslationResult('');
-      textRef.current = '';
-
-      // Clean up previous stream before starting new one
-      cleanupStream();
-
-      const fetchStream = async () => {
-        let reader: ReadableStreamDefaultReader<Uint8Array> | undefined = undefined;
-        try {
-          // Create new AbortController for this request
-          abortControllerRef.current = new AbortController();
-
-          const req = new Request(`/openai`, {
-            method: 'POST',
-            body: JSON.stringify({
-              origin: text,
-              originId,
-              // The endpoint's legacy body key; carries the section id in the
-              // new data model.
-              rollId: sectionId,
-            }),
-            // Add signal to request
-            signal: abortControllerRef.current.signal,
-          });
-
-          const response = await fetch(req);
-          reader = response.body?.getReader();
-          const decoder = new TextDecoder();
-
-          while (true) {
-            if (!reader) break;
-
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            // Check if request was aborted
-            if (abortControllerRef.current?.signal.aborted) {
-              throw new Error('Stream aborted');
-            }
-
-            const chunk = decoder.decode(value);
-            setTranslationResult((prev) => prev + chunk);
-            textRef.current += chunk;
-          }
-        } catch (error) {
-          console.error(`error in openai loader: ${error}`);
-          if (error instanceof Error && error.name === 'AbortError') {
-            console.info('Stream aborted by user');
-          }
-        } finally {
-          if (reader) {
-            reader.releaseLock();
-            setLoading(false);
-          }
-        }
-      };
-
-      if ((refresh || text) && !disabled) {
-        setLoading(true);
-        abortControllerRef.current?.abort();
-        fetchStream();
-      }
-      setRefresh(false);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [text, refresh, cleanupStream, disabled]);
-
-    return (
-      <>
-        <WorkspaceCard
-          title={title}
-          text={translationResult}
-          buttons={
-            <>
-              {loading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : null}
-              <Button size="icon" variant="ghost" disabled={loading} onClick={() => setRefresh(true)}>
-                <Icons.Refresh className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                disabled={loading}
-                onClick={() => pasteTranslation(translationResult)}
-                className="transition-transform duration-300 hover:scale-110"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </>
-          }
-        />
-      </>
-    );
-  },
-);
-
-interface WorkspaceCardProps {
-  title: string;
-  text: string;
-  buttons?: React.ReactNode | undefined;
-}
-
-const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
-  return (
-    <div className="bg-card-foreground mt-4 flex flex-col justify-start rounded-xl p-4 shadow-lg">
-      <div className="flex items-center justify-between">
-        <div className="text-md font-medium">{title}</div>
-        <div className="flex items-center">{buttons}</div>
-      </div>
-      <Markdown
-        components={{
-          h3(props) {
-            return <h3 className="text-md font-semibold" {...props} />;
-          },
-          p(props) {
-            return <p className="text-md text-slate-500" {...props} />;
-          },
-          code(props) {
-            return <span className="rounded bg-yellow-200 px-1" {...props} />;
-          },
-        }}
-      >
-        {text}
-      </Markdown>
-    </div>
-  );
-};
