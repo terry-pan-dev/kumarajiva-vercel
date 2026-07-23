@@ -1,15 +1,20 @@
 import { Document, Paragraph, TextRun, HeadingLevel, Packer } from 'docx';
 
-import type { IParagraph } from '~/services/paragraph.service';
-
 interface SectionInfo {
   documentTitle: string;
   sectionTitle: string | null;
 }
 
+// Only the fields the document actually renders — keeps the hook decoupled
+// from any paragraph service shape.
+interface DocxParagraph {
+  origin: string;
+  target: string | null;
+}
+
 export const useDownloadDocx = () => {
   const downloadDocx = async (
-    paragraphs: Omit<IParagraph, 'references' | 'histories' | 'originComments' | 'targetComments'>[],
+    paragraphs: DocxParagraph[],
     sectionInfo: SectionInfo,
     fileName: string = 'translation.docx',
   ) => {

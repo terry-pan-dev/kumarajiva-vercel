@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray } from 'drizzle-orm';
+import { and, count, eq, gte, inArray } from 'drizzle-orm';
 
 import type {
   CreateContributor,
@@ -243,6 +243,17 @@ export const DbParagraphsNew = {
     });
   },
 
+  // Which of these sections have any (non-parked) paragraphs — lets list pages
+  // show/hide per-section actions like export without fetching content.
+  findSectionIdsWithParagraphs: async (sectionIds: string[]) => {
+    if (!sectionIds.length) return [];
+    const rows = await db
+      .selectDistinct({ sectionId: paragraphsTableNew.sectionId })
+      .from(paragraphsTableNew)
+      .where(and(inArray(paragraphsTableNew.sectionId, sectionIds), gte(paragraphsTableNew.order, 0)));
+    return rows.map((r) => r.sectionId);
+  },
+
   // Debug read: every paragraph for a section INCLUDING parked rows (order < 0)
   // that the reader views hide. Legacy findAllByRollIdForDebug analog.
   findAllBySectionIdForDebug: async (sectionId: string) => {
@@ -250,6 +261,23 @@ export const DbParagraphsNew = {
       where: eq(paragraphsTableNew.sectionId, sectionId),
       orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
     });
+  },
+
+  // Debug read across a whole document, INCLUDING parked rows — the
+  // paragraphs data-management page groups these by section client-side.
+  findAllByDocumentIdForDebug: async (documentId: string) => {
+    return db.query.paragraphsTableNew.findMany({
+      where: eq(paragraphsTableNew.documentId, documentId),
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  // Row counts per document (including parked rows) for the document picker.
+  countByDocument: async () => {
+    return db
+      .select({ documentId: paragraphsTableNew.documentId, count: count() })
+      .from(paragraphsTableNew)
+      .groupBy(paragraphsTableNew.documentId);
   },
 
   // ---- CREATE ----

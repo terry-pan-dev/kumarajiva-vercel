@@ -14,6 +14,8 @@ import { DbContributors } from '~/services/text.crud';
 import {
   createDocument,
   createSection,
+  getSection,
+  getSectionIdsWithParagraphs,
   getSectionsByDocument,
   getWorks,
   reorderSections,
@@ -103,12 +105,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     await createSection({ documentId, title: originTitle, order: nextOrder }, user);
 
     if (targetDocumentId && translationTitle) {
-      const targetSections = await getSectionsByDocument(targetDocumentId);
+      // The counterpart gets the SAME order as the source section — order is
+      // how the two sides are paired everywhere (display, import, workspace).
       await createSection(
         {
           documentId: targetDocumentId,
           title: translationTitle,
-          order: targetSections.length + 1,
+          order: nextOrder,
         },
         user,
       );
@@ -131,8 +134,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (childSectionId) {
         await updateSection(childSectionId, { title: translationTitle }, user);
       } else if (targetDocumentId) {
+        // No counterpart yet — create it with the SAME order as the source
+        // section, since order is how the two sides are paired everywhere.
+        const sourceSection = await getSection(sectionId);
+        if (!sourceSection) {
+          return json({ success: false, error: 'Section not found' }, { status: 404 });
+        }
         await createSection(
-          { documentId: targetDocumentId, title: translationTitle, order: 0, parentId: sectionId },
+          { documentId: targetDocumentId, title: translationTitle, order: sourceSection.order },
           user,
         );
       }
@@ -192,7 +201,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   try {
     const [projects, works] = await Promise.all([getProjects(), getWorks()]);
-    return json({ success: true, projects, works });
+
+    // Which sections have paragraph data (paragraphs_new) — sections without
+    // data show "No data to export" instead of an export link.
+    const sectionIds = projects.flatMap((p) =>
+      (p.sourceDocument?.sections ?? []).flatMap((s) => [s.id, ...s.children.map((c) => c.id)]),
+    );
+    const sectionIdsWithData = await getSectionIdsWithParagraphs(sectionIds);
+
+    return json({ success: true, projects, works, sectionIdsWithData });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
@@ -207,7 +224,8 @@ export const ErrorBoundary = () => {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DataManagementIndex() {
-  const { projects, works } = useLoaderData<typeof loader>();
+  const { projects, works, sectionIdsWithData } = useLoaderData<typeof loader>();
+  const sectionsWithData = new Set(sectionIdsWithData);
   const [showAddProjectForm, setShowAddProjectForm] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [addingSectionToProjectId, setAddingSectionToProjectId] = useState<string | null>(null);
@@ -250,6 +268,7 @@ export default function DataManagementIndex() {
           <ProjectRow
             key={project.id}
             project={project}
+            sectionsWithData={sectionsWithData}
             editingSectionId={editingSectionId}
             isEditing={editingProjectId === project.id}
             onEditClose={() => setEditingProjectId(null)}

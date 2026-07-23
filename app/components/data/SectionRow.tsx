@@ -14,7 +14,13 @@ type Props = {
   section: Section;
   documentId: string;
   targetDocumentId: string;
-  targetTitle?: string | null;
+  // The counterpart section in the target document (matched by order), when it
+  // exists. Feeds both the "/ translation title" display and the edit form —
+  // so edits update the real counterpart instead of creating a duplicate.
+  targetSection?: { id: string; title: string | null } | null;
+  // Whether the section has paragraph data (paragraphs_new); without data
+  // there is nothing to export.
+  hasData: boolean;
   isEditing: boolean;
   onEditToggle: () => void;
   onEditClose: () => void;
@@ -25,12 +31,15 @@ export function SectionRow({
   section,
   documentId,
   targetDocumentId,
-  targetTitle,
+  targetSection,
+  hasData,
   isEditing,
   onEditToggle,
   onEditClose,
   dragControls,
 }: Props) {
+  const targetTitle = targetSection?.title ?? null;
+
   return (
     <div>
       <div className="hover:bg-muted/50 flex items-center justify-between p-4">
@@ -68,15 +77,21 @@ export function SectionRow({
             <Upload size={14} />
             Import & Replace
           </a>
-          <a
-            target="_blank"
-            rel="noreferrer"
-            href={`/resources/export/${section.id}`}
-            className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2 rounded px-3 py-1.5 text-xs font-medium"
-          >
-            <Download size={14} />
-            Export xlsx
-          </a>
+          {hasData ? (
+            <a
+              target="_blank"
+              rel="noreferrer"
+              href={`/resources/export/${section.id}`}
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2 rounded px-3 py-1.5 text-xs font-medium"
+            >
+              <Download size={14} />
+              Export xlsx
+            </a>
+          ) : (
+            <span className="text-muted-foreground flex items-center gap-2 px-3 py-1.5 text-xs italic">
+              No data to export
+            </span>
+          )}
         </div>
       </div>
 
@@ -88,9 +103,9 @@ export function SectionRow({
             targetDocumentId={targetDocumentId}
             section={{
               sectionId: section.id,
-              childSectionId: null,
+              childSectionId: targetSection?.id ?? null,
               originTitle: section.title ?? '',
-              translationTitle: '',
+              translationTitle: targetSection?.title ?? '',
             }}
           />
         </div>

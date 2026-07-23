@@ -1,12 +1,11 @@
-// Translation workspace for the refactored data model (work / document /
-// section / paragraphs_new). Duplicates the interaction of
-// _app.translation.$rollId.tsx while the migration is in flight, but reads and
-// writes paragraphs_new: origin paragraphs come from the source document's
+// Translation workspace, backed by the refactored data model (work / document /
+// section / paragraphs_new): origin paragraphs come from the source document's
 // section, translations live in the project's target document and are paired
 // by passage_key instead of parent_id.
 //
-// Comments, references and history still hang off the legacy tables — the UI
-// keeps their slots (they render empty) until those tables migrate.
+// Comments, references and history still hang off the legacy tables (viewable
+// via the legacy /data/paragraphs debug page) and return here once they
+// migrate.
 import { Form, useActionData, useLoaderData, useNavigation, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { motion } from 'framer-motion';
@@ -40,7 +39,7 @@ import { useTranslation } from '~/lib/hooks/useTranslation';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { getProjectBySourceDocumentId } from '~/services/project.service';
 import {
-  findOrCreateTargetSection,
+  findTargetSection,
   getSection,
   insertParagraph,
   readParagraphsBySectionId,
@@ -130,7 +129,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
     if (result.kind === 'insert') {
       // Resolve where the translation goes: the project's target document, in
-      // the section matching this source section's order (created on demand).
+      // the section matching this source section's order. The counterpart must
+      // already exist (created and named in Data Management) — sections are
+      // never created implicitly.
       const section = await getSection(sectionId as string);
       if (!section) {
         throw new Error('Section not found');
@@ -142,11 +143,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
           { status: 400 },
         );
       }
-      const targetSection = await findOrCreateTargetSection({
-        sourceSection: { order: section.order, title: section.title },
+      const targetSection = await findTargetSection({
+        sourceSection: { order: section.order },
         targetDocumentId: project.targetDocumentId,
-        userId: user.id,
       });
+      if (!targetSection) {
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                message:
+                  'The translation section has not been created yet. Create and name it in Data Management → Translation Projects first.',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
 
       console.time('insertParagraph');
       await insertParagraph({
@@ -340,7 +354,7 @@ export default function TranslationSection() {
           {paragraphs.length ? (
             Paragraphs
           ) : (
-            <div className="text-center text-lg">We are preparing paragraphs for you...</div>
+            <div className="text-center text-lg">This section is still in preparation — no paragraphs yet.</div>
           )}
         </RadioGroup>
       </ScrollArea>

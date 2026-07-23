@@ -34,7 +34,7 @@ import {
 } from './file.service';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
 import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
-import { findOrCreateTargetSection, getDocument, getSection, readParagraphsBySectionId } from './text.service';
+import { findTargetSection, getDocument, getSection, readParagraphsBySectionId } from './text.service';
 
 export const db = getDb();
 
@@ -360,9 +360,14 @@ export async function getExistingDataPreviewForRollId(
  *   - Extra existing paragraphs beyond imported count → "park" by negating order
  *
  * Origin/target pairing uses passage_key instead of parent_id: the target row
- * lives in the target document's counterpart section (matched by order, created
- * on demand) and carries the same passage_key as its origin. Keys for new rows
- * are generated as `<work prefix>.<section order>.<row number>`.
+ * lives in the target document's counterpart section (matched by order) and
+ * carries the same passage_key as its origin. Keys for new rows are generated
+ * as `<work prefix>.<section order>.<row number>`.
+ *
+ * The counterpart section is NEVER created implicitly — it must already exist
+ * and be named (via Data Management) or the import is rejected. This keeps
+ * section ids stable and avoids silently splitting a document's paragraphs
+ * across duplicate sections.
  *
  * References are NOT imported — they still belong to the legacy tables and are
  * reported as skipped until they move over in a later migration step.
@@ -383,11 +388,27 @@ export async function replaceSectionData(
     }
 
     const passageKeyPrefix = originDocument.work?.passageKeyPrefix ?? originDocument.workId;
-    const targetSection = await findOrCreateTargetSection({
-      sourceSection: { order: originSection.order, title: originSection.title },
+
+    const targetSection = await findTargetSection({
+      sourceSection: { order: originSection.order },
       targetDocumentId,
-      userId,
     });
+    if (!targetSection) {
+      return {
+        success: false,
+        message:
+          'The translation section for this section has not been created yet. ' +
+          'Create and name it in Data Management → Translation Projects (edit the section and set a translation title) before importing.',
+      };
+    }
+    if (!targetSection.title?.trim()) {
+      return {
+        success: false,
+        message:
+          'The translation section exists but has no title. ' +
+          'Name it in Data Management → Translation Projects (edit the section and set a translation title) before importing.',
+      };
+    }
 
     const { counts, algoliaUpdates, algoliaInserts } = await db.transaction(async (tx) => {
       // ── 1. Load existing rows (non-parked) for both sides ────────────────

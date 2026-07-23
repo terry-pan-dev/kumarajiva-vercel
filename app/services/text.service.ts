@@ -35,6 +35,17 @@ export const getDocument = async (id: string) => {
   return DbDocuments.findById(id);
 };
 
+export const getDocuments = async () => {
+  return DbDocuments.findAll();
+};
+
+// documentId → paragraph row count (including parked rows), for the
+// paragraphs data-management document picker.
+export const getDocumentParagraphCounts = async (): Promise<Map<string, number>> => {
+  const rows = await DbParagraphsNew.countByDocument();
+  return new Map(rows.map((r) => [r.documentId, r.count]));
+};
+
 export const getDocumentsByWork = async (workId: string) => {
   return DbDocuments.findByWorkId(workId);
 };
@@ -59,6 +70,22 @@ export const getSectionsByDocument = async (documentId: string) => {
   return DbSections.findByDocumentId(documentId);
 };
 
+// Section nesting (parent_id) only exists WITHIN one document. Translation
+// counterparts are paired by order across the project's documents — never by
+// parent/child links (that was the legacy roll model, and a former bug carried
+// it over, producing stray order-0 sections parented across documents).
+const assertParentInSameDocument = async (parentId: string, documentId: string) => {
+  const parent = await DbSections.findById(parentId);
+  if (!parent) {
+    throw new Error(`Cannot set section parent: section ${parentId} not found`);
+  }
+  if (parent.documentId !== documentId) {
+    throw new Error(
+      'A section parent must belong to the same document. Translation counterparts are paired by order, not by parent/child links.',
+    );
+  }
+};
+
 export const createSection = async (
   section: Omit<CreateSection, 'createdBy' | 'updatedBy' | 'workId'>,
   user: ReadUser,
@@ -66,6 +93,9 @@ export const createSection = async (
   const workId = await DbDocuments.findWorkId(section.documentId);
   if (!workId) {
     throw new Error(`Cannot create section: document ${section.documentId} not found`);
+  }
+  if (section.parentId) {
+    await assertParentInSameDocument(section.parentId, section.documentId);
   }
   return DbSections.create({ ...section, workId, createdBy: user.id, updatedBy: user.id });
 };
@@ -78,6 +108,13 @@ export const updateSection = async (
   // If the section is moved to another document, keep the denormalised
   // work_id in step with its new document.
   const workId = data.documentId ? await DbDocuments.findWorkId(data.documentId) : undefined;
+  if (data.parentId) {
+    const documentId = data.documentId ?? (await DbSections.findById(id))?.documentId;
+    if (!documentId) {
+      throw new Error(`Cannot update section: section ${id} not found`);
+    }
+    await assertParentInSameDocument(data.parentId, documentId);
+  }
   return DbSections.updateById(id, { ...data, ...(workId ? { workId } : {}), updatedBy: user.id });
 };
 
@@ -178,6 +215,10 @@ export const getParagraph = async (id: string) => {
   return DbParagraphsNew.findById(id);
 };
 
+export const getSectionIdsWithParagraphs = async (sectionIds: string[]) => {
+  return DbParagraphsNew.findSectionIdsWithParagraphs(sectionIds);
+};
+
 // Legacy updateParagraph analog — same signature, same Algolia sync.
 export const updateParagraph = async ({
   id,
@@ -249,38 +290,20 @@ export const createParagraphs = async (
   return DbParagraphsNew.createMany(paragraphs.map((p) => ({ ...p, createdBy: user.id, updatedBy: user.id })));
 };
 
-// A source section's counterpart in the target document is matched by order
-// (the same convention the index pages use to show source/target titles side
-// by side). Creates the target section on first use so translating or
-// importing into a fresh document just works.
-export const findOrCreateTargetSection = async ({
+// A source section's counterpart in the target document, matched by order —
+// the same convention the index pages use to show source/target titles side by
+// side. Returns null when it has not been created yet: imports and the
+// translation workspace require the counterpart to be created and named in
+// Data Management first, and never create sections implicitly.
+export const findTargetSection = async ({
   sourceSection,
   targetDocumentId,
-  userId,
 }: {
-  sourceSection: { order: number; title: string | null };
+  sourceSection: { order: number };
   targetDocumentId: string;
-  userId: string;
-}): Promise<{ id: string; created: boolean }> => {
+}) => {
   const sections = await DbSections.findByDocumentId(targetDocumentId);
-  const existing = sections.find((s) => s.order === sourceSection.order);
-  if (existing) {
-    return { id: existing.id, created: false };
-  }
-
-  const workId = await DbDocuments.findWorkId(targetDocumentId);
-  if (!workId) {
-    throw new Error(`Cannot create target section: document ${targetDocumentId} not found`);
-  }
-  const [created] = await DbSections.create({
-    documentId: targetDocumentId,
-    workId,
-    title: sourceSection.title,
-    order: sourceSection.order,
-    createdBy: userId,
-    updatedBy: userId,
-  });
-  return { id: created.id, created: true };
+  return sections.find((s) => s.order === sourceSection.order) ?? null;
 };
 
 export interface IParagraphNewDebugRow {
@@ -295,23 +318,56 @@ export interface IParagraphNewDebugRow {
   updatedAt: string;
 }
 
+const toDebugRow = (paragraph: ReadParagraphNew): IParagraphNewDebugRow => ({
+  id: paragraph.id,
+  documentId: paragraph.documentId,
+  sectionId: paragraph.sectionId,
+  order: paragraph.order,
+  passageKey: paragraph.passageKey,
+  searchId: paragraph.searchId,
+  content: paragraph.content,
+  createdAt: paragraph.createdAt.toISOString(),
+  updatedAt: paragraph.updatedAt.toISOString(),
+});
+
 // Every paragraph in a section, INCLUDING parked rows (order < 0) that reader
 // views hide — for the paragraphs data-management page. Legacy
 // readParagraphsForDebug analog.
 export const readParagraphsForDebugBySectionId = async (sectionId: string): Promise<IParagraphNewDebugRow[]> => {
   const paragraphs = await DbParagraphsNew.findAllBySectionIdForDebug(sectionId);
+  return paragraphs.map(toDebugRow);
+};
 
-  return paragraphs.map((paragraph) => ({
-    id: paragraph.id,
-    documentId: paragraph.documentId,
-    sectionId: paragraph.sectionId,
-    order: paragraph.order,
-    passageKey: paragraph.passageKey,
-    searchId: paragraph.searchId,
-    content: paragraph.content,
-    createdAt: paragraph.createdAt.toISOString(),
-    updatedAt: paragraph.updatedAt.toISOString(),
-  }));
+// Every paragraph in a document, INCLUDING parked rows — the paragraphs
+// data-management page groups these by section.
+export const readParagraphsForDebugByDocumentId = async (documentId: string): Promise<IParagraphNewDebugRow[]> => {
+  const paragraphs = await DbParagraphsNew.findAllByDocumentIdForDebug(documentId);
+  return paragraphs.map(toDebugRow);
+};
+
+// Removes a section together with everything that hangs off it: all its
+// paragraphs (including parked rows) and their search-index entries. Used by
+// the paragraphs data-management page to clear stray sections. Refuses when
+// the section still has child sections — those must be handled explicitly.
+export const deleteSectionWithParagraphs = async ({ id }: { id: string }) => {
+  const section = await DbSections.findById(id);
+  if (!section) {
+    throw new Error('Section not found');
+  }
+  if (section.children.length > 0) {
+    throw new Error('This section has child sections. Delete or reassign them before deleting it.');
+  }
+
+  const paragraphs = await DbParagraphsNew.findAllBySectionIdForDebug(id);
+
+  // Remove dependent rows before the section they reference.
+  await DbParagraphsNew.deleteByIds(paragraphs.map((p) => p.id));
+  await DbSections.deleteById(id);
+
+  // Drop the search-index entries last; the DB is the source of truth.
+  await deleteParagraphsFromAlgolia(paragraphs.map((p) => p.searchId));
+
+  return { deletedParagraphCount: paragraphs.length };
 };
 
 // Legacy deleteParagraphCleanly analog. No parent/child rows to cascade here;

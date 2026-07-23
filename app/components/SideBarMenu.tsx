@@ -246,7 +246,7 @@ export function SideBarMenu({
                     Paragraphs
                   </NavLink>
                   <NavLink
-                    to="/data/paragraphs-new"
+                    to="/data/inspector"
                     className={({ isActive }) =>
                       cn(
                         'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
@@ -255,7 +255,7 @@ export function SideBarMenu({
                       )
                     }
                   >
-                    Paragraphs (new)
+                    Document Inspector
                   </NavLink>
                 </div>
               )}

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { assertAuthUser } from '~/auth.server';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { getProjects } from '~/services/project.service';
+import { getSectionIdsWithParagraphs } from '~/services/text.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
@@ -14,7 +15,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
   try {
     const projects = await getProjects();
-    return json({ success: true, projects });
+
+    // Which sections have paragraph data (paragraphs_new) — sections without
+    // data are still in preparation and not listed for translation.
+    const sectionIds = projects.flatMap((p) =>
+      (p.sourceDocument?.sections ?? []).flatMap((s) => [s.id, ...s.children.map((c) => c.id)]),
+    );
+    const sectionIdsWithData = await getSectionIdsWithParagraphs(sectionIds);
+
+    return json({ success: true, projects, sectionIdsWithData });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
@@ -26,22 +35,39 @@ export const ErrorBoundary = () => {
   return <ErrorInfo error={error} />;
 };
 
-type SectionNode = { id: string; title: string | null; targetTitle: string | null; children: SectionNode[] };
+type SectionNode = {
+  id: string;
+  title: string | null;
+  targetTitle: string | null;
+  hasData: boolean;
+  children: SectionNode[];
+};
 
 type LoaderData = ReturnType<typeof useLoaderData<typeof loader>>;
 type TopLevelSection = NonNullable<LoaderData['projects'][number]['sourceDocument']>['sections'][number];
 
-const toSectionNode = (section: TopLevelSection, targetByOrder: Map<number, string | null>): SectionNode => ({
+const toSectionNode = (
+  section: TopLevelSection,
+  targetByOrder: Map<number, string | null>,
+  sectionsWithData: Set<string>,
+): SectionNode => ({
   id: section.id,
   title: section.title,
   targetTitle: targetByOrder.get(section.order) ?? null,
+  hasData: sectionsWithData.has(section.id),
   children: section.children.map((c) => ({
     id: c.id,
     title: c.title,
     targetTitle: targetByOrder.get(c.order) ?? null,
+    hasData: sectionsWithData.has(c.id),
     children: [],
   })),
 });
+
+// Sections without paragraph data are still in preparation — keep only leaves
+// with data, and parents that retain at least one visible child.
+const withDataOnly = (nodes: SectionNode[]): SectionNode[] =>
+  nodes.map((n) => ({ ...n, children: withDataOnly(n.children) })).filter((n) => n.hasData || n.children.length > 0);
 
 function SectionTitle({ title, targetTitle }: { title: string | null; targetTitle: string | null }) {
   return (
@@ -78,28 +104,22 @@ function SectionRow({ section, depth }: { section: SectionNode; depth: number })
   }
 
   return (
-    <div
+    <Link
+      to={`/translation/${section.id}`}
       style={{ paddingLeft: `${depth * 20 + 16}px` }}
-      className="hover:bg-muted/50 flex items-center justify-between gap-2 py-3 pr-4 transition"
+      className="hover:bg-muted/50 flex items-center justify-between py-3 pr-4 transition"
     >
-      <Link to={`/translation/${section.id}`} className="text-foreground flex-1">
+      <span className="text-foreground">
         <SectionTitle title={section.title} targetTitle={section.targetTitle} />
-      </Link>
+      </span>
       {/* status badge — added once translation_progress table is available */}
-      {/* Temporary while the paragraph migration is in flight: same workspace
-          backed by the new paragraphs table. */}
-      <Link
-        to={`/translation/new/${section.id}`}
-        className="text-muted-foreground hover:text-foreground border-border shrink-0 rounded border px-2 py-0.5 text-xs"
-      >
-        new data
-      </Link>
-    </div>
+    </Link>
   );
 }
 
 export default function TranslationIndex() {
-  const { projects } = useLoaderData<typeof loader>();
+  const { projects, sectionIdsWithData } = useLoaderData<typeof loader>();
+  const sectionsWithData = new Set(sectionIdsWithData);
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set());
 
   const toggleProject = (projectId: string) => {
@@ -126,6 +146,10 @@ export default function TranslationIndex() {
         {projects.map((project) => {
           const isOpen = openProjects.has(project.id);
           const sourceSections = project.sourceDocument?.sections ?? [];
+          const targetByOrder = new Map((project.targetDocument?.sections ?? []).map((s) => [s.order, s.title]));
+          const visibleSections = withDataOnly(
+            sourceSections.map((section) => toSectionNode(section, targetByOrder, sectionsWithData)),
+          );
 
           return (
             <div key={project.id} className="border-border bg-background overflow-hidden rounded-lg border shadow-sm">
@@ -145,25 +169,22 @@ export default function TranslationIndex() {
                       {project.sourceDocument?.title}
                       {project.targetDocument && <span className="font-normal"> / {project.targetDocument.title}</span>}
                     </div>
-                    <div className="text-muted-foreground text-xs">{sourceSections.length} sections</div>
+                    <div className="text-muted-foreground text-xs">
+                      {visibleSections.length} of {sourceSections.length} sections ready
+                    </div>
                   </div>
                 </div>
               </div>
 
               {isOpen && (
                 <div className="divide-border border-border divide-y border-t">
-                  {sourceSections.length > 0 ? (
-                    (() => {
-                      const targetByOrder = new Map(
-                        (project.targetDocument?.sections ?? []).map((s) => [s.order, s.title]),
-                      );
-                      return sourceSections.map((section) => (
-                        <SectionRow depth={0} key={section.id} section={toSectionNode(section, targetByOrder)} />
-                      ));
-                    })()
+                  {visibleSections.length > 0 ? (
+                    visibleSections.map((section) => <SectionRow depth={0} key={section.id} section={section} />)
                   ) : (
                     <div className="text-muted-foreground p-4 text-center text-sm">
-                      No sections found for this project.
+                      {sourceSections.length === 0
+                        ? 'No sections found for this project.'
+                        : 'The sections of this project are still in preparation.'}
                     </div>
                   )}
                 </div>
