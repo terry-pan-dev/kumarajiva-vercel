@@ -14,6 +14,7 @@ import { ArrowLeft, Copy, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Icons } from '~/components/icons';
 import {
@@ -53,6 +54,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
+  // The raw-data inspector is admin-only, even though managers can otherwise
+  // read Data Management. The sidebar hides the link, but this is the gate that
+  // actually holds.
+  if (defineAbilityFor(user).cannot('Read', 'Inspector')) {
+    throw redirect('/data');
+  }
   const { documentId } = params;
   const document = await getDocument(documentId as string);
   if (!document) {
@@ -68,7 +75,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     compareDocument ? readParagraphsForDebugByDocumentId(compareDocument.id) : Promise.resolve([]),
   ]);
 
-  const canDelete = user.role === 'admin' || user.role === 'manager';
+  const canDelete = defineAbilityFor(user).can('Delete', 'DataManagement');
   return json({
     success: true,
     document: {
@@ -92,7 +99,7 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
-  if (user.role !== 'admin' && user.role !== 'manager') {
+  if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
     return json({ success: false, message: 'You are not authorised to delete data.' }, { status: 403 });
   }
 

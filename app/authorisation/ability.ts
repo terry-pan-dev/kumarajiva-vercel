@@ -9,6 +9,7 @@ type Subjects =
   | 'OriginText'
   | 'Paragraph'
   | 'DataManagement'
+  | 'Inspector'
   | 'Translation'
   | 'Glossary'
   | 'Comment'
@@ -21,6 +22,11 @@ export const defineAbilityFor = (user: Pick<ReadUser, 'role'>) => {
   if (user.role === 'admin') {
     can('Read', 'Administration');
     can('Create', 'Sutra');
+    // Destructive data-management actions — deleting works, documents, sections
+    // or paragraphs — are admin-only, as is the raw-data Document Inspector.
+    // Managers can otherwise Read DataManagement, so these need their own gate.
+    can('Delete', 'DataManagement');
+    can('Read', 'Inspector');
   }
   if (user.role === 'editor' || user.role === 'admin' || user.role === 'leader') {
     can('Read', 'Paragraph');

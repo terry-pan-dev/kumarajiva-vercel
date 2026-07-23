@@ -34,6 +34,10 @@ export const DbWorks = {
   updateById: async (id: string, data: Partial<CreateWork>) => {
     return db.update(worksTable).set(data).where(eq(worksTable.id, id));
   },
+
+  deleteById: async (id: string) => {
+    return db.delete(worksTable).where(eq(worksTable.id, id));
+  },
 };
 
 export const DbDocuments = {
@@ -270,6 +274,16 @@ export const DbParagraphsNew = {
       where: eq(paragraphsTableNew.documentId, documentId),
       orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
     });
+  },
+
+  // Row count for a single document (including parked rows) — a lightweight
+  // guard for document deletion.
+  countByDocumentId: async (documentId: string) => {
+    const [row] = await db
+      .select({ count: count() })
+      .from(paragraphsTableNew)
+      .where(eq(paragraphsTableNew.documentId, documentId));
+    return row?.count ?? 0;
   },
 
   // Row counts per document (including parked rows) for the document picker.

@@ -8,6 +8,7 @@ import { Columns2, Copy, Eye } from 'lucide-react';
 import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Badge, Button } from '~/components/ui';
 import { useToast } from '~/hooks/use-toast';
@@ -17,6 +18,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
+  }
+  // The raw-data inspector is admin-only; the sidebar hides the link, but this
+  // is the gate that actually holds.
+  if (defineAbilityFor(user).cannot('Read', 'Inspector')) {
+    throw redirect('/data');
   }
   try {
     const [works, documents, paragraphCounts] = await Promise.all([

@@ -72,6 +72,7 @@ export function SideBarMenu({
   const ability = useAbility(AbilityContext);
   const canReadAdmin = ability.can('Read', 'Administration');
   const canManageData = ability.can('Read', 'DataManagement');
+  const canUseInspector = ability.can('Read', 'Inspector');
 
   useEffect(() => {
     if (pathname.startsWith('/data')) {
@@ -245,18 +246,20 @@ export function SideBarMenu({
                   >
                     Paragraphs
                   </NavLink>
-                  <NavLink
-                    to="/data/inspector"
-                    className={({ isActive }) =>
-                      cn(
-                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
-                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
-                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
-                      )
-                    }
-                  >
-                    Document Inspector
-                  </NavLink>
+                  {canUseInspector && (
+                    <NavLink
+                      to="/data/inspector"
+                      className={({ isActive }) =>
+                        cn(
+                          'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                          'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                          isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                        )
+                      }
+                    >
+                      Document Inspector
+                    </NavLink>
+                  )}
                 </div>
               )}
             </div>

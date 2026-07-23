@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 
 import type { CreateProject } from '~/drizzle/schema';
 
@@ -84,6 +84,14 @@ export const DbProjects = {
           },
         },
       },
+    });
+  },
+
+  // Every project that references this document as its source OR target — used
+  // to block deleting a document that a project still depends on.
+  findByDocumentId: async (documentId: string) => {
+    return db.query.projectsTable.findMany({
+      where: or(eq(projectsTable.sourceDocumentId, documentId), eq(projectsTable.targetDocumentId, documentId)),
     });
   },
 

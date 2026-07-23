@@ -1,5 +1,6 @@
 import { Pencil } from 'lucide-react';
 
+import { DeleteEntityButton } from './DeleteEntityButton';
 import { DocumentForm } from './DocumentForm';
 
 type Contributor = { id: string; name: string; role: string };
@@ -15,12 +16,13 @@ type Document = {
 
 type Props = {
   document: Document;
+  canDelete: boolean;
   isEditing: boolean;
   onEditToggle: () => void;
   onEditClose: () => void;
 };
 
-export function DocumentRow({ document, isEditing, onEditToggle, onEditClose }: Props) {
+export function DocumentRow({ document, canDelete, isEditing, onEditToggle, onEditClose }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between px-4 py-3">
@@ -35,6 +37,16 @@ export function DocumentRow({ document, isEditing, onEditToggle, onEditClose }: 
             >
               <Pencil size={11} />
             </button>
+            {canDelete && (
+              <DeleteEntityButton
+                size={11}
+                id={document.id}
+                entity="document"
+                idName="documentId"
+                label={document.title}
+                intent="delete-document"
+              />
+            )}
           </div>
           {document.subtitle && <div className="text-muted-foreground text-xs">{document.subtitle}</div>}
           <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">

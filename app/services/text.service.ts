@@ -12,6 +12,7 @@ import type {
 } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
+import { DbProjects } from './project.crud';
 import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
 import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
 
@@ -33,6 +34,59 @@ export const updateWork = async (
 
 export const getDocument = async (id: string) => {
   return DbDocuments.findById(id);
+};
+
+// A work is deletable only once it holds nothing: its documents (and,
+// transitively, every section, project and paragraph, which all require a
+// document) must be gone first.
+export const deleteWork = async ({ id }: { id: string }) => {
+  const work = await DbWorks.findById(id);
+  if (!work) {
+    throw new Error('Work not found');
+  }
+  if (work.documents.length > 0) {
+    throw new Error(
+      `This work still has ${work.documents.length} document(s). Delete its documents before deleting the work.`,
+    );
+  }
+
+  await DbWorks.deleteById(id);
+  return { deletedWorkId: id };
+};
+
+// A document is deletable only when nothing references it: no sections, no
+// paragraphs, and no project using it as source or target. Its contributors are
+// owned metadata and are removed along with it.
+export const deleteDocument = async ({ id }: { id: string }) => {
+  const document = await DbDocuments.findById(id);
+  if (!document) {
+    throw new Error('Document not found');
+  }
+  if (document.sections.length > 0) {
+    throw new Error(
+      `This document still has ${document.sections.length} section(s). Delete its sections before deleting the document.`,
+    );
+  }
+
+  const paragraphCount = await DbParagraphsNew.countByDocumentId(id);
+  if (paragraphCount > 0) {
+    throw new Error(
+      `This document still has ${paragraphCount} paragraph(s). Remove them before deleting the document.`,
+    );
+  }
+
+  const projects = await DbProjects.findByDocumentId(id);
+  if (projects.length > 0) {
+    throw new Error(
+      `This document is used by ${projects.length} project(s). Remove those projects before deleting the document.`,
+    );
+  }
+
+  // Contributors hang off the document and carry no independent meaning, so
+  // they go with it.
+  await DbContributors.deleteByDocumentId(id);
+  await DbDocuments.deleteById(id);
+  return { deletedDocumentId: id };
 };
 
 export const getDocuments = async () => {
