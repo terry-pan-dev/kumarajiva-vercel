@@ -29,6 +29,7 @@ export const DbGlossaries = {
     if (!ids.length) return [];
     return db.query.glossariesTable.findMany({
       where: inArray(glossariesTable.id, ids),
+      orderBy: (t, { desc }) => [desc(t.glossary)],
     });
   },
 
@@ -36,6 +37,12 @@ export const DbGlossaries = {
     if (!terms.length) return [];
     return db.query.glossariesTable.findMany({
       where: inArray(glossariesTable.glossary, terms),
+    });
+  },
+
+  findAll: async (): Promise<ReadGlossary[]> => {
+    return db.query.glossariesTable.findMany({
+      orderBy: (t, { desc }) => [desc(t.glossary)],
     });
   },
 
