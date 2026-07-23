@@ -3,7 +3,7 @@ import { relations } from 'drizzle-orm';
 import { commentsTable } from './tables/comment';
 import { contributorsTable } from './tables/contributor';
 import { documentsTable } from './tables/document';
-import { paragraphsTable, paragraphsHistoryTable } from './tables/paragraph';
+import { paragraphsTable, paragraphsTableNew, paragraphsHistoryTable } from './tables/paragraph';
 import { projectsTable } from './tables/project';
 import { referencesTable } from './tables/reference';
 import { rollsTable } from './tables/roll';
@@ -116,6 +116,7 @@ export const documentsTableRelations = relations(documentsTable, ({ one, many })
   }),
   sections: many(sectionsTable),
   contributors: many(contributorsTable),
+  paragraphs: many(paragraphsTableNew),
   sourceProjects: many(projectsTable, { relationName: 'project_source_document' }),
   targetProjects: many(projectsTable, { relationName: 'project_target_document' }),
 }));
@@ -136,6 +137,18 @@ export const sectionsTableRelations = relations(sectionsTable, ({ one, many }) =
   }),
   children: many(sectionsTable, {
     relationName: 'section_parent_child',
+  }),
+  paragraphs: many(paragraphsTableNew),
+}));
+
+export const paragraphsTableNewRelations = relations(paragraphsTableNew, ({ one }) => ({
+  document: one(documentsTable, {
+    fields: [paragraphsTableNew.documentId],
+    references: [documentsTable.id],
+  }),
+  section: one(sectionsTable, {
+    fields: [paragraphsTableNew.sectionId],
+    references: [sectionsTable.id],
   }),
 }));
 
