@@ -12,8 +12,8 @@ import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
 import { useDownloadDocx } from '~/lib/hooks';
 import { readUsers } from '~/services';
-import { type IParagraph, readParagraphsByRollId } from '~/services/paragraph.service';
-import { getSection } from '~/services/text.service';
+import { getProjectBySourceDocumentId } from '~/services/project.service';
+import { getSection, readParagraphsBySectionId, type IParagraphNew } from '~/services/text.service';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Translation' }];
@@ -37,16 +37,18 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     return redirect('/login');
   }
   const formData = await request.formData();
-  const sectionId = formData.get('rollId');
-  let paragraphs: IParagraph[] = [];
+  const sectionId = formData.get('sectionId');
+  let paragraphs: IParagraphNew[] = [];
   let sectionInfo: { documentTitle: string; sectionTitle: string | null } | undefined = undefined;
   if (sectionId) {
-    const [fetchedParagraphs, section] = await Promise.all([
-      readParagraphsByRollId({ rollId: sectionId as string }),
-      getSection(sectionId as string),
-    ]);
-    paragraphs = fetchedParagraphs;
+    const section = await getSection(sectionId as string);
     if (section) {
+      // Translations are paired from the project's target document by passage_key.
+      const project = await getProjectBySourceDocumentId(section.documentId);
+      paragraphs = await readParagraphsBySectionId({
+        sectionId: sectionId as string,
+        targetDocumentId: project?.targetDocumentId ?? undefined,
+      });
       sectionInfo = { documentTitle: section.document?.title ?? '', sectionTitle: section.title ?? null };
     }
   }
@@ -73,7 +75,7 @@ export default function TranslationLayout() {
   const handleDownload = async () => {
     fetcher.submit(
       {
-        rollId: params.rollId || '',
+        sectionId: params.sectionId || '',
       },
       {
         method: 'post',
@@ -92,7 +94,7 @@ export default function TranslationLayout() {
         <div className="flex w-full items-center justify-between">
           {/* <SideBarTrigger /> */}
           <BreadcrumbLine />
-          {params.rollId ? (
+          {params.sectionId ? (
             <Can I="Download" this="Paragraph">
               <Button
                 size="icon"

@@ -4,6 +4,7 @@ import { ArrowLeft, Copy, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Icons } from '~/components/icons';
 import {
@@ -38,7 +39,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     ? { documentTitle: section.document?.title ?? '', sectionTitle: section.title ?? null }
     : null;
 
-  const canDelete = user.role === 'admin' || user.role === 'manager';
+  const canDelete = defineAbilityFor(user).can('Delete', 'DataManagement');
   return json({ success: true, rows, sectionInfo, rollId: rollId as string, canDelete });
 }
 
@@ -47,7 +48,7 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
-  if (user.role !== 'admin' && user.role !== 'manager') {
+  if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
     return json({ success: false, message: 'You are not authorised to delete paragraphs.' }, { status: 403 });
   }
 

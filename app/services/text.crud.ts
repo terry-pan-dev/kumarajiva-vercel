@@ -1,8 +1,14 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, count, eq, gte, inArray } from 'drizzle-orm';
 
-import type { CreateContributor, CreateDocument, CreateSection, CreateWork } from '~/drizzle/schema';
+import type {
+  CreateContributor,
+  CreateDocument,
+  CreateParagraphNew,
+  CreateSection,
+  CreateWork,
+} from '~/drizzle/schema';
 
-import { contributorsTable, documentsTable, sectionsTable, worksTable } from '~/drizzle/schema';
+import { contributorsTable, documentsTable, paragraphsTableNew, sectionsTable, worksTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
 
 const db = getDb();
@@ -27,6 +33,10 @@ export const DbWorks = {
 
   updateById: async (id: string, data: Partial<CreateWork>) => {
     return db.update(worksTable).set(data).where(eq(worksTable.id, id));
+  },
+
+  deleteById: async (id: string) => {
+    return db.delete(worksTable).where(eq(worksTable.id, id));
   },
 };
 
@@ -156,5 +166,168 @@ export const DbSections = {
 
   deleteById: async (id: string) => {
     return db.delete(sectionsTable).where(eq(sectionsTable.id, id));
+  },
+};
+
+// Mirrors the legacy DbParagraphs (crud.server.ts) against paragraphs_new while
+// the migration is in flight. The old parent/child pairing does not exist here:
+// a translation lives in the counterpart document of the same work and shares
+// the source paragraph's passage_key.
+export const DbParagraphsNew = {
+  // ---- READ ----
+
+  findById: async (id: string) => {
+    return db.query.paragraphsTableNew.findFirst({
+      where: eq(paragraphsTableNew.id, id),
+    });
+  },
+
+  findByIds: async (ids: string[], limit?: number) => {
+    if (!ids.length) return [];
+    return db.query.paragraphsTableNew.findMany({
+      where: inArray(paragraphsTableNew.id, ids),
+      limit: limit,
+    });
+  },
+
+  // Legacy findByIdsWithChildrenAndRelations analog: pulls the location context
+  // (section → document → work, plus contributors) used to label search hits.
+  findByIdsWithRelations: async (ids: string[], limit?: number) => {
+    if (!ids.length) return [];
+    return db.query.paragraphsTableNew.findMany({
+      where: inArray(paragraphsTableNew.id, ids),
+      limit: limit,
+      with: {
+        section: {
+          columns: { title: true },
+        },
+        document: {
+          columns: { title: true, language: true },
+          with: {
+            work: {
+              columns: { title: true },
+            },
+            contributors: true,
+          },
+        },
+      },
+    });
+  },
+
+  // Reader views hide "parked" rows (order < 0) — the analog of the legacy
+  // `number >= 0` filter. Rows are parked instead of deleted when an import
+  // replaces a section with fewer paragraphs.
+  findBySectionId: async (sectionId: string, limit?: number) => {
+    return db.query.paragraphsTableNew.findMany({
+      where: and(eq(paragraphsTableNew.sectionId, sectionId), gte(paragraphsTableNew.order, 0)),
+      limit: limit,
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  findByDocumentId: async (documentId: string, limit?: number) => {
+    return db.query.paragraphsTableNew.findMany({
+      where: and(eq(paragraphsTableNew.documentId, documentId), gte(paragraphsTableNew.order, 0)),
+      limit: limit,
+      with: { section: true },
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  // Cross-document lookup used to pair a source paragraph with its translation.
+  findByDocumentIdAndPassageKeys: async (documentId: string, passageKeys: string[]) => {
+    if (!passageKeys.length) return [];
+    return db.query.paragraphsTableNew.findMany({
+      where: and(
+        eq(paragraphsTableNew.documentId, documentId),
+        inArray(paragraphsTableNew.passageKey, passageKeys),
+        gte(paragraphsTableNew.order, 0),
+      ),
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  // Which of these sections have any (non-parked) paragraphs — lets list pages
+  // show/hide per-section actions like export without fetching content.
+  findSectionIdsWithParagraphs: async (sectionIds: string[]) => {
+    if (!sectionIds.length) return [];
+    const rows = await db
+      .selectDistinct({ sectionId: paragraphsTableNew.sectionId })
+      .from(paragraphsTableNew)
+      .where(and(inArray(paragraphsTableNew.sectionId, sectionIds), gte(paragraphsTableNew.order, 0)));
+    return rows.map((r) => r.sectionId);
+  },
+
+  // Debug read: every paragraph for a section INCLUDING parked rows (order < 0)
+  // that the reader views hide. Legacy findAllByRollIdForDebug analog.
+  findAllBySectionIdForDebug: async (sectionId: string) => {
+    return db.query.paragraphsTableNew.findMany({
+      where: eq(paragraphsTableNew.sectionId, sectionId),
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  // Debug read across a whole document, INCLUDING parked rows — the
+  // paragraphs data-management page groups these by section client-side.
+  findAllByDocumentIdForDebug: async (documentId: string) => {
+    return db.query.paragraphsTableNew.findMany({
+      where: eq(paragraphsTableNew.documentId, documentId),
+      orderBy: (paragraphs, { asc }) => [asc(paragraphs.order)],
+    });
+  },
+
+  // Row count for a single document (including parked rows) — a lightweight
+  // guard for document deletion.
+  countByDocumentId: async (documentId: string) => {
+    const [row] = await db
+      .select({ count: count() })
+      .from(paragraphsTableNew)
+      .where(eq(paragraphsTableNew.documentId, documentId));
+    return row?.count ?? 0;
+  },
+
+  // Row counts per document (including parked rows) for the document picker.
+  countByDocument: async () => {
+    return db
+      .select({ documentId: paragraphsTableNew.documentId, count: count() })
+      .from(paragraphsTableNew)
+      .groupBy(paragraphsTableNew.documentId);
+  },
+
+  // ---- CREATE ----
+
+  create: async (paragraph: CreateParagraphNew) => {
+    return db.insert(paragraphsTableNew).values(paragraph).returning({ id: paragraphsTableNew.id });
+  },
+
+  createMany: async (paragraphs: CreateParagraphNew[]) => {
+    if (!paragraphs.length) return [];
+    return db.insert(paragraphsTableNew).values(paragraphs).returning({ id: paragraphsTableNew.id });
+  },
+
+  // ---- UPDATE ----
+
+  updateById: async (id: string, data: Partial<CreateParagraphNew>) => {
+    return db.update(paragraphsTableNew).set(data).where(eq(paragraphsTableNew.id, id));
+  },
+
+  updateByIds: async (ids: string[], data: Partial<CreateParagraphNew>) => {
+    if (!ids.length) return;
+    return db.update(paragraphsTableNew).set(data).where(inArray(paragraphsTableNew.id, ids));
+  },
+
+  // ---- DELETE ----
+
+  deleteById: async (id: string) => {
+    return db.delete(paragraphsTableNew).where(eq(paragraphsTableNew.id, id));
+  },
+
+  deleteByIds: async (ids: string[]) => {
+    if (!ids.length) return;
+    return db.delete(paragraphsTableNew).where(inArray(paragraphsTableNew.id, ids));
+  },
+
+  deleteBySectionId: async (sectionId: string) => {
+    return db.delete(paragraphsTableNew).where(eq(paragraphsTableNew.sectionId, sectionId));
   },
 };

@@ -72,6 +72,15 @@ export interface ImportOptions {
   userId: string;
 }
 
+// Import options for the refactored data model (paragraphs_new). Languages are
+// a property of the documents, so only the location ids travel with the form.
+export interface ImportOptionsNew {
+  originDocumentId: string;
+  originSectionId: string;
+  targetDocumentId: string;
+  userId: string;
+}
+
 export interface ImportResult {
   success: boolean;
   inserted?: number;

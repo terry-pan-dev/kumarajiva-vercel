@@ -6,11 +6,20 @@ import { useState } from 'react';
 import type { Lang } from '~/utils/constants';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { WorkForm } from '~/components/data/WorkForm';
 import { WorkRow } from '~/components/data/WorkRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { DbContributors } from '~/services/text.crud';
-import { createDocument, createWork, getWorks, updateDocument, updateWork } from '~/services/text.service';
+import {
+  createDocument,
+  createWork,
+  deleteDocument,
+  deleteWork,
+  getWorks,
+  updateDocument,
+  updateWork,
+} from '~/services/text.service';
 import { LANG_VALUES } from '~/utils/constants';
 import { parseContributors } from '~/utils/contributors';
 
@@ -89,6 +98,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
+  // ── Work: delete ──
+  if (intent === 'delete-work') {
+    if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
+      return json({ success: false, error: 'You are not authorised to delete works.' }, { status: 403 });
+    }
+    const workId = formData.get('workId') as string;
+    try {
+      await deleteWork({ id: workId });
+      return json({ success: true, message: 'Work deleted.' });
+    } catch (error) {
+      return json({ success: false, error: (error as Error).message }, { status: 400 });
+    }
+  }
+
+  // ── Document: delete ──
+  if (intent === 'delete-document') {
+    if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
+      return json({ success: false, error: 'You are not authorised to delete documents.' }, { status: 403 });
+    }
+    const documentId = formData.get('documentId') as string;
+    try {
+      await deleteDocument({ id: documentId });
+      return json({ success: true, message: 'Document deleted.' });
+    } catch (error) {
+      return json({ success: false, error: (error as Error).message }, { status: 400 });
+    }
+  }
+
   return json({ success: false, error: 'Unknown intent' }, { status: 400 });
 };
 
@@ -100,7 +137,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   try {
     const works = await getWorks();
-    return json({ success: true, works });
+    return json({ success: true, works, canDelete: defineAbilityFor(user).can('Delete', 'DataManagement') });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
@@ -115,7 +152,7 @@ export const ErrorBoundary = () => {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DocumentsPage() {
-  const { works } = useLoaderData<typeof loader>();
+  const { works, canDelete } = useLoaderData<typeof loader>();
   const [showAddWorkForm, setShowAddWorkForm] = useState(false);
   const [editingWorkId, setEditingWorkId] = useState<string | null>(null);
   const [addingDocumentToWorkId, setAddingDocumentToWorkId] = useState<string | null>(null);
@@ -163,6 +200,7 @@ export default function DocumentsPage() {
           <WorkRow
             work={work}
             key={work.id}
+            canDelete={canDelete}
             editingDocumentId={editingDocumentId}
             isEditingWork={editingWorkId === work.id}
             onEditWorkClose={() => setEditingWorkId(null)}

@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 
 import type { CreateProject } from '~/drizzle/schema';
 
@@ -65,6 +65,33 @@ export const DbProjects = {
     if (!ids.length) return [];
     return db.query.projectsTable.findMany({
       where: inArray(projectsTable.id, ids),
+    });
+  },
+
+  // The translation pages resolve a source section's counterpart by looking up
+  // the project that translates its document; target sections are matched by
+  // order within the target document.
+  findBySourceDocumentId: async (sourceDocumentId: string) => {
+    return db.query.projectsTable.findFirst({
+      where: eq(projectsTable.sourceDocumentId, sourceDocumentId),
+      with: {
+        sourceDocument: true,
+        targetDocument: {
+          with: {
+            sections: {
+              orderBy: (sections, { asc }) => [asc(sections.order)],
+            },
+          },
+        },
+      },
+    });
+  },
+
+  // Every project that references this document as its source OR target — used
+  // to block deleting a document that a project still depends on.
+  findByDocumentId: async (documentId: string) => {
+    return db.query.projectsTable.findMany({
+      where: or(eq(projectsTable.sourceDocumentId, documentId), eq(projectsTable.targetDocumentId, documentId)),
     });
   },
 

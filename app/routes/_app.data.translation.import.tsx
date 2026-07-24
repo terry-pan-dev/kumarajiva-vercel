@@ -7,12 +7,12 @@ import { FileUploadForm } from '~/components/import/FileUploadForm';
 import { ImportContextBar } from '~/components/import/ImportContextBar';
 import { ImportInstructions } from '~/components/import/ImportInstructions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { getExistingDataPreviewForRollId, replaceRollData } from '~/services/file.server';
+import { getExistingDataPreviewForSection, replaceSectionData } from '~/services/file.server';
 import {
   parseCSV,
   parseXLSX,
   type ExcelTranslationRow,
-  type ImportOptions,
+  type ImportOptionsNew,
   type ImportResult,
 } from '~/services/file.service';
 import { getDocument, getSection } from '~/services/text.service';
@@ -22,11 +22,14 @@ import { assertAuthUser } from '../auth.server';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ActionResponse =
-  | { intent: 'preview'; fileRows: ExcelTranslationRow[]; formValues: ImportOptions }
+  | { intent: 'preview'; fileRows: ExcelTranslationRow[]; formValues: ImportOptionsNew }
   | { intent: 'replace'; result: ImportResult }
   | { intent: 'error'; result: ImportResult };
 
 // ─── Loader ──────────────────────────────────────────────────────────────────
+
+// Imports write to the refactored tables (documents / sections /
+// paragraphs_new) so no more data accumulates in the legacy paragraph tables.
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
@@ -64,11 +67,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return redirect('/data');
   }
 
-  const existing = await getExistingDataPreviewForRollId(originSectionId, originDocument.language);
+  const existing = await getExistingDataPreviewForSection(originSectionId, targetDocumentId);
 
   return json({
+    originDocumentId,
+    targetDocumentId,
     originSectionId,
-    targetSectionId: targetSection?.id ?? null,
     originDocumentName: originDocument.title,
     targetDocumentName: targetDocument.title,
     originSectionName: originSection.title ?? '',
@@ -92,10 +96,9 @@ export async function action({ request }: ActionFunctionArgs) {
   // ── Preview: parse file only ──
   if (intent === 'preview') {
     const file = formData.get('file') as File;
+    const originDocumentId = formData.get('originDocumentId') as string;
     const originSectionId = formData.get('originSectionId') as string;
-    const targetSectionId = formData.get('targetSectionId') as string;
-    const originalLanguage = formData.get('originalLanguage') as string;
-    const translationLanguage = formData.get('translationLanguage') as string;
+    const targetDocumentId = formData.get('targetDocumentId') as string;
 
     if (!file) {
       return json<ActionResponse>(
@@ -136,10 +139,9 @@ export async function action({ request }: ActionFunctionArgs) {
         intent: 'preview',
         fileRows: rows,
         formValues: {
-          originRollId: originSectionId,
-          targetRollId: targetSectionId,
-          originalLanguage,
-          translationLanguage,
+          originDocumentId,
+          originSectionId,
+          targetDocumentId,
           userId: user.id,
         },
       });
@@ -156,12 +158,11 @@ export async function action({ request }: ActionFunctionArgs) {
   // ── Replace: insert parsed rows into the database ──
   if (intent === 'replace') {
     const rowsJson = formData.get('rows') as string;
+    const originDocumentId = formData.get('originDocumentId') as string;
     const originSectionId = formData.get('originSectionId') as string;
-    const targetSectionId = formData.get('targetSectionId') as string;
-    const originalLanguage = formData.get('originalLanguage') as string;
-    const translationLanguage = formData.get('translationLanguage') as string;
+    const targetDocumentId = formData.get('targetDocumentId') as string;
 
-    if (!rowsJson || !originSectionId || !targetSectionId || !originalLanguage || !translationLanguage) {
+    if (!rowsJson || !originDocumentId || !originSectionId || !targetDocumentId) {
       return json<ActionResponse>(
         { intent: 'error', result: { success: false, message: 'Missing required data for replace operation.' } },
         { status: 400 },
@@ -169,11 +170,10 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     const rows: ExcelTranslationRow[] = JSON.parse(rowsJson);
-    const result = await replaceRollData(rows, {
-      originRollId: originSectionId,
-      targetRollId: targetSectionId,
-      originalLanguage,
-      translationLanguage,
+    const result = await replaceSectionData(rows, {
+      originDocumentId,
+      originSectionId,
+      targetDocumentId,
       userId: user.id,
     });
 
@@ -185,8 +185,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function DataImport() {
   const {
+    originDocumentId,
+    targetDocumentId,
     originSectionId,
-    targetSectionId,
     originDocumentName,
     targetDocumentName,
     originSectionName,
@@ -214,7 +215,7 @@ export default function DataImport() {
           <CardTitle className="text-primary text-2xl">Import Data</CardTitle>
           <CardDescription className="text-base">
             Upload a CSV or XLSX file with columns: <strong>origin</strong>, <strong>translation</strong> (optional).
-            This will replace all existing data for the selected roll.
+            This will replace all existing data for the selected section.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -231,11 +232,10 @@ export default function DataImport() {
             errorResult={errorResult}
             isSubmitting={isSubmitting}
             replaceResult={replaceResult}
-            originRollId={originSectionId}
-            originalLanguage={originalLanguage}
+            originSectionId={originSectionId}
+            originDocumentId={originDocumentId}
             navigationIntent={navigationIntent}
-            targetRollId={targetSectionId ?? ''}
-            translationLanguage={translationLanguage}
+            targetDocumentId={targetDocumentId}
             onFileChange={(e) => setFileName(e.target.files?.[0]?.name ?? '')}
           />
         </CardContent>

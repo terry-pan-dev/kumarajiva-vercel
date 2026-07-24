@@ -1,38 +1,28 @@
+// Translation workspace, backed by the refactored data model (work / document /
+// section / paragraphs_new): origin paragraphs come from the source document's
+// section, translations live in the project's target document and are paired
+// by passage_key instead of parent_id.
+//
+// Comments, references and history still hang off the legacy tables (viewable
+// via the legacy /data/paragraphs debug page) and return here once they
+// migrate.
 import { Form, useActionData, useLoaderData, useNavigation, useOutletContext, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { diffWords, diffSentences } from 'diff';
 import { motion } from 'framer-motion';
-import { ChevronsDownUp, ChevronsUpDown, Copy, Pencil, Check, X } from 'lucide-react';
+import { Copy, Pencil, Check, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type PropsWithChildren, useCallback, Fragment } from 'react';
 import Markdown from 'react-markdown';
-import { ClientOnly } from 'remix-utils/client-only';
 import { ZodError } from 'zod';
-
-import type { ReadHistory } from '~/drizzle/tables/paragraph';
 
 import { assertAuthUser } from '~/auth.server';
 import { Can } from '~/authorisation';
-import { useCommentContext } from '~/components/CommentContext';
 import ContextMenuWrapper from '~/components/ContextMenu';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Icons } from '~/components/icons';
 import { Paragraph } from '~/components/Paragraph';
 import {
   Button,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Label,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   RadioGroup,
   RadioGroupItem,
   ResizableHandle,
@@ -41,27 +31,22 @@ import {
   ScrollArea,
   Textarea,
 } from '~/components/ui';
-import { type ReadReference } from '~/drizzle/tables/reference';
 import { type ReadUser } from '~/drizzle/tables/user';
 import { useToast } from '~/hooks/use-toast';
 import { useScreenSize } from '~/lib/hooks/useScreenSizeHook';
 import { useTextAreaAutoHeight } from '~/lib/hooks/useTextAreaAutoHeight';
 import { useTranslation } from '~/lib/hooks/useTranslation';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
+import { getProjectBySourceDocumentId } from '~/services/project.service';
 import {
-  createComment,
+  findTargetSection,
+  getSection,
   insertParagraph,
-  readParagraphsByRollId,
-  updateComment,
+  readParagraphsBySectionId,
   updateParagraph,
-  type IParagraph,
-} from '~/services/paragraph.service';
-import { getSection } from '~/services/text.service';
-import {
-  createCommentActionSchema,
-  paragraphActionSchema,
-  updateCommentActionSchema,
-} from '~/validations/paragraph.validation';
+  type IParagraphNew,
+} from '~/services/text.service';
+import { paragraphActionSchema } from '~/validations/paragraph.validation';
 
 export const config = {
   memory: 3009,
@@ -77,21 +62,26 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
-  const { rollId } = params;
-  const [paragraphs, section] = await Promise.all([
-    readParagraphsByRollId({ rollId: rollId as string }),
-    getSection(rollId as string),
-  ]);
+  const { sectionId } = params;
+  const section = await getSection(sectionId as string);
+  if (!section) {
+    throw new Error('Section not found');
+  }
 
-  const sectionInfo = section
-    ? { documentTitle: section.document?.title ?? '', sectionTitle: section.title ?? null }
-    : null;
+  // Translations live in the project's target document, paired by passage_key.
+  const project = await getProjectBySourceDocumentId(section.documentId);
+  const paragraphs = await readParagraphsBySectionId({
+    sectionId: sectionId as string,
+    targetDocumentId: project?.targetDocumentId ?? undefined,
+  });
+
+  const sectionInfo = { documentTitle: section.document?.title ?? '', sectionTitle: section.title ?? null };
 
   return json({ success: true, paragraphs: paragraphs ?? [], sectionInfo });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const { rollId } = params;
+  const { sectionId } = params;
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
@@ -127,66 +117,60 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
   }
 
-  if (kind === 'createComment') {
-    try {
-      const result = validatePayloadOrThrow({ schema: createCommentActionSchema, formData });
-      await createComment({
-        rollId: rollId as string,
-        paragraphId: result.paragraphId,
-        selectedText: result.selectedText,
-        messages: [
-          {
-            text: result.comment,
-            userId: user.id,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-        createdBy: user.id,
-        updatedBy: user.id,
-      });
-      return json({ success: true, message: 'Comment added successfully', kind: 'createComment' });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return json({ success: false, errors: error.errors }, { status: 400 });
-      }
-    }
+  // Comments still live on the legacy tables; they migrate in a later step.
+  if (kind === 'createComment' || kind === 'updateComment') {
+    return json(
+      { success: false, errors: [{ message: 'Comments are not yet available for the new data model.' }] },
+      { status: 400 },
+    );
   }
 
-  if (kind === 'updateComment') {
-    try {
-      console.log({ formData });
-      const result = validatePayloadOrThrow({ schema: updateCommentActionSchema, formData });
-      console.log({ result });
-      await updateComment({
-        id: result.commentId,
-        messages: result.message
-          ? [{ text: result.message, userId: user.id, createdAt: new Date().toISOString() }]
-          : [],
-        resolved: result.resolved,
-        updatedBy: user.id,
-      });
-      return json({ success: true, message: 'Comment updated successfully', kind: 'updateComment' });
-    } catch (error) {
-      console.log({ error });
-      if (error instanceof ZodError) {
-        return json({ success: false, errors: error.errors }, { status: 400 });
-      }
-    }
-  }
   try {
     const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
-    console.log({ result });
     if (result.kind === 'insert') {
+      // Resolve where the translation goes: the project's target document, in
+      // the section matching this source section's order. The counterpart must
+      // already exist (created and named in Data Management) — sections are
+      // never created implicitly.
+      const section = await getSection(sectionId as string);
+      if (!section) {
+        throw new Error('Section not found');
+      }
+      const project = await getProjectBySourceDocumentId(section.documentId);
+      if (!project?.targetDocumentId) {
+        return json(
+          { success: false, errors: [{ message: 'No translation project is set up for this document.' }] },
+          { status: 400 },
+        );
+      }
+      const targetSection = await findTargetSection({
+        sourceSection: { order: section.order },
+        targetDocumentId: project.targetDocumentId,
+      });
+      if (!targetSection) {
+        return json(
+          {
+            success: false,
+            errors: [
+              {
+                message:
+                  'The translation section has not been created yet. Create and name it in Data Management → Translation Projects first.',
+              },
+            ],
+          },
+          { status: 400 },
+        );
+      }
+
       console.time('insertParagraph');
       await insertParagraph({
-        parentId: result.paragraphId,
+        sourceId: result.paragraphId,
+        documentId: project.targetDocumentId,
+        sectionId: targetSection.id,
         newParagraph: {
           content: result.translation,
-          rollId: rollId as string,
           createdBy: user.id,
           updatedBy: user.id,
-          parentId: result.paragraphId,
-          language: user.targetLang,
         },
       });
       console.timeEnd('insertParagraph');
@@ -212,7 +196,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   return json({ success: true, paragraphs: [] });
 }
 
-export default function TranslationRoll() {
+export default function TranslationSection() {
   const { paragraphs, sectionInfo } = useLoaderData<typeof loader>();
   const actionData = useActionData<{ success: boolean; message: string; kind: 'insert' | 'update'; id: string }>();
 
@@ -225,37 +209,12 @@ export default function TranslationRoll() {
   const isSmallScreen = useScreenSize();
   const panelOrientation = isSmallScreen ? 'vertical' : 'horizontal';
 
-  const paragraphsWithHistory = useMemo(() => {
-    return paragraphs.map((paragraph) => ({
-      ...paragraph,
-      references: paragraph.references.map((reference) => ({
-        ...reference,
-        createdAt: new Date(reference.createdAt),
-        updatedAt: new Date(reference.updatedAt),
-        deletedAt: reference.deletedAt ? new Date(reference.deletedAt) : null,
-      })),
-      histories: paragraph.histories.map((history) => ({ ...history, updatedAt: new Date(history.updatedAt) })),
-      originComments: paragraph.originComments.map((comment) => ({
-        ...comment,
-        createdAt: new Date(comment.createdAt),
-        updatedAt: new Date(comment.updatedAt),
-        deletedAt: comment.deletedAt ? new Date(comment.deletedAt) : null,
-      })),
-      targetComments: paragraph.targetComments.map((comment) => ({
-        ...comment,
-        createdAt: new Date(comment.createdAt),
-        updatedAt: new Date(comment.updatedAt),
-        deletedAt: comment.deletedAt ? new Date(comment.deletedAt) : null,
-      })),
-    }));
-  }, [paragraphs]);
-
   const selectedParagraph = useMemo(() => {
     if (selectedParagraphIndex) {
-      return paragraphsWithHistory.find((p) => p.id === selectedParagraphIndex)!;
+      return paragraphs.find((p) => p.id === selectedParagraphIndex)!;
     }
     return null;
-  }, [selectedParagraphIndex, paragraphsWithHistory]);
+  }, [selectedParagraphIndex, paragraphs]);
 
   useEffect(() => {
     if (selectedParagraphIndex && (divRef.current || labelRef.current) && actionData?.kind !== 'update') {
@@ -278,7 +237,7 @@ export default function TranslationRoll() {
     }
   }, [paragraphs, actionData]);
 
-  const Paragraphs = paragraphsWithHistory.map((paragraph, index) => (
+  const Paragraphs = paragraphs.map((paragraph, index) => (
     <div key={paragraph.id} className="flex items-center gap-6 px-4">
       {paragraph?.target ? (
         <div
@@ -292,7 +251,7 @@ export default function TranslationRoll() {
             <ContextMenuWrapper>
               <div className="relative">
                 <span className="absolute top-4 left-1.5 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
-                <Paragraph isOrigin id={paragraph.id} text={paragraph.origin} comments={paragraph.originComments} />
+                <Paragraph isOrigin comments={[]} id={paragraph.id} text={paragraph.origin} />
               </div>
             </ContextMenuWrapper>
           </div>
@@ -304,9 +263,9 @@ export default function TranslationRoll() {
             <ContextMenuWrapper>
               <div className="relative h-full">
                 <Paragraph
+                  comments={[]}
                   text={paragraph.target}
                   id={paragraph.targetId!}
-                  comments={paragraph.targetComments}
                   isUpdate={
                     (selectedParagraphIndex === paragraph.id &&
                       actionData?.kind === 'update' &&
@@ -314,9 +273,6 @@ export default function TranslationRoll() {
                     (actionData?.kind === 'insert' && actionData.id === paragraph.id)
                   }
                 />
-                <Can I="Read" this="History">
-                  <ParagraphHistory histories={paragraph.histories} />
-                </Can>
               </div>
             </ContextMenuWrapper>
           </div>
@@ -342,9 +298,9 @@ export default function TranslationRoll() {
               <div className="relative">
                 <span className="absolute top-4 left-1.5 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
                 <Paragraph
+                  comments={[]}
                   id={paragraph.id}
                   text={paragraph.origin}
-                  comments={paragraph.originComments}
                   isSelected={selectedParagraphIndex === paragraph.id}
                 />
               </div>
@@ -377,7 +333,6 @@ export default function TranslationRoll() {
             </ScrollArea>
           </RightPanel>
         </DragPanel>
-        <CommentModal />
       </Fragment>
     );
   }
@@ -399,171 +354,20 @@ export default function TranslationRoll() {
           {paragraphs.length ? (
             Paragraphs
           ) : (
-            <div className="text-center text-lg">We are preparing paragraphs for you...</div>
+            <div className="text-center text-lg">This section is still in preparation — no paragraphs yet.</div>
           )}
         </RadioGroup>
       </ScrollArea>
-      <CommentModal />
     </Fragment>
   );
 }
 
-const CommentModal = () => {
-  const { openModal, setOpenModal } = useCommentContext();
-  const [open, setOpen] = useState(false);
-  const [comment, setComment] = useState('');
-  const [paragraphId, setParagraphId] = useState<string | undefined>(undefined);
-  const [selectedText, setSelectedText] = useState<string>('');
-  const actionData = useActionData<{
-    success: boolean;
-    message: string;
-    kind: 'createComment';
-    errors: ZodError['errors'];
-  }>();
-  const navigation = useNavigation();
-  const isLoading = navigation.state === 'submitting' || navigation.state === 'loading';
-  const { toast } = useToast();
+// Only the fields the workspace uses — loader data is JSON-serialised, so the
+// Date-typed relation arrays (empty until they migrate) are not part of it.
+type WorkspaceParagraph = Pick<IParagraphNew, 'id' | 'origin' | 'target' | 'sectionId' | 'targetId'>;
 
-  useEffect(() => {
-    if (!actionData) return;
-    if (!actionData?.success) {
-      toast({
-        variant: 'error',
-        title: 'Oops!',
-        position: 'top-right',
-        description: actionData?.errors?.map((error) => error.message).join(', '),
-      });
-    }
-    if (actionData?.success) {
-      toast({
-        variant: 'default',
-        title: actionData.message,
-        position: 'top-right',
-      });
-      setOpen(false);
-      setComment('');
-      setOpenModal(false);
-    }
-  }, [actionData, toast, setOpenModal]);
-
-  useEffect(() => {
-    if (openModal) {
-      setOpen(true);
-    }
-  }, [openModal]);
-
-  useEffect(() => {
-    const handleSelectionChange = () => {
-      const selection = document.getSelection();
-      if (selection && selection.toString().length > 0) {
-        // Find the closest parent element with a data-id attribute
-        let element = selection.anchorNode as Element;
-        while (element && element.nodeType !== Node.ELEMENT_NODE) {
-          element = element.parentNode as Element;
-        }
-
-        // Find closest parent with data-id
-        while (element && element.nodeType === Node.ELEMENT_NODE && !element.getAttribute('data-id')) {
-          element = element.parentNode as Element;
-        }
-
-        if (element && element.nodeType === Node.ELEMENT_NODE) {
-          const id = element.getAttribute('data-id');
-          if (id) {
-            setParagraphId(id);
-          }
-        }
-      }
-
-      if (selection && selection.toString().length > 0 && selection.anchorNode) {
-        const selectedText = selection.toString().trim();
-
-        // Only proceed if we have a text node
-        if (selection.anchorNode.nodeType === Node.TEXT_NODE) {
-          const nodeText = selection.anchorNode.textContent || '';
-
-          // Get the actual start and end positions in the text node
-          const start = Math.min(selection.anchorOffset, selection.focusOffset);
-          const end = Math.max(selection.anchorOffset, selection.focusOffset);
-
-          // Account for potential trimming in the selected text
-          const trimmedLeftCount = selection.toString().length - selection.toString().trimStart().length;
-          const actualStart = start + trimmedLeftCount;
-          const actualEnd = end - (selection.toString().length - selectedText.length - trimmedLeftCount);
-
-          // Create new text with backticks around the selected portion
-          const newText = nodeText.substring(0, actualStart) + '`' + selectedText + '`' + nodeText.substring(actualEnd);
-
-          setSelectedText(newText);
-        } else {
-          // If not a text node, just use the selected text
-          setSelectedText(selectedText);
-        }
-      }
-    };
-
-    document.addEventListener('selectionchange', handleSelectionChange);
-
-    // Cleanup event listener on component unmount
-    return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
-    };
-  }, []);
-
-  return (
-    <ClientOnly fallback={<div>Loading...</div>}>
-      {() => (
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="lg:max-w-4xl" aria-describedby="form-modal-description">
-            <DialogHeader>
-              <DialogTitle>Add Comment</DialogTitle>
-              <DialogDescription className="hidden">Comment</DialogDescription>
-            </DialogHeader>
-            <Markdown
-              components={{
-                code: ({ node, ...props }) => (
-                  <code {...props} className="bg-yellow-200">
-                    {props.children}
-                  </code>
-                ),
-              }}
-            >
-              {selectedText}
-            </Markdown>
-            <Form method="post">
-              <input type="hidden" name="paragraphId" value={paragraphId} />
-              <input name="kind" type="hidden" value="createComment" />
-              <input type="hidden" name="selectedText" value={selectedText} />
-              <Textarea name="comment" value={comment} onChange={(e) => setComment(e.target.value)} />
-              <div className="h-4" />
-              <DialogFooter className="gap-2">
-                <DialogClose asChild>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={isLoading}
-                    onClick={() => {
-                      setOpen(false);
-                      setOpenModal(false);
-                    }}
-                  >
-                    Close
-                  </Button>
-                </DialogClose>
-                <Button type="submit" disabled={isLoading || comment === ''}>
-                  Save
-                </Button>
-              </DialogFooter>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      )}
-    </ClientOnly>
-  );
-};
-
-const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
-  const { id, origin, target, references, rollId, targetId } = paragraph;
+const Workspace = ({ paragraph }: { paragraph: WorkspaceParagraph }) => {
+  const { id, origin, target, sectionId, targetId } = paragraph;
 
   const { translation, pasteTranslation, disabledEdit, cleanTranslation } = useTranslation({ originId: id, target });
 
@@ -692,12 +496,11 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
           </div>
         </Form>
       </motion.div>
-      <References references={references} pasteTranslation={pasteTranslation} />
       <ContextMenuWrapper>
         <OpenAIStreamCard
           originId={id}
           text={origin}
-          rollId={rollId}
+          sectionId={sectionId}
           title="AI Translation"
           disabled={disabledEdit}
           pasteTranslation={pasteTranslation}
@@ -706,63 +509,6 @@ const Workspace = ({ paragraph }: { paragraph: IParagraph }) => {
       </ContextMenuWrapper>
       <div className="flex-grow"></div>
     </div>
-  );
-};
-
-const References = ({
-  references,
-  pasteTranslation,
-}: {
-  references: ReadReference[];
-  pasteTranslation: (text: string) => void;
-}) => {
-  const [isOpen, setIsOpen] = React.useState(true);
-
-  const getButtons = (text: string) => {
-    return (
-      <Button
-        size="icon"
-        variant="ghost"
-        onClick={() => pasteTranslation(text)}
-        className="transition-transform duration-300 hover:scale-110"
-      >
-        <Copy className="h-4 w-4" />
-      </Button>
-    );
-  };
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full gap-2">
-      <div className="flex items-center justify-between space-x-4 px-4">
-        <h3 className="text-md font-semibold">References</h3>
-        <CollapsibleTrigger asChild>
-          <Button size="sm" variant="ghost">
-            {isOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
-            <span className="sr-only">Toggle</span>
-          </Button>
-        </CollapsibleTrigger>
-      </div>
-      {references.length ? (
-        <WorkspaceCard
-          text={references[0].content}
-          title={references[0].sutraName}
-          buttons={getButtons(references[0].content)}
-        />
-      ) : null}
-      <CollapsibleContent className="gap-2">
-        {references.length > 1
-          ? references
-              .slice(1)
-              .map((reference) => (
-                <WorkspaceCard
-                  key={reference.id}
-                  text={reference.content}
-                  title={reference.sutraName}
-                  buttons={getButtons(reference.content)}
-                />
-              ))
-          : null}
-      </CollapsibleContent>
-    </Collapsible>
   );
 };
 
@@ -797,14 +543,14 @@ interface StreamCardProps {
   text: string;
   title: string;
   originId: string;
-  rollId: string;
+  sectionId: string;
   disabled: boolean;
   interrupt: boolean;
   pasteTranslation: (text: string) => void;
 }
 
 const OpenAIStreamCard = React.memo(
-  ({ text, title, originId, rollId, disabled, pasteTranslation, interrupt }: StreamCardProps) => {
+  ({ text, title, originId, sectionId, disabled, pasteTranslation, interrupt }: StreamCardProps) => {
     const [translationResult, setTranslationResult] = useState<string>('');
     const [refresh, setRefresh] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -851,7 +597,9 @@ const OpenAIStreamCard = React.memo(
             body: JSON.stringify({
               origin: text,
               originId,
-              rollId,
+              // The endpoint's legacy body key; carries the section id in the
+              // new data model.
+              rollId: sectionId,
             }),
             // Add signal to request
             signal: abortControllerRef.current.signal,
@@ -906,7 +654,6 @@ const OpenAIStreamCard = React.memo(
           buttons={
             <>
               {loading ? <Icons.Loader className="h-4 w-4 animate-spin" /> : null}
-              {/* <PromptGlossaryInfo tokens={tokens} loading={loading} originSutraText={text} glossaries={glossaries} /> */}
               <Button size="icon" variant="ghost" disabled={loading} onClick={() => setRefresh(true)}>
                 <Icons.Refresh className="h-4 w-4" />
               </Button>
@@ -955,122 +702,6 @@ const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
       >
         {text}
       </Markdown>
-    </div>
-  );
-};
-
-export const ParagraphHistory = ({ histories }: { histories: ReadHistory[] }) => {
-  return histories.length ? (
-    <div className="absolute top-4 left-1">
-      <ParagraphHistoryPopover>
-        <ParagraphHistoryTimeline histories={histories} />
-      </ParagraphHistoryPopover>
-    </div>
-  ) : null;
-};
-
-export const ParagraphHistoryPopover = ({ children }: PropsWithChildren) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-
-  return (
-    <Popover modal={true} open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="link"
-          className="h-6 w-6 p-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsOpen(true); // Manually open since we are stopping propagation
-          }}
-        >
-          <Icons.FileClock className="h-4 w-4" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-full max-w-xl lg:max-w-3xl"
-        onPointerDownOutside={(event) => {
-          setIsOpen(false);
-        }}
-      >
-        {children}
-      </PopoverContent>
-    </Popover>
-  );
-};
-
-interface ParagraphHistoryTimelineProps {
-  histories: ReadHistory[];
-}
-export const ParagraphHistoryTimeline = ({ histories }: ParagraphHistoryTimelineProps) => {
-  const { users } = useOutletContext<{ users: { id: string; username: string; email: string }[] }>();
-
-  return (
-    <div className="relative h-96 overflow-y-auto">
-      {/* Container for timeline content with relative positioning */}
-      <div className="relative min-h-full">
-        {/* Vertical timeline line - now positioned relative to the content container */}
-        <div className="absolute top-0 left-2 h-full w-[2px] bg-slate-300" />
-
-        <div className="flex flex-col gap-4">
-          {histories.map((history) => {
-            const user = users.find((u) => u.id === history.updatedBy);
-
-            // First get word diffs
-            const wordDiffs = diffWords(history.oldContent, history.newContent);
-
-            // Count changed words
-            const changedWordCount = wordDiffs.reduce((count, diff) => {
-              if (diff.added || diff.removed) {
-                return count + diff.value.split(/\s+/).length;
-              }
-              return count;
-            }, 0);
-
-            // Choose final diffs based on word change count
-            const diffs = changedWordCount > 5 ? diffSentences(history.oldContent, history.newContent) : wordDiffs;
-
-            return (
-              <div className="flex items-start gap-6 pl-4" key={history.updatedAt.toLocaleString()}>
-                {/* Timeline dot */}
-                <div className="relative mt-2 -ml-[15px] h-4 w-4">
-                  <div className="absolute h-4 w-4 rounded-full border-2 border-slate-300 bg-white" />
-                  <div className="absolute top-1 left-1 h-2 w-2 rounded-full bg-slate-300" />
-                </div>
-
-                {/* Content */}
-                <div className="flex flex-col">
-                  <span className="text-md text-slate-500">{history.updatedAt.toLocaleString()}</span>
-                  <span className="text-md font-medium">{user?.username || 'Unknown user'}</span>
-                  <pre className="mt-1 text-sm whitespace-pre-wrap">
-                    <div className="grid-col-1 grid gap-4 rounded bg-slate-50 p-2 lg:grid-cols-2">
-                      <div className="max-w-md border-r border-slate-200 pr-4 lg:max-w-lg">
-                        {diffs.map((diff, i) => (
-                          <span
-                            key={`old-${i}`}
-                            className={diff.removed ? 'bg-red-100 text-red-800' : 'text-slate-600'}
-                          >
-                            {diff.added ? '' : diff.value}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="max-w-lg">
-                        {diffs.map((diff, i) => (
-                          <span
-                            key={`new-${i}`}
-                            className={diff.added ? 'bg-green-100 text-green-800' : 'text-slate-600'}
-                          >
-                            {diff.removed ? '' : diff.value}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </pre>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { ChevronRight, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { DeleteEntityButton } from './DeleteEntityButton';
 import { DocumentForm } from './DocumentForm';
 import { DocumentRow } from './DocumentRow';
 import { WorkForm } from './WorkForm';
@@ -27,6 +28,7 @@ type Work = {
 
 type Props = {
   work: Work;
+  canDelete: boolean;
   isEditingWork: boolean;
   editingDocumentId: string | null;
   addingDocumentToWorkId: string | null;
@@ -40,6 +42,7 @@ type Props = {
 
 export function WorkRow({
   work,
+  canDelete,
   isEditingWork,
   editingDocumentId,
   addingDocumentToWorkId,
@@ -77,6 +80,17 @@ export function WorkRow({
               >
                 <Pencil size={13} />
               </button>
+              {canDelete && (
+                <DeleteEntityButton
+                  id={work.id}
+                  entity="work"
+                  idName="workId"
+                  label={work.title}
+                  intent="delete-work"
+                  disabled={work.documents.length > 0}
+                  disabledReason="Delete this work's documents before deleting the work"
+                />
+              )}
             </h3>
             <div className="text-muted-foreground text-xs">
               {work.documents.length} {work.documents.length === 1 ? 'Document' : 'Documents'} • {work.cbeta} •{' '}
@@ -126,6 +140,7 @@ export function WorkRow({
                 <DocumentRow
                   key={doc.id}
                   document={doc}
+                  canDelete={canDelete}
                   onEditClose={onEditDocumentClose}
                   isEditing={editingDocumentId === doc.id}
                   onEditToggle={() => onEditDocumentToggle(doc.id)}

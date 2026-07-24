@@ -31,6 +31,9 @@ export type ProjectForRow = {
 
 type Props = {
   project: ProjectForRow;
+  // Sections that have paragraph data (paragraphs_new) — others show "No data
+  // to export" instead of an export link.
+  sectionsWithData: Set<string>;
   isEditing: boolean;
   isAddingSection: boolean;
   editingSectionId: string | null;
@@ -46,7 +49,10 @@ type DraggableItemProps = {
   section: Section;
   documentId: string;
   targetDocumentId: string;
-  targetTitle: string | null;
+  // The counterpart section in the target document (matched by order), when it
+  // exists — its id/title feed the edit form so updates hit the real section.
+  targetSection: { id: string; title: string | null } | null;
+  hasData: boolean;
   isEditing: boolean;
   onEditToggle: () => void;
   onEditClose: () => void;
@@ -57,7 +63,8 @@ function DraggableSectionRow({
   section,
   documentId,
   targetDocumentId,
-  targetTitle,
+  targetSection,
+  hasData,
   isEditing,
   onEditToggle,
   onEditClose,
@@ -76,12 +83,13 @@ function DraggableSectionRow({
     >
       <SectionRow
         section={section}
+        hasData={hasData}
         isEditing={isEditing}
         documentId={documentId}
         onEditClose={onEditClose}
-        targetTitle={targetTitle}
         onEditToggle={onEditToggle}
         dragControls={dragControls}
+        targetSection={targetSection}
         targetDocumentId={targetDocumentId}
       />
     </Reorder.Item>
@@ -90,6 +98,7 @@ function DraggableSectionRow({
 
 export function ProjectRow({
   project,
+  sectionsWithData,
   isEditing,
   isAddingSection,
   editingSectionId,
@@ -200,7 +209,9 @@ export function ProjectRow({
           >
             {sections.length > 0 ? (
               (() => {
-                const targetByOrder = new Map(project.targetDocument.sections.map((s) => [s.order, s.title]));
+                const targetByOrder = new Map(
+                  project.targetDocument.sections.map((s) => [s.order, { id: s.id, title: s.title }]),
+                );
                 return sections.map((section) => (
                   <DraggableSectionRow
                     key={section.id}
@@ -208,10 +219,11 @@ export function ProjectRow({
                     onDragEnd={handleDragEnd}
                     onEditClose={onEditSectionClose}
                     documentId={project.sourceDocument.id}
+                    hasData={sectionsWithData.has(section.id)}
                     isEditing={editingSectionId === section.id}
                     targetDocumentId={project.targetDocument.id}
                     onEditToggle={() => onEditSectionToggle(section.id)}
-                    targetTitle={targetByOrder.get(section.order) ?? null}
+                    targetSection={targetByOrder.get(section.order) ?? null}
                   />
                 ));
               })()

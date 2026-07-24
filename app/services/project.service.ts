@@ -12,6 +12,10 @@ export const getProject = async (id: string) => {
   return DbProjects.findById(id);
 };
 
+export const getProjectBySourceDocumentId = async (sourceDocumentId: string) => {
+  return DbProjects.findBySourceDocumentId(sourceDocumentId);
+};
+
 export const createProject = async (
   project: Omit<CreateProject, 'createdBy' | 'updatedBy' | 'workId'>,
   user: ReadUser,
