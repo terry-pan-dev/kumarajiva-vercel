@@ -28,10 +28,20 @@ export type ProjectForRow = {
   name: string;
   sourceDocument: Document;
   targetDocument: Document;
+  references: { documentId: string }[];
+};
+
+// Works (with their documents) scope the source/target/reference pickers in the
+// edit form; shape matches ProjectForm's WorkWithDocuments.
+type WorkWithDocuments = {
+  id: string;
+  title: string;
+  documents: { id: string; title: string; language: string }[];
 };
 
 type Props = {
   project: ProjectForRow;
+  works: WorkWithDocuments[];
   canDelete: boolean;
   // Sections that have paragraph data (paragraphs_new) — others show "No data
   // to export" instead of an export link.
@@ -100,6 +110,7 @@ function DraggableSectionRow({
 
 export function ProjectRow({
   project,
+  works,
   canDelete,
   sectionsWithData,
   isEditing,
@@ -128,19 +139,12 @@ export function ProjectRow({
   };
 
   const projectForForm: ProjectForForm = {
-    sourceDocument: {
-      id: project.sourceDocument.id,
-      workId: project.sourceDocument.workId,
-      title: project.sourceDocument.title,
-      subtitle: project.sourceDocument.subtitle,
-      language: project.sourceDocument.language,
-    },
-    targetDocument: {
-      id: project.targetDocument.id,
-      title: project.targetDocument.title,
-      subtitle: project.targetDocument.subtitle,
-      language: project.targetDocument.language,
-    },
+    id: project.id,
+    name: project.name,
+    workId: project.sourceDocument.workId,
+    sourceDocumentId: project.sourceDocument.id,
+    targetDocumentId: project.targetDocument.id,
+    references: project.references,
   };
 
   return (
@@ -206,7 +210,7 @@ export function ProjectRow({
       {/* Edit-project form */}
       {isEditing && (
         <div className="border-border border-t p-4">
-          <ProjectForm onClose={onEditClose} project={projectForForm} />
+          <ProjectForm works={works} onClose={onEditClose} project={projectForForm} />
         </div>
       )}
 

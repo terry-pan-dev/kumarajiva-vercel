@@ -10,7 +10,13 @@ import { defineAbilityFor } from '~/authorisation';
 import { ProjectForm } from '~/components/data/ProjectForm';
 import { ProjectRow } from '~/components/data/ProjectRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { createProject, deleteProject, getProjects } from '~/services/project.service';
+import {
+  createProject,
+  deleteProject,
+  getProjects,
+  syncProjectReferences,
+  updateProject,
+} from '~/services/project.service';
 import { DbContributors } from '~/services/text.crud';
 import {
   createDocument,
@@ -20,7 +26,6 @@ import {
   getSectionsByDocument,
   getWorks,
   reorderSections,
-  updateDocument,
   updateSection,
 } from '~/services/text.service';
 import { LANG_VALUES } from '~/utils/constants';
@@ -34,64 +39,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
-
-  // ── Document: create ──
-  if (intent === 'create') {
-    const workId = formData.get('workId') as string;
-    const originTitle = formData.get('originTitle') as string;
-    const originSubtitle = (formData.get('originSubtitle') as string) || undefined;
-    const originLang = formData.get('originLang') as string;
-    const translationTitle = formData.get('translationTitle') as string;
-    const translationSubtitle = (formData.get('translationSubtitle') as string) || undefined;
-    const translationLang = formData.get('translationLang') as string;
-
-    await createDocument({ workId, title: originTitle, subtitle: originSubtitle, language: originLang as never }, user);
-
-    if (translationTitle && translationLang) {
-      await createDocument(
-        { workId, title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
-        user,
-      );
-    }
-
-    return json({ success: true });
-  }
-
-  // ── Document: update ──
-  if (intent === 'update') {
-    const documentId = formData.get('documentId') as string;
-    const childDocumentId = (formData.get('childDocumentId') as string) || null;
-    const workId = formData.get('workId') as string;
-    const originTitle = formData.get('originTitle') as string;
-    const originSubtitle = (formData.get('originSubtitle') as string) || undefined;
-    const originLang = formData.get('originLang') as string;
-    const translationTitle = formData.get('translationTitle') as string;
-    const translationSubtitle = (formData.get('translationSubtitle') as string) || undefined;
-    const translationLang = formData.get('translationLang') as string;
-
-    await updateDocument(
-      documentId,
-      { title: originTitle, subtitle: originSubtitle, language: originLang as never },
-      user,
-    );
-
-    if (translationTitle && translationLang) {
-      if (childDocumentId) {
-        await updateDocument(
-          childDocumentId,
-          { title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
-          user,
-        );
-      } else {
-        await createDocument(
-          { workId, title: translationTitle, subtitle: translationSubtitle, language: translationLang as never },
-          user,
-        );
-      }
-    }
-
-    return json({ success: true });
-  }
 
   // ── Section: create ──
   if (intent === 'create-section') {
@@ -177,10 +124,37 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const sourceDocumentId = formData.get('sourceDocumentId') as string;
     const targetDocumentId = formData.get('targetDocumentId') as string;
     const name = (formData.get('name') as string) || '';
+    // Reference documents the project consults, e.g. earlier renderings or
+    // commentaries — sent as one hidden input per picked document.
+    const referenceDocumentIds = formData.getAll('referenceDocumentId') as string[];
 
-    await createProject({ name, sourceDocumentId, targetDocumentId, teamId: user.teamId, finish: false }, user);
+    const [created] = await createProject(
+      { name, sourceDocumentId, targetDocumentId, teamId: user.teamId, finish: false },
+      user,
+    );
+
+    if (referenceDocumentIds.length) {
+      await syncProjectReferences({ projectId: created.id, documentIds: referenceDocumentIds });
+    }
 
     return json({ success: true });
+  }
+
+  // ── Project: update name / documents / references ──
+  if (intent === 'update-project') {
+    const projectId = formData.get('projectId') as string;
+    const sourceDocumentId = formData.get('sourceDocumentId') as string;
+    const targetDocumentId = formData.get('targetDocumentId') as string;
+    const name = (formData.get('name') as string) || '';
+    const referenceDocumentIds = formData.getAll('referenceDocumentId') as string[];
+
+    try {
+      await updateProject(projectId, { name, sourceDocumentId, targetDocumentId }, user);
+      await syncProjectReferences({ projectId, documentIds: referenceDocumentIds });
+      return json({ success: true });
+    } catch (error) {
+      return json({ success: false, error: (error as Error).message }, { status: 400 });
+    }
   }
 
   // ── Project: delete ──
@@ -287,6 +261,7 @@ export default function DataManagementIndex() {
       <div className="space-y-4">
         {projects.map((project) => (
           <ProjectRow
+            works={works}
             key={project.id}
             project={project}
             canDelete={canDelete}

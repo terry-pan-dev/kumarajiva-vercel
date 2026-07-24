@@ -31,6 +31,10 @@ export const DbProjects = {
           },
         },
         team: true,
+        references: {
+          with: { document: true },
+          orderBy: (references, { asc }) => [asc(references.order)],
+        },
       },
     });
   },
@@ -57,6 +61,10 @@ export const DbProjects = {
           },
         },
         team: true,
+        references: {
+          with: { document: true },
+          orderBy: (references, { asc }) => [asc(references.order)],
+        },
       },
     });
   },

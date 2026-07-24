@@ -89,6 +89,52 @@ export const removeProjectReference = async ({ projectId, documentId }: { projec
   return { projectId, documentId };
 };
 
+// Reconcile a project's references to exactly `documentIds`, in the given order:
+// insert the newly-added, drop the removed, and renumber the kept so `order`
+// stays a dense 1-based sequence. Used by the project edit form, which submits
+// the whole desired set rather than individual add/remove events.
+export const syncProjectReferences = async ({
+  projectId,
+  documentIds,
+}: {
+  projectId: string;
+  documentIds: string[];
+}) => {
+  const project = await DbProjects.findById(projectId);
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  // A reference can be neither the source/target of the project nor listed twice.
+  const seen = new Set<string>();
+  const desired = documentIds.filter((id) => {
+    if (id === project.sourceDocumentId || id === project.targetDocumentId) return false;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  const existing = await DbProjectReferences.findByProjectId(projectId);
+  const existingIds = new Set(existing.map((reference) => reference.documentId));
+  const desiredIds = new Set(desired);
+
+  await Promise.all(
+    existing
+      .filter((reference) => !desiredIds.has(reference.documentId))
+      .map((reference) => DbProjectReferences.delete(projectId, reference.documentId)),
+  );
+
+  await Promise.all(
+    desired.map((documentId, index) =>
+      existingIds.has(documentId)
+        ? DbProjectReferences.updateOrder(projectId, documentId, index + 1)
+        : DbProjectReferences.create({ projectId, documentId, order: index + 1 }),
+    ),
+  );
+
+  return { projectId, count: desired.length };
+};
+
 export const reorderProjectReferences = async ({
   projectId,
   documentIds,
