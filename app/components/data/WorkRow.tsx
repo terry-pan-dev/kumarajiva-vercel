@@ -11,6 +11,7 @@ type Contributor = { id: string; name: string; role: string };
 type Document = {
   id: string;
   workId: string;
+  key: string | null;
   title: string;
   subtitle: string | null;
   language: string;

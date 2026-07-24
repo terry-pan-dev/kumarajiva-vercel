@@ -12,11 +12,21 @@ type Contributor = { name: string; role: string };
 
 type DocumentForForm = {
   id: string;
+  key: string | null;
   title: string;
   subtitle: string | null;
   language: string;
   contributors: Contributor[];
 };
+
+// Best-effort handle from a contributor's name: lowercased, non-alphanumerics
+// collapsed to single hyphens. CJK names strip to '' — the user then types their
+// own key, which is the point of it being a suggestion rather than derived.
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
 export function DocumentForm({
   workId,
@@ -27,12 +37,23 @@ export function DocumentForm({
   document?: DocumentForForm;
   onClose: () => void;
 }) {
-  const fetcher = useFetcher<{ success: boolean }>();
+  const fetcher = useFetcher<{ success: boolean; error?: string }>();
   const isSubmitting = fetcher.state === 'submitting';
+  const error = fetcher.state === 'idle' && fetcher.data && !fetcher.data.success ? fetcher.data.error : null;
 
   const [contributors, setContributors] = useState<Contributor[]>(
     document?.contributors.length ? document.contributors : [{ name: '', role: 'author' }],
   );
+
+  // Key is user-owned once they touch it (or if the document already has one).
+  // Until then it tracks a suggestion derived from the first contributor's name.
+  const [key, setKey] = useState(document?.key ?? '');
+  const [keyEdited, setKeyEdited] = useState(Boolean(document?.key));
+  const suggestedKey = slugify(contributors[0]?.name ?? '');
+
+  useEffect(() => {
+    if (!keyEdited) setKey(suggestedKey);
+  }, [suggestedKey, keyEdited]);
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success) onClose();
@@ -106,6 +127,22 @@ export function DocumentForm({
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">Key</label>
+            <input
+              name="key"
+              value={key}
+              className={inputClass(bg)}
+              placeholder="e.g., xuanzang"
+              onChange={(e) => {
+                setKey(e.target.value);
+                setKeyEdited(true);
+              }}
+            />
+            <p className="text-primary-foreground/50 mt-1 text-xs">
+              Unique within the work; used as the import column header.
+            </p>
+          </div>
         </div>
 
         <hr className="border-primary-foreground/20" />
@@ -123,39 +160,50 @@ export function DocumentForm({
               Add
             </button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {contributors.map((c, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  value={c.name}
-                  placeholder="Name"
-                  className={inputClass(bg) + ' flex-1'}
-                  onChange={(e) => updateContributor(i, 'name', e.target.value)}
-                />
-                <select
-                  value={c.role}
-                  className={selectClass(bg) + ' w-36'}
-                  onChange={(e) => updateContributor(i, 'role', e.target.value)}
-                >
-                  {CONTRIBUTOR_ROLE_VALUES.map((role) => (
-                    <option key={role} value={role}>
-                      {role.charAt(0).toUpperCase() + role.slice(1)}
-                    </option>
-                  ))}
-                </select>
-                {contributors.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeContributor(i)}
-                    className="text-primary-foreground/50 hover:text-primary-foreground transition"
+              <div key={i} className="border-primary-foreground/15 space-y-2 rounded border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <label className="text-primary-foreground/70 block flex-1 text-xs font-medium">
+                    Name
+                    <input
+                      value={c.name}
+                      placeholder="e.g., 玄奘"
+                      className={inputClass(bg) + ' mt-1'}
+                      onChange={(e) => updateContributor(i, 'name', e.target.value)}
+                    />
+                  </label>
+                  {contributors.length > 1 && (
+                    <button
+                      type="button"
+                      title="Remove contributor"
+                      onClick={() => removeContributor(i)}
+                      className="text-primary-foreground/50 hover:text-primary-foreground mt-5 transition"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+                <label className="text-primary-foreground/70 block text-xs font-medium">
+                  Role
+                  <select
+                    value={c.role}
+                    className={selectClass(bg) + ' mt-1 w-40'}
+                    onChange={(e) => updateContributor(i, 'role', e.target.value)}
                   >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                    {CONTRIBUTOR_ROLE_VALUES.map((role) => (
+                      <option key={role} value={role}>
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             ))}
           </div>
         </div>
+
+        {error && <p className="text-destructive text-xs">{error}</p>}
 
         <div className="flex justify-end gap-3 pt-1">
           <button

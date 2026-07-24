@@ -12,7 +12,7 @@ import type {
 } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
-import { DbProjects } from './project.crud';
+import { DbProjectReferences, DbProjects } from './project.crud';
 import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
 import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
 
@@ -82,6 +82,15 @@ export const deleteDocument = async ({ id }: { id: string }) => {
     );
   }
 
+  // A document can also be attached to a project as a reference without being
+  // its source or target, which the check above would miss.
+  const referencingProjects = await DbProjectReferences.findByDocumentId(id);
+  if (referencingProjects.length > 0) {
+    throw new Error(
+      `This document is a reference for ${referencingProjects.length} project(s). Remove it from those projects before deleting the document.`,
+    );
+  }
+
   // Contributors hang off the document and carry no independent meaning, so
   // they go with it.
   await DbContributors.deleteByDocumentId(id);
@@ -104,7 +113,19 @@ export const getDocumentsByWork = async (workId: string) => {
   return DbDocuments.findByWorkId(workId);
 };
 
+// A document key identifies a document within its work, so it must be unique
+// there. The DB enforces this too (documents_work_id_key_unique); this pre-check
+// exists only to turn that into a readable message. Empty keys are exempt.
+const assertDocumentKeyUnique = async (workId: string, key: string | null | undefined, excludeId?: string) => {
+  if (!key) return;
+  const documents = await DbDocuments.findByWorkId(workId);
+  if (documents.some((doc) => doc.key === key && doc.id !== excludeId)) {
+    throw new Error(`Another document in this work already uses the key “${key}”. Keys must be unique per work.`);
+  }
+};
+
 export const createDocument = async (document: Omit<CreateDocument, 'createdBy' | 'updatedBy'>, user: ReadUser) => {
+  await assertDocumentKeyUnique(document.workId, document.key);
   return DbDocuments.create({ ...document, createdBy: user.id, updatedBy: user.id });
 };
 
@@ -113,6 +134,10 @@ export const updateDocument = async (
   data: Partial<Omit<CreateDocument, 'createdBy' | 'updatedBy'>>,
   user: ReadUser,
 ) => {
+  if (data.key) {
+    const existing = await DbDocuments.findById(id);
+    if (existing) await assertDocumentKeyUnique(existing.workId, data.key, id);
+  }
   return DbDocuments.updateById(id, { ...data, updatedBy: user.id });
 };
 
