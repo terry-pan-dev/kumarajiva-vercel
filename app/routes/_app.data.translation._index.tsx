@@ -101,6 +101,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // ── Document: create (inline "new document" panel in ProjectForm) ──
   if (intent === 'create-document') {
     const workId = formData.get('workId') as string;
+    const key = ((formData.get('key') as string) ?? '').trim() || null;
     const title = (formData.get('title') as string).trim();
     const subtitle = ((formData.get('subtitle') as string) ?? '').trim() || null;
     const language = formData.get('language') as string;
@@ -109,14 +110,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json({ success: false, error: 'Invalid language' }, { status: 400 });
     }
 
-    const [created] = await createDocument({ workId, title, subtitle, language: language as Lang }, user);
+    try {
+      const [created] = await createDocument({ workId, key, title, subtitle, language: language as Lang }, user);
 
-    const contributors = parseContributors(formData);
-    if (contributors.length) {
-      await DbContributors.createMany(contributors.map((c) => ({ ...c, documentId: created.id })));
+      const contributors = parseContributors(formData);
+      if (contributors.length) {
+        await DbContributors.createMany(contributors.map((c) => ({ ...c, documentId: created.id })));
+      }
+
+      return json({ success: true });
+    } catch (error) {
+      return json({ success: false, error: (error as Error).message }, { status: 400 });
     }
-
-    return json({ success: true });
   }
 
   // ── Project: create from two existing documents of one work ──

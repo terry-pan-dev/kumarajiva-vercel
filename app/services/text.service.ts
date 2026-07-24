@@ -113,7 +113,19 @@ export const getDocumentsByWork = async (workId: string) => {
   return DbDocuments.findByWorkId(workId);
 };
 
+// A document key identifies a document within its work, so it must be unique
+// there. The DB enforces this too (documents_work_id_key_unique); this pre-check
+// exists only to turn that into a readable message. Empty keys are exempt.
+const assertDocumentKeyUnique = async (workId: string, key: string | null | undefined, excludeId?: string) => {
+  if (!key) return;
+  const documents = await DbDocuments.findByWorkId(workId);
+  if (documents.some((doc) => doc.key === key && doc.id !== excludeId)) {
+    throw new Error(`Another document in this work already uses the key “${key}”. Keys must be unique per work.`);
+  }
+};
+
 export const createDocument = async (document: Omit<CreateDocument, 'createdBy' | 'updatedBy'>, user: ReadUser) => {
+  await assertDocumentKeyUnique(document.workId, document.key);
   return DbDocuments.create({ ...document, createdBy: user.id, updatedBy: user.id });
 };
 
@@ -122,6 +134,10 @@ export const updateDocument = async (
   data: Partial<Omit<CreateDocument, 'createdBy' | 'updatedBy'>>,
   user: ReadUser,
 ) => {
+  if (data.key) {
+    const existing = await DbDocuments.findById(id);
+    if (existing) await assertDocumentKeyUnique(existing.workId, data.key, id);
+  }
   return DbDocuments.updateById(id, { ...data, updatedBy: user.id });
 };
 
