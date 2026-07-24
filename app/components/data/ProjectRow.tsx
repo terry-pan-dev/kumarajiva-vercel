@@ -3,6 +3,7 @@ import { Reorder, useDragControls } from 'framer-motion';
 import { ChevronRight, Pencil, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { DeleteEntityButton } from './DeleteEntityButton';
 import { ProjectForm, type ProjectForForm } from './ProjectForm';
 import { SectionForm } from './SectionForm';
 import { SectionRow } from './SectionRow';
@@ -31,6 +32,7 @@ export type ProjectForRow = {
 
 type Props = {
   project: ProjectForRow;
+  canDelete: boolean;
   // Sections that have paragraph data (paragraphs_new) — others show "No data
   // to export" instead of an export link.
   sectionsWithData: Set<string>;
@@ -98,6 +100,7 @@ function DraggableSectionRow({
 
 export function ProjectRow({
   project,
+  canDelete,
   sectionsWithData,
   isEditing,
   isAddingSection,
@@ -165,6 +168,16 @@ export function ProjectRow({
               >
                 <Pencil size={13} />
               </button>
+              {canDelete && (
+                <DeleteEntityButton
+                  id={project.id}
+                  entity="project"
+                  idName="projectId"
+                  intent="delete-project"
+                  label={project.name || 'Untitled project'}
+                  description={`This permanently deletes the project “${project.name || 'Untitled project'}”. It cannot be undone. The paired documents, their sections and paragraphs are kept — only the pairing is removed.`}
+                />
+              )}
             </h3>
             <div className="text-muted-foreground text-sm">
               {project.sourceDocument.title}

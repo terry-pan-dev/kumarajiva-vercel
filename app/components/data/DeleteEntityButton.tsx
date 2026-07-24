@@ -22,6 +22,7 @@ export function DeleteEntityButton({
   size = 13,
   disabled = false,
   disabledReason,
+  description,
 }: {
   entity: string;
   intent: string;
@@ -31,6 +32,9 @@ export function DeleteEntityButton({
   size?: number;
   disabled?: boolean;
   disabledReason?: string;
+  // Overrides the default "only works if nothing else references it" wording for
+  // entities that have no dependents (e.g. a project).
+  description?: string;
 }) {
   const fetcher = useFetcher<DeleteResult>();
   const { toast } = useToast();
@@ -71,7 +75,10 @@ export function DeleteEntityButton({
         submitting={isSubmitting}
         title={`Delete ${entity}?`}
         FormComponent={fetcher.Form}
-        description={`This permanently deletes “${label}”. It cannot be undone, and only works if nothing else references it.`}
+        description={
+          description ??
+          `This permanently deletes “${label}”. It cannot be undone, and only works if nothing else references it.`
+        }
       />
     </>
   );
