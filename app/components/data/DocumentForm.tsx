@@ -123,35 +123,44 @@ export function DocumentForm({
               Add
             </button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {contributors.map((c, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  value={c.name}
-                  placeholder="Name"
-                  className={inputClass(bg) + ' flex-1'}
-                  onChange={(e) => updateContributor(i, 'name', e.target.value)}
-                />
-                <select
-                  value={c.role}
-                  className={selectClass(bg) + ' w-36'}
-                  onChange={(e) => updateContributor(i, 'role', e.target.value)}
-                >
-                  {CONTRIBUTOR_ROLE_VALUES.map((role) => (
-                    <option key={role} value={role}>
-                      {role.charAt(0).toUpperCase() + role.slice(1)}
-                    </option>
-                  ))}
-                </select>
-                {contributors.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeContributor(i)}
-                    className="text-primary-foreground/50 hover:text-primary-foreground transition"
+              <div key={i} className="border-primary-foreground/15 space-y-2 rounded border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <label className="text-primary-foreground/70 block flex-1 text-xs font-medium">
+                    Name
+                    <input
+                      value={c.name}
+                      placeholder="e.g., 玄奘"
+                      className={inputClass(bg) + ' mt-1'}
+                      onChange={(e) => updateContributor(i, 'name', e.target.value)}
+                    />
+                  </label>
+                  {contributors.length > 1 && (
+                    <button
+                      type="button"
+                      title="Remove contributor"
+                      onClick={() => removeContributor(i)}
+                      className="text-primary-foreground/50 hover:text-primary-foreground mt-5 transition"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+                <label className="text-primary-foreground/70 block text-xs font-medium">
+                  Role
+                  <select
+                    value={c.role}
+                    className={selectClass(bg) + ' mt-1 w-40'}
+                    onChange={(e) => updateContributor(i, 'role', e.target.value)}
                   >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                    {CONTRIBUTOR_ROLE_VALUES.map((role) => (
+                      <option key={role} value={role}>
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             ))}
           </div>
