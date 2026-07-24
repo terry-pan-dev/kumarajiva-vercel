@@ -1,23 +1,13 @@
-import { Form, Link, useActionData, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
+import { Link, useActionData, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { ArrowLeft, Copy, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { DeleteConfirmDialog } from '~/components/data/DeleteConfirmDialog';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { Icons } from '~/components/icons';
-import {
-  Badge,
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui';
+import { Badge } from '~/components/ui';
 import { useToast } from '~/hooks/use-toast';
 import { deleteParagraphCleanly, readParagraphsForDebug, type IParagraphDebugRow } from '~/services/paragraph.service';
 import { getSection } from '~/services/text.service';
@@ -333,44 +323,29 @@ export default function ParagraphsDebug() {
         </table>
       </div>
 
-      <Dialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
-        <DialogContent aria-describedby="delete-paragraph-description">
-          <DialogHeader>
-            <DialogTitle>Delete this paragraph?</DialogTitle>
-            <DialogDescription id="delete-paragraph-description">
-              This permanently removes the paragraph together with its references, comments, history and search-index
-              entry. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          {pendingDelete && (
-            <div className="bg-muted rounded p-3 text-sm">
-              <div className={`${MONO} mb-1`}>{pendingDelete.id}</div>
-              <div className="text-muted-foreground text-xs">
-                {pendingDelete.isOrigin
-                  ? 'This is an origin paragraph — its translation child will also be deleted.'
-                  : 'This is a translation paragraph.'}{' '}
-                Related rows: {pendingDelete.referenceCount} references, {pendingDelete.commentCount} comments,{' '}
-                {pendingDelete.historyCount} history.
-              </div>
-              <div className="mt-2 line-clamp-3">{pendingDelete.content}</div>
+      <DeleteConfirmDialog
+        submitting={isDeleting}
+        intent="delete-paragraph"
+        open={pendingDelete !== null}
+        title="Delete this paragraph?"
+        fields={{ paragraphId: pendingDelete?.id ?? '' }}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        description="This permanently removes the paragraph together with its references, comments, history and search-index entry. This cannot be undone."
+      >
+        {pendingDelete && (
+          <div className="bg-muted rounded p-3 text-sm">
+            <div className={`${MONO} mb-1`}>{pendingDelete.id}</div>
+            <div className="text-muted-foreground text-xs">
+              {pendingDelete.isOrigin
+                ? 'This is an origin paragraph — its translation child will also be deleted.'
+                : 'This is a translation paragraph.'}{' '}
+              Related rows: {pendingDelete.referenceCount} references, {pendingDelete.commentCount} comments,{' '}
+              {pendingDelete.historyCount} history.
             </div>
-          )}
-          <DialogFooter className="gap-2">
-            <DialogClose asChild>
-              <Button type="button" variant="secondary" disabled={isDeleting}>
-                Cancel
-              </Button>
-            </DialogClose>
-            <Form method="post">
-              <input type="hidden" name="intent" value="delete-paragraph" />
-              <input type="hidden" name="paragraphId" value={pendingDelete?.id ?? ''} />
-              <Button type="submit" variant="destructive" disabled={isDeleting}>
-                {isDeleting ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Delete'}
-              </Button>
-            </Form>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <div className="mt-2 line-clamp-3">{pendingDelete.content}</div>
+          </div>
+        )}
+      </DeleteConfirmDialog>
     </div>
   );
 }
