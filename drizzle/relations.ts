@@ -5,6 +5,7 @@ import { contributorsTable } from './tables/contributor';
 import { documentsTable } from './tables/document';
 import { paragraphsTable, paragraphsTableNew, paragraphsHistoryTable } from './tables/paragraph';
 import { projectsTable } from './tables/project';
+import { projectReferencesTable } from './tables/projectReference';
 import { referencesTable } from './tables/reference';
 import { rollsTable } from './tables/roll';
 import { sectionsTable } from './tables/section';
@@ -119,6 +120,7 @@ export const documentsTableRelations = relations(documentsTable, ({ one, many })
   paragraphs: many(paragraphsTableNew),
   sourceProjects: many(projectsTable, { relationName: 'project_source_document' }),
   targetProjects: many(projectsTable, { relationName: 'project_target_document' }),
+  referencedByProjects: many(projectReferencesTable),
 }));
 
 export const sectionsTableRelations = relations(sectionsTable, ({ one, many }) => ({
@@ -159,7 +161,7 @@ export const contributorsTableRelations = relations(contributorsTable, ({ one })
   }),
 }));
 
-export const projectsTableRelations = relations(projectsTable, ({ one }) => ({
+export const projectsTableRelations = relations(projectsTable, ({ one, many }) => ({
   work: one(worksTable, {
     fields: [projectsTable.workId],
     references: [worksTable.id],
@@ -177,5 +179,17 @@ export const projectsTableRelations = relations(projectsTable, ({ one }) => ({
   team: one(teamsTable, {
     fields: [projectsTable.teamId],
     references: [teamsTable.id],
+  }),
+  references: many(projectReferencesTable),
+}));
+
+export const projectReferencesTableRelations = relations(projectReferencesTable, ({ one }) => ({
+  project: one(projectsTable, {
+    fields: [projectReferencesTable.projectId],
+    references: [projectsTable.id],
+  }),
+  document: one(documentsTable, {
+    fields: [projectReferencesTable.documentId],
+    references: [documentsTable.id],
   }),
 }));
