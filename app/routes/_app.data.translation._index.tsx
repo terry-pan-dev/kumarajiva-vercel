@@ -6,10 +6,11 @@ import { useState } from 'react';
 import type { Lang } from '~/utils/constants';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { ProjectForm } from '~/components/data/ProjectForm';
 import { ProjectRow } from '~/components/data/ProjectRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { createProject, getProjects } from '~/services/project.service';
+import { createProject, deleteProject, getProjects } from '~/services/project.service';
 import { DbContributors } from '~/services/text.crud';
 import {
   createDocument,
@@ -182,6 +183,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
+  // ── Project: delete ──
+  if (intent === 'delete-project') {
+    if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
+      return json({ success: false, error: 'You are not authorised to delete projects.' }, { status: 403 });
+    }
+    const projectId = formData.get('projectId') as string;
+    try {
+      await deleteProject({ id: projectId });
+      return json({ success: true, message: 'Project deleted.' });
+    } catch (error) {
+      return json({ success: false, error: (error as Error).message }, { status: 400 });
+    }
+  }
+
   // ── Sections: reorder ──
   if (intent === 'reorder-sections') {
     const sectionsJson = formData.get('sections') as string;
@@ -209,7 +224,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     );
     const sectionIdsWithData = await getSectionIdsWithParagraphs(sectionIds);
 
-    return json({ success: true, projects, works, sectionIdsWithData });
+    return json({
+      success: true,
+      projects,
+      works,
+      sectionIdsWithData,
+      canDelete: defineAbilityFor(user).can('Delete', 'DataManagement'),
+    });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
@@ -224,7 +245,7 @@ export const ErrorBoundary = () => {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DataManagementIndex() {
-  const { projects, works, sectionIdsWithData } = useLoaderData<typeof loader>();
+  const { projects, works, sectionIdsWithData, canDelete } = useLoaderData<typeof loader>();
   const sectionsWithData = new Set(sectionIdsWithData);
   const [showAddProjectForm, setShowAddProjectForm] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -268,6 +289,7 @@ export default function DataManagementIndex() {
           <ProjectRow
             key={project.id}
             project={project}
+            canDelete={canDelete}
             sectionsWithData={sectionsWithData}
             editingSectionId={editingSectionId}
             isEditing={editingProjectId === project.id}

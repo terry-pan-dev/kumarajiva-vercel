@@ -1,4 +1,4 @@
-import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { eq, isNotNull, sql } from 'drizzle-orm';
 import OpenAI from 'openai';
 import 'dotenv/config';
 
@@ -6,6 +6,7 @@ import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlo
 import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
+import { DbGlossaries } from './glossary.crud';
 import { groupRows, type GlossaryImportRow } from './glossary.parse';
 
 // Re-exported so callers of importGlossaries can reach the row type from one place.
@@ -56,9 +57,7 @@ export const readGlossaries = async ({
 };
 
 export const getGlossariesByGivenGlossaries = async (glossaries: string[]): Promise<ReadGlossary[]> => {
-  return dbClient.query.glossariesTable.findMany({
-    where: inArray(glossariesTable.glossary, glossaries),
-  });
+  return DbGlossaries.findByTerms(glossaries);
 };
 
 export const readSutraNames = async () => {
@@ -69,10 +68,7 @@ export const readSutraNames = async () => {
 };
 
 export const readGlossariesByIds = async (ids: string[]) => {
-  return dbClient.query.glossariesTable.findMany({
-    where: inArray(glossariesTable.id, ids),
-    orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
-  });
+  return DbGlossaries.findByIds(ids);
 };
 
 type ReturnType<T> = T extends string ? number[] : T extends string[] ? number[][] : never;
@@ -130,7 +126,7 @@ export const updateGlossaryTranslations = async ({
   updatedBy: string | null;
   isNewInsert?: boolean;
 }) => {
-  const glossary = await dbClient.query.glossariesTable.findFirst({ where: eq(glossariesTable.id, id) });
+  const glossary = await DbGlossaries.findById(id);
   if (!glossary) {
     throw new Error('Glossary not found');
   }
@@ -166,20 +162,11 @@ export const updateGlossaryTranslations = async ({
     discussion: discussion ?? undefined,
   };
 
-  console.log(toUpdate);
-
-  return await dbClient
-    .update(glossariesTable)
-    .set({
-      ...toUpdate,
-    })
-    .where(eq(glossariesTable.id, id));
+  return DbGlossaries.updateById(id, toUpdate);
 };
 
 export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
-  return dbClient.insert(glossariesTable).values({
-    ...glossary,
-  });
+  return DbGlossaries.create(glossary);
 };
 
 export const createGlossaryAndIndexInAlgolia = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
@@ -195,7 +182,7 @@ export const createGlossaryAndIndexInAlgolia = async (glossary: Omit<CreateGloss
       })),
     },
   });
-  const savedGlossary = await dbClient.insert(glossariesTable).values({
+  const savedGlossary = await DbGlossaries.create({
     ...glossary,
     searchId: response.objectID,
   });
@@ -272,10 +259,7 @@ export const searchGlossaries = async (tokens: string[]) => {
 };
 
 export const getAllGlossaries = async (): Promise<ReadGlossary[]> => {
-  const glossaries = await dbClient.query.glossariesTable.findMany({
-    orderBy: (glossaries, { desc }) => [desc(glossaries.glossary)],
-  });
-  return glossaries;
+  return DbGlossaries.findAll();
 };
 
 export type ImportGlossaryResult = {

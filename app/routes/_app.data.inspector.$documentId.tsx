@@ -8,26 +8,16 @@
 // paired by passage_key — the cross-document pairing used for translations.
 // Deletion is only offered in single-document view to keep that interaction
 // deliberate.
-import { Form, Link, useActionData, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
+import { Link, useActionData, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { ArrowLeft, Copy, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { DeleteConfirmDialog } from '~/components/data/DeleteConfirmDialog';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { Icons } from '~/components/icons';
-import {
-  Badge,
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui';
+import { Badge } from '~/components/ui';
 import { useToast } from '~/hooks/use-toast';
 import {
   deleteParagraph,
@@ -447,64 +437,46 @@ export default function DocumentInspector() {
         )}
       </div>
 
-      <Dialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
-        <DialogContent aria-describedby="delete-description">
-          <DialogHeader>
-            <DialogTitle>
-              {pendingDelete?.type === 'section' ? 'Delete this section?' : 'Delete this paragraph?'}
-            </DialogTitle>
-            <DialogDescription id="delete-description">
-              {pendingDelete?.type === 'section'
-                ? 'This permanently removes the section together with ALL its paragraphs and their search-index entries. This cannot be undone.'
-                : 'This permanently removes the paragraph and its search-index entry. Its counterpart (paired by passage key) is NOT deleted automatically. This cannot be undone.'}
-            </DialogDescription>
-          </DialogHeader>
-          {pendingDelete?.type === 'paragraph' && (
-            <div className="bg-muted rounded p-3 text-sm">
-              <div className={`${MONO} mb-1`}>{pendingDelete.row.id}</div>
-              <div className="text-muted-foreground text-xs">
-                order {pendingDelete.row.order} · passage key {pendingDelete.row.passageKey ?? '—'}
-              </div>
-              <div className="mt-2 line-clamp-3">{pendingDelete.row.content}</div>
+      <DeleteConfirmDialog
+        submitting={isDeleting}
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        intent={pendingDelete?.type === 'section' ? 'delete-section' : 'delete-paragraph'}
+        title={pendingDelete?.type === 'section' ? 'Delete this section?' : 'Delete this paragraph?'}
+        fields={
+          pendingDelete?.type === 'section'
+            ? { sectionId: pendingDelete.section.id }
+            : pendingDelete?.type === 'paragraph'
+              ? { paragraphId: pendingDelete.row.id }
+              : undefined
+        }
+        description={
+          pendingDelete?.type === 'section'
+            ? 'This permanently removes the section together with ALL its paragraphs and their search-index entries. This cannot be undone.'
+            : 'This permanently removes the paragraph and its search-index entry. Its counterpart (paired by passage key) is NOT deleted automatically. This cannot be undone.'
+        }
+      >
+        {pendingDelete?.type === 'paragraph' && (
+          <div className="bg-muted rounded p-3 text-sm">
+            <div className={`${MONO} mb-1`}>{pendingDelete.row.id}</div>
+            <div className="text-muted-foreground text-xs">
+              order {pendingDelete.row.order} · passage key {pendingDelete.row.passageKey ?? '—'}
             </div>
-          )}
-          {pendingDelete?.type === 'section' && (
-            <div className="bg-muted rounded p-3 text-sm">
-              <div className="font-medium">{pendingDelete.section.title ?? 'untitled section'}</div>
-              <div className={`${MONO} mb-1`}>{pendingDelete.section.id}</div>
-              <div className="text-muted-foreground text-xs">
-                order {pendingDelete.section.order} · {pendingDelete.paragraphCount} paragraph(s) will be deleted with
-                it.
-                {pendingDelete.section.childCount > 0 &&
-                  ` This section has ${pendingDelete.section.childCount} child section(s) — deletion will be refused until they are removed.`}
-              </div>
+            <div className="mt-2 line-clamp-3">{pendingDelete.row.content}</div>
+          </div>
+        )}
+        {pendingDelete?.type === 'section' && (
+          <div className="bg-muted rounded p-3 text-sm">
+            <div className="font-medium">{pendingDelete.section.title ?? 'untitled section'}</div>
+            <div className={`${MONO} mb-1`}>{pendingDelete.section.id}</div>
+            <div className="text-muted-foreground text-xs">
+              order {pendingDelete.section.order} · {pendingDelete.paragraphCount} paragraph(s) will be deleted with it.
+              {pendingDelete.section.childCount > 0 &&
+                ` This section has ${pendingDelete.section.childCount} child section(s) — deletion will be refused until they are removed.`}
             </div>
-          )}
-          <DialogFooter className="gap-2">
-            <DialogClose asChild>
-              <Button type="button" variant="secondary" disabled={isDeleting}>
-                Cancel
-              </Button>
-            </DialogClose>
-            <Form method="post">
-              <input
-                type="hidden"
-                name="intent"
-                value={pendingDelete?.type === 'section' ? 'delete-section' : 'delete-paragraph'}
-              />
-              {pendingDelete?.type === 'paragraph' && (
-                <input type="hidden" name="paragraphId" value={pendingDelete.row.id} />
-              )}
-              {pendingDelete?.type === 'section' && (
-                <input type="hidden" name="sectionId" value={pendingDelete.section.id} />
-              )}
-              <Button type="submit" variant="destructive" disabled={isDeleting}>
-                {isDeleting ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Delete'}
-              </Button>
-            </Form>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        )}
+      </DeleteConfirmDialog>
     </div>
   );
 }

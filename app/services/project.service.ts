@@ -29,6 +29,18 @@ export const createProject = async (
   return DbProjects.create({ ...project, workId, createdBy: user.id, updatedBy: user.id });
 };
 
+// A project is only a pairing of two documents — nothing references projects.id
+// — so deleting one leaves its documents, sections and paragraphs untouched.
+export const deleteProject = async ({ id }: { id: string }) => {
+  const project = await DbProjects.findById(id);
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  await DbProjects.deleteById(id);
+  return { deletedProjectId: id };
+};
+
 export const updateProject = async (
   id: string,
   data: Partial<Omit<CreateProject, 'createdBy' | 'updatedBy' | 'workId'>>,

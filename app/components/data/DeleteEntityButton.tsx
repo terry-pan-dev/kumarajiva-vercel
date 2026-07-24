@@ -2,25 +2,17 @@ import { useFetcher } from '@remix-run/react';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import {
-  Button,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui';
 import { useToast } from '~/hooks/use-toast';
+
+import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 
 type DeleteResult = { success: boolean; message?: string; error?: string };
 
-// Trash button + confirmation dialog for deleting a work or document from the
-// Works & Documents page. The server decides whether the row is actually
-// deletable (no references) and returns the reason when it is not; that reason
-// is surfaced as a toast. Works can be disabled up front because their document
-// count is already known client-side.
+// Trash button + confirmation dialog for deleting an entity via a fetcher (so
+// the surrounding page does not navigate). The server decides whether the row
+// is actually deletable (nothing references it) and returns the reason when it
+// is not; that reason is surfaced as a toast. Callers that already know a row is
+// undeletable (e.g. a work with documents) can disable the button up front.
 export function DeleteEntityButton({
   entity,
   intent,
@@ -30,15 +22,19 @@ export function DeleteEntityButton({
   size = 13,
   disabled = false,
   disabledReason,
+  description,
 }: {
-  entity: 'work' | 'document';
-  intent: 'delete-work' | 'delete-document';
-  idName: 'workId' | 'documentId';
+  entity: string;
+  intent: string;
+  idName: string;
   id: string;
   label: string;
   size?: number;
   disabled?: boolean;
   disabledReason?: string;
+  // Overrides the default "only works if nothing else references it" wording for
+  // entities that have no dependents (e.g. a project).
+  description?: string;
 }) {
   const fetcher = useFetcher<DeleteResult>();
   const { toast } = useToast();
@@ -71,30 +67,19 @@ export function DeleteEntityButton({
         <Trash2 size={size} />
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
-            <DialogTitle>Delete {entity}?</DialogTitle>
-            <DialogDescription>
-              This permanently deletes “{label}”. It cannot be undone, and only works if nothing else references it.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
-            <fetcher.Form method="post">
-              <input type="hidden" name="intent" value={intent} />
-              <input value={id} type="hidden" name={idName} />
-              <Button type="submit" variant="destructive" disabled={isSubmitting}>
-                {isSubmitting ? 'Deleting…' : 'Delete'}
-              </Button>
-            </fetcher.Form>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={open}
+        intent={intent}
+        onOpenChange={setOpen}
+        fields={{ [idName]: id }}
+        submitting={isSubmitting}
+        title={`Delete ${entity}?`}
+        FormComponent={fetcher.Form}
+        description={
+          description ??
+          `This permanently deletes “${label}”. It cannot be undone, and only works if nothing else references it.`
+        }
+      />
     </>
   );
 }
