@@ -51,8 +51,14 @@ export function DocumentRow({ document, canDelete, isEditing, onEditToggle, onEd
           </div>
           {document.subtitle && <div className="text-muted-foreground text-xs">{document.subtitle}</div>}
           <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
-            <span className="bg-muted rounded-full px-2 py-0.5 capitalize">{document.language}</span>
-            {document.key && <span className="bg-muted rounded-full px-2 py-0.5 font-mono">{document.key}</span>}
+            <span className="bg-muted rounded-full px-2 py-0.5">
+              language=<span className="capitalize">{document.language}</span>
+            </span>
+            {document.key && (
+              <span className="bg-muted rounded-full px-2 py-0.5">
+                key=<span className="font-mono">{document.key}</span>
+              </span>
+            )}
             {document.contributors.length > 0 && (
               <span>{document.contributors.map((c) => `${c.name} (${c.role})`).join(', ')}</span>
             )}
