@@ -1,8 +1,8 @@
-import { eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 
-import type { CreateProject } from '~/drizzle/schema';
+import type { CreateProject, CreateProjectReference } from '~/drizzle/schema';
 
-import { projectsTable } from '~/drizzle/schema';
+import { projectReferencesTable, projectsTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
 
 const db = getDb();
@@ -105,5 +105,44 @@ export const DbProjects = {
 
   deleteById: async (id: string) => {
     return db.delete(projectsTable).where(eq(projectsTable.id, id));
+  },
+};
+
+export const DbProjectReferences = {
+  findByProjectId: async (projectId: string) => {
+    return db.query.projectReferencesTable.findMany({
+      where: eq(projectReferencesTable.projectId, projectId),
+      with: { document: { with: { contributors: true } } },
+      orderBy: (references, { asc }) => [asc(references.order)],
+    });
+  },
+
+  // Every project that attached this document as a reference — used to block
+  // deleting a document a project still consults.
+  findByDocumentId: async (documentId: string) => {
+    return db.query.projectReferencesTable.findMany({
+      where: eq(projectReferencesTable.documentId, documentId),
+    });
+  },
+
+  create: async (reference: CreateProjectReference) => {
+    return db.insert(projectReferencesTable).values(reference).returning();
+  },
+
+  updateOrder: async (projectId: string, documentId: string, order: number) => {
+    return db
+      .update(projectReferencesTable)
+      .set({ order })
+      .where(and(eq(projectReferencesTable.projectId, projectId), eq(projectReferencesTable.documentId, documentId)));
+  },
+
+  delete: async (projectId: string, documentId: string) => {
+    return db
+      .delete(projectReferencesTable)
+      .where(and(eq(projectReferencesTable.projectId, projectId), eq(projectReferencesTable.documentId, documentId)));
+  },
+
+  deleteByProjectId: async (projectId: string) => {
+    return db.delete(projectReferencesTable).where(eq(projectReferencesTable.projectId, projectId));
   },
 };

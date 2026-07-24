@@ -12,7 +12,7 @@ import type {
 } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
-import { DbProjects } from './project.crud';
+import { DbProjectReferences, DbProjects } from './project.crud';
 import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
 import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
 
@@ -79,6 +79,15 @@ export const deleteDocument = async ({ id }: { id: string }) => {
   if (projects.length > 0) {
     throw new Error(
       `This document is used by ${projects.length} project(s). Remove those projects before deleting the document.`,
+    );
+  }
+
+  // A document can also be attached to a project as a reference without being
+  // its source or target, which the check above would miss.
+  const referencingProjects = await DbProjectReferences.findByDocumentId(id);
+  if (referencingProjects.length > 0) {
+    throw new Error(
+      `This document is a reference for ${referencingProjects.length} project(s). Remove it from those projects before deleting the document.`,
     );
   }
 

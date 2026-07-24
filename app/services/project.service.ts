@@ -1,7 +1,7 @@
 import type { CreateProject } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
-import { DbProjects } from './project.crud';
+import { DbProjectReferences, DbProjects } from './project.crud';
 import { DbDocuments } from './text.crud';
 
 export const getProjects = async () => {
@@ -29,14 +29,18 @@ export const createProject = async (
   return DbProjects.create({ ...project, workId, createdBy: user.id, updatedBy: user.id });
 };
 
-// A project is only a pairing of two documents — nothing references projects.id
-// — so deleting one leaves its documents, sections and paragraphs untouched.
+// A project is only a pairing of two documents, so deleting one leaves those
+// documents, their sections and paragraphs untouched. Its reference rows are
+// pure attachments — they carry no meaning without the project — so they go
+// with it, and must go first: project_references.project_id is ON DELETE NO
+// ACTION, so leaving them would make the delete fail outright.
 export const deleteProject = async ({ id }: { id: string }) => {
   const project = await DbProjects.findById(id);
   if (!project) {
     throw new Error('Project not found');
   }
 
+  await DbProjectReferences.deleteByProjectId(id);
   await DbProjects.deleteById(id);
   return { deletedProjectId: id };
 };
@@ -49,4 +53,51 @@ export const updateProject = async (
   // Keep the denormalised work_id aligned if the source document is reassigned.
   const workId = data.sourceDocumentId ? await DbDocuments.findWorkId(data.sourceDocumentId) : undefined;
   return DbProjects.updateById(id, { ...data, ...(workId ? { workId } : {}), updatedBy: user.id });
+};
+
+// ---- REFERENCES ----
+// Documents a project consults while translating: an earlier rendering, or a
+// commentary. A reference need not belong to the project's work, so there is no
+// work check here — only that it is not one of the two documents the project
+// already translates between.
+
+export const getProjectReferences = async (projectId: string) => {
+  return DbProjectReferences.findByProjectId(projectId);
+};
+
+export const addProjectReference = async ({ projectId, documentId }: { projectId: string; documentId: string }) => {
+  const project = await DbProjects.findById(projectId);
+  if (!project) {
+    throw new Error('Project not found');
+  }
+  if (documentId === project.sourceDocumentId || documentId === project.targetDocumentId) {
+    throw new Error('This document is already the source or target of this project — it cannot also be a reference.');
+  }
+
+  const existing = await DbProjectReferences.findByProjectId(projectId);
+  if (existing.some((reference) => reference.documentId === documentId)) {
+    throw new Error('This document is already a reference for this project.');
+  }
+
+  // Append: order is a display sequence within the project, 1-based.
+  const order = existing.reduce((max, reference) => Math.max(max, reference.order), 0) + 1;
+  return DbProjectReferences.create({ projectId, documentId, order });
+};
+
+export const removeProjectReference = async ({ projectId, documentId }: { projectId: string; documentId: string }) => {
+  await DbProjectReferences.delete(projectId, documentId);
+  return { projectId, documentId };
+};
+
+export const reorderProjectReferences = async ({
+  projectId,
+  documentIds,
+}: {
+  projectId: string;
+  documentIds: string[];
+}) => {
+  await Promise.all(
+    documentIds.map((documentId, index) => DbProjectReferences.updateOrder(projectId, documentId, index + 1)),
+  );
+  return { projectId };
 };
