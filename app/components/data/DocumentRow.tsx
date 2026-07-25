@@ -52,7 +52,7 @@ export function DocumentRow({ document, canDelete, isEditing, onEditToggle, onEd
           {document.subtitle && <div className="text-muted-foreground text-xs">{document.subtitle}</div>}
           <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
             <span className="bg-muted rounded-full px-2 py-0.5">
-              language=<span className="capitalize">{document.language}</span>
+              <span className="capitalize">{document.language}</span>
             </span>
             {document.key && (
               <span className="bg-muted rounded-full px-2 py-0.5">

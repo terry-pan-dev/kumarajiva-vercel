@@ -15,6 +15,7 @@ import {
   type ImportOptionsNew,
   type ImportResult,
 } from '~/services/file.service';
+import { getProjectBySourceDocumentId, getProjectReferences } from '~/services/project.service';
 import { getDocument, getSection } from '~/services/text.service';
 
 import { assertAuthUser } from '../auth.server';
@@ -67,7 +68,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return redirect('/data');
   }
 
-  const existing = await getExistingDataPreviewForSection(originSectionId, targetDocumentId);
+  // Reference documents — the other columns an import file may carry, and the
+  // extra columns shown in the existing-data preview.
+  const project = await getProjectBySourceDocumentId(originDocumentId);
+  const references = project ? await getProjectReferences(project.id) : [];
+  const referenceDocuments = references.map((r) => ({ id: r.documentId, key: r.document?.key ?? null }));
+  const referenceKeys = referenceDocuments.map((r) => r.key).filter((k): k is string => !!k);
+
+  const existing = await getExistingDataPreviewForSection(originSectionId, targetDocumentId, referenceDocuments);
 
   return json({
     originDocumentId,
@@ -79,6 +87,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     targetSectionName: targetSection?.title ?? '',
     originalLanguage: originDocument.language,
     translationLanguage: targetDocument.language,
+    originKey: originDocument.key,
+    targetKey: targetDocument.key,
+    referenceKeys,
     existing,
     userId: user.id,
   });
@@ -107,14 +118,23 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
+    // Columns are identified by each document's key. Both keys are optional — the
+    // file may carry any subset of documents — so we pass whatever keys exist and
+    // let the parser match the columns that are present.
+    const [originDocument, targetDocument] = await Promise.all([
+      getDocument(originDocumentId),
+      getDocument(targetDocumentId),
+    ]);
+    const keys = { originKey: originDocument?.key ?? null, targetKey: targetDocument?.key ?? null };
+
     try {
       const fileName = file.name.toLowerCase();
       let rows: ExcelTranslationRow[];
 
       if (fileName.endsWith('.csv')) {
-        rows = await parseCSV(await file.text());
+        rows = await parseCSV(await file.text(), keys);
       } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-        rows = await parseXLSX(await file.arrayBuffer());
+        rows = await parseXLSX(await file.arrayBuffer(), keys);
       } else {
         return json<ActionResponse>(
           {
@@ -194,6 +214,9 @@ export default function DataImport() {
     targetSectionName,
     originalLanguage,
     translationLanguage,
+    originKey,
+    targetKey,
+    referenceKeys,
     existing,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionResponse>();
@@ -214,8 +237,15 @@ export default function DataImport() {
         <CardHeader>
           <CardTitle className="text-primary text-2xl">Import Data</CardTitle>
           <CardDescription className="text-base">
-            Upload a CSV or XLSX file with columns: <strong>origin</strong>, <strong>translation</strong> (optional).
-            This will replace all existing data for the selected section.
+            Upload a CSV or XLSX file whose column headers are document keys
+            {originKey || targetKey ? (
+              <>
+                {' '}
+                (e.g. <strong>{originKey ?? 'origin'}</strong>, <strong>{targetKey ?? 'translation'}</strong>)
+              </>
+            ) : null}
+            . Include any subset of the documents — the rows are matched to existing data by passage key and/or
+            position, and existing rows not in the file are left unchanged.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -249,7 +279,7 @@ export default function DataImport() {
         navigationIntent={navigationIntent}
       />
 
-      <ImportInstructions />
+      <ImportInstructions originKey={originKey} targetKey={targetKey} referenceKeys={referenceKeys} />
     </div>
   );
 }

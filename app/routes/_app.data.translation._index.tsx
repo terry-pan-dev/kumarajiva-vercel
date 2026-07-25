@@ -65,6 +65,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       );
     }
 
+    // Reference documents are aligned the same way — a section per reference at
+    // the SAME order, created only for references given a title.
+    const refDocumentIds = formData.getAll('referenceSectionDocumentId') as string[];
+    const refTitles = formData.getAll('referenceSectionTitle') as string[];
+    for (let i = 0; i < refDocumentIds.length; i++) {
+      const title = (refTitles[i] ?? '').trim();
+      if (refDocumentIds[i] && title) {
+        await createSection({ documentId: refDocumentIds[i], title, order: nextOrder }, user);
+      }
+    }
+
     return json({ success: true });
   }
 
@@ -78,20 +89,38 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     await updateSection(sectionId, { title: originTitle }, user);
 
+    // The source section's order pairs every counterpart (translation and each
+    // reference), so fetch it once for any counterpart we may need to create.
+    const sourceSection = await getSection(sectionId);
+    if (!sourceSection) {
+      return json({ success: false, error: 'Section not found' }, { status: 404 });
+    }
+
     if (translationTitle) {
       if (childSectionId) {
         await updateSection(childSectionId, { title: translationTitle }, user);
       } else if (targetDocumentId) {
         // No counterpart yet — create it with the SAME order as the source
         // section, since order is how the two sides are paired everywhere.
-        const sourceSection = await getSection(sectionId);
-        if (!sourceSection) {
-          return json({ success: false, error: 'Section not found' }, { status: 404 });
-        }
         await createSection(
           { documentId: targetDocumentId, title: translationTitle, order: sourceSection.order },
           user,
         );
+      }
+    }
+
+    // References: upsert each reference document's counterpart section at this
+    // section's order — update it when it already exists, create it otherwise.
+    const refDocumentIds = formData.getAll('referenceSectionDocumentId') as string[];
+    const refSectionIds = formData.getAll('referenceSectionId') as string[];
+    const refTitles = formData.getAll('referenceSectionTitle') as string[];
+    for (let i = 0; i < refDocumentIds.length; i++) {
+      const title = (refTitles[i] ?? '').trim();
+      const refSectionId = refSectionIds[i] || null;
+      if (refSectionId) {
+        if (title) await updateSection(refSectionId, { title }, user);
+      } else if (refDocumentIds[i] && title) {
+        await createSection({ documentId: refDocumentIds[i], title, order: sourceSection.order }, user);
       }
     }
 

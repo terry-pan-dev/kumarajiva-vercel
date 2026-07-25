@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { DeleteEntityButton } from './DeleteEntityButton';
 import { ProjectForm, type ProjectForForm } from './ProjectForm';
-import { SectionForm } from './SectionForm';
+import { SectionForm, type ReferenceSectionForForm } from './SectionForm';
 import { SectionRow } from './SectionRow';
 
 type Section = {
@@ -23,12 +23,19 @@ type Document = {
   sections: Section[];
 };
 
+// A reference document attached to the project, with its own sections so the
+// section editor can show/name a counterpart at each order.
+type ProjectReference = {
+  documentId: string;
+  document: { id: string; key: string | null; title: string; sections: Section[] };
+};
+
 export type ProjectForRow = {
   id: string;
   name: string;
   sourceDocument: Document;
   targetDocument: Document;
-  references: { documentId: string }[];
+  references: ProjectReference[];
 };
 
 // Works (with their documents) scope the source/target/reference pickers in the
@@ -64,6 +71,8 @@ type DraggableItemProps = {
   // The counterpart section in the target document (matched by order), when it
   // exists — its id/title feed the edit form so updates hit the real section.
   targetSection: { id: string; title: string | null } | null;
+  // Each reference document's counterpart section for this row (matched by order).
+  references: ReferenceSectionForForm[];
   hasData: boolean;
   isEditing: boolean;
   onEditToggle: () => void;
@@ -76,6 +85,7 @@ function DraggableSectionRow({
   documentId,
   targetDocumentId,
   targetSection,
+  references,
   hasData,
   isEditing,
   onEditToggle,
@@ -98,6 +108,7 @@ function DraggableSectionRow({
         hasData={hasData}
         isEditing={isEditing}
         documentId={documentId}
+        references={references}
         onEditClose={onEditClose}
         onEditToggle={onEditToggle}
         dragControls={dragControls}
@@ -144,8 +155,24 @@ export function ProjectRow({
     workId: project.sourceDocument.workId,
     sourceDocumentId: project.sourceDocument.id,
     targetDocumentId: project.targetDocument.id,
-    references: project.references,
+    references: project.references.map((r) => ({ documentId: r.documentId })),
   };
+
+  const referenceLabel = (doc: ProjectReference['document']) => doc.key ?? doc.title;
+
+  // The reference title boxes for a given section order — its counterpart in each
+  // reference document when one exists (matched by order), else an empty box to
+  // create it. Order is undefined for the not-yet-created "Add Section" form.
+  const referencesForOrder = (order?: number): ReferenceSectionForForm[] =>
+    project.references.map((ref) => {
+      const counterpart = order === undefined ? null : (ref.document.sections.find((s) => s.order === order) ?? null);
+      return {
+        documentId: ref.documentId,
+        label: referenceLabel(ref.document),
+        sectionId: counterpart?.id ?? null,
+        title: counterpart?.title ?? '',
+      };
+    });
 
   return (
     <div className="border-border bg-background overflow-hidden rounded-lg border shadow-sm">
@@ -239,6 +266,7 @@ export function ProjectRow({
                     hasData={sectionsWithData.has(section.id)}
                     isEditing={editingSectionId === section.id}
                     targetDocumentId={project.targetDocument.id}
+                    references={referencesForOrder(section.order)}
                     onEditToggle={() => onEditSectionToggle(section.id)}
                     targetSection={targetByOrder.get(section.order) ?? null}
                   />
@@ -253,6 +281,7 @@ export function ProjectRow({
             <div className="border-border border-t p-4">
               <SectionForm
                 onClose={onAddSectionClose}
+                references={referencesForOrder()}
                 documentId={project.sourceDocument.id}
                 targetDocumentId={project.targetDocument.id}
               />

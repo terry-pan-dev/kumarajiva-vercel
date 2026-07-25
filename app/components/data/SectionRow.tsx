@@ -2,7 +2,7 @@ import type { DragControls } from 'framer-motion';
 
 import { Download, FileText, GripVertical, Pencil, Upload } from 'lucide-react';
 
-import { SectionForm } from './SectionForm';
+import { SectionForm, type ReferenceSectionForForm } from './SectionForm';
 
 type Section = {
   id: string;
@@ -18,6 +18,9 @@ type Props = {
   // exists. Feeds both the "/ translation title" display and the edit form —
   // so edits update the real counterpart instead of creating a duplicate.
   targetSection?: { id: string; title: string | null } | null;
+  // Each reference document's counterpart section (matched by order) for this
+  // row — feeds the reference title boxes in the editor and the display line.
+  references?: ReferenceSectionForForm[];
   // Whether the section has paragraph data (paragraphs_new); without data
   // there is nothing to export.
   hasData: boolean;
@@ -32,6 +35,7 @@ export function SectionRow({
   documentId,
   targetDocumentId,
   targetSection,
+  references = [],
   hasData,
   isEditing,
   onEditToggle,
@@ -39,6 +43,7 @@ export function SectionRow({
   dragControls,
 }: Props) {
   const targetTitle = targetSection?.title ?? null;
+  const namedReferences = references.filter((r) => r.sectionId && r.title);
 
   return (
     <div>
@@ -65,6 +70,11 @@ export function SectionRow({
                 <Pencil size={12} />
               </button>
             </p>
+            {namedReferences.length > 0 && (
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                {namedReferences.map((r) => `${r.label}: ${r.title}`).join(' · ')}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-row justify-end gap-5">
@@ -100,6 +110,7 @@ export function SectionRow({
           <SectionForm
             onClose={onEditClose}
             documentId={documentId}
+            references={references}
             targetDocumentId={targetDocumentId}
             section={{
               sectionId: section.id,

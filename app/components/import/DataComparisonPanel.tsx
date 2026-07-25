@@ -103,14 +103,14 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
           </div>
         </div>
 
-        {/* Replace action — only shown after a file has been previewed */}
+        {/* Import action — only shown after a file has been previewed */}
         {fileRows && formValues && (
           <>
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Warning:</strong> Clicking "Replace Data" will permanently delete all existing paragraphs and
-                references for this section and replace them with the file data. This action cannot be undone.
+                Clicking "Import Data" adds or updates the rows in the file, matched by passage key and/or position.
+                Existing paragraphs not present in the file are left unchanged — nothing is deleted.
               </AlertDescription>
             </Alert>
 
@@ -122,8 +122,8 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
               <input type="hidden" name="targetDocumentId" value={formValues.targetDocumentId} />
 
               <div className="flex justify-end gap-3">
-                <Button type="submit" variant="destructive" className="text-base" disabled={isSubmitting}>
-                  {isSubmitting && navigationIntent === 'replace' ? 'Replacing...' : 'Replace Data'}
+                <Button type="submit" className="text-base" disabled={isSubmitting}>
+                  {isSubmitting && navigationIntent === 'replace' ? 'Importing...' : 'Import Data'}
                 </Button>
               </div>
             </Form>

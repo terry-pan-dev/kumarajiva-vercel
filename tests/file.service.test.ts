@@ -17,9 +17,14 @@ import {
 const makeParagraph = (overrides: Partial<ExcelTranslationRow> = {}): ExcelTranslationRow => ({
   origin: '原文',
   target: 'Translation',
+  passageKey: null,
   references: [],
   ...overrides,
 });
+
+// Columns are identified by document keys; these tests use "origin"/"translation"
+// as the origin/translation document keys.
+const KEYS = { originKey: 'origin', targetKey: 'translation' };
 
 const sampleParagraphs: ExcelTranslationRow[] = [
   makeParagraph({
@@ -220,39 +225,71 @@ describe('buildExportFilename', () => {
 describe('parseCSV', () => {
   it('parses origin and target', async () => {
     const csv = `origin,translation\n諸法因緣生,All dharmas arise\n諸法因緣滅,All dharmas cease`;
-    const rows = await parseCSV(csv);
+    const rows = await parseCSV(csv, KEYS);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ origin: '諸法因緣生', target: 'All dharmas arise', references: [] });
     expect(rows[1]).toMatchObject({ origin: '諸法因緣滅', target: 'All dharmas cease', references: [] });
   });
 
-  it('accepts header aliases (original / target)', async () => {
-    const csv = `original,target\nfoo,bar`;
-    const rows = await parseCSV(csv);
+  it('matches columns by document key', async () => {
+    const csv = `original,rendering\nfoo,bar`;
+    const rows = await parseCSV(csv, { originKey: 'original', targetKey: 'rendering' });
     expect(rows[0]).toMatchObject({ origin: 'foo', target: 'bar' });
   });
 
-  it('is case-insensitive for known headers (Origin, TRANSLATION)', async () => {
+  it('matches keys case-insensitively (Origin, TRANSLATION)', async () => {
     const csv = `Origin,TRANSLATION\nfoo,bar`;
-    const rows = await parseCSV(csv);
+    const rows = await parseCSV(csv, KEYS);
     expect(rows[0]).toMatchObject({ origin: 'foo', target: 'bar' });
   });
 
-  it('sets target to null when translation column is absent', async () => {
-    const csv = `origin\nfoo`;
-    const rows = await parseCSV(csv);
-    expect(rows[0].target).toBeNull();
+  it('accepts a file with only the translation column (origin absent)', async () => {
+    const rows = await parseCSV(`translation\nbar`, KEYS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ origin: '', target: 'bar' });
+  });
+
+  it('accepts a file with only the origin column (translation absent)', async () => {
+    const rows = await parseCSV(`origin\nfoo`, KEYS);
+    expect(rows[0]).toMatchObject({ origin: 'foo', target: null });
+  });
+
+  it('accepts a file of only reference columns (no origin/translation)', async () => {
+    const rows = await parseCSV(`Diamond Sutra\nref text`, KEYS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ origin: '', target: null });
+    expect(rows[0].references).toEqual([{ sutraName: 'Diamond Sutra', content: 'ref text' }]);
+  });
+
+  it('drops fully-empty rows but keeps rows with any content', async () => {
+    const rows = await parseCSV(`origin,translation\n,\n,bar\nfoo,`, KEYS);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ origin: '', target: 'bar' });
+    expect(rows[1]).toMatchObject({ origin: 'foo', target: null });
+  });
+
+  it('reads a passage_key column into passageKey (and never as a reference)', async () => {
+    const csv = `origin,translation,passage_key\nfoo,bar,T09n0262.1.1`;
+    const rows = await parseCSV(csv, KEYS);
+    expect(rows[0].passageKey).toBe('T09n0262.1.1');
+    expect(rows[0].references).toHaveLength(0);
+  });
+
+  it('leaves passageKey null when there is no passage_key column', async () => {
+    const csv = `origin,translation\nfoo,bar`;
+    const rows = await parseCSV(csv, KEYS);
+    expect(rows[0].passageKey).toBeNull();
   });
 
   it('sets target to null when cell is empty', async () => {
     const csv = `origin,translation\nfoo,`;
-    const rows = await parseCSV(csv);
+    const rows = await parseCSV(csv, KEYS);
     expect(rows[0].target).toBeNull();
   });
 
   it('captures extra columns as references with original-case sutraName', async () => {
     const csv = `origin,translation,Diamond Sutra,Platform Sutra\nfoo,bar,ref-a,ref-b`;
-    const rows = await parseCSV(csv);
+    const rows = await parseCSV(csv, KEYS);
     expect(rows[0].references).toEqual([
       { sutraName: 'Diamond Sutra', content: 'ref-a' },
       { sutraName: 'Platform Sutra', content: 'ref-b' },
@@ -261,26 +298,27 @@ describe('parseCSV', () => {
 
   it('skips reference cells that are empty', async () => {
     const csv = `origin,translation,Diamond Sutra\nfoo,bar,\nbaz,qux,ref`;
-    const rows = await parseCSV(csv);
+    const rows = await parseCSV(csv, KEYS);
     expect(rows[0].references).toHaveLength(0);
     expect(rows[1].references).toHaveLength(1);
   });
 
-  it('skips rows with no origin', async () => {
+  it('keeps an origin-less row when another column has content', async () => {
     const csv = `origin,translation\n,bar\nfoo,baz`;
-    const rows = await parseCSV(csv);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].origin).toBe('foo');
+    const rows = await parseCSV(csv, KEYS);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ origin: '', target: 'bar' });
+    expect(rows[1]).toMatchObject({ origin: 'foo', target: 'baz' });
   });
 
   it('trims whitespace from cells', async () => {
     const csv = `origin,translation\n  foo  ,  bar  `;
-    const rows = await parseCSV(csv);
+    const rows = await parseCSV(csv, KEYS);
     expect(rows[0]).toMatchObject({ origin: 'foo', target: 'bar' });
   });
 
   it('returns empty array for empty CSV (headers only)', async () => {
-    const rows = await parseCSV('origin,translation\n');
+    const rows = await parseCSV('origin,translation\n', KEYS);
     expect(rows).toHaveLength(0);
   });
 });
@@ -292,25 +330,39 @@ describe('parseXLSX', () => {
     const buf = await buildXlsx(
       [
         { header: 'origin', key: 'origin' },
-        { header: 'Translation', key: 'target' },
+        { header: 'translation', key: 'target' },
       ],
       [{ origin: '諸法因緣生', target: 'All dharmas arise' }],
     );
-    const rows = await parseXLSX(buf);
+    const rows = await parseXLSX(buf, KEYS);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ origin: '諸法因緣生', target: 'All dharmas arise', references: [] });
   });
 
-  it('accepts header aliases (original, translation) case-insensitively', async () => {
+  it('matches keys case-insensitively (ORIGIN, TRANSLATION)', async () => {
     const buf = await buildXlsx(
       [
-        { header: 'ORIGINAL', key: 'origin' },
-        { header: 'translation', key: 'target' },
+        { header: 'ORIGIN', key: 'origin' },
+        { header: 'TRANSLATION', key: 'target' },
       ],
       [{ origin: 'foo', target: 'bar' }],
     );
-    const rows = await parseXLSX(buf);
+    const rows = await parseXLSX(buf, KEYS);
     expect(rows[0]).toMatchObject({ origin: 'foo', target: 'bar' });
+  });
+
+  it('reads a passage_key column into passageKey (and never as a reference)', async () => {
+    const buf = await buildXlsx(
+      [
+        { header: 'origin', key: 'origin' },
+        { header: 'translation', key: 'target' },
+        { header: 'passage_key', key: 'passage_key' },
+      ],
+      [{ origin: 'foo', target: 'bar', passage_key: 'T09n0262.1.1' }],
+    );
+    const rows = await parseXLSX(buf, KEYS);
+    expect(rows[0].passageKey).toBe('T09n0262.1.1');
+    expect(rows[0].references).toHaveLength(0);
   });
 
   it('captures extra columns as references preserving header case', async () => {
@@ -322,7 +374,7 @@ describe('parseXLSX', () => {
       ],
       [{ origin: 'foo', target: 'bar', ref1: 'diamond ref' }],
     );
-    const rows = await parseXLSX(buf);
+    const rows = await parseXLSX(buf, KEYS);
     expect(rows[0].references).toEqual([{ sutraName: 'Diamond Sutra', content: 'diamond ref' }]);
   });
 
@@ -338,7 +390,7 @@ describe('parseXLSX', () => {
         { origin: 'baz', target: 'qux', ref1: 'ref text' },
       ],
     );
-    const rows = await parseXLSX(buf);
+    const rows = await parseXLSX(buf, KEYS);
     expect(rows[0].references).toHaveLength(0);
     expect(rows[1].references).toHaveLength(1);
   });
@@ -351,11 +403,11 @@ describe('parseXLSX', () => {
       ],
       [{ origin: 'foo', target: '' }],
     );
-    const rows = await parseXLSX(buf);
+    const rows = await parseXLSX(buf, KEYS);
     expect(rows[0].target).toBeNull();
   });
 
-  it('skips rows where origin is empty', async () => {
+  it('keeps an origin-less row when another column has content', async () => {
     const buf = await buildXlsx(
       [
         { header: 'origin', key: 'origin' },
@@ -366,14 +418,32 @@ describe('parseXLSX', () => {
         { origin: 'foo', target: 'baz' },
       ],
     );
-    const rows = await parseXLSX(buf);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].origin).toBe('foo');
+    const rows = await parseXLSX(buf, KEYS);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ origin: '', target: 'bar' });
+    expect(rows[1]).toMatchObject({ origin: 'foo', target: 'baz' });
   });
 
-  it('returns empty array when origin column is absent', async () => {
+  it('accepts a file without an origin column', async () => {
     const buf = await buildXlsx([{ header: 'translation', key: 'target' }], [{ target: 'bar' }]);
-    const rows = await parseXLSX(buf);
-    expect(rows).toHaveLength(0);
+    const rows = await parseXLSX(buf, KEYS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ origin: '', target: 'bar' });
+  });
+
+  it('drops fully-empty rows', async () => {
+    const buf = await buildXlsx(
+      [
+        { header: 'origin', key: 'origin' },
+        { header: 'translation', key: 'target' },
+      ],
+      [
+        { origin: '', target: '' },
+        { origin: 'foo', target: 'bar' },
+      ],
+    );
+    const rows = await parseXLSX(buf, KEYS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].origin).toBe('foo');
   });
 });

@@ -32,7 +32,15 @@ export const DbProjects = {
         },
         team: true,
         references: {
-          with: { document: true },
+          with: {
+            document: {
+              with: {
+                sections: {
+                  orderBy: (sections, { asc }) => [asc(sections.order)],
+                },
+              },
+            },
+          },
           orderBy: (references, { asc }) => [asc(references.order)],
         },
       },
@@ -62,7 +70,15 @@ export const DbProjects = {
         },
         team: true,
         references: {
-          with: { document: true },
+          with: {
+            document: {
+              with: {
+                sections: {
+                  orderBy: (sections, { asc }) => [asc(sections.order)],
+                },
+              },
+            },
+          },
           orderBy: (references, { asc }) => [asc(references.order)],
         },
       },
