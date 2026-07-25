@@ -33,6 +33,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const rows: ExcelTranslationRow[] = paragraphs.map((p) => ({
     origin: p.origin,
     target: p.target,
+    passageKey: p.passageKey ?? null,
     references: [],
   }));
 

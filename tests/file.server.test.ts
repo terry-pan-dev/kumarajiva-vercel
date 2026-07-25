@@ -66,8 +66,13 @@ const BASE_OPTIONS: ImportOptions = {
 };
 
 const TWO_ROWS: ExcelTranslationRow[] = [
-  { origin: '諸法因緣生', target: 'All dharmas arise', references: [{ sutraName: 'Diamond Sutra', content: 'ref-a' }] },
-  { origin: '諸法因緣滅', target: null, references: [] },
+  {
+    origin: '諸法因緣生',
+    target: 'All dharmas arise',
+    passageKey: null,
+    references: [{ sutraName: 'Diamond Sutra', content: 'ref-a' }],
+  },
+  { origin: '諸法因緣滅', target: null, passageKey: null, references: [] },
 ];
 
 // ─── buildImportData ─────────────────────────────────────────────────────────
@@ -265,8 +270,8 @@ describe('replaceRollData', () => {
 
   describe('when rows have no translations', () => {
     const originOnlyRows: ExcelTranslationRow[] = [
-      { origin: '諸法因緣生', target: null, references: [] },
-      { origin: '諸法因緣滅', target: null, references: [] },
+      { origin: '諸法因緣生', target: null, passageKey: null, references: [] },
+      { origin: '諸法因緣滅', target: null, passageKey: null, references: [] },
     ];
 
     it('inserts only origin paragraphs (no target insert call)', async () => {
@@ -279,7 +284,9 @@ describe('replaceRollData', () => {
   // ── No references ────────────────────────────────────────────────────────
 
   describe('when rows have no references', () => {
-    const noRefRows: ExcelTranslationRow[] = [{ origin: '諸法因緣生', target: 'All dharmas arise', references: [] }];
+    const noRefRows: ExcelTranslationRow[] = [
+      { origin: '諸法因緣生', target: 'All dharmas arise', passageKey: null, references: [] },
+    ];
 
     it('inserts origins and targets but not references', async () => {
       await replaceRollData(noRefRows, BASE_OPTIONS);

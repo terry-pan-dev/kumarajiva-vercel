@@ -13,15 +13,26 @@ export type SectionForForm = {
   translationTitle: string;
 };
 
+// A reference document as it appears in the section editor: its counterpart
+// section (matched by order) when it exists, and the title to seed the box.
+export type ReferenceSectionForForm = {
+  documentId: string;
+  label: string;
+  sectionId: string | null;
+  title: string;
+};
+
 export function SectionForm({
   section,
   documentId,
   targetDocumentId,
+  references = [],
   onClose,
 }: {
   section?: SectionForForm;
   documentId: string;
   targetDocumentId?: string | null;
+  references?: ReferenceSectionForForm[];
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ success: boolean }>();
@@ -85,6 +96,33 @@ export function SectionForm({
             </div>
           </div>
         </div>
+
+        {references.length > 0 && (
+          <div className="border-primary-foreground/20 space-y-3 border-t pt-4">
+            <p className="text-primary-foreground/70 text-xs font-semibold tracking-wider uppercase">References</p>
+            <p className="text-primary-foreground/60 text-xs">
+              Give a reference a title to create (or rename) its section at this same order — this is what lets you
+              import data into that reference. Leave blank to skip.
+            </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {references.map((ref) => (
+                <div key={ref.documentId}>
+                  {/* Aligned parallel inputs — read back with formData.getAll. */}
+                  <input type="hidden" value={ref.documentId} name="referenceSectionDocumentId" />
+                  <input type="hidden" name="referenceSectionId" value={ref.sectionId ?? ''} />
+                  <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">{ref.label}</label>
+                  <textarea
+                    rows={2}
+                    defaultValue={ref.title}
+                    name="referenceSectionTitle"
+                    className={textareaClass(bg)}
+                    placeholder="e.g., Volume One"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-1">
           <button

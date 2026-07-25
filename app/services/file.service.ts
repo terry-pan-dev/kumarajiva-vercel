@@ -27,18 +27,59 @@ import { type IParagraph } from './paragraph.service';
 export interface ExcelTranslationRow {
   origin: string;
   target: string | null;
+  // Optional passage key supplied by a `passage_key` column. When present it is
+  // the shared identity for this row across every document (origin, translation
+  // and references), so re-imports can match paragraphs by key instead of
+  // position. Null when the file has no passage_key column.
+  passageKey: string | null;
+  // Reference cells keyed by column header — the header is the reference
+  // document's key (see reference importing in file.server.ts).
   references: { sutraName?: string; content?: string }[];
 }
 
 const COLUMN_HEADERS_ORIGIN = 'Origin';
 const COLUMN_HEADERS_TARGET = 'Translation';
 
-const HEADER_ALIASES: Record<string, 'origin' | 'target'> = {
-  origin: 'origin',
-  original: 'origin',
-  target: 'target',
-  translation: 'target',
-};
+// Columns are identified by each document's `key`: the origin document's key
+// heads the origin column, the translation document's key heads the translation
+// column, and each reference document's key heads its own column. The importer
+// passes the origin/target keys in (either may be null if that document has no
+// key); a `passage_key` column is the one reserved header that never maps to a
+// document. Every column is optional — a file may carry any subset of the
+// documents (see file.server.ts); the service aligns them by passage key and/or
+// position.
+export interface ImportColumnKeys {
+  originKey: string | null;
+  targetKey: string | null;
+}
+
+const PASSAGE_KEY_HEADERS = new Set(['passage_key', 'passagekey', 'passage key']);
+
+const normaliseHeader = (header: string): string => header.trim().toLowerCase();
+
+// Classify a file's headers against the document keys. Origin/target are matched
+// by key (case-insensitive) when their key is known; the reserved passage_key
+// header is pulled out; every remaining non-empty header is a reference column
+// (its text is the reference document key).
+function classifyHeaders(headers: string[], keys: ImportColumnKeys) {
+  const originKey = keys.originKey ? normaliseHeader(keys.originKey) : null;
+  const targetKey = keys.targetKey ? normaliseHeader(keys.targetKey) : null;
+
+  const originHeader = originKey ? headers.find((h) => normaliseHeader(h) === originKey) : undefined;
+  const targetHeader = targetKey ? headers.find((h) => normaliseHeader(h) === targetKey) : undefined;
+  const passageHeader = headers.find((h) => PASSAGE_KEY_HEADERS.has(normaliseHeader(h)));
+  const refHeaders = headers.filter(
+    (h) => h.trim() !== '' && h !== originHeader && h !== targetHeader && h !== passageHeader,
+  );
+
+  return { originHeader, targetHeader, passageHeader, refHeaders };
+}
+
+// A row carries no data when every document cell is empty and no passage key is
+// given — such rows are dropped so blank spacer lines don't create paragraphs.
+function isEmptyRow(row: ExcelTranslationRow): boolean {
+  return !row.origin && !row.target && !row.passageKey && row.references.length === 0;
+}
 
 // =============================================================================
 // SECTION 2: Application-layer types
@@ -124,36 +165,36 @@ function getCellText(value: ExcelJS.CellValue): string {
 // SECTION 5: Parsing — CSV and XLSX → ExcelTranslationRow[]
 // =============================================================================
 
-export async function parseCSV(fileContent: string): Promise<ExcelTranslationRow[]> {
+export async function parseCSV(fileContent: string, keys: ImportColumnKeys): Promise<ExcelTranslationRow[]> {
   return new Promise<ExcelTranslationRow[]>((resolve, reject) => {
-    // No transformHeader — we need the original case for reference sutraNames.
+    // No transformHeader — we need the original case for reference document keys.
     Papa.parse<Record<string, string>>(fileContent, {
       header: true,
       skipEmptyLines: true,
 
       complete: (results: Papa.ParseResult<Record<string, string>>): void => {
-        const headers = results.meta.fields ?? [];
+        try {
+          const headers = results.meta.fields ?? [];
+          const { originHeader, targetHeader, passageHeader, refHeaders } = classifyHeaders(headers, keys);
 
-        const originHeader = headers.find((h) => HEADER_ALIASES[h.toLowerCase().trim()] === 'origin');
-        const targetHeader = headers.find((h) => HEADER_ALIASES[h.toLowerCase().trim()] === 'target');
-        const refHeaders = headers.filter((h) => !HEADER_ALIASES[h.toLowerCase().trim()]);
+          const rows: ExcelTranslationRow[] = results.data
+            .map((raw): ExcelTranslationRow => {
+              const origin = originHeader ? (raw[originHeader]?.trim() ?? '') : '';
+              const target = targetHeader ? raw[targetHeader]?.trim() : '';
+              const passageKey = passageHeader ? raw[passageHeader]?.trim() || null : null;
 
-        const rows: ExcelTranslationRow[] = results.data
-          .map((raw): ExcelTranslationRow | null => {
-            const origin = originHeader ? raw[originHeader]?.trim() : '';
-            if (!origin) return null;
+              const references = refHeaders
+                .map((h) => ({ sutraName: h, content: raw[h]?.trim() || '' }))
+                .filter((r) => r.content);
 
-            const target = targetHeader ? raw[targetHeader]?.trim() : '';
+              return { origin, target: target || null, passageKey, references };
+            })
+            .filter((row) => !isEmptyRow(row));
 
-            const references = refHeaders
-              .map((h) => ({ sutraName: h, content: raw[h]?.trim() || '' }))
-              .filter((r) => r.content);
-
-            return { origin, target: target || null, references };
-          })
-          .filter((row): row is ExcelTranslationRow => row !== null);
-
-        resolve(rows);
+          resolve(rows);
+        } catch (error) {
+          reject(error);
+        }
       },
 
       error: (error: Error): void => reject(error),
@@ -161,7 +202,7 @@ export async function parseCSV(fileContent: string): Promise<ExcelTranslationRow
   });
 }
 
-export async function parseXLSX(fileBuffer: ArrayBuffer): Promise<ExcelTranslationRow[]> {
+export async function parseXLSX(fileBuffer: ArrayBuffer, keys: ImportColumnKeys): Promise<ExcelTranslationRow[]> {
   const ExcelJS = await import('exceljs');
 
   const workbook = new ExcelJS.default.Workbook();
@@ -169,46 +210,43 @@ export async function parseXLSX(fileBuffer: ArrayBuffer): Promise<ExcelTranslati
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {
-    return [];
+    throw new Error('The workbook has no worksheets.');
   }
 
   const headerRow = worksheet.getRow(1);
-  const columnMapping: Map<number, 'origin' | 'target'> = new Map();
-  // colNumber → original header text (preserved case) for reference columns
-  const refCols: Map<number, string> = new Map();
-
+  // colNumber → header text, preserving order/case so we can classify columns
+  // and, for reference columns, use the header as the reference document key.
+  const headersByCol: { col: number; header: string }[] = [];
   headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-    const originalHeader = getCellText(cell.value).trim();
-    const canonical = HEADER_ALIASES[originalHeader.toLowerCase()];
-    if (canonical) {
-      columnMapping.set(colNumber, canonical);
-    } else if (originalHeader) {
-      refCols.set(colNumber, originalHeader);
-    }
+    const header = getCellText(cell.value).trim();
+    if (header) headersByCol.push({ col: colNumber, header });
   });
 
-  const originCol = [...columnMapping.entries()].find(([, v]) => v === 'origin')?.[0];
-  if (originCol === undefined) {
-    return [];
-  }
+  const headers = headersByCol.map((h) => h.header);
+  const { originHeader, targetHeader, passageHeader, refHeaders } = classifyHeaders(headers, keys);
 
-  const targetCol = [...columnMapping.entries()].find(([, v]) => v === 'target')?.[0];
+  const colOf = (header: string | undefined) =>
+    header === undefined ? undefined : headersByCol.find((h) => h.header === header)?.col;
+  const originCol = colOf(originHeader);
+  const targetCol = colOf(targetHeader);
+  const passageCol = colOf(passageHeader);
+  const refCols = refHeaders.map((header) => ({ col: colOf(header)!, sutraName: header }));
 
   const rows: ExcelTranslationRow[] = [];
 
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
 
-    const origin = getCellText(row.getCell(originCol).value).trim();
-    if (!origin) return;
-
+    const origin = originCol ? getCellText(row.getCell(originCol).value).trim() : '';
     const target = targetCol ? getCellText(row.getCell(targetCol).value).trim() : '';
+    const passageKey = passageCol ? getCellText(row.getCell(passageCol).value).trim() || null : null;
 
-    const references = [...refCols.entries()]
-      .map(([colNum, sutraName]) => ({ sutraName, content: getCellText(row.getCell(colNum).value).trim() }))
+    const references = refCols
+      .map(({ col, sutraName }) => ({ sutraName, content: getCellText(row.getCell(col).value).trim() }))
       .filter((r) => r.content);
 
-    rows.push({ origin, target: target || null, references });
+    const parsed: ExcelTranslationRow = { origin, target: target || null, passageKey, references };
+    if (!isEmptyRow(parsed)) rows.push(parsed);
   });
 
   return rows;
@@ -294,6 +332,7 @@ export function toExcelRow(paragraph: IParagraph): ExcelTranslationRow {
   return {
     origin: paragraph.origin,
     target: paragraph.target,
+    passageKey: null,
     references: paragraph.references.map((r) => ({
       sutraName: r.sutraName,
       content: r.content,

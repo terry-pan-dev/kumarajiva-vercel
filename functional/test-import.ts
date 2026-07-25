@@ -49,7 +49,7 @@ async function testCSV() {
   console.log('── CSV input ────────────────────────────────────────');
   console.log(csv);
 
-  const rows = await parseCSV(csv);
+  const rows = await parseCSV(csv, { originKey: 'origin', targetKey: 'translation' });
 
   console.log('\n── Parsed CSV rows ──────────────────────────────────');
   console.log(JSON.stringify(rows, null, 2));
@@ -83,7 +83,7 @@ async function testXLSX() {
   ws.addRow({ origin: '自性本清淨', target: '', ref1: '', ref2: 'Platform Sutra v3' });
 
   const buffer = await wb.xlsx.writeBuffer();
-  const rows = await parseXLSX(buffer as ArrayBuffer);
+  const rows = await parseXLSX(buffer as ArrayBuffer, { originKey: 'origin', targetKey: 'translation' });
 
   console.log('\n── Parsed XLSX rows ─────────────────────────────────');
   console.log(JSON.stringify(rows, null, 2));
@@ -116,9 +116,10 @@ async function testDB() {
     {
       origin: 'Test origin 1',
       target: 'Test translation 1',
+      passageKey: null,
       references: [{ sutraName: 'Test Sutra', content: 'test ref' }],
     },
-    { origin: 'Test origin 2', target: null, references: [] },
+    { origin: 'Test origin 2', target: null, passageKey: null, references: [] },
   ];
 
   const options = {
