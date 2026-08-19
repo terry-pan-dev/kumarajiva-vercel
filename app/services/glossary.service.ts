@@ -7,6 +7,7 @@ import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
 import { DbGlossaries } from './glossary.crud';
+import { mergeTranslations } from './glossary.merge';
 import { groupRows, type GlossaryImportRow } from './glossary.parse';
 
 // Re-exported so callers of importGlossaries can reach the row type from one place.
@@ -294,7 +295,8 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
     const results = await Promise.allSettled(
       batch.map(async (group) => {
         const first = group.rows[0];
-        const translations = group.rows
+        // Typed as the stored shape so it merges with existing.translations without widening.
+        const translations: NonNullable<UpdateGlossary['translations']> = group.rows
           .filter((r) => r.englishTerm)
           .map((r) => ({
             glossary: r.englishTerm,
@@ -319,7 +321,9 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
             author: first.author || null,
             cbetaFrequency: first.cbetaFrequency || null,
             discussion: existing.discussion ?? null,
-            translations,
+            // Translations are one JSON column: send the merge, not just the file's rows,
+            // or every translation the file omits would be dropped.
+            translations: mergeTranslations(existing.translations, translations),
             updatedBy: userId,
           });
           return 'updated' as const;

@@ -13,6 +13,7 @@ import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Separator } from '~/components/ui/separator';
+import { mergeTranslationsWithStatus, type TranslationStatus } from '~/services/glossary.merge';
 import {
   CHUNK_SIZE,
   chunkGroupsToRows,
@@ -126,6 +127,18 @@ type TermCardProps = {
   variant: 'existing' | 'incoming';
 };
 
+const TRANSLATION_STATUS_LABELS: Record<TranslationStatus, string> = {
+  kept: 'Kept',
+  updated: 'Updated',
+  new: 'New',
+};
+
+const TRANSLATION_STATUS_STYLES: Record<TranslationStatus, string> = {
+  kept: 'bg-muted text-muted-foreground',
+  updated: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+  new: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200',
+};
+
 function GlossaryTermCard({ group, variant }: TermCardProps) {
   const isIncoming = variant === 'incoming';
   const isNew = !group.existing;
@@ -144,23 +157,32 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
   const author = isIncoming ? first.author : group.existing!.author;
   const cbetaFrequency = isIncoming ? first.cbetaFrequency : group.existing!.cbetaFrequency;
 
-  const translations = isIncoming
-    ? group.rows
-        .filter((r) => r.englishTerm)
-        .map((r) => ({
-          glossary: r.englishTerm,
-          sutraName: r.sutraName,
-          volume: r.volume,
-          originSutraText: r.chineseSutraText || null,
-          targetSutraText: r.englishSutraText || null,
-        }))
-    : (group.existing?.translations ?? []).map((t) => ({
-        glossary: t.glossary,
-        sutraName: t.sutraName,
-        volume: t.volume,
-        originSutraText: t.originSutraText ?? null,
-        targetSutraText: t.targetSutraText ?? null,
-      }));
+  const stored = (group.existing?.translations ?? []).map((t) => ({
+    glossary: t.glossary,
+    sutraName: t.sutraName,
+    volume: t.volume,
+    originSutraText: t.originSutraText ?? null,
+    targetSutraText: t.targetSutraText ?? null,
+    author: t.author ?? null,
+  }));
+
+  // Mirrors the server's merge in importGlossaries, so the panel shows the row that will
+  // actually be stored — kept translations included, not just the file's rows.
+  const translations: Array<(typeof stored)[number] & { status?: TranslationStatus }> = isIncoming
+    ? mergeTranslationsWithStatus(
+        stored,
+        group.rows
+          .filter((r) => r.englishTerm)
+          .map((r) => ({
+            glossary: r.englishTerm,
+            sutraName: r.sutraName,
+            volume: r.volume,
+            originSutraText: r.chineseSutraText || null,
+            targetSutraText: r.englishSutraText || null,
+            author: r.author || null,
+          })),
+      ).map((m) => ({ ...m.translation, status: m.status }))
+    : stored;
 
   return (
     <div
@@ -193,7 +215,14 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
         <div className="space-y-1.5 pt-0.5">
           {translations.map((t, i) => (
             <div key={i} className="bg-background text-foreground space-y-0.5 rounded border p-2 text-xs">
-              <p className="font-medium">{t.glossary}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium">{t.glossary}</p>
+                {t.status && (
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${TRANSLATION_STATUS_STYLES[t.status]}`}>
+                    {TRANSLATION_STATUS_LABELS[t.status]}
+                  </span>
+                )}
+              </div>
               {(t.sutraName || t.volume) && (
                 <p className="text-muted-foreground">{[t.sutraName, t.volume].filter(Boolean).join(' · ')}</p>
               )}
@@ -283,7 +312,8 @@ function ImportInstructions() {
             </li>
             <li>
               <strong>Review</strong> — the left column shows what is currently in the database; the right column shows
-              what the CSV will create or overwrite. Green cards are new entries; amber cards are updates.
+              the entry as it will be stored after the merge. Green cards are new entries; amber cards are updates.
+              Within a card, each translation is tagged <em>Kept</em>, <em>Updated</em> or <em>New</em>.
             </li>
             <li>
               <strong>Import Chunk</strong> — click the button to write the current chunk to the database, then the next
@@ -302,9 +332,20 @@ function ImportInstructions() {
           <p className="text-foreground mb-1 font-medium">Conflict resolution</p>
           <p>
             Rows with a UUID are matched to the existing record by primary key. Rows without a UUID are matched by
-            Chinese term. When a match is found the entry&apos;s metadata (phonetic, author, CBETA frequency) and its
-            full translations list are <strong>replaced</strong> with the CSV values. New entries are created and
-            indexed in Algolia automatically.
+            Chinese term. New entries are created and indexed in Algolia automatically.
+          </p>
+          <p className="mt-2">
+            When a match is found the entry&apos;s translations are <strong>merged</strong>, not replaced — translations
+            already in the database are kept even if the file does not mention them, so an import file only needs to
+            carry the terms it is adding. A translation is considered the same as a stored one when its{' '}
+            <code>EnglishTerm</code>, <code>SutraName</code> and <code>Volume</code> all match; in that case the file
+            wins and the stored sutra text is overwritten. Everything else is appended. Re-importing the same file
+            therefore changes nothing.
+          </p>
+          <p className="mt-2">
+            Entry-level metadata (phonetic, author, CBETA frequency) is overwritten by the file when supplied; leaving a
+            cell blank keeps the stored value. To remove a translation, edit the entry directly — an import cannot
+            delete one.
           </p>
         </div>
       </CardContent>
@@ -592,7 +633,7 @@ export default function GlossaryImportPage() {
               <div className="rounded-lg border p-4">
                 <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{totals.updated}</p>
                 <p className="text-foreground mt-1 text-sm font-medium">Updated</p>
-                <p className="text-muted-foreground text-xs">existing entries overwritten</p>
+                <p className="text-muted-foreground text-xs">existing entries merged</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-destructive text-3xl font-bold">{totals.failed}</p>
