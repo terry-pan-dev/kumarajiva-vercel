@@ -1,11 +1,12 @@
 import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 
 import { Can } from '~/authorisation';
+import { DeleteEntityButton } from '~/components/data/DeleteEntityButton';
 import { Icons } from '~/components/icons';
 import {
   Badge,
@@ -40,7 +41,8 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
     const selectedGlossary = useMemo(() => {
-      return glossaries[selectedIndex ?? 0];
+      // Clamped so deleting the last entry in the list selects its predecessor.
+      return glossaries[Math.min(selectedIndex, glossaries.length - 1)];
     }, [glossaries, selectedIndex]);
 
     if (!glossaries.length) {
@@ -280,6 +282,21 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
                   <GlossaryInsertForm id={glossary.id} />
                 </FormModal>
               </Can>
+              <Can I="Delete" this="Glossary">
+                <span className="flex h-10 w-10 items-center justify-center">
+                  <DeleteEntityButton
+                    size={24}
+                    id={glossary.id}
+                    idName="glossaryId"
+                    entity="glossary entry"
+                    intent="delete-glossary"
+                    // Also rendered on /settings, whose action knows nothing about glossaries.
+                    action="/glossary?index"
+                    label={glossary.glossary}
+                    description={`This permanently deletes “${glossary.glossary}” and all ${glossary.translations?.length ?? 0} of its translations. It cannot be undone.`}
+                  />
+                </span>
+              </Can>
             </div>
           )}
         </CardHeader>
@@ -366,7 +383,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
 };
 
 const GlossaryEditForm = ({ id }: { id: string }) => {
-  const { fields } = useFieldArray({
+  const { fields, remove } = useFieldArray({
     name: 'translations',
   });
   return (
@@ -384,8 +401,23 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
       </div>
       {fields.map((field, index) => (
         <div key={field.id}>
-          {/* @ts-ignore */}
-          <Divider>{field.language.toUpperCase()}</Divider>
+          <div className="flex items-center gap-2">
+            {/* @ts-ignore */}
+            <Divider className="flex-1">{field.language.toUpperCase()}</Divider>
+            {/* Removal takes effect on Save, like every other edit in this form. */}
+            <Can I="Delete" this="Glossary">
+              <Button
+                size="icon"
+                type="button"
+                variant="ghost"
+                title="Remove translation"
+                onClick={() => remove(index)}
+                aria-label="remove-translation"
+              >
+                <Trash2 className="text-muted-foreground hover:text-destructive h-4 w-4" />
+              </Button>
+            </Can>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <FormInput required label="Translation Term" name={`translations.${index}.glossary`} />
             <FormInput

@@ -370,6 +370,22 @@ export const deleteGlossariesByUserId = async (userId: string) => {
   return await dbClient.delete(glossariesTable).where(eq(glossariesTable.createdBy, userId));
 };
 
+// Deletes one glossary entry — the term and every translation in its JSON column — and its
+// Algolia object. Returns the deleted term, or null if the id matched nothing.
+// Irreversible — callers must gate this on the appropriate ability.
+export const deleteGlossaryById = async (id: string): Promise<string | null> => {
+  const glossary = await DbGlossaries.findById(id);
+  if (!glossary) return null;
+
+  // Search first: a failure here leaves the row in place to retry, rather than an index hit
+  // pointing at a row that no longer exists.
+  if (glossary.searchId) {
+    await algoliaClient.deleteObject({ indexName: 'glossaries', objectID: glossary.searchId });
+  }
+  await dbClient.delete(glossariesTable).where(eq(glossariesTable.id, id));
+  return glossary.glossary;
+};
+
 // Empties the glossary table and drops its objects from the Algolia index.
 // Destructive and irreversible — callers must gate this on the appropriate ability.
 export const deleteAllGlossaries = async (): Promise<{ deleted: number }> => {

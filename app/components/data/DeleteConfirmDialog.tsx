@@ -33,6 +33,7 @@ export function DeleteConfirmDialog({
   fields,
   submitting,
   FormComponent = RemixForm,
+  action,
   children,
 }: {
   open: boolean;
@@ -43,6 +44,9 @@ export function DeleteConfirmDialog({
   fields?: Record<string, string>;
   submitting: boolean;
   FormComponent?: DeleteForm;
+  // Defaults to the enclosing route. Set it when the dialog can render under a route whose
+  // action doesn't handle `intent` — e.g. a component shared across pages.
+  action?: string;
   children?: ReactNode;
 }) {
   return (
@@ -59,7 +63,7 @@ export function DeleteConfirmDialog({
               Cancel
             </Button>
           </DialogClose>
-          <FormComponent method="post">
+          <FormComponent method="post" action={action}>
             <input type="hidden" name="intent" value={intent} />
             {fields &&
               Object.entries(fields).map(([name, value]) => (

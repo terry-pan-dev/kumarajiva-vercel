@@ -23,6 +23,7 @@ export function DeleteEntityButton({
   disabled = false,
   disabledReason,
   description,
+  action,
 }: {
   entity: string;
   intent: string;
@@ -35,6 +36,8 @@ export function DeleteEntityButton({
   // Overrides the default "only works if nothing else references it" wording for
   // entities that have no dependents (e.g. a project).
   description?: string;
+  // Route to post to; see DeleteConfirmDialog.
+  action?: string;
 }) {
   const fetcher = useFetcher<DeleteResult>();
   const { toast } = useToast();
@@ -70,6 +73,7 @@ export function DeleteEntityButton({
       <DeleteConfirmDialog
         open={open}
         intent={intent}
+        action={action}
         onOpenChange={setOpen}
         fields={{ [idName]: id }}
         submitting={isSubmitting}
