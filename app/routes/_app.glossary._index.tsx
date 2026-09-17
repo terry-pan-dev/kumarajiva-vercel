@@ -88,7 +88,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
+  // Edit and insert mirror the <Can> gates on the buttons in GlossaryDetail. Those only hide
+  // the buttons; without these checks any signed-in user could POST here directly.
   if (kind === 'edit') {
+    if (ability.cannot('Update', 'Glossary')) {
+      return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
+    }
     const data = JSON.parse(formData.data as string);
     const validatedData = validatePayloadOrThrow({ schema: glossaryEditFormSchema, formData: data });
     // The edit form sends the whole translations array, so a removal is just a shorter array.
@@ -117,6 +122,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   if (kind === 'insert') {
+    if (ability.cannot('Create', 'Glossary')) {
+      return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
+    }
     const data = validatePayloadOrThrow({ schema: glossaryInsertFormSchema, formData });
     const newGlossary = {
       ...data,
