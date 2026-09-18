@@ -72,11 +72,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (ability.cannot('Delete', 'Glossary')) {
       return json({ success: false, error: 'Not allowed.' }, { status: 403 });
     }
-    const term = await deleteGlossaryById(formData.glossaryId as string);
-    if (!term) {
+    const deletion = await deleteGlossaryById(formData.glossaryId as string);
+    if (!deletion) {
       return json({ success: false, error: 'Glossary not found.' }, { status: 404 });
     }
-    return json({ success: true, message: `Deleted “${term}”.` });
+    return json({
+      success: true,
+      message: `Deleted “${deletion.term}” and ${deletion.deletedRecords} search record(s).`,
+    });
   }
   const bookmark = formData.bookmark;
   const glossaryId = formData.glossaryId as string;

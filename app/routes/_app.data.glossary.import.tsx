@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node';
 
 import { json, redirect } from '@remix-run/node';
-import { Form, useActionData, useFetcher, useNavigation } from '@remix-run/react';
+import { Form, Link, useActionData, useFetcher, useNavigation } from '@remix-run/react';
 import { AlertCircle, ArrowLeftRight, CheckCircle2, ChevronRight, FileText } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -129,13 +129,11 @@ type TermCardProps = {
 
 const TRANSLATION_STATUS_LABELS: Record<TranslationStatus, string> = {
   kept: 'Kept',
-  updated: 'Updated',
   new: 'New',
 };
 
 const TRANSLATION_STATUS_STYLES: Record<TranslationStatus, string> = {
   kept: 'bg-muted text-muted-foreground',
-  updated: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
   new: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200',
 };
 
@@ -645,6 +643,8 @@ export default function GlossaryImportPage() {
         </Card>
       )}
 
+      {isAllDone && <InspectAfterImportCard />}
+
       {/* ── Comparison panel ── */}
       {totalGroups > 0 && !isAllDone && currentChunk.length > 0 && (
         <Card>
@@ -730,5 +730,30 @@ export default function GlossaryImportPage() {
 
       <ImportInstructions />
     </div>
+  );
+}
+
+// ── After an import ──────────────────────────────────────────────────────────
+//
+// An import is when index records go wrong, and it is the moment an admin still knows what
+// they just did — but the state worth looking at is the glossary as a whole, not only the
+// entries this file touched. The inspector is where that lives.
+function InspectAfterImportCard() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-primary text-lg">Check the glossary</CardTitle>
+        <CardDescription>
+          The Glossary Inspector shows every entry with its uuid, search_id and stored columns, and — when you run the
+          index check — entries listed more than once in search, entries missing from it, and records left behind by
+          deleted entries.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button asChild size="sm" variant="secondary">
+          <Link to="/data/glossary/inspector">Open the Glossary Inspector</Link>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

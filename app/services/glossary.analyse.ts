@@ -8,8 +8,6 @@
 // entry can appear several times in search results while all copies edit the same row.
 import { type ReadGlossary } from '~/drizzle/tables';
 
-import { translationKey } from './glossary.merge';
-
 // Cap on entries returned with their full column dump, so one badly broken import can't
 // produce a response too large to render. The counts in `stats` always cover everything.
 export const MAX_REPORTED_ENTRIES = 300;
@@ -24,7 +22,6 @@ export type GlossaryIssueCode =
   | 'near-duplicate-term'
   | 'term-has-invisible-characters'
   | 'no-translations'
-  | 'duplicate-translation'
   | 'blank-translation';
 
 export type GlossaryIssue = {
@@ -143,7 +140,6 @@ function emptyIssueCounts(): Record<GlossaryIssueCode, number> {
     'near-duplicate-term': 0,
     'term-has-invisible-characters': 0,
     'no-translations': 0,
-    'duplicate-translation': 0,
     'blank-translation': 0,
   };
 }
@@ -280,22 +276,6 @@ export function analyseGlossary({
     translations += rowTranslations.length;
     if (rowTranslations.length === 0) {
       issues.push({ code: 'no-translations', severity: 'warning', detail: 'The entry has no translations.' });
-    }
-
-    // The importer's identity for a translation: term + source + volume. Two stored entries
-    // with the same key are the duplicate the next import would silently collapse.
-    const keyCounts = new Map<string, number>();
-    for (const translation of rowTranslations) {
-      const key = translationKey(translation);
-      keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
-    }
-    const duplicateKeys = [...keyCounts.values()].filter((count) => count > 1).length;
-    if (duplicateKeys > 0) {
-      issues.push({
-        code: 'duplicate-translation',
-        severity: 'warning',
-        detail: `${duplicateKeys} translation(s) repeat the same term, source and volume. The next import will silently collapse them into one.`,
-      });
     }
 
     const blank = rowTranslations.filter((translation) => !translation.glossary?.trim()).length;

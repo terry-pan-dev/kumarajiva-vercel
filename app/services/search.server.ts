@@ -13,6 +13,10 @@ import algoliaClient from '~/providers/algolia';
 
 const dbClient = getDb();
 
+// Headroom for glossary queries: index records can outnumber entries, so ask for more hits
+// than needed and collapse duplicates afterwards.
+const GLOSSARY_HIT_OVERFETCH = 3;
+
 export type ParagraphSearchResult = Awaited<ReturnType<typeof queryParagraphs>>;
 
 const queryParagraphs = (ids: string[], numberOfHits: number) => {
@@ -71,7 +75,9 @@ export const searchAlgolia = async ({
     searchQuery.push({
       indexName: 'glossaries',
       query: searchTerm,
-      hitsPerPage: numberOfHits,
+      // Over-fetched: duplicate index records collapse to one entry below, and without the
+      // headroom a page of hits can thin out to half as many distinct entries.
+      hitsPerPage: numberOfHits * GLOSSARY_HIT_OVERFETCH,
     });
   } else {
     searchQuery.push({
@@ -82,7 +88,7 @@ export const searchAlgolia = async ({
     searchQuery.push({
       indexName: 'glossaries',
       query: searchTerm,
-      hitsPerPage: numberOfHits,
+      hitsPerPage: numberOfHits * GLOSSARY_HIT_OVERFETCH,
     });
   }
   const { results } = await algoliaClient.search<ReadParagraph>({
@@ -104,7 +110,10 @@ export const searchAlgolia = async ({
           searchResults.push(...reorderedResults?.map((p) => ({ ...p, type: 'Paragraph' as const })));
         }
         if (result.index === 'glossaries') {
-          ids = result.hits.map((hit) => hit.id);
+          // One entry can be reachable through several index records — duplicates left by
+          // earlier imports. Collapsing on the uuid keeps it a single result; without this the
+          // same entry renders as two identical cards that both edit the same row.
+          ids = [...new Set(result.hits.map((hit) => hit.id))].slice(0, numberOfHits);
           const glossaries = await dbClient
             .select()
             .from(glossariesTable)

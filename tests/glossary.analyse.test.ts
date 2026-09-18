@@ -249,19 +249,21 @@ describe('analyseGlossary', () => {
 
   // ─── Translation checks ────────────────────────────────────────────────────
 
-  it('flags translations that share the importer key, since the next import collapses them', () => {
+  it('does not flag several passages from one source that share an English term', () => {
+    // Legitimate data: one sutra and volume can attest the same term more than once, and the
+    // importer no longer merges them, so there is nothing to warn about.
     const row = makeRow({
       id: 'a',
       glossary: '法',
       translations: [
-        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1' }),
-        makeTranslation({ glossary: ' Dharma ', sutraName: 'lotus', volume: '1' }),
+        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1', originSutraText: '諸法' }),
+        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1', originSutraText: '法門' }),
       ],
     });
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: [recordFor(row)] });
 
-    expect(codesFor(inspection, 'a')).toContain('duplicate-translation');
+    expect(codesFor(inspection, 'a')).toEqual([]);
   });
 
   it('keeps translations from different sources apart', () => {

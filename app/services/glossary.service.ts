@@ -170,24 +170,44 @@ export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>)
   return DbGlossaries.create(glossary);
 };
 
+// Creates the entry, then indexes it. Two things here prevent the duplicate and orphan
+// records that this index has accumulated:
+//
+//   Order. Indexing first meant a failed insert left a record no row claimed — an orphan,
+//   which a later import turns into a duplicate as soon as that uuid is reused. Writing the
+//   row first makes the worst case an entry missing from search, which the inspector reports
+//   as not-indexed and any re-index repairs.
+//
+//   A deterministic objectID: the row's own uuid. Indexing the same entry again overwrites
+//   its record rather than minting a second one carrying the same uuid, so an import that
+//   runs twice can no longer double-list every entry it touches. Rows indexed before this
+//   keep their generated objectIDs, which stay valid — search_id is what ties the two
+//   together either way.
 export const createGlossaryAndIndexInAlgolia = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
-  const response = await algoliaClient.saveObject({
-    indexName: 'glossaries',
-    body: {
-      id: glossary.id,
-      phonetic: glossary.phonetic,
-      glossary: glossary.glossary,
-      translations: glossary.translations?.map((translation) => ({
-        glossary: translation.glossary,
-        language: translation.language,
-      })),
-    },
-  });
-  const savedGlossary = await DbGlossaries.create({
-    ...glossary,
-    searchId: response.objectID,
-  });
-  return savedGlossary;
+  const [row] = await DbGlossaries.create(glossary);
+
+  try {
+    await algoliaClient.saveObject({
+      indexName: 'glossaries',
+      body: {
+        objectID: row.id,
+        id: row.id,
+        phonetic: row.phonetic,
+        glossary: row.glossary,
+        translations: row.translations?.map((translation) => ({
+          glossary: translation.glossary,
+          language: translation.language,
+        })),
+      },
+    });
+  } catch (error) {
+    // The entry is saved and correct — it just cannot be found by search yet. Reported rather
+    // than thrown so one indexing failure doesn't abort a whole import.
+    console.error('Failed to index new glossary entry', row.id, error);
+    return [row];
+  }
+
+  return DbGlossaries.updateById(row.id, { searchId: row.id });
 };
 
 export const searchGlossaries = async (tokens: string[]) => {
@@ -370,20 +390,55 @@ export const deleteGlossariesByUserId = async (userId: string) => {
   return await dbClient.delete(glossariesTable).where(eq(glossariesTable.createdBy, userId));
 };
 
-// Deletes one glossary entry — the term and every translation in its JSON column — and its
-// Algolia object. Returns the deleted term, or null if the id matched nothing.
+// Every index record that belongs to one entry.
+//
+// A row names only the record it was last indexed into (search_id), but earlier imports can
+// leave further records carrying the same uuid — the duplicates that make one entry show up
+// several times in search. Deleting only search_id would leave those behind as orphans, which
+// a later import can turn back into duplicates once the uuid is reused.
+//
+// `id` is not a facet on this index, so a filter query is not available; the siblings are
+// found by searching the entry's own term and keeping the hits that carry its uuid.
+const findIndexObjectIdsForEntry = async (glossary: ReadGlossary): Promise<string[]> => {
+  const objectIds = new Set<string>();
+  if (glossary.searchId) objectIds.add(glossary.searchId);
+
+  try {
+    const { results } = await algoliaClient.search<{ id?: string }>({
+      requests: [{ indexName: 'glossaries', query: glossary.glossary, hitsPerPage: 200, attributesToRetrieve: ['id'] }],
+    });
+    const first = results[0];
+    if (first && 'hits' in first) {
+      for (const hit of first.hits) {
+        if (hit.id === glossary.id) objectIds.add(hit.objectID);
+      }
+    }
+  } catch (error) {
+    // Never block the delete on this lookup: the row still goes, and the Glossary Inspector
+    // reports any record left behind.
+    console.error('Could not look up sibling index records for glossary', glossary.id, error);
+  }
+
+  return [...objectIds];
+};
+
+// Deletes one glossary entry — the term and every translation in its JSON column — along with
+// every Algolia record that carries its uuid. Returns the deleted term and how many records
+// went with it, or null if the id matched nothing.
 // Irreversible — callers must gate this on the appropriate ability.
-export const deleteGlossaryById = async (id: string): Promise<string | null> => {
+export const deleteGlossaryById = async (id: string): Promise<{ term: string; deletedRecords: number } | null> => {
   const glossary = await DbGlossaries.findById(id);
   if (!glossary) return null;
 
+  const objectIDs = await findIndexObjectIdsForEntry(glossary);
+
   // Search first: a failure here leaves the row in place to retry, rather than an index hit
   // pointing at a row that no longer exists.
-  if (glossary.searchId) {
-    await algoliaClient.deleteObject({ indexName: 'glossaries', objectID: glossary.searchId });
+  if (objectIDs.length > 0) {
+    await algoliaClient.deleteObjects({ indexName: 'glossaries', objectIDs });
   }
   await dbClient.delete(glossariesTable).where(eq(glossariesTable.id, id));
-  return glossary.glossary;
+  return { term: glossary.glossary, deletedRecords: objectIDs.length };
 };
 
 // Empties the glossary table and drops its objects from the Algolia index.
