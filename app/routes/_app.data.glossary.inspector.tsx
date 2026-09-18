@@ -5,16 +5,26 @@
 // failures that confuse readers live in the gap between the two: one row reachable through
 // several index records shows up as several search results that all edit the same row.
 //
-// The only writes it offers are deletions of index records, never of glossary rows. Removing
-// a duplicate record leaves the entry and its translations untouched; the worst case is that
-// an entry needs re-indexing, which an import already does.
+// Two writes are offered, and neither touches a term or a translation. Deleting an index
+// record leaves the entry untouched; the worst case is that it needs re-indexing. Re-indexing
+// rebuilds the records from the table, which is the source of truth — every field in a record
+// is a projection of a row, so it can always be regenerated.
 //
 // Colours here are deliberately darker than the muted foreground used elsewhere: this page is
 // dense monospace text on the cream card over the grey /data background, where the muted token
 // falls below a readable contrast ratio.
-import { Form, Link, useFetcher, useLoaderData, useNavigation, useRouteError, useSearchParams } from '@remix-run/react';
+import {
+  Form,
+  Link,
+  useFetcher,
+  useLoaderData,
+  useNavigation,
+  useRevalidator,
+  useRouteError,
+  useSearchParams,
+} from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { Check, Copy, Loader2, Trash2 } from 'lucide-react';
+import { Check, Copy, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
@@ -39,6 +49,7 @@ import {
   findGlossaryRowsForInspection,
   inspectGlossary,
 } from '~/services/glossary.inspect';
+import { reindexGlossaries } from '~/services/glossary.service';
 
 // The index check browses every record in the index — on the order of 30k records and 20s on
 // the current glossary — and the whole-index cleanup rescans before deleting, so this route
@@ -58,6 +69,9 @@ export function shouldRevalidate({
   defaultShouldRevalidate: boolean;
 }) {
   if (formData?.get('intent') === 'delete-index-records') return false;
+  // A re-index is slow enough on its own; following it with an automatic re-scan would double
+  // the wait. The counts go stale until the admin hits "Run the check again".
+  if (formData?.get('intent') === 'reindex-glossaries') return false;
   return defaultShouldRevalidate;
 }
 
@@ -99,6 +113,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     query,
     checkIndex,
     canCleanUp: ability.can('Delete', 'Glossary'),
+    canReindex: ability.can('Update', 'Glossary'),
   });
 };
 
@@ -108,14 +123,37 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return redirect('/login');
   }
   const ability = defineAbilityFor(user);
-  // Deleting index records is destructive and admin-only. Both abilities are admin-only
-  // today; requiring each states what the action needs rather than what a role happens to be.
-  if (ability.cannot('Read', 'Inspector') || ability.cannot('Delete', 'Glossary')) {
+  if (ability.cannot('Read', 'Inspector')) {
     return json({ success: false, message: 'You are not authorised to change search records.' }, { status: 403 });
   }
 
   const formData = await request.formData();
   const intent = formData.get('intent');
+
+  // Deleting index records is destructive and admin-only; re-indexing only rewrites what the
+  // table already says, so it asks for the glossary write ability instead. Both are admin-only
+  // today, and this route is admin-gated regardless — naming each states what the action needs
+  // rather than what a role happens to be.
+  const needed =
+    intent === 'reindex-glossaries' ? (['Update', 'Glossary'] as const) : (['Delete', 'Glossary'] as const);
+  if (ability.cannot(needed[0], needed[1])) {
+    return json({ success: false, message: 'You are not authorised to change search records.' }, { status: 403 });
+  }
+
+  if (intent === 'reindex-glossaries') {
+    try {
+      const { indexed, repointed } = await reindexGlossaries();
+      const pointerNote = repointed ? ` ${repointed} row(s) had their search_id corrected.` : '';
+      return json({
+        success: true,
+        message: `Re-indexed ${indexed} entr(ies) from the database.${pointerNote} Records left at old objectIDs now belong to no entry — run the index check to see them as orphans, then clean them up.`,
+      });
+    } catch (error) {
+      console.error('Error re-indexing the glossary:', error);
+      const message = error instanceof Error ? error.message : 'Failed to re-index the glossary.';
+      return json({ success: false, message }, { status: 500 });
+    }
+  }
 
   if (intent === 'delete-index-records') {
     const objectIds = formData.getAll('objectId').map(String);
@@ -467,6 +505,54 @@ function LookupCard({ row }: { row: ReadGlossary }) {
   );
 }
 
+// Rebuilds every record from the table. Offered whether or not the index has been scanned:
+// scanning first tells you how bad it is, but the rebuild does not need that answer, and on a
+// badly drifted index it is the faster route to a correct one.
+//
+// No confirm step, because there is nothing to undo — it overwrites each record with what the
+// row already says, so the worst outcome of running it needlessly is that every record is
+// rewritten identically.
+function ReindexButton({ entries }: { entries: number }) {
+  const fetcher = useFetcher<{ success: boolean; message: string }>();
+  const { toast } = useToast();
+  const submitting = fetcher.state !== 'idle';
+
+  useEffect(() => {
+    if (fetcher.state !== 'idle' || !fetcher.data) return;
+    toast({
+      variant: fetcher.data.success ? 'default' : 'error',
+      title: fetcher.data.success ? 'Re-indexed' : 'Oops!',
+      description: fetcher.data.message,
+      position: 'top-right',
+    });
+  }, [fetcher.state, fetcher.data, toast]);
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
+      <fetcher.Form method="post" className="shrink-0">
+        <input type="hidden" name="intent" value="reindex-glossaries" />
+        <Button size="sm" type="submit" variant="secondary" disabled={submitting}>
+          {submitting ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Re-indexing…
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4" /> Re-index {entries} entries
+            </span>
+          )}
+        </Button>
+      </fetcher.Form>
+      <p className="text-muted-foreground min-w-56 flex-1 text-sm">
+        Writes every entry into the index again from the database, keyed by the entry&rsquo;s own uuid. Search stays up
+        throughout — records are overwritten in place, never cleared first. Run this after changing what the index
+        holds, or when entries are missing from search. It takes about a minute and leaves terms and translations
+        untouched. Records left behind at old objectIDs become orphans, which the cleanup below removes.
+      </p>
+    </div>
+  );
+}
+
 // One bulk action per class of removable record, so an admin can clear the safe duplicates
 // without being made to also sweep away records that are the last trace of a deleted entry.
 // Each rescans the index before deleting, and acts on the fresh scan rather than this page.
@@ -553,10 +639,15 @@ function Stat({ label, value, tone }: { label: string; value: number | null; ton
 }
 
 export default function GlossaryInspector() {
-  const { inspection, lookupRows, query, checkIndex, canCleanUp } = useLoaderData<typeof loader>();
+  const { inspection, lookupRows, query, checkIndex, canCleanUp, canReindex } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
-  const isLoading = navigation.state !== 'idle';
+  // Re-running the scan revalidates in place rather than navigating: the URL already carries
+  // ?index=1, so a link to it is a no-op and there is nothing to navigate to. Both states count
+  // as loading, since both replace everything on the page.
+  const revalidator = useRevalidator();
+  const isRescanning = revalidator.state === 'loading';
+  const isLoading = navigation.state !== 'idle' || isRescanning;
 
   const { stats, entries, orphanIndexRecords, truncatedEntries, truncatedOrphans, indexError, indexChecked } =
     inspection;
@@ -574,8 +665,8 @@ export default function GlossaryInspector() {
         <CardHeader className="pb-3">
           <CardTitle className="text-primary text-2xl">Glossary Inspector</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Cross-checks every glossary row against the Algolia index and shows every stored column. The only change it
-            can make is deleting search records; glossary entries and their translations are never touched.
+            Cross-checks every glossary row against the Algolia index and shows every stored column. It can rebuild the
+            index from the database and delete stray search records; terms and translations are never touched.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -614,6 +705,27 @@ export default function GlossaryInspector() {
               </p>
             </div>
           )}
+
+          {checkIndex && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed p-3">
+              <Button size="sm" variant="secondary" disabled={isLoading} onClick={() => revalidator.revalidate()}>
+                {isRescanning ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Scanning…
+                  </span>
+                ) : (
+                  'Run the check again'
+                )}
+              </Button>
+              <p className="text-muted-foreground text-sm">
+                {isRescanning
+                  ? 'Browsing every record in the index — this can take a minute.'
+                  : 'These counts are a snapshot from when the page loaded. Re-run after changing the index, or after changing which Algolia app the site points at.'}
+              </p>
+            </div>
+          )}
+
+          {canReindex && <ReindexButton entries={stats.entries} />}
 
           {indexChecked && canCleanUp && (
             <div className="space-y-3">

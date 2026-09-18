@@ -9,6 +9,7 @@ import algoliaClient from '~/providers/algolia';
 import { DbGlossaries } from './glossary.crud';
 import { mergeTranslations } from './glossary.merge';
 import { groupRows, type GlossaryImportRow } from './glossary.parse';
+import { glossaryIndexRecord, searchablePhonetic } from './glossary.record';
 
 // Re-exported so callers of importGlossaries can reach the row type from one place.
 // The parsers themselves live in glossary.parse.ts because they run in the browser.
@@ -148,8 +149,11 @@ export const updateGlossaryTranslations = async ({
       indexName: 'glossaries',
       objectID: searchId,
       attributesToUpdate: {
+        // undefined rather than null: this is a partial update, where undefined leaves the
+        // stored phonetic alone and null would erase it. Clearing a phonetic is left to a
+        // re-index, which rewrites the whole record.
         translations: translationsToSearch,
-        phonetic: phonetic ? phonetic.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : undefined,
+        phonetic: searchablePhonetic(phonetic) ?? undefined,
       },
     });
   }
@@ -170,36 +174,15 @@ export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>)
   return DbGlossaries.create(glossary);
 };
 
-// Creates the entry, then indexes it. Two things here prevent the duplicate and orphan
-// records that this index has accumulated:
-//
-//   Order. Indexing first meant a failed insert left a record no row claimed — an orphan,
-//   which a later import turns into a duplicate as soon as that uuid is reused. Writing the
-//   row first makes the worst case an entry missing from search, which the inspector reports
-//   as not-indexed and any re-index repairs.
-//
-//   A deterministic objectID: the row's own uuid. Indexing the same entry again overwrites
-//   its record rather than minting a second one carrying the same uuid, so an import that
-//   runs twice can no longer double-list every entry it touches. Rows indexed before this
-//   keep their generated objectIDs, which stay valid — search_id is what ties the two
-//   together either way.
+// Creates the entry, then indexes it. Indexing first meant a failed insert left a record no row
+// claimed — an orphan, which a later import turns into a duplicate as soon as that uuid is
+// reused. Writing the row first makes the worst case an entry missing from search, which the
+// inspector reports as not-indexed and any re-index repairs.
 export const createGlossaryAndIndexInAlgolia = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
   const [row] = await DbGlossaries.create(glossary);
 
   try {
-    await algoliaClient.saveObject({
-      indexName: 'glossaries',
-      body: {
-        objectID: row.id,
-        id: row.id,
-        phonetic: row.phonetic,
-        glossary: row.glossary,
-        translations: row.translations?.map((translation) => ({
-          glossary: translation.glossary,
-          language: translation.language,
-        })),
-      },
-    });
+    await algoliaClient.saveObject({ indexName: 'glossaries', body: glossaryIndexRecord(row) });
   } catch (error) {
     // The entry is saved and correct — it just cannot be found by search yet. Reported rather
     // than thrown so one indexing failure doesn't abort a whole import.
@@ -439,6 +422,65 @@ export const deleteGlossaryById = async (id: string): Promise<{ term: string; de
   }
   await dbClient.delete(glossariesTable).where(eq(glossariesTable.id, id));
   return { term: glossary.glossary, deletedRecords: objectIDs.length };
+};
+
+// ─── Re-indexing ─────────────────────────────────────────────────────────────
+//
+// Rebuilds the search index from the glossary table, which is the source of truth: every field
+// in a record is a projection of a row, so the index can always be regenerated and never holds
+// anything that would be lost. This is the repair for an index that has drifted from the
+// table — records missing, stale, or written under objectIDs the rows were never told about —
+// and it is what to run after a change to the shape in glossaryIndexRecord.
+//
+// It writes rather than clearing first, so search is never empty: each row's record is
+// overwritten in place at its uuid, and an entry that was already correct simply gets the same
+// record again. Records left at old generated objectIDs are not touched here — after this runs
+// they carry no row's uuid, so the Glossary Inspector reports them as orphans and its existing
+// cleanup removes them. Splitting it that way keeps each step's runtime bounded and leaves the
+// delete behind a separate, deliberate action.
+//
+// Paged rather than read whole: the translations column makes the full table far larger than
+// the records built from it, and a page that has been indexed stays indexed if a later one
+// fails, so a timeout leaves the glossary partly rebuilt rather than untouched.
+
+const REINDEX_PAGE = 1000;
+
+export const reindexGlossaries = async (): Promise<{ indexed: number; repointed: number }> => {
+  let indexed = 0;
+  let repointed = 0;
+
+  for (let offset = 0; ; offset += REINDEX_PAGE) {
+    const rows = await dbClient
+      .select({
+        id: glossariesTable.id,
+        glossary: glossariesTable.glossary,
+        phonetic: glossariesTable.phonetic,
+        translations: glossariesTable.translations,
+      })
+      .from(glossariesTable)
+      .orderBy(glossariesTable.id)
+      .limit(REINDEX_PAGE)
+      .offset(offset);
+
+    if (rows.length === 0) break;
+
+    // saveObjects batches internally and overwrites by objectID.
+    await algoliaClient.saveObjects({ indexName: 'glossaries', objects: rows.map(glossaryIndexRecord) });
+
+    // Point search_id at the record just written. Raw SQL rather than the query builder because
+    // updatedAt carries $onUpdate: re-indexing is not an edit, and stamping every row as edited
+    // now would overwrite the real last-edited date of the whole glossary irrecoverably.
+    const ids = rows.map((row) => row.id);
+    const result = await dbClient.execute(
+      sql`update ${glossariesTable} set search_id = id::text where ${glossariesTable.id} in ${ids} and ${glossariesTable.searchId} is distinct from ${glossariesTable.id}::text`,
+    );
+    repointed += result.rowCount ?? 0;
+    indexed += rows.length;
+
+    if (rows.length < REINDEX_PAGE) break;
+  }
+
+  return { indexed, repointed };
 };
 
 // Empties the glossary table and drops its objects from the Algolia index.
