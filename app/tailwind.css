@@ -25,6 +25,7 @@
   --animate-border: background ease infinite;
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-indeterminate: indeterminate 1.4s ease-in-out infinite;
 }
 
 @theme inline {
@@ -79,6 +80,16 @@
   }
   to {
     height: 0;
+  }
+}
+
+/* The sliding fill of a progress bar with no total to divide by — see ProgressBar. */
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
   }
 }
 

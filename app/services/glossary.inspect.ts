@@ -172,21 +172,22 @@ export async function deleteIndexRecords(objectIDs: string[]): Promise<RecordDel
   return { deleted, skipped };
 }
 
-// Bulk cleanup of one class of record: rescans, then deletes what the fresh scan puts in that
-// class. The set is recomputed here rather than taken from the page, and the full browse it
-// comes from is stronger evidence than the per-record checks in deleteIndexRecords — every
-// record for every row was just seen — so this path deletes on the scan's judgement directly.
-export async function deleteRemovableIndexRecords(
+// The whole-index cleanup of one class of record, split into the two steps the caller runs
+// separately: this rescans and returns every objectID in the class, and the deletes then go
+// through deleteIndexRecords a chunk at a time. Splitting it is what makes the cleanup
+// reportable — the caller knows how many records are left after every chunk — and it keeps
+// each request short enough to finish well inside the function budget.
+//
+// The set is recomputed here rather than taken from the page, because the page may have been
+// rendered before another admin's cleanup. The ids then make a round trip through the browser,
+// so they are not trusted on the way back: deleteIndexRecords re-derives the same judgement
+// per record before removing anything.
+export async function findRemovableIndexRecords(
   recordClass: RemovableRecordClass,
-): Promise<{ deleted: number; scanned: number }> {
+): Promise<{ objectIDs: string[]; scanned: number }> {
   const inspection = await inspectGlossary({ checkIndex: true });
   if (inspection.indexError) {
     throw new Error(inspection.indexError);
   }
-  const objectIDs = inspection.removable[recordClass];
-  if (objectIDs.length > 0) {
-    // deleteObjects batches internally.
-    await algoliaClient.deleteObjects({ indexName: INDEX_NAME, objectIDs });
-  }
-  return { deleted: objectIDs.length, scanned: inspection.stats.indexRecords };
+  return { objectIDs: inspection.removable[recordClass], scanned: inspection.stats.indexRecords };
 }

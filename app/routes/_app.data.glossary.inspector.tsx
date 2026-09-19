@@ -10,70 +10,53 @@
 // rebuilds the records from the table, which is the source of truth — every field in a record
 // is a projection of a row, so it can always be regenerated.
 //
+// Both writes run for minutes on the current glossary, so neither is a single request. The
+// page drives them a step at a time against the job route next door and reports how far it has
+// got after each step; see _app.data.glossary.inspector-jobs.ts for why the jobs live there
+// rather than in this route's own action.
+//
 // Colours here are deliberately darker than the muted foreground used elsewhere: this page is
 // dense monospace text on the cream card over the grey /data background, where the muted token
 // falls below a readable contrast ratio.
 import {
   Form,
   Link,
-  useFetcher,
   useLoaderData,
   useNavigation,
   useRevalidator,
   useRouteError,
   useSearchParams,
 } from '@remix-run/react';
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
+import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { Check, Copy, Loader2, RefreshCw, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
 import { DeleteConfirmDialog } from '~/components/data/DeleteConfirmDialog';
+import { formatElapsed, IndeterminateBar, ProgressBar, useElapsedSeconds } from '~/components/data/ProgressBar';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Badge, Button, Input } from '~/components/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { type ReadGlossary } from '~/drizzle/tables';
 import { useToast } from '~/hooks/use-toast';
 import {
-  REMOVABLE_RECORD_CLASSES,
   type EntryIndexRecord,
   type GlossaryIssue,
   type InspectedEntry,
   type OrphanIndexRecord,
   type RemovableRecordClass,
 } from '~/services/glossary.analyse';
-import {
-  deleteIndexRecords,
-  deleteRemovableIndexRecords,
-  findGlossaryRowsForInspection,
-  inspectGlossary,
-} from '~/services/glossary.inspect';
-import { reindexGlossaries } from '~/services/glossary.service';
+import { findGlossaryRowsForInspection, inspectGlossary } from '~/services/glossary.inspect';
+
+import type { JobPayloads, JobResponse } from './_app.data.glossary.inspector-jobs';
 
 // The index check browses every record in the index — on the order of 30k records and 20s on
-// the current glossary — and the whole-index cleanup rescans before deleting, so this route
-// needs more than the default function budget.
+// the current glossary — so this route needs more than the default function budget. The writes
+// have their own budget on the job route.
 export const config = {
   maxDuration: 300,
 };
-
-// A targeted record delete must not drag the whole page through another index scan — that
-// scan is the slow part, and the fetcher already reports what happened. The counts in the
-// summary go stale until the next scan, which the button's own result states.
-export function shouldRevalidate({
-  formData,
-  defaultShouldRevalidate,
-}: {
-  formData?: FormData;
-  defaultShouldRevalidate: boolean;
-}) {
-  if (formData?.get('intent') === 'delete-index-records') return false;
-  // A re-index is slow enough on its own; following it with an automatic re-scan would double
-  // the wait. The counts go stale until the admin hits "Run the check again".
-  if (formData?.get('intent') === 'reindex-glossaries') return false;
-  return defaultShouldRevalidate;
-}
 
 export function ErrorBoundary() {
   const error = useRouteError();
@@ -104,7 +87,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   ]);
 
   // The removable lists can run to tens of thousands of uuids; the page needs only the counts,
-  // and the cleanup action recomputes the lists server-side.
+  // and the cleanup job recomputes the lists server-side when it runs.
   const { removable: _removable, ...reportable } = inspection;
 
   return json({
@@ -117,83 +100,62 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const user = await assertAuthUser(request);
-  if (!user) {
-    return redirect('/login');
-  }
-  const ability = defineAbilityFor(user);
-  if (ability.cannot('Read', 'Inspector')) {
-    return json({ success: false, message: 'You are not authorised to change search records.' }, { status: 403 });
-  }
+// ─── Driving the jobs ────────────────────────────────────────────────────────
 
-  const formData = await request.formData();
-  const intent = formData.get('intent');
+const JOBS_ROUTE = '/data/glossary/inspector-jobs';
 
-  // Deleting index records is destructive and admin-only; re-indexing only rewrites what the
-  // table already says, so it asks for the glossary write ability instead. Both are admin-only
-  // today, and this route is admin-gated regardless — naming each states what the action needs
-  // rather than what a role happens to be.
-  const needed =
-    intent === 'reindex-glossaries' ? (['Update', 'Glossary'] as const) : (['Delete', 'Glossary'] as const);
-  if (ability.cannot(needed[0], needed[1])) {
-    return json({ success: false, message: 'You are not authorised to change search records.' }, { status: 403 });
+// How many records go into one delete request. Small enough that each request is quick — so
+// the bar moves often and a cancel takes effect within a second or two — and large enough that
+// a sweep of tens of thousands is tens of requests rather than thousands.
+const DELETE_CHUNK = 500;
+
+// One step of one job. Plain fetch rather than a Remix fetcher, so the caller can await it in
+// a loop and abort it; a fetcher would also revalidate this route's loader after every step,
+// and that loader rescans the whole index.
+async function postJob<K extends keyof JobPayloads>(
+  intent: K,
+  fields: [string, string][],
+  signal: AbortSignal,
+): Promise<JobPayloads[K]> {
+  const body = new FormData();
+  body.set('intent', intent);
+  for (const [name, value] of fields) body.append(name, value);
+
+  const response = await fetch(JOBS_ROUTE, { method: 'POST', body, signal });
+  // A lapsed session redirects to the login page, which is HTML rather than the shape below.
+  const payload = (await response.json().catch(() => null)) as JobResponse | null;
+  if (!payload) {
+    throw new Error(`The server returned ${response.status}. Your session may have expired — reload the page.`);
   }
+  if (!payload.ok) throw new Error(payload.message);
+  // The wire type is the union of every job's payload; the intent picks which one this is, and
+  // the job route is where that pairing is kept honest.
+  return payload as unknown as JobPayloads[K];
+}
 
-  if (intent === 'reindex-glossaries') {
-    try {
-      const { indexed, repointed } = await reindexGlossaries();
-      const pointerNote = repointed ? ` ${repointed} row(s) had their search_id corrected.` : '';
-      return json({
-        success: true,
-        message: `Re-indexed ${indexed} entr(ies) from the database.${pointerNote} Records left at old objectIDs now belong to no entry — run the index check to see them as orphans, then clean them up.`,
-      });
-    } catch (error) {
-      console.error('Error re-indexing the glossary:', error);
-      const message = error instanceof Error ? error.message : 'Failed to re-index the glossary.';
-      return json({ success: false, message }, { status: 500 });
-    }
-  }
+// An aborted fetch rejects like any other failure; only the caller knows it asked for that.
+function wasCancelled(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
 
-  if (intent === 'delete-index-records') {
-    const objectIds = formData.getAll('objectId').map(String);
-    if (objectIds.length === 0) {
-      return json({ success: false, message: 'No records selected.' }, { status: 400 });
-    }
-    try {
-      const { deleted, skipped } = await deleteIndexRecords(objectIds);
-      const skippedNote = skipped.length ? ` Kept ${skipped.length}: ${skipped[0].reason}.` : '';
-      return json({
-        success: true,
-        message: `Deleted ${deleted.length} search record(s).${skippedNote} The glossary entries themselves are untouched.`,
-      });
-    } catch (error) {
-      console.error('Error deleting glossary index records:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete search records.';
-      return json({ success: false, message }, { status: 500 });
-    }
-  }
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
 
-  if (intent === 'delete-removable-class') {
-    const recordClass = String(formData.get('recordClass')) as RemovableRecordClass;
-    if (!REMOVABLE_RECORD_CLASSES.includes(recordClass)) {
-      return json({ success: false, message: 'Unknown record class.' }, { status: 400 });
-    }
-    try {
-      const { deleted, scanned } = await deleteRemovableIndexRecords(recordClass);
-      return json({
-        success: true,
-        message: `Scanned ${scanned} search record(s) and deleted ${deleted} (${recordClass}). No glossary entry was changed.`,
-      });
-    } catch (error) {
-      console.error('Error cleaning up glossary index records:', error);
-      const message = error instanceof Error ? error.message : 'Failed to clean up search records.';
-      return json({ success: false, message }, { status: 500 });
-    }
-  }
+// Keeps an in-flight job cancellable, and cancels it if the page navigates away mid-run.
+function useJobAbort() {
+  const controllerRef = useRef<AbortController | null>(null);
+  useEffect(() => () => controllerRef.current?.abort(), []);
+  const begin = useCallback(() => {
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    return controller.signal;
+  }, []);
+  const cancel = useCallback(() => controllerRef.current?.abort(), []);
+  return { begin, cancel };
+}
 
-  return json({ success: false, message: 'Unknown action.' }, { status: 400 });
-};
+// ─── Presentation ────────────────────────────────────────────────────────────
 
 // Values carry the card's own foreground; labels and asides use the muted token.
 const MONO = 'font-mono text-xs text-foreground';
@@ -320,25 +282,46 @@ function TranslationsTable({ row }: { row: ReadGlossary }) {
   );
 }
 
-// A trash button that posts one record id, used for fixing a single duplicate in place.
-// It reports its own outcome — spinner, then a toast and a struck-through row — because the
-// page deliberately does not re-scan the index after a single delete.
+// A trash button that deletes one record, used for fixing a single duplicate in place. It
+// reports its own outcome — spinner, then a toast and a struck-through row — because the page
+// deliberately does not re-scan the index after a single delete. One record is one quick
+// request, so this is the only write here with nothing to show a progress bar for.
 function DeleteRecordButton({ objectID, onDeleted }: { objectID: string; onDeleted: () => void }) {
-  const fetcher = useFetcher<{ success: boolean; message: string }>();
   const { toast } = useToast();
-  const submitting = fetcher.state !== 'idle';
-  const done = fetcher.state === 'idle' && fetcher.data?.success === true;
+  const { begin } = useJobAbort();
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
 
-  useEffect(() => {
-    if (fetcher.state !== 'idle' || !fetcher.data) return;
-    toast({
-      variant: fetcher.data.success ? 'default' : 'error',
-      title: fetcher.data.success ? 'Record deleted' : 'Oops!',
-      description: fetcher.data.message,
-      position: 'top-right',
-    });
-    if (fetcher.data.success) onDeleted();
-  }, [fetcher.state, fetcher.data, toast, onDeleted]);
+  const remove = async () => {
+    setSubmitting(true);
+    try {
+      const { deleted, skipped } = await postJob('delete-records', [['objectId', objectID]], begin());
+      const kept = skipped[0];
+      toast({
+        variant: deleted > 0 ? 'default' : 'error',
+        title: deleted > 0 ? 'Record deleted' : 'Kept',
+        description:
+          deleted > 0
+            ? 'Deleted 1 search record. The glossary entry itself is untouched.'
+            : `This record was kept: ${kept?.reason ?? 'the server refused the delete'}.`,
+        position: 'top-right',
+      });
+      if (deleted > 0) {
+        setDone(true);
+        onDeleted();
+      }
+    } catch (error) {
+      if (wasCancelled(error)) return;
+      toast({
+        variant: 'error',
+        title: 'Oops!',
+        description: errorMessage(error, 'Failed to delete the search record.'),
+        position: 'top-right',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (done) {
     return (
@@ -349,19 +332,16 @@ function DeleteRecordButton({ objectID, onDeleted }: { objectID: string; onDelet
   }
 
   return (
-    <fetcher.Form method="post" className="inline">
-      <input type="hidden" name="intent" value="delete-index-records" />
-      <input type="hidden" name="objectId" value={objectID} />
-      <button
-        type="submit"
-        disabled={submitting}
-        title="Delete this search record"
-        aria-label={`delete search record ${objectID}`}
-        className={`${SUBTLE} hover:text-destructive disabled:pointer-events-none disabled:opacity-60`}
-      >
-        {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-      </button>
-    </fetcher.Form>
+    <button
+      type="button"
+      onClick={remove}
+      disabled={submitting}
+      title="Delete this search record"
+      aria-label={`delete search record ${objectID}`}
+      className={`${SUBTLE} hover:text-destructive disabled:pointer-events-none disabled:opacity-60`}
+    >
+      {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+    </button>
   );
 }
 
@@ -512,27 +492,65 @@ function LookupCard({ row }: { row: ReadGlossary }) {
 // No confirm step, because there is nothing to undo — it overwrites each record with what the
 // row already says, so the worst outcome of running it needlessly is that every record is
 // rewritten identically.
+//
+// Run a page of entries at a time, with this component holding the cursor, so the minute it
+// takes is a filling bar rather than a spinner. Stopping part-way is safe for the same reason
+// the whole thing is: the pages already written are correct, and re-running picks the work up
+// from the start again without harm.
 function ReindexButton({ entries }: { entries: number }) {
-  const fetcher = useFetcher<{ success: boolean; message: string }>();
   const { toast } = useToast();
-  const submitting = fetcher.state !== 'idle';
+  const { begin, cancel } = useJobAbort();
+  // null until the first run; kept after it finishes so the outcome stays on the page.
+  const [progress, setProgress] = useState<{ indexed: number; repointed: number } | null>(null);
+  const [running, setRunning] = useState(false);
 
-  useEffect(() => {
-    if (fetcher.state !== 'idle' || !fetcher.data) return;
-    toast({
-      variant: fetcher.data.success ? 'default' : 'error',
-      title: fetcher.data.success ? 'Re-indexed' : 'Oops!',
-      description: fetcher.data.message,
-      position: 'top-right',
-    });
-  }, [fetcher.state, fetcher.data, toast]);
+  const start = async () => {
+    const signal = begin();
+    setRunning(true);
+    setProgress({ indexed: 0, repointed: 0 });
+
+    let indexed = 0;
+    let repointed = 0;
+    let afterId: string | null = null;
+    try {
+      for (;;) {
+        const page: JobPayloads['reindex-page'] = await postJob(
+          'reindex-page',
+          afterId ? [['afterId', afterId]] : [],
+          signal,
+        );
+        indexed += page.indexed;
+        repointed += page.repointed;
+        setProgress({ indexed, repointed });
+        afterId = page.nextAfterId;
+        if (!afterId) break;
+      }
+      const pointerNote = repointed ? ` ${repointed} row(s) had their search_id corrected.` : '';
+      toast({
+        variant: 'default',
+        title: 'Re-indexed',
+        description: `Re-indexed ${indexed} entr(ies) from the database.${pointerNote} Records left at old objectIDs now belong to no entry — run the index check to see them as orphans, then clean them up.`,
+        position: 'top-right',
+      });
+    } catch (error) {
+      toast({
+        variant: wasCancelled(error) ? 'default' : 'error',
+        title: wasCancelled(error) ? 'Stopped' : 'Oops!',
+        description: wasCancelled(error)
+          ? `Stopped after ${indexed} entr(ies). Those are indexed and stay indexed; run it again to finish the rest.`
+          : `${errorMessage(error, 'Failed to re-index the glossary.')} ${indexed} entr(ies) were indexed before it failed.`,
+        position: 'top-right',
+      });
+    } finally {
+      setRunning(false);
+    }
+  };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
-      <fetcher.Form method="post" className="shrink-0">
-        <input type="hidden" name="intent" value="reindex-glossaries" />
-        <Button size="sm" type="submit" variant="secondary" disabled={submitting}>
-          {submitting ? (
+    <div className="space-y-3 rounded-lg border p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" onClick={start} disabled={running} variant="secondary" className="shrink-0">
+          {running ? (
             <span className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Re-indexing…
             </span>
@@ -542,20 +560,43 @@ function ReindexButton({ entries }: { entries: number }) {
             </span>
           )}
         </Button>
-      </fetcher.Form>
-      <p className="text-muted-foreground min-w-56 flex-1 text-sm">
-        Writes every entry into the index again from the database, keyed by the entry&rsquo;s own uuid. Search stays up
-        throughout — records are overwritten in place, never cleared first. Run this after changing what the index
-        holds, or when entries are missing from search. It takes about a minute and leaves terms and translations
-        untouched. Records left behind at old objectIDs become orphans, which the cleanup below removes.
-      </p>
+        {running && (
+          <Button size="sm" onClick={cancel} variant="outline">
+            Stop
+          </Button>
+        )}
+        <p className="text-muted-foreground min-w-56 flex-1 text-sm">
+          Writes every entry into the index again from the database, keyed by the entry&rsquo;s own uuid. Search stays
+          up throughout — records are overwritten in place, never cleared first. Run this after changing what the index
+          holds, or when entries are missing from search. It takes about a minute and leaves terms and translations
+          untouched. Records left behind at old objectIDs become orphans, which the cleanup below removes.
+        </p>
+      </div>
+
+      {progress && (
+        <div className="space-y-1">
+          <ProgressBar max={entries} value={progress.indexed} />
+          <p className={`${SUBTLE} text-xs`}>
+            {running
+              ? `Indexed ${progress.indexed} of about ${entries} entries.`
+              : `Indexed ${progress.indexed} entr(ies).`}
+            {progress.repointed > 0 && ` ${progress.repointed} search_id(s) corrected.`}
+            {running && ' Stopping is safe — the entries already written stay indexed.'}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
 // One bulk action per class of removable record, so an admin can clear the safe duplicates
 // without being made to also sweep away records that are the last trace of a deleted entry.
-// Each rescans the index before deleting, and acts on the fresh scan rather than this page.
+//
+// Two steps: a rescan of the whole index, which decides what is in the class, and then the
+// deletes in chunks. The split is what makes the sweep reportable — the scan has no total to
+// count against and shows a clock, the deletes show a filling bar — and the server re-derives
+// per record whether each delete is safe, so the ids passing through the browser between the
+// two steps are checked again rather than trusted.
 function BulkCleanupButton({
   recordClass,
   count,
@@ -563,6 +604,7 @@ function BulkCleanupButton({
   title,
   blurb,
   description,
+  onFinished,
   dangerous = false,
 }: {
   recordClass: RemovableRecordClass;
@@ -571,54 +613,128 @@ function BulkCleanupButton({
   title: string;
   blurb: string;
   description: string;
+  onFinished: () => void;
   dangerous?: boolean;
 }) {
-  const fetcher = useFetcher<{ success: boolean; message: string }>();
   const { toast } = useToast();
+  const { begin, cancel } = useJobAbort();
   const [confirming, setConfirming] = useState(false);
-  const submitting = fetcher.state !== 'idle';
+  const [progress, setProgress] = useState<
+    { phase: 'scanning' } | { phase: 'deleting'; deleted: number; kept: number; total: number } | null
+  >(null);
+  const submitting = progress !== null;
+  const elapsed = useElapsedSeconds(progress?.phase === 'scanning');
 
-  useEffect(() => {
-    if (fetcher.state !== 'idle' || !fetcher.data) return;
-    toast({
-      variant: fetcher.data.success ? 'default' : 'error',
-      title: fetcher.data.success ? 'Done' : 'Oops!',
-      description: fetcher.data.message,
-      position: 'top-right',
-    });
-    if (fetcher.data.success) setConfirming(false);
-  }, [fetcher.state, fetcher.data, toast]);
+  const run = async () => {
+    const signal = begin();
+    setConfirming(false);
+    setProgress({ phase: 'scanning' });
+
+    let deleted = 0;
+    let kept = 0;
+    let firstKeptReason: string | null = null;
+    try {
+      const { objectIDs, scanned } = await postJob('cleanup-scan', [['recordClass', recordClass]], signal);
+      if (objectIDs.length === 0) {
+        toast({
+          variant: 'default',
+          title: 'Nothing to delete',
+          description: `Scanned ${scanned} search record(s); none of them are ${label} any more.`,
+          position: 'top-right',
+        });
+        onFinished();
+        return;
+      }
+
+      setProgress({ phase: 'deleting', deleted: 0, kept: 0, total: objectIDs.length });
+      for (let start = 0; start < objectIDs.length; start += DELETE_CHUNK) {
+        const chunk = objectIDs.slice(start, start + DELETE_CHUNK);
+        const result = await postJob(
+          'delete-records',
+          chunk.map((objectID) => ['objectId', objectID] as [string, string]),
+          signal,
+        );
+        deleted += result.deleted;
+        kept += result.skipped.length;
+        firstKeptReason = firstKeptReason ?? result.skipped[0]?.reason ?? null;
+        setProgress({ phase: 'deleting', deleted, kept, total: objectIDs.length });
+      }
+
+      const keptNote = kept ? ` Kept ${kept}: ${firstKeptReason}.` : '';
+      toast({
+        variant: 'default',
+        title: 'Done',
+        description: `Scanned ${scanned} search record(s) and deleted ${deleted} (${recordClass}).${keptNote} No glossary entry was changed.`,
+        position: 'top-right',
+      });
+      onFinished();
+    } catch (error) {
+      toast({
+        variant: wasCancelled(error) ? 'default' : 'error',
+        title: wasCancelled(error) ? 'Stopped' : 'Oops!',
+        description: wasCancelled(error)
+          ? `Stopped after deleting ${deleted} record(s). Deletes already made stand; run it again to finish the rest.`
+          : `${errorMessage(error, 'Failed to clean up search records.')} ${deleted} record(s) were deleted before it failed.`,
+        position: 'top-right',
+      });
+      if (deleted > 0) onFinished();
+    } finally {
+      setProgress(null);
+    }
+  };
 
   return (
-    <div
-      className={`flex flex-wrap items-center gap-3 rounded-lg border p-3 ${dangerous ? 'border-destructive/60 bg-destructive/5' : ''}`}
-    >
-      <Button
-        size="sm"
-        className="shrink-0"
-        onClick={() => setConfirming(true)}
-        disabled={submitting || count === 0}
-        variant={dangerous ? 'destructive' : 'secondary'}
-      >
-        {submitting ? (
-          <span className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Deleting…
-          </span>
-        ) : (
-          `Delete ${count} ${label}`
+    <div className={`space-y-3 rounded-lg border p-3 ${dangerous ? 'border-destructive/60 bg-destructive/5' : ''}`}>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          size="sm"
+          className="shrink-0"
+          onClick={() => setConfirming(true)}
+          disabled={submitting || count === 0}
+          variant={dangerous ? 'destructive' : 'secondary'}
+        >
+          {submitting ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Deleting…
+            </span>
+          ) : (
+            `Delete ${count} ${label}`
+          )}
+        </Button>
+        {submitting && (
+          <Button size="sm" onClick={cancel} variant="outline">
+            Stop
+          </Button>
         )}
-      </Button>
-      <p className="text-muted-foreground min-w-56 flex-1 text-sm">{blurb}</p>
+        <p className="text-muted-foreground min-w-56 flex-1 text-sm">{blurb}</p>
+      </div>
+
+      {progress?.phase === 'scanning' && (
+        <div className="space-y-1">
+          <IndeterminateBar />
+          <p className={`${SUBTLE} text-xs`}>
+            Rescanning the whole index to decide what may go — {formatElapsed(elapsed)} so far. Nothing has been deleted
+            yet.
+          </p>
+        </div>
+      )}
+      {progress?.phase === 'deleting' && (
+        <div className="space-y-1">
+          <ProgressBar max={progress.total} value={progress.deleted + progress.kept} />
+          <p className={`${SUBTLE} text-xs`}>
+            Deleted {progress.deleted} of {progress.total} record(s).
+            {progress.kept > 0 && ` ${progress.kept} kept — the server judged them still in use.`}
+          </p>
+        </div>
+      )}
 
       <DeleteConfirmDialog
         title={title}
+        onConfirm={run}
         open={confirming}
         submitting={submitting}
-        fields={{ recordClass }}
         description={description}
         onOpenChange={setConfirming}
-        FormComponent={fetcher.Form}
-        intent="delete-removable-class"
       />
     </div>
   );
@@ -638,6 +754,23 @@ function Stat({ label, value, tone }: { label: string; value: number | null; ton
   );
 }
 
+// The index scan is a loader, and a loader can only answer once: it browses until Algolia runs
+// out of records, with no total to count against and no way to report a partial result through
+// a document request. So this is a clock and a moving bar rather than a percentage — honest
+// about being unable to say how far along it is, while still showing that it is alive.
+function ScanProgress({ scanning }: { scanning: boolean }) {
+  const elapsed = useElapsedSeconds(scanning);
+  if (!scanning) return null;
+  return (
+    <div className="w-full space-y-1">
+      <IndeterminateBar />
+      <p className={`${SUBTLE} text-xs`}>
+        Browsing every record in the index — {formatElapsed(elapsed)} so far, usually about a minute.
+      </p>
+    </div>
+  );
+}
+
 export default function GlossaryInspector() {
   const { inspection, lookupRows, query, checkIndex, canCleanUp, canReindex } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
@@ -648,10 +781,19 @@ export default function GlossaryInspector() {
   const revalidator = useRevalidator();
   const isRescanning = revalidator.state === 'loading';
   const isLoading = navigation.state !== 'idle' || isRescanning;
+  // Only a load that consults the index gets the slow-scan treatment; a plain lookup does not.
+  const isScanningIndex = isLoading && (checkIndex || navigation.location?.search.includes('index=1') === true);
 
   const { stats, entries, orphanIndexRecords, truncatedEntries, truncatedOrphans, indexError, indexChecked } =
     inspection;
   const issueEntries = Object.entries(stats.issueCounts).filter(([, count]) => count > 0);
+
+  // The counts a cleanup invalidates come from the index scan, so refreshing them means
+  // scanning again. Worth it — leaving a page of stale counts next to a button that acts on
+  // them is how the wrong thing gets deleted twice — and the scan reports its own progress.
+  const refreshCounts = useCallback(() => {
+    if (checkIndex) revalidator.revalidate();
+  }, [checkIndex, revalidator]);
 
   // Preserved so running the index check doesn't discard the current lookup.
   const indexCheckParams = new URLSearchParams(searchParams);
@@ -698,18 +840,21 @@ export default function GlossaryInspector() {
               <Button asChild size="sm" variant="secondary">
                 <Link to={`?${indexCheckParams.toString()}`}>Check the search index</Link>
               </Button>
-              <p className="text-muted-foreground text-sm">
-                {isLoading
-                  ? 'Scanning the search index — this can take a minute.'
-                  : 'Off by default: it browses every record in the index and takes up to a minute. It finds entries listed more than once in search, entries missing from it, and records left behind by deleted entries.'}
-              </p>
+              {isScanningIndex ? (
+                <ScanProgress scanning />
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Off by default: it browses every record in the index and takes up to a minute. It finds entries listed
+                  more than once in search, entries missing from it, and records left behind by deleted entries.
+                </p>
+              )}
             </div>
           )}
 
           {checkIndex && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed p-3">
               <Button size="sm" variant="secondary" disabled={isLoading} onClick={() => revalidator.revalidate()}>
-                {isRescanning ? (
+                {isScanningIndex ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" /> Scanning…
                   </span>
@@ -717,11 +862,14 @@ export default function GlossaryInspector() {
                   'Run the check again'
                 )}
               </Button>
-              <p className="text-muted-foreground text-sm">
-                {isRescanning
-                  ? 'Browsing every record in the index — this can take a minute.'
-                  : 'These counts are a snapshot from when the page loaded. Re-run after changing the index, or after changing which Algolia app the site points at.'}
-              </p>
+              {isScanningIndex ? (
+                <ScanProgress scanning />
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  These counts are a snapshot from when the page loaded. Re-run after changing the index, or after
+                  changing which Algolia app the site points at.
+                </p>
+              )}
             </div>
           )}
 
@@ -732,12 +880,14 @@ export default function GlossaryInspector() {
               <BulkCleanupButton
                 recordClass="duplicates"
                 label="duplicate records"
+                onFinished={refreshCounts}
                 count={stats.redundantIndexRecords}
                 title={`Delete ${stats.redundantIndexRecords} duplicate search records?`}
                 blurb="Extra records on entries that also have the record their search_id names. Deleting them is what stops an entry appearing several times in search."
                 description="The index is rescanned first, and only extra records on entries that still have their own canonical record are deleted. Every entry keeps that record, so nothing leaves search, and no glossary row or translation is touched."
               />
               <BulkCleanupButton
+                onFinished={refreshCounts}
                 recordClass="orphans-live-term"
                 count={stats.orphansWithLiveTerm}
                 label="orphan records whose term is still in the glossary"
@@ -747,6 +897,7 @@ export default function GlossaryInspector() {
               />
               <BulkCleanupButton
                 dangerous
+                onFinished={refreshCounts}
                 count={orphansWithoutLiveTerm}
                 recordClass="orphans-missing-term"
                 label="orphan records whose term is gone"
@@ -838,6 +989,10 @@ export default function GlossaryInspector() {
 
 // Records no entry points at. Selectable individually or all at once, because they come in
 // hundreds; the whole-index cleanup above covers the ones past the display cap.
+//
+// A selection can run to the display cap, which is more than one request should carry, so the
+// deletes go out in chunks with a bar across them — the same treatment the whole-index cleanup
+// gets, minus the scan it does not need.
 function OrphanRecordsCard({
   records,
   total,
@@ -849,29 +1004,62 @@ function OrphanRecordsCard({
   truncated: boolean;
   canCleanUp: boolean;
 }) {
-  const fetcher = useFetcher<{ success: boolean; message: string }>();
   const { toast } = useToast();
+  const { begin, cancel } = useJobAbort();
   const [selected, setSelected] = useState<string[]>([]);
-  const submitting = fetcher.state !== 'idle';
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const submitting = progress !== null;
 
   const shownIds = useMemo(() => records.map((record) => record.objectID), [records]);
   const allSelected = selected.length === shownIds.length && shownIds.length > 0;
-
-  useEffect(() => {
-    if (fetcher.state !== 'idle' || !fetcher.data) return;
-    toast({
-      variant: fetcher.data.success ? 'default' : 'error',
-      title: fetcher.data.success ? 'Done' : 'Oops!',
-      description: fetcher.data.message,
-      position: 'top-right',
-    });
-    if (fetcher.data.success) setSelected([]);
-  }, [fetcher.state, fetcher.data, toast]);
 
   const toggle = (objectID: string) =>
     setSelected((current) =>
       current.includes(objectID) ? current.filter((id) => id !== objectID) : [...current, objectID],
     );
+
+  const deleteSelected = async () => {
+    const signal = begin();
+    const objectIDs = selected;
+    setProgress({ done: 0, total: objectIDs.length });
+
+    let deleted = 0;
+    let kept = 0;
+    let firstKeptReason: string | null = null;
+    try {
+      for (let start = 0; start < objectIDs.length; start += DELETE_CHUNK) {
+        const chunk = objectIDs.slice(start, start + DELETE_CHUNK);
+        const result = await postJob(
+          'delete-records',
+          chunk.map((objectID) => ['objectId', objectID] as [string, string]),
+          signal,
+        );
+        deleted += result.deleted;
+        kept += result.skipped.length;
+        firstKeptReason = firstKeptReason ?? result.skipped[0]?.reason ?? null;
+        setProgress({ done: deleted + kept, total: objectIDs.length });
+      }
+      const keptNote = kept ? ` Kept ${kept}: ${firstKeptReason}.` : '';
+      toast({
+        variant: 'default',
+        title: 'Done',
+        description: `Deleted ${deleted} search record(s).${keptNote} The glossary entries themselves are untouched.`,
+        position: 'top-right',
+      });
+      setSelected([]);
+    } catch (error) {
+      toast({
+        variant: wasCancelled(error) ? 'default' : 'error',
+        title: wasCancelled(error) ? 'Stopped' : 'Oops!',
+        description: wasCancelled(error)
+          ? `Stopped after deleting ${deleted} record(s). Deletes already made stand.`
+          : `${errorMessage(error, 'Failed to delete search records.')} ${deleted} record(s) were deleted before it failed.`,
+        position: 'top-right',
+      });
+    } finally {
+      setProgress(null);
+    }
+  };
 
   return (
     <Card>
@@ -886,73 +1074,92 @@ function OrphanRecordsCard({
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <fetcher.Form method="post" className="space-y-3">
-          <input type="hidden" name="intent" value="delete-index-records" />
-          {canCleanUp && (
+        {canCleanUp && (
+          <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <label className="text-muted-foreground flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   className="h-4 w-4"
                   checked={allSelected}
+                  disabled={submitting}
                   onChange={(event) => setSelected(event.target.checked ? shownIds : [])}
                 />
                 Select all {shownIds.length} shown
               </label>
-              <Button size="sm" type="submit" variant="destructive" disabled={submitting || selected.length === 0}>
+              <Button
+                size="sm"
+                type="button"
+                variant="destructive"
+                onClick={deleteSelected}
+                disabled={submitting || selected.length === 0}
+              >
                 {submitting ? 'Deleting…' : `Delete ${selected.length} selected`}
               </Button>
+              {submitting && (
+                <Button size="sm" onClick={cancel} variant="outline">
+                  Stop
+                </Button>
+              )}
             </div>
-          )}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b">
-                  {canCleanUp && <th className={`${LABEL} py-1 pr-3 font-medium`}>select</th>}
-                  <th className={`${LABEL} py-1 pr-3 font-medium`}>objectID</th>
-                  <th className={`${LABEL} py-1 pr-3 font-medium`}>id (no such row)</th>
-                  <th className={`${LABEL} py-1 pr-3 font-medium`}>glossary</th>
-                  <th className={`${LABEL} py-1 font-medium`}>term in glossary?</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => (
-                  <tr key={record.objectID} className="border-b last:border-b-0">
-                    {canCleanUp && (
-                      <td className="py-1 pr-3">
-                        <input
-                          type="checkbox"
-                          name="objectId"
-                          className="h-4 w-4"
-                          value={record.objectID}
-                          aria-label={`select ${record.objectID}`}
-                          onChange={() => toggle(record.objectID)}
-                          checked={selected.includes(record.objectID)}
-                        />
-                      </td>
-                    )}
-                    <td className={`py-1 pr-3 ${MONO}`}>{record.objectID}</td>
-                    <td className={`py-1 pr-3 ${MONO}`}>{renderValue(record.id)}</td>
-                    <td className={`py-1 pr-3 ${MONO}`}>{renderValue(record.glossary)}</td>
-                    <td className="py-1">
-                      {record.liveRowWithSameTerm ? (
-                        <div className={`flex items-center gap-2 ${MONO}`}>
-                          <Badge variant="secondary">live</Badge>
-                          <span>{record.liveRowWithSameTerm.id}</span>
-                          <CopyButton value={record.liveRowWithSameTerm.id} />
-                        </div>
-                      ) : record.glossary ? (
-                        <Badge variant="destructive">term not in glossary</Badge>
-                      ) : (
-                        <span className={`${SUBTLE} text-xs italic`}>record has no term</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {progress && (
+              <div className="space-y-1">
+                <ProgressBar max={progress.total} value={progress.done} />
+                <p className={`${SUBTLE} text-xs`}>
+                  {progress.done} of {progress.total} record(s) done.
+                </p>
+              </div>
+            )}
           </div>
-        </fetcher.Form>
+        )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b">
+                {canCleanUp && <th className={`${LABEL} py-1 pr-3 font-medium`}>select</th>}
+                <th className={`${LABEL} py-1 pr-3 font-medium`}>objectID</th>
+                <th className={`${LABEL} py-1 pr-3 font-medium`}>id (no such row)</th>
+                <th className={`${LABEL} py-1 pr-3 font-medium`}>glossary</th>
+                <th className={`${LABEL} py-1 font-medium`}>term in glossary?</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((record) => (
+                <tr key={record.objectID} className="border-b last:border-b-0">
+                  {canCleanUp && (
+                    <td className="py-1 pr-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        disabled={submitting}
+                        value={record.objectID}
+                        aria-label={`select ${record.objectID}`}
+                        onChange={() => toggle(record.objectID)}
+                        checked={selected.includes(record.objectID)}
+                      />
+                    </td>
+                  )}
+                  <td className={`py-1 pr-3 ${MONO}`}>{record.objectID}</td>
+                  <td className={`py-1 pr-3 ${MONO}`}>{renderValue(record.id)}</td>
+                  <td className={`py-1 pr-3 ${MONO}`}>{renderValue(record.glossary)}</td>
+                  <td className="py-1">
+                    {record.liveRowWithSameTerm ? (
+                      <div className={`flex items-center gap-2 ${MONO}`}>
+                        <Badge variant="secondary">live</Badge>
+                        <span>{record.liveRowWithSameTerm.id}</span>
+                        <CopyButton value={record.liveRowWithSameTerm.id} />
+                      </div>
+                    ) : record.glossary ? (
+                      <Badge variant="destructive">term not in glossary</Badge>
+                    ) : (
+                      <span className={`${SUBTLE} text-xs italic`}>record has no term</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {truncated && (
           <p className="text-muted-foreground text-sm">
             Showing the first {records.length} of {total}. Use the whole-index cleanup above for the rest.

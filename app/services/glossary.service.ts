@@ -442,45 +442,57 @@ export const deleteGlossaryById = async (id: string): Promise<{ term: string; de
 // Paged rather than read whole: the translations column makes the full table far larger than
 // the records built from it, and a page that has been indexed stays indexed if a later one
 // fails, so a timeout leaves the glossary partly rebuilt rather than untouched.
+//
+// One page per call, with the caller holding the cursor, so the whole rebuild is a sequence of
+// short requests instead of one long one. That is what lets the Glossary Inspector draw a
+// progress bar: a single request can only report that it is still running, whereas a page at a
+// time reports how many entries are done after every page.
 
-const REINDEX_PAGE = 1000;
+export const REINDEX_PAGE = 1000;
 
-export const reindexGlossaries = async (): Promise<{ indexed: number; repointed: number }> => {
-  let indexed = 0;
-  let repointed = 0;
+export type ReindexPage = {
+  // Rows written to the index by this page.
+  indexed: number;
+  // Rows in this page whose search_id was pointing somewhere else and has been corrected.
+  repointed: number;
+  // Cursor for the next call: the last id written. Null once there is nothing left.
+  nextAfterId: string | null;
+};
 
-  for (let offset = 0; ; offset += REINDEX_PAGE) {
-    const rows = await dbClient
-      .select({
-        id: glossariesTable.id,
-        glossary: glossariesTable.glossary,
-        phonetic: glossariesTable.phonetic,
-        translations: glossariesTable.translations,
-      })
-      .from(glossariesTable)
-      .orderBy(glossariesTable.id)
-      .limit(REINDEX_PAGE)
-      .offset(offset);
+// Indexes one page of rows, resuming after `afterId`. Keyset rather than offset because rows
+// can be created or deleted between calls, and an offset would then skip or repeat a page.
+export const reindexGlossaryPage = async ({ afterId }: { afterId: string | null }): Promise<ReindexPage> => {
+  const rows = await dbClient
+    .select({
+      id: glossariesTable.id,
+      glossary: glossariesTable.glossary,
+      phonetic: glossariesTable.phonetic,
+      translations: glossariesTable.translations,
+    })
+    .from(glossariesTable)
+    .where(afterId ? sql`${glossariesTable.id} > ${afterId}::uuid` : undefined)
+    .orderBy(glossariesTable.id)
+    .limit(REINDEX_PAGE);
 
-    if (rows.length === 0) break;
+  if (rows.length === 0) return { indexed: 0, repointed: 0, nextAfterId: null };
 
-    // saveObjects batches internally and overwrites by objectID.
-    await algoliaClient.saveObjects({ indexName: 'glossaries', objects: rows.map(glossaryIndexRecord) });
+  // saveObjects batches internally and overwrites by objectID.
+  await algoliaClient.saveObjects({ indexName: 'glossaries', objects: rows.map(glossaryIndexRecord) });
 
-    // Point search_id at the record just written. Raw SQL rather than the query builder because
-    // updatedAt carries $onUpdate: re-indexing is not an edit, and stamping every row as edited
-    // now would overwrite the real last-edited date of the whole glossary irrecoverably.
-    const ids = rows.map((row) => row.id);
-    const result = await dbClient.execute(
-      sql`update ${glossariesTable} set search_id = id::text where ${glossariesTable.id} in ${ids} and ${glossariesTable.searchId} is distinct from ${glossariesTable.id}::text`,
-    );
-    repointed += result.rowCount ?? 0;
-    indexed += rows.length;
+  // Point search_id at the record just written. Raw SQL rather than the query builder because
+  // updatedAt carries $onUpdate: re-indexing is not an edit, and stamping every row as edited
+  // now would overwrite the real last-edited date of the whole glossary irrecoverably.
+  const ids = rows.map((row) => row.id);
+  const result = await dbClient.execute(
+    sql`update ${glossariesTable} set search_id = id::text where ${glossariesTable.id} in ${ids} and ${glossariesTable.searchId} is distinct from ${glossariesTable.id}::text`,
+  );
 
-    if (rows.length < REINDEX_PAGE) break;
-  }
-
-  return { indexed, repointed };
+  return {
+    indexed: rows.length,
+    repointed: result.rowCount ?? 0,
+    // A short page means the table ended here; anything else leaves the cursor at the last row.
+    nextAfterId: rows.length < REINDEX_PAGE ? null : rows[rows.length - 1].id,
+  };
 };
 
 // Empties the glossary table and drops its objects from the Algolia index.
