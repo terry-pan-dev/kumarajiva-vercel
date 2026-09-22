@@ -1,6 +1,6 @@
 import type { SearchQuery } from '@algolia/client-search';
 
-import { eq, getTableColumns, inArray } from 'drizzle-orm';
+import { and, eq, getTableColumns, inArray, isNull } from 'drizzle-orm';
 import 'dotenv/config';
 import { alias } from 'drizzle-orm/pg-core';
 
@@ -117,7 +117,7 @@ export const searchAlgolia = async ({
           const glossaries = await dbClient
             .select()
             .from(glossariesTable)
-            .where(inArray(glossariesTable.id, ids))
+            .where(and(inArray(glossariesTable.id, ids), isNull(glossariesTable.deletedAt)))
             .limit(numberOfHits);
           // reorder the results based on the ids and filter out undefined values
           const reorderedResults = ids

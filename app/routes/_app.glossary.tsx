@@ -21,7 +21,8 @@ import { Divider } from '~/components/ui/divider';
 import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import { createGlossaryAndIndexInAlgolia, getGlossariesByGivenGlossaries } from '~/services/glossary.service';
+import { DbGlossaries } from '~/services/glossary.crud';
+import { createGlossaryAndIndexInAlgolia, reviveTrashedGlossary } from '~/services/glossary.service';
 import { readUsers } from '~/services/user.service';
 import { glossaryFormSchema } from '~/validations/glossary.validation';
 
@@ -47,9 +48,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const formData = Object.fromEntries(await request.formData());
   const validatedData = validatePayloadOrThrow({ schema: glossaryFormSchema, formData });
-  const isGlossaryExist = await getGlossariesByGivenGlossaries([validatedData.glossaryChinese]);
-  console.log(isGlossaryExist);
-  if (isGlossaryExist.length > 0) {
+  // The trash is checked too: a trashed row still holds the term under the unique index.
+  const [existing] = await DbGlossaries.findByTermsIncludingTrash([validatedData.glossaryChinese]);
+  if (existing && !existing.deletedAt) {
     return json(
       { errors: [{ glossaryChinese: 'This term already exists, please search glossary by this term first' }] },
       { status: 400 },
@@ -81,7 +82,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     createdBy: user.id,
     updatedBy: user.id,
   };
-  const newGlossary = await createGlossaryAndIndexInAlgolia(glossary);
+  // A term in the trash is created afresh over the trashed row, which keeps its uuid.
+  const newGlossary = existing
+    ? await reviveTrashedGlossary(existing.id, { ...glossary, subscribers: 0 })
+    : await createGlossaryAndIndexInAlgolia(glossary);
   return json({ success: true, glossary: newGlossary });
 };
 

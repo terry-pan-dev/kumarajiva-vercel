@@ -129,13 +129,24 @@ export function deletableFixtures(): Fixture[] {
       'Fixture for the orphan cleanup, live-term half. The row and its own record are healthy; a fourth record names a uuid that no longer exists, as an import that re-created the entry would leave behind.',
   });
 
+  // Already in the trash, as the glossary page's delete leaves an entry: deleted_at set, no
+  // search_id and no index record.
+  const trashed = row(6, 'ZZTEST-06-DELETE-FROM-TRASH', {
+    deletedAt: new Date('2026-01-01'),
+    searchId: null,
+    translations: [translation('comes back on restore'), translation('goes for good on permanent delete')],
+    discussion:
+      'Fixture for the inspector’s trash. Restore it, check it is back on /glossary and in search, delete it from /glossary again, then delete it permanently from the trash.',
+  });
+
   return [
     {
       term: deleteWholeEntry.glossary,
       row: deleteWholeEntry,
       records: [canonicalRecord(deleteWholeEntry)],
       tests: '/glossary → find the entry → trash button (admin only)',
-      expect: 'The row and its one search record both go. The inspector stops reporting it entirely.',
+      expect:
+        'It leaves /glossary and search, and its search record goes. The row moves to the inspector’s Trash with both translations, and is reported nowhere else.',
     },
     {
       term: deleteOneTranslation.glossary,
@@ -187,6 +198,14 @@ export function deletableFixtures(): Fixture[] {
       expect:
         'The record goes and nothing in the database is involved. Before deleting, find it in the Orphan index records table — it should be badged “term not in glossary”.',
     },
+    {
+      term: trashed.glossary,
+      row: trashed,
+      records: [],
+      tests: 'Inspector → Trash → restore (↺), then /glossary trash button, then Trash → delete permanently',
+      expect:
+        'Restore puts it back on /glossary and in search with both translations. Deleting it again returns it to the Trash; deleting it permanently there removes the row for good.',
+    },
   ];
 }
 
@@ -209,12 +228,6 @@ export function issueFixtures(): Fixture[] {
     searchId: 'zztest-13-partial-record-no-uuid',
     discussion:
       'Fixture for the search-id-mismatch check: the record search actually returns for this entry is not the one search_id points at, so edits land on a record nobody reads.',
-  });
-
-  const softDeleted = row(14, 'ZZTEST-14-ISSUE-soft-deleted', {
-    deletedAt: new Date('2026-01-01'),
-    discussion:
-      'Fixture for the soft-deleted check: deleted_at is set, but no glossary query filters on it, so this entry is still served everywhere.',
   });
 
   // The two halves of a near-duplicate. The raw strings differ, so the unique index on the term
@@ -271,13 +284,6 @@ export function issueFixtures(): Fixture[] {
       tests: 'Inspector → badge “search-id-mismatch” on this entry',
       expect:
         'Re-index repairs the row. Watch what it leaves: zztest-13-partial-record-no-uuid is no longer claimed by anything, so the next index check reports it as an orphan whose term is still live — the hand-off between the two buttons.',
-    },
-    {
-      term: softDeleted.glossary,
-      row: softDeleted,
-      records: [canonicalRecord(softDeleted)],
-      tests: 'Inspector → badge “soft-deleted” on this entry',
-      expect: 'Nothing repairs this one. It is a report that the entry is still served despite deleted_at being set.',
     },
     {
       term: nearDuplicateUpper.glossary,

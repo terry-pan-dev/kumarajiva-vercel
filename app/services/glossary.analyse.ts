@@ -6,6 +6,10 @@
 // row stores that record's objectID in search_id, and the record carries the row's uuid in
 // its `id` attribute. Every check below is a way that pairing breaks — and the reason one
 // entry can appear several times in search results while all copies edit the same row.
+//
+// Trashed rows (deleted_at set) are outside that model: they are meant to have no record, and
+// every read skips them. They are counted but not checked, and they claim no record — a record
+// still carrying a trashed uuid is an orphan as far as search is concerned.
 import { type ReadGlossary } from '~/drizzle/tables';
 
 // Cap on entries returned with their full column dump, so one badly broken import can't
@@ -18,7 +22,6 @@ export type GlossaryIssueCode =
   | 'search-id-mismatch'
   | 'stale-index-pointer'
   | 'not-indexed'
-  | 'soft-deleted'
   | 'near-duplicate-term'
   | 'term-has-invisible-characters'
   | 'no-translations'
@@ -53,6 +56,8 @@ export type EntryIndexRecord = IndexRecord & {
 // the glossary altogether, where this record is the last trace of it.
 export type OrphanIndexRecord = IndexRecord & {
   liveRowWithSameTerm: { id: string; glossary: string } | null;
+  // The uuid belongs to a row in the trash, which still holds everything the record says.
+  inTrash: boolean;
 };
 
 // The three kinds of record that can be deleted, each with its own risk profile, so the
@@ -80,7 +85,9 @@ export type InspectedEntry = {
 
 export type GlossaryInspection = {
   stats: {
+    // Live entries only; trashed ones are counted separately and appear in no other stat.
     entries: number;
+    trashedEntries: number;
     translations: number;
     indexedEntries: number;
     indexRecords: number;
@@ -136,7 +143,6 @@ function emptyIssueCounts(): Record<GlossaryIssueCode, number> {
     'search-id-mismatch': 0,
     'stale-index-pointer': 0,
     'not-indexed': 0,
-    'soft-deleted': 0,
     'near-duplicate-term': 0,
     'term-has-invisible-characters': 0,
     'no-translations': 0,
@@ -145,7 +151,7 @@ function emptyIssueCounts(): Record<GlossaryIssueCode, number> {
 }
 
 export function analyseGlossary({
-  rows,
+  rows: allRows,
   // null means the index was not read: every index check is skipped, rather than an empty
   // list being mistaken for "nothing is indexed".
   indexRecords,
@@ -155,6 +161,8 @@ export function analyseGlossary({
   indexRecords: IndexRecord[] | null;
   indexError?: string | null;
 }): GlossaryInspection {
+  const rows = allRows.filter((row) => !row.deletedAt);
+  const trashedIds = new Set(allRows.filter((row) => row.deletedAt).map((row) => row.id));
   const records = indexRecords ?? [];
   const indexReadable = indexRecords !== null && indexError === null;
 
@@ -246,14 +254,6 @@ export function analyseGlossary({
       }
     }
 
-    if (row.deletedAt) {
-      issues.push({
-        code: 'soft-deleted',
-        severity: 'warning',
-        detail: 'deleted_at is set, but no glossary query filters on it, so this entry is still served everywhere.',
-      });
-    }
-
     const sameTerm = (idsByNormalisedTerm.get(normaliseTerm(row.glossary)) ?? []).filter((id) => id !== row.id);
     if (sameTerm.length > 0) {
       issues.push({
@@ -297,6 +297,7 @@ export function analyseGlossary({
     ...record,
     // Matched on the term the record carries, since its uuid resolves to nothing by definition.
     liveRowWithSameTerm: record.glossary ? (rowByNormalisedTerm.get(normaliseTerm(record.glossary)) ?? null) : null,
+    inTrash: Boolean(record.id && trashedIds.has(record.id)),
   }));
   for (const orphan of orphans) {
     removable[orphan.liveRowWithSameTerm ? 'orphans-live-term' : 'orphans-missing-term'].push(orphan.objectID);
@@ -305,6 +306,7 @@ export function analyseGlossary({
   return {
     stats: {
       entries: rows.length,
+      trashedEntries: trashedIds.size,
       translations,
       indexedEntries,
       indexRecords: records.length,

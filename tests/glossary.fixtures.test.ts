@@ -82,6 +82,13 @@ describe('the fixtures you remove by testing a button', () => {
   });
 });
 
+describe('the trash fixture', () => {
+  it('keeps ZZTEST-06 out of every check and counts it as trashed', () => {
+    expect(inspection.entries.some((entry) => entry.row.glossary === 'ZZTEST-06-DELETE-FROM-TRASH')).toBe(false);
+    expect(inspection.stats.trashedEntries).toBe(1);
+  });
+});
+
 describe('the fixtures for issues the inspector only reports', () => {
   // Each entry names the issue code it must raise — the same string the badge on the page
   // shows, and the same string in the term.
@@ -89,7 +96,6 @@ describe('the fixtures for issues the inspector only reports', () => {
     ['ZZTEST-11-ISSUE-not-indexed', 'not-indexed'],
     ['ZZTEST-12-ISSUE-stale-index-pointer', 'stale-index-pointer'],
     ['ZZTEST-13-ISSUE-search-id-mismatch', 'search-id-mismatch'],
-    ['ZZTEST-14-ISSUE-soft-deleted', 'soft-deleted'],
     ['ZZTEST-15-ISSUE-NEAR-DUPLICATE-TERM', 'near-duplicate-term'],
     ['zztest-15-issue-near-duplicate-term', 'near-duplicate-term'],
     ['ZZTEST-17-ISSUE-term-has-invisible-characters​ ', 'term-has-invisible-characters'],

@@ -239,12 +239,37 @@ describe('analyseGlossary', () => {
     expect(codesFor(inspection, 'a')).toContain('term-has-invisible-characters');
   });
 
-  it('flags a soft-deleted row, which every glossary query still serves', () => {
-    const row = makeRow({ id: 'a', glossary: '法', deletedAt: new Date('2026-02-02') });
+  // ─── Trash ─────────────────────────────────────────────────────────────────
 
-    const inspection = analyseGlossary({ rows: [row], indexRecords: [recordFor(row)] });
+  it('leaves a trashed row out of the checks and the entry count, and counts it as trashed', () => {
+    const live = makeRow({ id: 'a', glossary: '法' });
+    const trashed = makeRow({ id: 'b', glossary: '佛', searchId: null, deletedAt: new Date('2026-02-02') });
 
-    expect(codesFor(inspection, 'a')).toContain('soft-deleted');
+    const inspection = analyseGlossary({ rows: [live, trashed], indexRecords: [recordFor(live)] });
+
+    expect(inspection.entries.map((entry) => entry.row.id)).not.toContain('b');
+    expect(inspection.stats.entries).toBe(1);
+    expect(inspection.stats.trashedEntries).toBe(1);
+  });
+
+  it('treats a record left on a trashed row as an orphan, marked as in the trash', () => {
+    const trashed = makeRow({ id: 'b', glossary: '佛', deletedAt: new Date('2026-02-02') });
+
+    const inspection = analyseGlossary({ rows: [trashed], indexRecords: [recordFor(trashed)] });
+
+    expect(inspection.orphanIndexRecords).toHaveLength(1);
+    expect(inspection.orphanIndexRecords[0].inTrash).toBe(true);
+    expect(inspection.removable['orphans-missing-term']).toEqual([recordFor(trashed).objectID]);
+  });
+
+  it('does not let a trashed row count as the live term for an orphan', () => {
+    const trashed = makeRow({ id: 'b', glossary: '佛', deletedAt: new Date('2026-02-02') });
+    const orphan = { objectID: 'stray', id: 'gone', glossary: '佛' };
+
+    const inspection = analyseGlossary({ rows: [trashed], indexRecords: [orphan] });
+
+    expect(inspection.orphanIndexRecords[0].liveRowWithSameTerm).toBeNull();
+    expect(inspection.orphanIndexRecords[0].inTrash).toBe(false);
   });
 
   // ─── Translation checks ────────────────────────────────────────────────────

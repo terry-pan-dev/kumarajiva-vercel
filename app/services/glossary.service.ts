@@ -1,4 +1,4 @@
-import { eq, isNotNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import OpenAI from 'openai';
 import 'dotenv/config';
 
@@ -6,7 +6,7 @@ import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlo
 import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
-import { DbGlossaries } from './glossary.crud';
+import { DbGlossaries, notTrashed } from './glossary.crud';
 import { mergeTranslations } from './glossary.merge';
 import { groupRows, type GlossaryImportRow } from './glossary.parse';
 import { glossaryIndexRecord, searchablePhonetic } from './glossary.record';
@@ -38,6 +38,7 @@ export const readGlossaries = async ({
 }> => {
   const [glossaries, totalCount] = await Promise.all([
     dbClient.query.glossariesTable.findMany({
+      where: notTrashed,
       limit,
       offset: (page - 1) * limit,
       orderBy: (glossaries, { desc }) => [
@@ -49,6 +50,7 @@ export const readGlossaries = async ({
     dbClient
       .select({ count: sql<number>`count(*)` })
       .from(glossariesTable)
+      .where(notTrashed)
       .then((result) => result[0].count),
   ]);
 
@@ -63,7 +65,10 @@ export const getGlossariesByGivenGlossaries = async (glossaries: string[]): Prom
 };
 
 export const readSutraNames = async () => {
-  const result = await dbClient.select({ translations: glossariesTable.translations }).from(glossariesTable);
+  const result = await dbClient
+    .select({ translations: glossariesTable.translations })
+    .from(glossariesTable)
+    .where(notTrashed);
 
   const sutraNames = result.map((r) => r.translations?.filter((t) => t.sutraName).map((t) => t.sutraName));
   return Array.from(new Set(sutraNames.flat()));
@@ -279,9 +284,11 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
   const uuids = groups.map((g) => g.uuid).filter(Boolean);
   const terms = groups.map((g) => g.key);
 
+  // Trashed rows are matched too: the term is still taken by them, so creating it again would
+  // collide with the unique index. A match in the trash is revived with the file's contents.
   const [existingByUuid, existingByTerm] = await Promise.all([
-    uuids.length > 0 ? readGlossariesByIds(uuids) : Promise.resolve([]),
-    terms.length > 0 ? getGlossariesByGivenGlossaries(terms) : Promise.resolve([]),
+    uuids.length > 0 ? DbGlossaries.findByIdsIncludingTrash(uuids) : Promise.resolve([]),
+    terms.length > 0 ? DbGlossaries.findByTermsIncludingTrash(terms) : Promise.resolve([]),
   ]);
 
   const idMap = new Map(existingByUuid.map((g) => [g.id, g]));
@@ -317,7 +324,20 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
         // unique index actually constrains.
         const existing = (group.uuid ? idMap.get(group.uuid) : undefined) ?? termMap.get(group.key);
 
-        if (existing) {
+        if (existing?.deletedAt) {
+          // Imported as if new, the way it would have been before deletes went to the trash:
+          // the file's contents replace the trashed ones rather than merging with them.
+          await reviveTrashedGlossary(existing.id, {
+            glossary: group.key,
+            phonetic: first.phonetic || null,
+            cbetaFrequency: first.cbetaFrequency || null,
+            author: first.author || null,
+            discussion: null,
+            translations,
+            updatedBy: userId,
+          });
+          return 'created' as const;
+        } else if (existing) {
           await updateGlossaryTranslations({
             id: existing.id,
             phonetic: first.phonetic || null,
@@ -373,7 +393,7 @@ export const deleteGlossariesByUserId = async (userId: string) => {
   return await dbClient.delete(glossariesTable).where(eq(glossariesTable.createdBy, userId));
 };
 
-// Every index record that belongs to one entry.
+// Every index record that belongs to each of the given entries, keyed by row id.
 //
 // A row names only the record it was last indexed into (search_id), but earlier imports can
 // leave further records carrying the same uuid — the duplicates that make one entry show up
@@ -381,47 +401,167 @@ export const deleteGlossariesByUserId = async (userId: string) => {
 // a later import can turn back into duplicates once the uuid is reused.
 //
 // `id` is not a facet on this index, so a filter query is not available; the siblings are
-// found by searching the entry's own term and keeping the hits that carry its uuid.
-const findIndexObjectIdsForEntry = async (glossary: ReadGlossary): Promise<string[]> => {
-  const objectIds = new Set<string>();
-  if (glossary.searchId) objectIds.add(glossary.searchId);
+// found by searching each entry's own term and keeping the hits that carry its uuid. One
+// multi-query covers the whole batch.
+const findIndexObjectIdsForEntries = async (glossaries: ReadGlossary[]): Promise<Map<string, string[]>> => {
+  const objectIds = new Map<string, Set<string>>();
+  for (const glossary of glossaries) {
+    objectIds.set(glossary.id, new Set([glossary.id, ...(glossary.searchId ? [glossary.searchId] : [])]));
+  }
+  if (glossaries.length === 0) return new Map();
 
   try {
     const { results } = await algoliaClient.search<{ id?: string }>({
-      requests: [{ indexName: 'glossaries', query: glossary.glossary, hitsPerPage: 200, attributesToRetrieve: ['id'] }],
+      requests: glossaries.map((glossary) => ({
+        indexName: 'glossaries',
+        query: glossary.glossary,
+        hitsPerPage: 200,
+        attributesToRetrieve: ['id'],
+      })),
     });
-    const first = results[0];
-    if (first && 'hits' in first) {
-      for (const hit of first.hits) {
-        if (hit.id === glossary.id) objectIds.add(hit.objectID);
+    results.forEach((result, position) => {
+      if (!('hits' in result)) return;
+      const glossary = glossaries[position];
+      for (const hit of result.hits) {
+        if (hit.id === glossary.id) objectIds.get(glossary.id)?.add(hit.objectID);
       }
-    }
+    });
   } catch (error) {
-    // Never block the delete on this lookup: the row still goes, and the Glossary Inspector
-    // reports any record left behind.
-    console.error('Could not look up sibling index records for glossary', glossary.id, error);
+    // Never block the delete on this lookup: the row's own objectIDs still go, and the
+    // Glossary Inspector reports any record left behind.
+    console.error('Could not look up sibling index records for glossaries', error);
   }
 
-  return [...objectIds];
+  return new Map([...objectIds].map(([id, set]) => [id, [...set]]));
 };
 
-// Deletes one glossary entry — the term and every translation in its JSON column — along with
-// every Algolia record that carries its uuid. Returns the deleted term and how many records
-// went with it, or null if the id matched nothing.
-// Irreversible — callers must gate this on the appropriate ability.
-export const deleteGlossaryById = async (id: string): Promise<{ term: string; deletedRecords: number } | null> => {
+// Moves one glossary entry to the trash: deleted_at is set and every Algolia record carrying
+// its uuid is removed, so it disappears from the glossary page, search and editing. The row
+// and all its translations are kept, so an admin can restore it — or delete it for good — from
+// the Glossary Inspector. Returns the term and how many search records went, or null if the id
+// matched no live entry.
+export const trashGlossaryById = async (
+  id: string,
+  userId: string,
+): Promise<{ term: string; deletedRecords: number } | null> => {
   const glossary = await DbGlossaries.findById(id);
   if (!glossary) return null;
 
-  const objectIDs = await findIndexObjectIdsForEntry(glossary);
+  const objectIDs = (await findIndexObjectIdsForEntries([glossary])).get(glossary.id) ?? [];
 
-  // Search first: a failure here leaves the row in place to retry, rather than an index hit
-  // pointing at a row that no longer exists.
-  if (objectIDs.length > 0) {
-    await algoliaClient.deleteObjects({ indexName: 'glossaries', objectIDs });
-  }
-  await dbClient.delete(glossariesTable).where(eq(glossariesTable.id, id));
+  // Search first: a failure here leaves the entry live to retry, rather than a search hit
+  // pointing at a row the reads now skip. deleteObjects ignores objectIDs that are not there.
+  await algoliaClient.deleteObjects({ indexName: 'glossaries', objectIDs });
+  // search_id is cleared because nothing is indexed any more; a restore writes it again.
+  await DbGlossaries.updateById(id, { deletedAt: new Date(), searchId: null, updatedBy: userId });
   return { term: glossary.glossary, deletedRecords: objectIDs.length };
+};
+
+export const TRASH_LIST_LIMIT = 500;
+
+// The trash, most recently deleted first, capped so a large one cannot swamp the inspector.
+export const readTrashedGlossaries = async (
+  limit = TRASH_LIST_LIMIT,
+): Promise<{ rows: ReadGlossary[]; total: number }> => {
+  const [rows, [{ count }]] = await Promise.all([
+    dbClient
+      .select()
+      .from(glossariesTable)
+      .where(isNotNull(glossariesTable.deletedAt))
+      .orderBy(desc(glossariesTable.deletedAt), glossariesTable.glossary)
+      .limit(limit),
+    dbClient
+      .select({ count: sql<number>`count(*)` })
+      .from(glossariesTable)
+      .where(isNotNull(glossariesTable.deletedAt)),
+  ]);
+  return { rows, total: Number(count) };
+};
+
+// The trashed rows among `ids`. Every trash operation goes through this, so an id that is live
+// — or was restored by another admin since the page loaded — is skipped rather than acted on.
+const findTrashed = async (ids: string[]): Promise<ReadGlossary[]> => {
+  const unique = [...new Set(ids)].filter(Boolean);
+  if (unique.length === 0) return [];
+  return dbClient
+    .select()
+    .from(glossariesTable)
+    .where(and(inArray(glossariesTable.id, unique), isNotNull(glossariesTable.deletedAt)));
+};
+
+export type TrashResult = { done: number; skipped: number };
+
+// Takes entries back out of the trash: deleted_at is cleared and each is indexed again at its
+// own uuid, so it is back in search exactly as it was.
+export const restoreTrashedGlossaries = async (ids: string[]): Promise<TrashResult> => {
+  const rows = await findTrashed(ids);
+  if (rows.length > 0) {
+    // Index first, so a failure leaves the entry in the trash rather than live but unsearchable.
+    await algoliaClient.saveObjects({ indexName: 'glossaries', objects: rows.map(glossaryIndexRecord) });
+    await dbClient
+      .update(glossariesTable)
+      .set({ deletedAt: null, searchId: sql`${glossariesTable.id}::text` })
+      .where(
+        and(
+          inArray(
+            glossariesTable.id,
+            rows.map((row) => row.id),
+          ),
+          isNotNull(glossariesTable.deletedAt),
+        ),
+      );
+  }
+  return { done: rows.length, skipped: new Set(ids).size - rows.length };
+};
+
+// Permanently deletes trashed entries — the row and every translation in it — together with
+// any search record still carrying their uuid (entries trashed before deletes cleared their
+// records can still have some). Only rows already in the trash qualify.
+// Irreversible — callers must gate this on the appropriate ability.
+export const purgeTrashedGlossaries = async (ids: string[]): Promise<TrashResult> => {
+  const rows = await findTrashed(ids);
+  if (rows.length > 0) {
+    const objectIDs = [...(await findIndexObjectIdsForEntries(rows)).values()].flat();
+    await algoliaClient.deleteObjects({ indexName: 'glossaries', objectIDs });
+    await dbClient.delete(glossariesTable).where(
+      and(
+        inArray(
+          glossariesTable.id,
+          rows.map((row) => row.id),
+        ),
+        isNotNull(glossariesTable.deletedAt),
+      ),
+    );
+  }
+  return { done: rows.length, skipped: new Set(ids).size - rows.length };
+};
+
+// Brings a trashed row back as a new entry with the given contents, keeping its uuid. For
+// creating or importing a term the trash still holds — the unique index covers trashed rows,
+// so inserting it again would fail. Nothing of the trashed contents survives.
+export const reviveTrashedGlossary = async (
+  id: string,
+  data: Pick<
+    CreateGlossary,
+    'glossary' | 'phonetic' | 'author' | 'cbetaFrequency' | 'discussion' | 'translations' | 'updatedBy'
+  > &
+    Partial<Pick<CreateGlossary, 'subscribers'>>,
+): Promise<ReadGlossary[]> => {
+  const [row] = await dbClient
+    .update(glossariesTable)
+    .set({ ...data, deletedAt: null, searchId: null })
+    .where(and(eq(glossariesTable.id, id), isNotNull(glossariesTable.deletedAt)))
+    .returning();
+  if (!row) throw new Error('Glossary is no longer in the trash');
+
+  try {
+    await algoliaClient.saveObject({ indexName: 'glossaries', body: glossaryIndexRecord(row) });
+  } catch (error) {
+    // Same trade as createGlossaryAndIndexInAlgolia: live but unsearchable, which re-indexing repairs.
+    console.error('Failed to index revived glossary entry', row.id, error);
+    return [row];
+  }
+  return DbGlossaries.updateById(row.id, { searchId: row.id });
 };
 
 // ─── Re-indexing ─────────────────────────────────────────────────────────────
@@ -470,7 +610,8 @@ export const reindexGlossaryPage = async ({ afterId }: { afterId: string | null 
       translations: glossariesTable.translations,
     })
     .from(glossariesTable)
-    .where(afterId ? sql`${glossariesTable.id} > ${afterId}::uuid` : undefined)
+    // Trashed entries stay out of search; restoring one indexes it again.
+    .where(and(notTrashed, afterId ? sql`${glossariesTable.id} > ${afterId}::uuid` : undefined))
     .orderBy(glossariesTable.id)
     .limit(REINDEX_PAGE);
 

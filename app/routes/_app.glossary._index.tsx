@@ -19,9 +19,9 @@ import {
 } from '~/components/ui/pagination';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import {
-  deleteGlossaryById,
   readGlossaries,
   readGlossariesByIds,
+  trashGlossaryById,
   updateGlossarySubscribers,
   updateGlossaryTranslations,
 } from '~/services';
@@ -72,13 +72,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (ability.cannot('Delete', 'Glossary')) {
       return json({ success: false, error: 'Not allowed.' }, { status: 403 });
     }
-    const deletion = await deleteGlossaryById(formData.glossaryId as string);
+    const deletion = await trashGlossaryById(formData.glossaryId as string, user.id);
     if (!deletion) {
       return json({ success: false, error: 'Glossary not found.' }, { status: 404 });
     }
     return json({
       success: true,
-      message: `Deleted “${deletion.term}” and ${deletion.deletedRecords} search record(s).`,
+      message: `Moved “${deletion.term}” to the trash.`,
     });
   }
   const bookmark = formData.bookmark;
@@ -255,7 +255,7 @@ const SearchBar = ({ searchTerm, setSearchTerm }: SearchBarProps) => {
       <div className="flex w-full items-center space-x-2">
         <div className="relative flex-1">
           {isLoading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="absolute top-1/2 right-3 -translate-y-1/2">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
             </div>
           )}
@@ -316,7 +316,7 @@ const PaginationControls = () => {
           <PaginationContent className="h-10">
             <PaginationItem>
               {currentPage === 1 ? (
-                <span className="pointer-events-none select-none opacity-50">
+                <span className="pointer-events-none opacity-50 select-none">
                   <PaginationPrevious to={'#'}>Previous</PaginationPrevious>
                 </span>
               ) : (
@@ -326,11 +326,11 @@ const PaginationControls = () => {
             {pages.map((p, idx) => (
               <PaginationItem key={idx}>
                 {p === 'ellipsis' ? (
-                  <span className="flex items-center justify-center rounded py-1 text-muted-foreground">
+                  <span className="text-muted-foreground flex items-center justify-center rounded py-1">
                     <PaginationEllipsis />
                   </span>
                 ) : p === currentPage ? (
-                  <span className="rounded border px-2 py-1 text-muted-foreground">{p}</span>
+                  <span className="text-muted-foreground rounded border px-2 py-1">{p}</span>
                 ) : (
                   <Link className="mx-1" to={`?page=${p}`}>
                     {p}
@@ -340,7 +340,7 @@ const PaginationControls = () => {
             ))}
             <PaginationItem>
               {currentPage >= totalPages ? (
-                <span className="pointer-events-none select-none opacity-50">
+                <span className="pointer-events-none opacity-50 select-none">
                   <PaginationNext to={'#'}>Next</PaginationNext>
                 </span>
               ) : (

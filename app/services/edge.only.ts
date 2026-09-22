@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { and, inArray, isNull } from 'drizzle-orm';
 
 import { glossariesTable, type ReadGlossary } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
@@ -33,7 +33,7 @@ export const searchGlossaries = async (searchTerm: string, limit = 10): Promise<
       const dbResults = await dbClient
         .select()
         .from(glossariesTable)
-        .where(inArray(glossariesTable.id, ids))
+        .where(and(inArray(glossariesTable.id, ids), isNull(glossariesTable.deletedAt)))
         .limit(limit);
       // reorder the results based on the ids and filter out undefined values
       const reorderedResults = ids

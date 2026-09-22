@@ -1,7 +1,7 @@
 // Data fetching for the glossary inspector: reads every glossary row and every record in the
 // Algolia index, then hands both to the checks in glossary.analyse.ts. Read-only — nothing
 // here writes to the database or the index.
-import { inArray, sql } from 'drizzle-orm';
+import { and, inArray, isNull, sql } from 'drizzle-orm';
 
 import { glossariesTable, type ReadGlossary } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
@@ -121,15 +121,22 @@ export async function deleteIndexRecords(objectIDs: string[]): Promise<RecordDel
   const records = await fetchRecords(requested);
 
   // The rows these records claim, and any row already pointing at one of the requested
-  // objectIDs — the two ways a record can turn out to be load-bearing.
+  // objectIDs — the two ways a record can turn out to be load-bearing. Trashed rows are left
+  // out: they are meant to have no record, so none of theirs is load-bearing.
   const claimedRowIds = [...records.values()]
     .map((record) => record.id)
     .filter((id): id is string => UUID.test(id ?? ''));
   const [claimedRows, rowsPointingAtRequested] = await Promise.all([
     claimedRowIds.length
-      ? dbClient.select().from(glossariesTable).where(inArray(glossariesTable.id, claimedRowIds))
+      ? dbClient
+          .select()
+          .from(glossariesTable)
+          .where(and(inArray(glossariesTable.id, claimedRowIds), isNull(glossariesTable.deletedAt)))
       : Promise.resolve([]),
-    dbClient.select().from(glossariesTable).where(inArray(glossariesTable.searchId, requested)),
+    dbClient
+      .select()
+      .from(glossariesTable)
+      .where(and(inArray(glossariesTable.searchId, requested), isNull(glossariesTable.deletedAt))),
   ]);
 
   const rowById = new Map(claimedRows.map((row) => [row.id, row]));

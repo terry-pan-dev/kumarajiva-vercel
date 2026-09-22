@@ -293,7 +293,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
                     // Also rendered on /settings, whose action knows nothing about glossaries.
                     action="/glossary?index"
                     label={glossary.glossary}
-                    description={`This permanently deletes “${glossary.glossary}” and all ${glossary.translations?.length ?? 0} of its translations. It cannot be undone.`}
+                    description={`This moves “${glossary.glossary}” and all ${glossary.translations?.length ?? 0} of its translations to the trash. It disappears from the glossary and search; an admin can restore it or delete it for good from the Glossary Inspector.`}
                   />
                 </span>
               </Can>

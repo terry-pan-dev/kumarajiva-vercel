@@ -5,12 +5,15 @@
 // failures that confuse readers live in the gap between the two: one row reachable through
 // several index records shows up as several search results that all edit the same row.
 //
-// Two writes are offered, and neither touches a term or a translation. Deleting an index
+// Two index writes are offered, and neither touches a term or a translation. Deleting an index
 // record leaves the entry untouched; the worst case is that it needs re-indexing. Re-indexing
 // rebuilds the records from the table, which is the source of truth — every field in a record
 // is a projection of a row, so it can always be regenerated.
 //
-// Both writes run for minutes on the current glossary, so neither is a single request. The
+// The trash is the one place here that does touch entries: deleting from the glossary page
+// only sets deleted_at, and this page is where a trashed entry is restored or deleted for good.
+//
+// The index writes run for minutes on the current glossary, so neither is a single request. The
 // page drives them a step at a time against the job route next door and reports how far it has
 // got after each step; see _app.data.glossary.inspector-jobs.ts for why the jobs live there
 // rather than in this route's own action.
@@ -28,7 +31,7 @@ import {
   useSearchParams,
 } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
-import { Check, Copy, Loader2, RefreshCw, Trash2 } from 'lucide-react';
+import { Check, Copy, Loader2, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
@@ -48,6 +51,8 @@ import {
   type RemovableRecordClass,
 } from '~/services/glossary.analyse';
 import { findGlossaryRowsForInspection, inspectGlossary } from '~/services/glossary.inspect';
+import { readTrashedGlossaries } from '~/services/glossary.service';
+import { readUsers } from '~/services/user.service';
 
 import type { JobPayloads, JobResponse } from './_app.data.glossary.inspector-jobs';
 
@@ -81,10 +86,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // when asked for. Everything else on the page comes from the database.
   const checkIndex = searchParams.get('index') === '1';
 
-  const [inspection, lookupRows] = await Promise.all([
+  const [inspection, lookupRows, trash, users] = await Promise.all([
     inspectGlossary({ checkIndex }),
     query ? findGlossaryRowsForInspection(query) : Promise.resolve([]),
+    readTrashedGlossaries(),
+    readUsers(),
   ]);
+
+  // Who trashed each entry: trashing stamps updated_by, and a uuid alone says nothing.
+  const usernames = Object.fromEntries(users.map((u) => [u.id, u.username ?? u.email ?? u.id]));
 
   // The removable lists can run to tens of thousands of uuids; the page needs only the counts,
   // and the cleanup job recomputes the lists server-side when it runs.
@@ -93,6 +103,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return json({
     inspection: reportable,
     lookupRows,
+    trash: {
+      total: trash.total,
+      rows: trash.rows.map((row) => ({ ...row, deletedByName: usernames[row.updatedBy] ?? null })),
+    },
     query,
     checkIndex,
     canCleanUp: ability.can('Delete', 'Glossary'),
@@ -772,7 +786,7 @@ function ScanProgress({ scanning }: { scanning: boolean }) {
 }
 
 export default function GlossaryInspector() {
-  const { inspection, lookupRows, query, checkIndex, canCleanUp, canReindex } = useLoaderData<typeof loader>();
+  const { inspection, lookupRows, trash, query, checkIndex, canCleanUp, canReindex } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
   // Re-running the scan revalidates in place rather than navigating: the URL already carries
@@ -808,12 +822,14 @@ export default function GlossaryInspector() {
           <CardTitle className="text-primary text-2xl">Glossary Inspector</CardTitle>
           <p className="text-muted-foreground text-sm">
             Cross-checks every glossary row against the Algolia index and shows every stored column. It can rebuild the
-            index from the database and delete stray search records; terms and translations are never touched.
+            index from the database and delete stray search records without touching terms or translations, and it is
+            where entries deleted from the glossary wait in the trash to be restored or deleted for good.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             <Stat label="entries" value={stats.entries} />
+            <Stat label="in trash" value={stats.trashedEntries} />
             <Stat label="translations" value={stats.translations} />
             <Stat label="rows with search_id" value={stats.indexedEntries} />
             <Stat label="index records" value={indexChecked ? stats.indexRecords : null} />
@@ -957,6 +973,8 @@ export default function GlossaryInspector() {
           )}
         </CardContent>
       </Card>
+
+      <TrashCard total={trash.total} canCleanUp={canCleanUp} rows={trash.rows as unknown as TrashedRow[]} />
 
       {orphanIndexRecords.length > 0 && (
         <OrphanRecordsCard
@@ -1143,7 +1161,9 @@ function OrphanRecordsCard({
                   <td className={`py-1 pr-3 ${MONO}`}>{renderValue(record.id)}</td>
                   <td className={`py-1 pr-3 ${MONO}`}>{renderValue(record.glossary)}</td>
                   <td className="py-1">
-                    {record.liveRowWithSameTerm ? (
+                    {record.inTrash ? (
+                      <Badge variant="secondary">entry in trash</Badge>
+                    ) : record.liveRowWithSameTerm ? (
                       <div className={`flex items-center gap-2 ${MONO}`}>
                         <Badge variant="secondary">live</Badge>
                         <span>{record.liveRowWithSameTerm.id}</span>
@@ -1167,5 +1187,318 @@ function OrphanRecordsCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Trash ───────────────────────────────────────────────────────────────────
+
+type TrashedRow = ReadGlossary & { deletedByName: string | null };
+
+// How many entries go into one restore or purge request. A purge runs one search per entry to
+// find stray records, so this is smaller than the record-delete chunk.
+const TRASH_CHUNK = 50;
+
+// Entries deleted from the glossary page. They are out of the glossary, search and editing
+// already; here they come back, or go for good. Selectable individually or all at once, and
+// each row also has its own restore and delete buttons.
+//
+// Done rows are hidden locally rather than by revalidating: with the index check on, the loader
+// rescans the whole index, which is a minute's wait to learn what this card already knows.
+function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: number; canCleanUp: boolean }) {
+  const { toast } = useToast();
+  const { begin, cancel } = useJobAbort();
+  const [gone, setGone] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  // The ids a permanent delete is waiting on confirmation for — one row's, or the selection.
+  const [confirmingPurge, setConfirmingPurge] = useState<string[] | null>(null);
+  const [progress, setProgress] = useState<{
+    job: 'restore-trash' | 'purge-trash';
+    done: number;
+    total: number;
+  } | null>(null);
+  const submitting = progress !== null;
+
+  const visible = useMemo(() => rows.filter((row) => !gone.includes(row.id)), [rows, gone]);
+  const shownIds = useMemo(() => visible.map((row) => row.id), [visible]);
+  const allSelected = selected.length === shownIds.length && shownIds.length > 0;
+  const remaining = total - gone.length;
+
+  const toggle = (id: string) =>
+    setSelected((current) => (current.includes(id) ? current.filter((other) => other !== id) : [...current, id]));
+
+  const run = async (job: 'restore-trash' | 'purge-trash', ids: string[]) => {
+    const signal = begin();
+    setConfirmingPurge(null);
+    setProgress({ job, done: 0, total: ids.length });
+
+    let done = 0;
+    let skipped = 0;
+    const finished: string[] = [];
+    try {
+      for (let start = 0; start < ids.length; start += TRASH_CHUNK) {
+        const chunk = ids.slice(start, start + TRASH_CHUNK);
+        const result = await postJob(
+          job,
+          chunk.map((id) => ['glossaryId', id] as [string, string]),
+          signal,
+        );
+        done += result.done;
+        skipped += result.skipped;
+        // Skipped ids have left the trash some other way, so they are hidden as well.
+        finished.push(...chunk);
+        setGone((current) => [...current, ...chunk]);
+        setProgress({ job, done: done + skipped, total: ids.length });
+      }
+      const skippedNote = skipped ? ` ${skipped} had already left the trash.` : '';
+      toast({
+        variant: 'default',
+        title: job === 'restore-trash' ? 'Restored' : 'Deleted',
+        description:
+          job === 'restore-trash'
+            ? `Restored ${done} entr(ies) to the glossary and search.${skippedNote}`
+            : `Permanently deleted ${done} entr(ies) and their translations.${skippedNote}`,
+        position: 'top-right',
+      });
+    } catch (error) {
+      const verb = job === 'restore-trash' ? 'restoring' : 'deleting';
+      toast({
+        variant: wasCancelled(error) ? 'default' : 'error',
+        title: wasCancelled(error) ? 'Stopped' : 'Oops!',
+        description: wasCancelled(error)
+          ? `Stopped after ${verb} ${done} entr(ies). Those stand; the rest are still in the trash.`
+          : `${errorMessage(error, 'Failed to update the trash.')} ${done} entr(ies) were done before it failed.`,
+        position: 'top-right',
+      });
+    } finally {
+      setSelected((current) => current.filter((id) => !finished.includes(id)));
+      setProgress(null);
+    }
+  };
+
+  const purgeCount = confirmingPurge?.length ?? 0;
+  const purgeLabel =
+    purgeCount === 1
+      ? `“${rows.find((row) => row.id === confirmingPurge?.[0])?.glossary ?? ''}”`
+      : `${purgeCount} entries`;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-primary text-xl">
+          Trash <span className={`${LABEL} text-base font-normal`}>({remaining})</span>
+        </CardTitle>
+        <p className="text-muted-foreground text-sm">
+          Entries deleted from the glossary page. They are already gone from the glossary, search and editing, but the
+          row and every translation are kept. Restoring puts an entry back in search exactly as it was; deleting it here
+          is permanent. Creating or importing a term that is in the trash replaces the trashed entry with the new one.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {visible.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            {remaining > 0 ? 'Reload the page to see the rest of the trash.' : 'The trash is empty.'}
+          </p>
+        ) : (
+          <>
+            {canCleanUp && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={allSelected}
+                      disabled={submitting}
+                      onChange={(event) => setSelected(event.target.checked ? shownIds : [])}
+                    />
+                    Select all {shownIds.length} shown
+                  </label>
+                  <Button
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                    disabled={submitting || selected.length === 0}
+                    onClick={() => run('restore-trash', selected)}
+                  >
+                    {progress?.job === 'restore-trash' ? 'Restoring…' : `Restore ${selected.length} selected`}
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="button"
+                    variant="destructive"
+                    onClick={() => setConfirmingPurge(selected)}
+                    disabled={submitting || selected.length === 0}
+                  >
+                    {progress?.job === 'purge-trash' ? 'Deleting…' : `Delete ${selected.length} permanently`}
+                  </Button>
+                  {submitting && (
+                    <Button size="sm" onClick={cancel} variant="outline">
+                      Stop
+                    </Button>
+                  )}
+                </div>
+                {progress && (
+                  <div className="space-y-1">
+                    <ProgressBar max={progress.total} value={progress.done} />
+                    <p className={`${SUBTLE} text-xs`}>
+                      {progress.done} of {progress.total} entr(ies) done.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b">
+                    {canCleanUp && <th className={`${LABEL} py-1 pr-3 font-medium`}>select</th>}
+                    <th className={`${LABEL} py-1 pr-3 font-medium`}>glossary</th>
+                    <th className={`${LABEL} py-1 pr-3 font-medium`}>translations</th>
+                    <th className={`${LABEL} py-1 pr-3 font-medium`}>deleted_at</th>
+                    <th className={`${LABEL} py-1 pr-3 font-medium`}>deleted by</th>
+                    <th className={`${LABEL} py-1 font-medium`}>actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((row) => (
+                    <TrashRow
+                      row={row}
+                      key={row.id}
+                      disabled={submitting}
+                      canCleanUp={canCleanUp}
+                      expanded={expanded === row.id}
+                      selected={selected.includes(row.id)}
+                      onToggleSelected={() => toggle(row.id)}
+                      onPurge={() => setConfirmingPurge([row.id])}
+                      onRestore={() => run('restore-trash', [row.id])}
+                      onToggleExpanded={() => setExpanded((current) => (current === row.id ? null : row.id))}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {total > rows.length && (
+              <p className="text-muted-foreground text-sm">
+                Showing the {rows.length} most recently deleted of {total}. Reload after clearing these to see the rest.
+              </p>
+            )}
+          </>
+        )}
+
+        <DeleteConfirmDialog
+          submitting={submitting}
+          open={confirmingPurge !== null}
+          title={`Permanently delete ${purgeLabel}?`}
+          onOpenChange={(open) => !open && setConfirmingPurge(null)}
+          onConfirm={() => confirmingPurge && run('purge-trash', confirmingPurge)}
+          description={`This deletes ${purgeLabel} and every translation ${purgeCount === 1 ? 'it holds' : 'they hold'} from the database, along with any search record still carrying ${purgeCount === 1 ? 'its' : 'their'} uuid. It cannot be undone — restore instead if you might want ${purgeCount === 1 ? 'it' : 'them'} back.`}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function TrashRow({
+  row,
+  canCleanUp,
+  disabled,
+  selected,
+  expanded,
+  onToggleSelected,
+  onToggleExpanded,
+  onRestore,
+  onPurge,
+}: {
+  row: TrashedRow;
+  canCleanUp: boolean;
+  disabled: boolean;
+  selected: boolean;
+  expanded: boolean;
+  onToggleSelected: () => void;
+  onToggleExpanded: () => void;
+  onRestore: () => void;
+  onPurge: () => void;
+}) {
+  const translations = row.translations ?? [];
+  const columns = canCleanUp ? 6 : 5;
+
+  return (
+    <>
+      <tr className="border-b align-top last:border-b-0">
+        {canCleanUp && (
+          <td className="py-1 pr-3">
+            <input
+              type="checkbox"
+              checked={selected}
+              className="h-4 w-4"
+              disabled={disabled}
+              onChange={onToggleSelected}
+              aria-label={`select ${row.glossary}`}
+            />
+          </td>
+        )}
+        <td className="py-1 pr-3">
+          <button type="button" onClick={onToggleExpanded} className="text-primary text-left text-sm hover:underline">
+            {row.glossary}
+          </button>
+        </td>
+        <td className={`py-1 pr-3 ${MONO}`}>
+          {translations.length}
+          {translations.length > 0 && (
+            <span className={SUBTLE}>
+              {' '}
+              ·{' '}
+              {translations
+                .slice(0, 3)
+                .map((translation) => translation.glossary)
+                .join('; ')}
+              {translations.length > 3 && '…'}
+            </span>
+          )}
+        </td>
+        <td className={`py-1 pr-3 ${MONO}`}>{renderValue(row.deletedAt)}</td>
+        <td className={`py-1 pr-3 ${MONO}`}>{row.deletedByName ?? renderValue(row.updatedBy)}</td>
+        <td className="py-1">
+          {canCleanUp ? (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                title="Restore"
+                onClick={onRestore}
+                disabled={disabled}
+                aria-label={`restore ${row.glossary}`}
+                className={`${SUBTLE} hover:text-foreground disabled:pointer-events-none disabled:opacity-60`}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onPurge}
+                disabled={disabled}
+                title="Delete permanently"
+                aria-label={`permanently delete ${row.glossary}`}
+                className={`${SUBTLE} hover:text-destructive disabled:pointer-events-none disabled:opacity-60`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <span className={`${SUBTLE} text-xs`}>—</span>
+          )}
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-b">
+          <td colSpan={columns} className="space-y-4 py-3">
+            <ColumnTable row={row} />
+            <section className="space-y-1">
+              <h4 className="text-foreground text-sm font-semibold">translations (json)</h4>
+              <TranslationsTable row={row} />
+            </section>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

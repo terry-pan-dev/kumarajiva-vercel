@@ -10,15 +10,16 @@
 // index, so a re-index of thirty pages would otherwise trigger thirty full rescans. The page
 // revalidates once, deliberately, when a job that changed the counts finishes.
 //
-// Nothing here is new authority: the same three operations were previously intents on the
-// inspector's own action, with the same ability checks.
+// Nothing here is new authority: the first three operations were previously intents on the
+// inspector's own action, with the same ability checks. The two trash operations sit beside
+// them for the same reason — a bulk restore or purge is a loop of chunks with a bar.
 import { json, redirect, type ActionFunctionArgs } from '@vercel/remix';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
 import { REMOVABLE_RECORD_CLASSES, type RemovableRecordClass } from '~/services/glossary.analyse';
 import { deleteIndexRecords, findRemovableIndexRecords } from '~/services/glossary.inspect';
-import { reindexGlossaryPage } from '~/services/glossary.service';
+import { purgeTrashedGlossaries, reindexGlossaryPage, restoreTrashedGlossaries } from '~/services/glossary.service';
 
 // cleanup-scan browses every record in the index — on the order of 30k records and 20s on the
 // current glossary — so this route needs more than the default function budget. The other two
@@ -33,6 +34,9 @@ export type JobPayloads = {
   'reindex-page': { indexed: number; repointed: number; nextAfterId: string | null };
   'cleanup-scan': { objectIDs: string[]; scanned: number };
   'delete-records': { deleted: number; skipped: { objectID: string; reason: string }[] };
+  // skipped: ids that were not in the trash any more — restored or purged since the page loaded.
+  'restore-trash': { done: number; skipped: number };
+  'purge-trash': { done: number; skipped: number };
 };
 
 export type JobResponse = ({ ok: true } & JobPayloads[keyof JobPayloads]) | { ok: false; message: string };
@@ -50,8 +54,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = formData.get('intent');
 
-  // Deleting index records is destructive and admin-only; re-indexing only rewrites what the
-  // table already says, so it asks for the glossary write ability instead. Both are admin-only
+  // Deleting index records or trashed entries is destructive and admin-only, and restoring
+  // undoes a delete, so it asks for the same; re-indexing only rewrites what the table already
+  // says, so it asks for the glossary write ability instead. Both are admin-only
   // today, and this route is admin-gated regardless — naming each states what the action needs
   // rather than what a role happens to be.
   const needed = intent === 'reindex-page' ? (['Update', 'Glossary'] as const) : (['Delete', 'Glossary'] as const);
@@ -100,6 +105,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     } catch (error) {
       console.error('Error deleting glossary index records:', error);
       const message = error instanceof Error ? error.message : 'Failed to delete search records.';
+      return json<JobResponse>({ ok: false, message }, 500);
+    }
+  }
+
+  if (intent === 'restore-trash' || intent === 'purge-trash') {
+    const ids = formData.getAll('glossaryId').map(String);
+    if (ids.length === 0) {
+      return json<JobResponse>({ ok: false, message: 'No entries selected.' }, 400);
+    }
+    try {
+      // Both act only on ids that are still in the trash, so a stale page cannot purge an entry
+      // someone has restored in the meantime.
+      const result =
+        intent === 'restore-trash' ? await restoreTrashedGlossaries(ids) : await purgeTrashedGlossaries(ids);
+      return json<JobResponse>({ ok: true, ...result });
+    } catch (error) {
+      console.error(`Error running ${intent}:`, error);
+      const message = error instanceof Error ? error.message : 'Failed to update the trash.';
       return json<JobResponse>({ ok: false, message }, 500);
     }
   }
