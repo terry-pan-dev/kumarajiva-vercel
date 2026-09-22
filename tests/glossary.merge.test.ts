@@ -34,6 +34,22 @@ describe('translationKey', () => {
       translationKey(makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '2' })),
     );
   });
+
+  it('separates two passages from one source that settle on the same term', () => {
+    const base = { glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' };
+
+    expect(translationKey(makeTranslation({ ...base, originSutraText: '菩薩摩訶薩' }))).not.toBe(
+      translationKey(makeTranslation({ ...base, originSutraText: '諸菩薩眾' })),
+    );
+  });
+
+  it('separates translations that differ only by author', () => {
+    const base = { glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' };
+
+    expect(translationKey(makeTranslation({ ...base, author: 'one' }))).not.toBe(
+      translationKey(makeTranslation({ ...base, author: 'another' })),
+    );
+  });
 });
 
 // ─── mergeTranslations ───────────────────────────────────────────────────────
@@ -50,7 +66,10 @@ describe('mergeTranslations', () => {
     expect(merged.map((t) => t.glossary)).toEqual(['bodhisattva', 'awakened being']);
   });
 
-  it('lets the incoming file overwrite a stored translation with the same identity', () => {
+  // The rule that matters most: an import may add, never replace. Without a per-translation
+  // id there is no way to tell a corrected passage from a second one, and merging them would
+  // destroy the record of an attestation.
+  it('keeps both when the incoming file differs from a stored translation', () => {
     const stored = [
       makeTranslation({
         glossary: 'bodhisattva',
@@ -70,8 +89,17 @@ describe('mergeTranslations', () => {
 
     const merged = mergeTranslations(stored, incoming);
 
-    expect(merged).toHaveLength(1);
-    expect(merged[0].targetSutraText).toBe('corrected rendering');
+    expect(merged.map((t) => t.targetSutraText)).toEqual(['old rendering', 'corrected rendering']);
+  });
+
+  it('keeps several passages from one sutra and volume that share an English term', () => {
+    const base = { glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' };
+    const incoming = [
+      makeTranslation({ ...base, originSutraText: '菩薩摩訶薩' }),
+      makeTranslation({ ...base, originSutraText: '諸菩薩眾' }),
+    ];
+
+    expect(mergeTranslations([], incoming)).toHaveLength(2);
   });
 
   it('preserves stored order and appends new translations at the end', () => {
@@ -81,7 +109,8 @@ describe('mergeTranslations', () => {
     ];
     const incoming = [
       makeTranslation({ glossary: 'c', sutraName: 'S', volume: '3' }),
-      makeTranslation({ glossary: 'b', sutraName: 'S', volume: '2', author: 'reviser' }),
+      // Identical to a stored one, so it is recognised rather than appended again.
+      makeTranslation({ glossary: 'b', sutraName: 'S', volume: '2' }),
     ];
 
     expect(mergeTranslations(stored, incoming).map((t) => t.glossary)).toEqual(['a', 'b', 'c']);
@@ -98,16 +127,24 @@ describe('mergeTranslations', () => {
     expect(twice).toEqual(once);
   });
 
-  it('collapses duplicate keys within the incoming file', () => {
+  // The one case where two become one: rows identical in every field, which is what keeps a
+  // re-import from doubling the list.
+  it('collapses rows of the incoming file that are identical in every field', () => {
+    const incoming = [
+      makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'first' }),
+      makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'first' }),
+    ];
+
+    expect(mergeTranslations([], incoming)).toHaveLength(1);
+  });
+
+  it('keeps rows of the incoming file that differ in any field', () => {
     const incoming = [
       makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'first' }),
       makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'second' }),
     ];
 
-    const merged = mergeTranslations([], incoming);
-
-    expect(merged).toHaveLength(1);
-    expect(merged[0].author).toBe('first');
+    expect(mergeTranslations([], incoming).map((t) => t.author)).toEqual(['first', 'second']);
   });
 
   it('handles a null stored list', () => {
@@ -136,9 +173,12 @@ describe('mergeTranslationsWithStatus', () => {
       makeTranslation({ glossary: 'added', sutraName: 'S', volume: '3' }),
     ];
 
+    // The revised one arrives as a separate translation rather than replacing what is stored:
+    // nothing tells the importer whether it is a correction or another passage.
     expect(mergeTranslationsWithStatus(stored, incoming).map((m) => [m.translation.glossary, m.status])).toEqual([
       ['untouched', 'kept'],
-      ['revised', 'updated'],
+      ['revised', 'kept'],
+      ['revised', 'new'],
       ['added', 'new'],
     ]);
   });

@@ -25,6 +25,7 @@
   --animate-border: background ease infinite;
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-indeterminate: indeterminate 1.4s ease-in-out infinite;
 }
 
 @theme inline {
@@ -82,6 +83,16 @@
   }
 }
 
+/* The sliding fill of a progress bar with no total to divide by — see ProgressBar. */
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
 @keyframes background {
   0%,
   100% {
@@ -107,7 +118,7 @@ body {
     --background: hsl(0 0% 100%);
     --foreground: hsl(222.2 84% 4.9%);
     --card: hsl(34 37% 93%);
-    --card-foreground: hsl(45 80% 98%);
+    --card-foreground: hsl(222.2 84% 4.9%);
     --popover: hsl(0 0% 100%);
     --popover-foreground: hsl(222.2 84% 4.9%);
     --primary: hsl(244 12% 26%);
@@ -115,7 +126,7 @@ body {
     --secondary: hsl(340 4% 86%);
     --secondary-foreground: hsl(222.2 47.4% 11.2%);
     --muted: hsl(210 40% 96.1%);
-    --muted-foreground: hsl(215.4 16.3% 46.9%);
+    --muted-foreground: hsl(215.4 16.3% 38%);
     --accent: hsl(210 40% 96.1%);
     --accent-foreground: hsl(222.2 47.4% 11.2%);
     --destructive: hsl(0 84.2% 60.2%);

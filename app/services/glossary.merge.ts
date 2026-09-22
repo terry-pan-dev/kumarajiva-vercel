@@ -5,10 +5,16 @@
 //
 // Translations live in a single JSON column, so an import that wrote only the file's rows
 // would silently drop every translation the file didn't mention. Import files are expected
-// to carry one source at a time, so incoming rows are merged into what is already stored.
+// to carry one source at a time, so incoming rows are added to what is already stored.
+//
+// Nothing distinct is ever collapsed. Two translations are the same only when every field
+// matches; a single sutra and volume can attest the same term several times, and those are
+// separate records of separate passages even when they settle on the same English wording.
+// The only collapsing that happens is of rows that are identical in every field, which is
+// what keeps re-importing the same file from doubling every list.
 
-// The fields that identify a translation. Structurally satisfied by both the stored
-// translation shape and the preview's display shape.
+// The fields compared when deciding whether two translations are the same. Structurally
+// satisfied by both the stored translation shape and the preview's display shape.
 export type MergeableTranslation = {
   glossary: string;
   sutraName: string;
@@ -18,37 +24,38 @@ export type MergeableTranslation = {
   author?: string | null;
 };
 
-export type TranslationStatus = 'kept' | 'updated' | 'new';
+// 'updated' is gone: with whole-translation identity there is nothing to update in place.
+// A changed field makes a separate translation, which is reported as new.
+export type TranslationStatus = 'kept' | 'new';
 
 export type MergedTranslation<T> = {
   translation: T;
   status: TranslationStatus;
 };
 
-// Identity of a translation within one glossary entry: the English term plus its source.
-// The same term translated from a different sutra or volume is a separate translation, not
-// a revision of the existing one.
-export function translationKey(t: MergeableTranslation): string {
-  return [t.glossary, t.sutraName, t.volume].map((field) => (field ?? '').trim().toLowerCase()).join('␟');
-}
-
-// Compares only what the file can carry — updatedAt/updatedBy always differ on re-import
-// and would make every unchanged row look like an edit.
-function sameContent(a: MergeableTranslation, b: MergeableTranslation): boolean {
-  const norm = (v?: string | null) => (v ?? '').trim();
-  return (
-    norm(a.originSutraText) === norm(b.originSutraText) &&
-    norm(a.targetSutraText) === norm(b.targetSutraText) &&
-    norm(a.author) === norm(b.author)
-  );
-}
-
-// Merges incoming translations into the stored ones, keyed by translationKey.
+// Identity of a translation: everything the file can carry about it. Two translations match
+// only when the term, the source, the volume, both passages and the author are all the same.
+// Anything less would merge separate attestations — several passages from one volume can use
+// the same English term — and merging them would destroy the record of one of them.
 //
-// Stored order is preserved so entries don't reshuffle on every import; matched keys are
-// replaced in place (incoming wins, so corrections still apply) and unmatched incoming
-// translations are appended. Duplicate keys on either side collapse to one, which makes a
-// repeated import of the same file idempotent.
+// updatedAt/updatedBy are excluded because they always differ on re-import and would make
+// every unchanged row look like a new one.
+export function translationKey(t: MergeableTranslation): string {
+  return [t.glossary, t.sutraName, t.volume, t.originSutraText, t.targetSutraText, t.author]
+    .map((field) => (field ?? '').trim().toLowerCase())
+    .join('␟');
+}
+
+// Adds incoming translations to the stored ones.
+//
+// Stored order is preserved so entries don't reshuffle on every import. A stored translation
+// the file repeats exactly is kept as it is; everything else in the file is appended. Rows
+// identical in every field collapse to one, which is what makes a repeated import of the same
+// file idempotent — and is the only case in which two translations ever become one.
+//
+// Note that a corrected translation arrives as a new one: with no per-translation id there is
+// no way to tell "this passage, fixed" from "another passage", and guessing wrong would erase
+// an attestation. Superseded translations are removed by hand in the glossary edit form.
 export function mergeTranslationsWithStatus<T extends MergeableTranslation>(
   existing: readonly T[] | null | undefined,
   incoming: readonly T[] | null | undefined,
@@ -66,15 +73,7 @@ export function mergeTranslationsWithStatus<T extends MergeableTranslation>(
     const key = translationKey(stored);
     if (seen.has(key)) continue;
     seen.add(key);
-
-    const replacement = incomingByKey.get(key);
-    if (!replacement) {
-      merged.push({ translation: stored, status: 'kept' });
-    } else if (sameContent(stored, replacement)) {
-      merged.push({ translation: replacement, status: 'kept' });
-    } else {
-      merged.push({ translation: replacement, status: 'updated' });
-    }
+    merged.push({ translation: stored, status: 'kept' });
   }
 
   for (const [key, translation] of incomingByKey) {

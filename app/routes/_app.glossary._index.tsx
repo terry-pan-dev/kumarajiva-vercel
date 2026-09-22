@@ -5,6 +5,7 @@ import { ClientOnly } from 'remix-utils/client-only';
 import { ZodError } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { GlossaryList } from '~/components/GlossaryList';
 import { Button, Input } from '~/components/ui';
@@ -17,7 +18,13 @@ import {
   PaginationEllipsis,
 } from '~/components/ui/pagination';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import { readGlossaries, updateGlossarySubscribers, updateGlossaryTranslations } from '~/services';
+import {
+  readGlossaries,
+  readGlossariesByIds,
+  trashGlossaryById,
+  updateGlossarySubscribers,
+  updateGlossaryTranslations,
+} from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
 import {
   glossaryEditFormSchema,
@@ -55,8 +62,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
+  const ability = defineAbilityFor(user);
   const formData = Object.fromEntries(await request.formData());
   const kind = formData.kind;
+
+  // Posted by the admin-only trash button on GlossaryDetail. The hidden button is cosmetic;
+  // this check is what holds.
+  if (formData.intent === 'delete-glossary') {
+    if (ability.cannot('Delete', 'Glossary')) {
+      return json({ success: false, error: 'Not allowed.' }, { status: 403 });
+    }
+    const deletion = await trashGlossaryById(formData.glossaryId as string, user.id);
+    if (!deletion) {
+      return json({ success: false, error: 'Glossary not found.' }, { status: 404 });
+    }
+    return json({
+      success: true,
+      message: `Moved “${deletion.term}” to the trash.`,
+    });
+  }
   const bookmark = formData.bookmark;
   const glossaryId = formData.glossaryId as string;
   if (bookmark) {
@@ -67,9 +91,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
+  // Edit and insert mirror the <Can> gates on the buttons in GlossaryDetail. Those only hide
+  // the buttons; without these checks any signed-in user could POST here directly.
   if (kind === 'edit') {
+    if (ability.cannot('Update', 'Glossary')) {
+      return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
+    }
     const data = JSON.parse(formData.data as string);
     const validatedData = validatePayloadOrThrow({ schema: glossaryEditFormSchema, formData: data });
+    // The edit form sends the whole translations array, so a removal is just a shorter array.
+    // Removing translations is admin-only; everyone else may only edit the ones that exist.
+    if (ability.cannot('Delete', 'Glossary')) {
+      const [existing] = await readGlossariesByIds([validatedData.id]);
+      if (validatedData.translations.length < (existing?.translations?.length ?? 0)) {
+        return json({ success: false, errors: ['Only admins can remove translations.'] }, { status: 403 });
+      }
+    }
     const validatedDataWithUpdatedBy = validatedData.translations.map((translation) => ({
       ...translation,
       updatedBy: user.id,
@@ -88,6 +125,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   if (kind === 'insert') {
+    if (ability.cannot('Create', 'Glossary')) {
+      return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
+    }
     const data = validatePayloadOrThrow({ schema: glossaryInsertFormSchema, formData });
     const newGlossary = {
       ...data,
@@ -215,7 +255,7 @@ const SearchBar = ({ searchTerm, setSearchTerm }: SearchBarProps) => {
       <div className="flex w-full items-center space-x-2">
         <div className="relative flex-1">
           {isLoading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="absolute top-1/2 right-3 -translate-y-1/2">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
             </div>
           )}
@@ -276,7 +316,7 @@ const PaginationControls = () => {
           <PaginationContent className="h-10">
             <PaginationItem>
               {currentPage === 1 ? (
-                <span className="pointer-events-none select-none opacity-50">
+                <span className="pointer-events-none opacity-50 select-none">
                   <PaginationPrevious to={'#'}>Previous</PaginationPrevious>
                 </span>
               ) : (
@@ -286,11 +326,11 @@ const PaginationControls = () => {
             {pages.map((p, idx) => (
               <PaginationItem key={idx}>
                 {p === 'ellipsis' ? (
-                  <span className="flex items-center justify-center rounded py-1 text-muted-foreground">
+                  <span className="text-muted-foreground flex items-center justify-center rounded py-1">
                     <PaginationEllipsis />
                   </span>
                 ) : p === currentPage ? (
-                  <span className="rounded border px-2 py-1 text-muted-foreground">{p}</span>
+                  <span className="text-muted-foreground rounded border px-2 py-1">{p}</span>
                 ) : (
                   <Link className="mx-1" to={`?page=${p}`}>
                     {p}
@@ -300,7 +340,7 @@ const PaginationControls = () => {
             ))}
             <PaginationItem>
               {currentPage >= totalPages ? (
-                <span className="pointer-events-none select-none opacity-50">
+                <span className="pointer-events-none opacity-50 select-none">
                   <PaginationNext to={'#'}>Next</PaginationNext>
                 </span>
               ) : (

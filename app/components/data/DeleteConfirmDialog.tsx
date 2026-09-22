@@ -21,6 +21,8 @@ import {
 //     (see DeleteEntityButton).
 //   - Page-level deletes use the default navigation `Form` and react to
 //     `actionData` in the route.
+//   - Deletes the caller runs itself — a job it drives in chunks so it can
+//     report progress — pass `onConfirm` instead, and no form is rendered.
 // Both the navigation `Form` and a fetcher's `Form` satisfy `ElementType`.
 type DeleteForm = ElementType;
 
@@ -33,16 +35,24 @@ export function DeleteConfirmDialog({
   fields,
   submitting,
   FormComponent = RemixForm,
+  action,
+  onConfirm,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description: ReactNode;
-  intent: string;
+  // Required unless `onConfirm` takes over the submit.
+  intent?: string;
   fields?: Record<string, string>;
   submitting: boolean;
   FormComponent?: DeleteForm;
+  // Defaults to the enclosing route. Set it when the dialog can render under a route whose
+  // action doesn't handle `intent` — e.g. a component shared across pages.
+  action?: string;
+  // Called instead of posting a form. The caller owns the request and closing the dialog.
+  onConfirm?: () => void;
   children?: ReactNode;
 }) {
   return (
@@ -59,16 +69,22 @@ export function DeleteConfirmDialog({
               Cancel
             </Button>
           </DialogClose>
-          <FormComponent method="post">
-            <input type="hidden" name="intent" value={intent} />
-            {fields &&
-              Object.entries(fields).map(([name, value]) => (
-                <input key={name} name={name} type="hidden" value={value} />
-              ))}
-            <Button type="submit" variant="destructive" disabled={submitting}>
+          {onConfirm ? (
+            <Button type="button" onClick={onConfirm} variant="destructive" disabled={submitting}>
               {submitting ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Delete'}
             </Button>
-          </FormComponent>
+          ) : (
+            <FormComponent method="post" action={action}>
+              <input type="hidden" name="intent" value={intent} />
+              {fields &&
+                Object.entries(fields).map(([name, value]) => (
+                  <input key={name} name={name} type="hidden" value={value} />
+                ))}
+              <Button type="submit" variant="destructive" disabled={submitting}>
+                {submitting ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Delete'}
+              </Button>
+            </FormComponent>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

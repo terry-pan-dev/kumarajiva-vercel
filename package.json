@@ -25,6 +25,7 @@
     "db:migrate:data:01:prod": "dotenv -e .env.prod -- tsx drizzle/migrations/data/01-works-and-documents.ts",
     "db:migrate:data:02:prod": "dotenv -e .env.prod -- tsx drizzle/migrations/data/02-contributors.ts",
     "db:migrate:data:07:prod": "dotenv -e .env.prod -- tsx drizzle/migrations/data/07-sections-and-projects.ts",
+    "glossary:fixtures": "dotenv -e .env -- tsx functional/seed-glossary-fixtures.ts",
     "read-glossary": "tsx scripts/read-glossary.ts",
     "read-paragraph": "tsx scripts/read-paragraph.ts",
     "test": "vitest",

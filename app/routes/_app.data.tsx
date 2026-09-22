@@ -10,7 +10,8 @@ import { Toaster } from '~/components/ui/toaster';
 import { readUsers } from '~/services';
 
 function getDataSubtitle(pathname: string): string {
-  if (pathname.includes('/glossary')) return 'Glossary';
+  if (pathname.includes('/glossary/inspector')) return 'Glossary Inspector';
+  if (pathname.includes('/glossary')) return 'Glossary Import';
   if (pathname.includes('/translation')) return 'Translation';
   if (pathname.includes('/inspector')) return 'Document Inspector';
   if (pathname.includes('/paragraphs')) return 'Paragraphs';
