@@ -28,6 +28,9 @@ import { parseContributors } from '~/utils/contributors';
 export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
+    return json({ success: false, error: 'You are not authorised to change works or documents.' }, { status: 403 });
+  }
 
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
@@ -110,7 +113,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   // ── Work: delete ──
   if (intent === 'delete-work') {
-    if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
+    if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
       return json({ success: false, error: 'You are not authorised to delete works.' }, { status: 403 });
     }
     const workId = formData.get('workId') as string;
@@ -124,7 +127,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   // ── Document: delete ──
   if (intent === 'delete-document') {
-    if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
+    if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
       return json({ success: false, error: 'You are not authorised to delete documents.' }, { status: 403 });
     }
     const documentId = formData.get('documentId') as string;
@@ -144,10 +147,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
+    throw redirect('/data');
+  }
 
   try {
     const works = await getWorks();
-    return json({ success: true, works, canDelete: defineAbilityFor(user).can('Delete', 'DataManagement') });
+    return json({ success: true, works, canDelete: defineAbilityFor(user).can('Administrate', 'TranslationData') });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');

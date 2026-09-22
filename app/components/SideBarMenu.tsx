@@ -70,9 +70,11 @@ export function SideBarMenu({
   // Which entries appear is decided by ability.ts, not by role checks spelled out here,
   // so the menu can't drift from what the routes actually allow.
   const ability = useAbility(AbilityContext);
-  const canReadAdmin = ability.can('Read', 'Administration');
-  const canManageData = ability.can('Read', 'DataManagement');
-  const canUseInspector = ability.can('Read', 'Inspector');
+  const canAdministrateUsers = ability.can('Administrate', 'Users');
+  const canMaintainGlossaryData = ability.can('Maintain', 'GlossaryData');
+  const canMaintainTranslationData = ability.can('Maintain', 'TranslationData');
+  const canInspectGlossary = ability.can('Administrate', 'GlossaryData');
+  const canInspectTranslation = ability.can('Administrate', 'TranslationData');
 
   useEffect(() => {
     if (pathname.startsWith('/data')) {
@@ -125,7 +127,7 @@ export function SideBarMenu({
 
         <nav className="flex w-full flex-1 flex-col gap-1 border-y border-yellow-600 py-4">
           {menuItems
-            .filter((item) => item.href !== '/admin' || canReadAdmin)
+            .filter((item) => item.href !== '/admin' || canAdministrateUsers)
             .map((item) => (
               <Tooltip key={item.href} delayDuration={500}>
                 <TooltipTrigger asChild>
@@ -155,7 +157,7 @@ export function SideBarMenu({
               </Tooltip>
             ))}
 
-          {canManageData && (
+          {(canMaintainGlossaryData || canMaintainTranslationData) && (
             <div>
               <Tooltip delayDuration={500}>
                 <TooltipTrigger asChild>
@@ -197,82 +199,90 @@ export function SideBarMenu({
 
               {isOpen && dataMenuOpen && (
                 <div className="flex flex-col gap-0.5 pb-1">
-                  <NavLink
-                    end
-                    to="/data/glossary"
-                    className={({ isActive }) =>
-                      cn(
-                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
-                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
-                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
-                      )
-                    }
-                  >
-                    Glossary Import
-                  </NavLink>
-                  {canUseInspector && (
-                    <NavLink
-                      to="/data/glossary/inspector"
-                      className={({ isActive }) =>
-                        cn(
-                          'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
-                          'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
-                          isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
-                        )
-                      }
-                    >
-                      Glossary Inspector
-                    </NavLink>
+                  {canMaintainGlossaryData && (
+                    <>
+                      <NavLink
+                        end
+                        to="/data/glossary"
+                        className={({ isActive }) =>
+                          cn(
+                            'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                            'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                            isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                          )
+                        }
+                      >
+                        Glossary Import
+                      </NavLink>
+                      {canInspectGlossary && (
+                        <NavLink
+                          to="/data/glossary/inspector"
+                          className={({ isActive }) =>
+                            cn(
+                              'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                              'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                              isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                            )
+                          }
+                        >
+                          Glossary Inspector
+                        </NavLink>
+                      )}
+                    </>
                   )}
-                  <NavLink
-                    to="/data/translation"
-                    className={({ isActive }) =>
-                      cn(
-                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
-                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
-                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
-                      )
-                    }
-                  >
-                    Translation Projects
-                  </NavLink>
-                  <NavLink
-                    to="/data/documents"
-                    className={({ isActive }) =>
-                      cn(
-                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
-                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
-                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
-                      )
-                    }
-                  >
-                    Works and Documents
-                  </NavLink>
-                  <NavLink
-                    to="/data/paragraphs"
-                    className={({ isActive }) =>
-                      cn(
-                        'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
-                        'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
-                        isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
-                      )
-                    }
-                  >
-                    Paragraphs
-                  </NavLink>
-                  {canUseInspector && (
-                    <NavLink
-                      to="/data/inspector"
-                      className={({ isActive }) =>
-                        cn(
-                          'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
-                          'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
-                          isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
-                        )
-                      }
-                    >
-                      Document Inspector
-                    </NavLink>
+                  {canMaintainTranslationData && (
+                    <>
+                      <NavLink
+                        to="/data/translation"
+                        className={({ isActive }) =>
+                          cn(
+                            'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                            'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                            isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                          )
+                        }
+                      >
+                        Translation Projects
+                      </NavLink>
+                      <NavLink
+                        to="/data/documents"
+                        className={({ isActive }) =>
+                          cn(
+                            'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                            'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                            isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                          )
+                        }
+                      >
+                        Works and Documents
+                      </NavLink>
+                      <NavLink
+                        to="/data/paragraphs"
+                        className={({ isActive }) =>
+                          cn(
+                            'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                            'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                            isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                          )
+                        }
+                      >
+                        Paragraphs
+                      </NavLink>
+                      {canInspectTranslation && (
+                        <NavLink
+                          to="/data/inspector"
+                          className={({ isActive }) =>
+                            cn(
+                              'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                              'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                              isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                            )
+                          }
+                        >
+                          Document Inspector
+                        </NavLink>
+                      )}
+                    </>
                   )}
                 </div>
               )}

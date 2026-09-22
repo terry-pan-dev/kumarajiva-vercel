@@ -22,6 +22,9 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
+  if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
+    throw redirect('/data');
+  }
   const { rollId } = params;
   const [rows, section] = await Promise.all([readParagraphsForDebug(rollId as string), getSection(rollId as string)]);
 
@@ -29,7 +32,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     ? { documentTitle: section.document?.title ?? '', sectionTitle: section.title ?? null }
     : null;
 
-  const canDelete = defineAbilityFor(user).can('Delete', 'DataManagement');
+  const canDelete = defineAbilityFor(user).can('Administrate', 'TranslationData');
   return json({ success: true, rows, sectionInfo, rollId: rollId as string, canDelete });
 }
 
@@ -38,7 +41,7 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
-  if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
+  if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
     return json({ success: false, message: 'You are not authorised to delete paragraphs.' }, { status: 403 });
   }
 

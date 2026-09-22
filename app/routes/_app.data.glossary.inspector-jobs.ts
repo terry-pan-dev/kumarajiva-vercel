@@ -11,7 +11,7 @@
 // revalidates once, deliberately, when a job that changed the counts finishes.
 //
 // Nothing here is new authority: the first three operations were previously intents on the
-// inspector's own action, with the same ability checks. The two trash operations sit beside
+// inspector's own action. The two trash operations sit beside
 // them for the same reason — a bulk restore or purge is a loop of chunks with a bar.
 import { json, redirect, type ActionFunctionArgs } from '@vercel/remix';
 
@@ -47,20 +47,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return redirect('/login');
   }
   const ability = defineAbilityFor(user);
-  if (ability.cannot('Read', 'Inspector')) {
-    return json<JobResponse>({ ok: false, message: 'You are not authorised to change search records.' }, 403);
-  }
-
   const formData = await request.formData();
   const intent = formData.get('intent');
 
-  // Deleting index records or trashed entries is destructive and admin-only, and restoring
-  // undoes a delete, so it asks for the same; re-indexing only rewrites what the table already
-  // says, so it asks for the glossary write ability instead. Both are admin-only
-  // today, and this route is admin-gated regardless — naming each states what the action needs
-  // rather than what a role happens to be.
-  const needed = intent === 'reindex-page' ? (['Update', 'Glossary'] as const) : (['Delete', 'Glossary'] as const);
-  if (ability.cannot(needed[0], needed[1])) {
+  // Each intent asks for the level of what it does. Re-indexing only rewrites what the table
+  // already says, and restoring undoes a soft delete, so both need Maintain. Scanning the whole
+  // index, deleting index records and purging the trash are Administrate — the last two cannot
+  // be undone.
+  const needed = intent === 'reindex-page' || intent === 'restore-trash' ? 'Maintain' : 'Administrate';
+  if (ability.cannot(needed, 'GlossaryData')) {
     return json<JobResponse>({ ok: false, message: 'You are not authorised to change search records.' }, 403);
   }
 

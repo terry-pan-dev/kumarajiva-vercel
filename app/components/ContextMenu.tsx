@@ -67,7 +67,7 @@ export default function ContextMenuWrapper({ children }: PropsWithChildren) {
           Search Glossary
           <ContextMenuShortcut>⌘K</ContextMenuShortcut>
         </ContextMenuItem>
-        <Can I="Create" this="Comment">
+        <Can I="Update" this="Translation">
           <ContextMenuItem
             disabled={!selectedText}
             onClick={handleAddComment}

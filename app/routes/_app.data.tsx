@@ -29,9 +29,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
-  // Guards every /data/* route in one place, and makes the sidebar hiding this menu meaningful
-  // rather than cosmetic. Individual routes still gate their own specific actions on top.
-  if (defineAbilityFor(user).cannot('Read', 'DataManagement')) {
+  // Keeps every /data/* page away from anyone who can maintain neither kind of data, which makes
+  // the sidebar hiding this menu meaningful rather than cosmetic. A parent loader does not guard
+  // its children's actions, and each page belongs to one kind of data, so every route still gates
+  // its own loader and action on the subject it works on.
+  const ability = defineAbilityFor(user);
+  if (ability.cannot('Maintain', 'GlossaryData') && ability.cannot('Maintain', 'TranslationData')) {
     throw redirect('/dashboard');
   }
   const allUsers = await readUsers();

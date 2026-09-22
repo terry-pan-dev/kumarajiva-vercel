@@ -36,6 +36,9 @@ import { parseContributors } from '~/utils/contributors';
 export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
+    return json({ success: false, error: 'You are not authorised to change translation projects.' }, { status: 403 });
+  }
 
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
@@ -193,7 +196,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   // ── Project: delete ──
   if (intent === 'delete-project') {
-    if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
+    if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
       return json({ success: false, error: 'You are not authorised to delete projects.' }, { status: 403 });
     }
     const projectId = formData.get('projectId') as string;
@@ -221,6 +224,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
+    throw redirect('/data');
+  }
 
   try {
     const [projects, works] = await Promise.all([getProjects(), getWorks()]);
@@ -237,7 +243,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       projects,
       works,
       sectionIdsWithData,
-      canDelete: defineAbilityFor(user).can('Delete', 'DataManagement'),
+      canDelete: defineAbilityFor(user).can('Administrate', 'TranslationData'),
     });
   } catch (error) {
     console.error(error);

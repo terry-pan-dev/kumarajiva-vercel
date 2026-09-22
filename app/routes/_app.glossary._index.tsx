@@ -66,10 +66,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = Object.fromEntries(await request.formData());
   const kind = formData.kind;
 
-  // Posted by the admin-only trash button on GlossaryDetail. The hidden button is cosmetic;
-  // this check is what holds.
+  // Posted by the trash button on GlossaryDetail. A soft delete can be undone from the trash, so
+  // it asks for Maintain. The hidden button is cosmetic; this check is what holds.
   if (formData.intent === 'delete-glossary') {
-    if (ability.cannot('Delete', 'Glossary')) {
+    if (ability.cannot('Maintain', 'Glossary')) {
       return json({ success: false, error: 'Not allowed.' }, { status: 403 });
     }
     const deletion = await trashGlossaryById(formData.glossaryId as string, user.id);
@@ -100,11 +100,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const data = JSON.parse(formData.data as string);
     const validatedData = validatePayloadOrThrow({ schema: glossaryEditFormSchema, formData: data });
     // The edit form sends the whole translations array, so a removal is just a shorter array.
-    // Removing translations is admin-only; everyone else may only edit the ones that exist.
-    if (ability.cannot('Delete', 'Glossary')) {
+    // Removing translations needs Maintain; Update may only edit the ones that exist.
+    if (ability.cannot('Maintain', 'Glossary')) {
       const [existing] = await readGlossariesByIds([validatedData.id]);
       if (validatedData.translations.length < (existing?.translations?.length ?? 0)) {
-        return json({ success: false, errors: ['Only admins can remove translations.'] }, { status: 403 });
+        return json({ success: false, errors: ['You are not allowed to remove translations.'] }, { status: 403 });
       }
     }
     const validatedDataWithUpdatedBy = validatedData.translations.map((translation) => ({
@@ -125,7 +125,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   if (kind === 'insert') {
-    if (ability.cannot('Create', 'Glossary')) {
+    if (ability.cannot('Maintain', 'Glossary')) {
       return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
     }
     const data = validatePayloadOrThrow({ schema: glossaryInsertFormSchema, formData });
@@ -147,6 +147,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true, kind: 'insert' });
   }
 
+  if (ability.cannot('Maintain', 'Glossary')) {
+    return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
+  }
   try {
     const data = validatePayloadOrThrow({ schema: glossaryFormSchema, formData });
     const newGlossary = {

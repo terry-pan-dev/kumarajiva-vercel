@@ -100,12 +100,12 @@ export default function GlossaryLayout() {
             Glossary
           </div>
           <div className="flex items-center gap-2">
-            <Can I="Download" this="Glossary">
+            <Can I="Maintain" this="GlossaryData">
               <Link reloadDocument to="/glossary/download" download="glossary.xlsx">
                 <Icons.Download className="h-6 w-6 text-slate-800" />
               </Link>
             </Can>
-            <Can I="Update" this="Glossary">
+            <Can I="Maintain" this="Glossary">
               <GlossaryCreateModal />
             </Can>
           </div>
