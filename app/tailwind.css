@@ -33,6 +33,8 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
@@ -119,6 +121,9 @@ body {
     --foreground: hsl(222.2 84% 4.9%);
     --card: hsl(34 37% 93%);
     --card-foreground: hsl(222.2 84% 4.9%);
+    /* Near-white paper for content blocks that sit on a card, e.g. translation paragraphs. */
+    --surface: hsl(45 80% 98%);
+    --surface-foreground: hsl(222.2 84% 4.9%);
     --popover: hsl(0 0% 100%);
     --popover-foreground: hsl(222.2 84% 4.9%);
     --primary: hsl(244 12% 26%);
@@ -148,6 +153,8 @@ body {
     --foreground: hsl(210 40% 98%);
     --card: hsl(222.2 84% 4.9%);
     --card-foreground: hsl(210 40% 98%);
+    --surface: hsl(217.2 32.6% 12%);
+    --surface-foreground: hsl(210 40% 98%);
     --popover: hsl(222.2 84% 4.9%);
     --popover-foreground: hsl(210 40% 98%);
     --primary: hsl(210 40% 98%);

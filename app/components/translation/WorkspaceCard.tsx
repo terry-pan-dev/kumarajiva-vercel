@@ -9,7 +9,7 @@ interface WorkspaceCardProps {
 
 export const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
   return (
-    <div className="bg-card-foreground mt-4 flex flex-col justify-start rounded-xl p-4 shadow-lg">
+    <div className="bg-surface text-surface-foreground mt-4 flex flex-col justify-start rounded-xl p-4 shadow-lg">
       <div className="flex items-center justify-between">
         <div className="text-md font-medium">{title}</div>
         <div className="flex items-center">{buttons}</div>
@@ -20,7 +20,7 @@ export const WorkspaceCard = ({ title, text, buttons }: WorkspaceCardProps) => {
             return <h3 className="text-md font-semibold" {...props} />;
           },
           p(props) {
-            return <p className="text-md text-slate-500" {...props} />;
+            return <p className="text-md text-muted-foreground" {...props} />;
           },
           code(props) {
             return <span className="rounded bg-yellow-200 px-1" {...props} />;
