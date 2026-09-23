@@ -71,7 +71,7 @@ const CommentAvatar = ({
   return (
     <ClientOnly
       fallback={
-        <div className="relative flex h-8 w-8 items-center justify-center rounded-lg border-2 border-white bg-primary text-xs font-medium text-primary-foreground shadow-sm">
+        <div className="bg-primary text-primary-foreground relative flex h-8 w-8 items-center justify-center rounded-lg border-2 border-white text-xs font-medium shadow-sm">
           {userName}
         </div>
       }
@@ -87,10 +87,10 @@ const CommentAvatar = ({
               setIsOpen={setIsOpen}
             />
             {isOpen && (
-              <div className="absolute -left-1 -top-1 h-3 w-3 rounded-full border border-white bg-amber-500"></div>
+              <div className="absolute -top-1 -left-1 h-3 w-3 rounded-full border border-white bg-amber-500"></div>
             )}
             {numOfNewMessages > 0 && (
-              <div className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-red-500 text-xs text-white">
+              <div className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-red-500 text-xs text-white">
                 {numOfNewMessages}
               </div>
             )}
@@ -196,7 +196,7 @@ export const CommentWorkspace = ({
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <button className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-white bg-primary text-xs font-medium text-primary-foreground shadow-sm">
+        <button className="bg-primary text-primary-foreground flex h-8 w-8 items-center justify-center rounded-lg border-2 border-white text-xs font-medium shadow-sm">
           {userName}
         </button>
       </SheetTrigger>
@@ -225,7 +225,7 @@ export const CommentWorkspace = ({
                 return (
                   <div key={index} className={`flex flex-col ${isCurrentUser ? 'items-start' : 'items-end'}`}>
                     <div className={`mb-1 flex items-center gap-2 ${isCurrentUser ? '' : 'flex-row-reverse'}`}>
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg border-2 bg-primary text-xs font-medium text-primary-foreground">
+                      <div className="bg-primary text-primary-foreground flex h-8 w-8 items-center justify-center rounded-lg border-2 text-xs font-medium">
                         {userInitials}
                       </div>
                       <span className="text-xs text-gray-500">
@@ -234,7 +234,7 @@ export const CommentWorkspace = ({
                     </div>
                     <div
                       className={`max-w-[80%] rounded-lg px-3 py-1 ${
-                        isCurrentUser ? 'ml-8 bg-slate-100' : 'mr-8 bg-primary text-primary-foreground'
+                        isCurrentUser ? 'ml-8 bg-slate-100' : 'bg-primary text-primary-foreground mr-8'
                       }`}
                     >
                       {message.text}
@@ -254,7 +254,7 @@ export const CommentWorkspace = ({
               onKeyDown={handleKeyDown}
               placeholder="Type your message... (Press Enter to send)"
               onChange={(e) => setMessage(e.target.value.slice(0, maxLength))}
-              className="min-h-[90px] w-full resize-none rounded-lg border border-gray-200 px-4 py-3 text-md"
+              className="text-md min-h-[90px] w-full resize-none rounded-lg border border-gray-200 px-4 py-3"
             />
           </div>
 
@@ -265,7 +265,7 @@ export const CommentWorkspace = ({
                   id="resolved-switch"
                   checked={Boolean(isResolved)}
                   onCheckedChange={handleResolvedChange}
-                  className="bg-slate-200 data-[state=checked]:bg-primary"
+                  className="data-[state=checked]:bg-primary bg-slate-200"
                 />
               </div>
               <span className="text-sm font-medium">Mark as resolved</span>
@@ -297,21 +297,19 @@ export const Paragraph = ({
       className={`relative h-full w-full rounded-xl ${
         isSelected
           ? 'bg-gradient-to-r from-yellow-600 to-slate-700 p-2 shadow-xl'
-          : `${isOrigin ? 'bg-card' : 'bg-card-foreground'} px-6 py-4 shadow-lg`
+          : `${isOrigin ? 'bg-card' : 'bg-surface'} px-6 py-4 shadow-lg`
       } ${isUpdate ? 'animate-[pulse_1s_ease-in-out_1]' : ''}`}
     >
       {user.role !== 'reader' && comments.length > 0 && (
-        <div className="absolute right-0 top-2 z-10 flex translate-x-4 flex-col gap-1">
+        <div className="absolute top-2 right-0 z-10 flex translate-x-4 flex-col gap-1">
           {comments.map((comment) => (
             <CommentAvatar users={users} key={comment.id} comment={comment} />
           ))}
         </div>
       )}
-      <div
-        className={`w-full ${isSelected ? `${isOrigin ? 'bg-card-foreground' : 'bg-card-foreground'} h-full rounded-xl px-6 py-4` : ''}`}
-      >
-        {title && <div className="text-md font-medium text-black">{title}</div>}
-        <p className="text-md text-slate-500">{text}</p>
+      <div className={`w-full ${isSelected ? 'bg-surface h-full rounded-xl px-6 py-4' : ''}`}>
+        {title && <div className="text-md text-surface-foreground font-medium">{title}</div>}
+        <p className="text-md text-muted-foreground">{text}</p>
       </div>
     </div>
   );
