@@ -18,6 +18,7 @@ export const AdminManagement = ({ users, teams }: { users: ReadUser[]; teams: Re
       .with('leader', () => 'bg-yellow-500')
       .with('editor', () => 'bg-purple-500')
       .with('assistant', () => 'bg-orange-500')
+      .with('tech', () => 'bg-cyan-500')
       .exhaustive();
   }, []);
 
@@ -35,7 +36,7 @@ export const AdminManagement = ({ users, teams }: { users: ReadUser[]; teams: Re
         <Accordion collapsible type="single" className="w-full">
           {users.map((user) => (
             <AccordionItem key={user.id} value={user.id}>
-              <AccordionTrigger className="flex bg-primary px-2 py-2 text-md text-white lg:text-lg">
+              <AccordionTrigger className="bg-primary text-md flex px-2 py-2 text-white lg:text-lg">
                 <div className="flex items-center gap-2">
                   <span>{user.username}</span>
                   <Badge className={getBadgeVariant(user.role as UserRole)}>{user.role}</Badge>

@@ -6,20 +6,21 @@
 // Comments, references and history still hang off the legacy tables (viewable
 // via the legacy /data/paragraphs debug page) and return here once they
 // migrate.
-import { useActionData, useLoaderData, useOutletContext, useRouteError } from '@remix-run/react';
+import { useAbility } from '@casl/react';
+import { useActionData, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { motion } from 'framer-motion';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { ZodError } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
+import { AbilityContext, defineAbilityFor } from '~/authorisation';
 import ContextMenuWrapper from '~/components/ContextMenu';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Paragraph } from '~/components/Paragraph';
 import { DragPanel, LeftPanel, RightPanel } from '~/components/translation/panels';
 import { Workspace } from '~/components/translation/Workspace';
 import { Label, RadioGroup, RadioGroupItem, ResizableHandle, ScrollArea } from '~/components/ui';
-import { type ReadUser } from '~/drizzle/tables/user';
 import { useScreenSize } from '~/lib/hooks/useScreenSizeHook';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { getProjectBySourceDocumentId } from '~/services/project.service';
@@ -70,11 +71,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
+  const ability = defineAbilityFor(user);
   const formData = Object.fromEntries(await request.formData());
   const kind = formData['kind'];
 
   // Handle updating origin paragraph content
   if (kind === 'updateOrigin') {
+    if (ability.cannot('Maintain', 'Translation')) {
+      return json({ success: false, message: 'You are not allowed to edit origin text.' }, { status: 403 });
+    }
     try {
       const paragraphId = formData['paragraphId'] as string;
       const content = formData['originText'] as string;
@@ -106,6 +111,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json(
       { success: false, errors: [{ message: 'Comments are not yet available for the new data model.' }] },
       { status: 400 },
+    );
+  }
+
+  // Everything below writes a translation. The editing controls are hidden from anyone without
+  // Update, but only this check stops a direct POST.
+  if (ability.cannot('Update', 'Translation')) {
+    return json(
+      { success: false, errors: [{ message: 'You are not allowed to edit translations.' }] },
+      { status: 403 },
     );
   }
 
@@ -164,7 +178,7 @@ export default function TranslationSection() {
   const divRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLLabelElement>(null);
 
-  const { user } = useOutletContext<{ user: ReadUser }>();
+  const canEdit = useAbility(AbilityContext).can('Update', 'Translation');
 
   const [selectedParagraphIndex, setSelectedParagraphIndex] = useState<string | null>(null);
   const isSmallScreen = useScreenSize();
@@ -208,7 +222,7 @@ export default function TranslationSection() {
               : ''
           }`}
         >
-          <div onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}>
+          <div onDoubleClick={() => canEdit && setSelectedParagraphIndex(paragraph.id)}>
             <ContextMenuWrapper>
               <div className="relative">
                 <span className="absolute top-4 left-1.5 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
@@ -219,7 +233,7 @@ export default function TranslationSection() {
           <div
             className="text-md flex h-auto font-normal"
             ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
-            onDoubleClick={() => user.role !== 'reader' && setSelectedParagraphIndex(paragraph.id)}
+            onDoubleClick={() => canEdit && setSelectedParagraphIndex(paragraph.id)}
           >
             <ContextMenuWrapper>
               <div className="relative h-full">
@@ -246,8 +260,8 @@ export default function TranslationSection() {
         >
           <RadioGroupItem
             id={paragraph.id}
+            disabled={!canEdit}
             value={paragraph.id}
-            disabled={user.role === 'reader'}
             className={`h-3 w-3 lg:h-4 lg:w-4 ${selectedParagraphIndex === paragraph.id ? 'bg-primary' : ''}`}
           />
           <Label

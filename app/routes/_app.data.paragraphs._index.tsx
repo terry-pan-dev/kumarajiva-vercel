@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { getProjects } from '~/services/project.service';
 
@@ -11,6 +12,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
+  }
+  if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
+    throw redirect('/data');
   }
   try {
     const projects = await getProjects();

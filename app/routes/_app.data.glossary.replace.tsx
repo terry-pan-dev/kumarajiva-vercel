@@ -34,9 +34,9 @@ type ActionResponse =
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
-  // Replacing the glossary is admin-only. The index page hides the link, but that's cosmetic —
+  // Replacing the glossary cannot be undone, so it needs Administrate. The index page hides the link, but that's cosmetic —
   // this check and the one in the action are what actually hold.
-  if (defineAbilityFor(user).cannot('Delete', 'Glossary')) throw redirect('/data/glossary');
+  if (defineAbilityFor(user).cannot('Administrate', 'GlossaryData')) throw redirect('/data/glossary');
 
   return json({ userId: user.id });
 }
@@ -47,7 +47,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
   // The gate that matters: a non-admin POSTing here directly must not reach deleteAllGlossaries.
-  if (defineAbilityFor(user).cannot('Delete', 'Glossary')) {
+  if (defineAbilityFor(user).cannot('Administrate', 'GlossaryData')) {
     return json<ActionResponse>({ intent: 'error', message: 'Not allowed.' }, { status: 403 });
   }
 

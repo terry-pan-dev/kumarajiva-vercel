@@ -63,8 +63,8 @@ type ActionResponse =
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
-  // Import creates entries as well as updating them, so Create is the gate.
-  if (defineAbilityFor(user).cannot('Create', 'Glossary')) throw redirect('/data/glossary');
+  // Import only adds entries or merges into them, so Maintain is the gate.
+  if (defineAbilityFor(user).cannot('Maintain', 'GlossaryData')) throw redirect('/data/glossary');
 
   return json({ userId: user.id });
 }
@@ -75,7 +75,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
   // Covers both intents — fetch-existing reads glossary rows, import-chunk writes them.
-  if (defineAbilityFor(user).cannot('Create', 'Glossary')) {
+  if (defineAbilityFor(user).cannot('Maintain', 'GlossaryData')) {
     return json<ActionResponse>({ intent: 'error', message: 'Not allowed.' }, { status: 403 });
   }
 

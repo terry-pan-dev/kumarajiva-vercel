@@ -19,6 +19,7 @@ import { getProjectBySourceDocumentId, getProjectReferences } from '~/services/p
 import { getDocument, getSection } from '~/services/text.service';
 
 import { assertAuthUser } from '../auth.server';
+import { defineAbilityFor } from '../authorisation';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,9 @@ type ActionResponse =
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
+    throw redirect('/data');
+  }
 
   const url = new URL(request.url);
   const originDocumentId = url.searchParams.get('originDocumentId');
@@ -100,6 +104,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
+    return json<ActionResponse>(
+      { intent: 'error', result: { success: false, message: 'You are not authorised to import translations.' } },
+      { status: 403 },
+    );
+  }
 
   const formData = await request.formData();
   const intent = formData.get('intent') as string;

@@ -267,7 +267,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
                   <GlossaryEditForm id={glossary.id} />
                 </FormModal>
               </Can>
-              <Can I="Create" this="Glossary">
+              <Can I="Maintain" this="Glossary">
                 <FormModal
                   kind="insert"
                   title="Add New Translation"
@@ -282,7 +282,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
                   <GlossaryInsertForm id={glossary.id} />
                 </FormModal>
               </Can>
-              <Can I="Delete" this="Glossary">
+              <Can I="Maintain" this="Glossary">
                 <span className="flex h-10 w-10 items-center justify-center">
                   <DeleteEntityButton
                     size={24}
@@ -405,7 +405,7 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
             {/* @ts-ignore */}
             <Divider className="flex-1">{field.language.toUpperCase()}</Divider>
             {/* Removal takes effect on Save, like every other edit in this form. */}
-            <Can I="Delete" this="Glossary">
+            <Can I="Maintain" this="Glossary">
               <Button
                 size="icon"
                 type="button"

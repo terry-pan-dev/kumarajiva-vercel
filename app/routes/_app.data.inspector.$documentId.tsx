@@ -44,10 +44,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
-  // The raw-data inspector is admin-only, even though managers can otherwise
-  // read Data Management. The sidebar hides the link, but this is the gate that
-  // actually holds.
-  if (defineAbilityFor(user).cannot('Read', 'Inspector')) {
+  // The raw-data inspector needs Administrate, even though Maintain is enough for
+  // the rest of Data Management. The sidebar hides the link, but this is the gate
+  // that actually holds.
+  if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
     throw redirect('/data');
   }
   const { documentId } = params;
@@ -65,7 +65,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     compareDocument ? readParagraphsForDebugByDocumentId(compareDocument.id) : Promise.resolve([]),
   ]);
 
-  const canDelete = defineAbilityFor(user).can('Delete', 'DataManagement');
+  const canDelete = defineAbilityFor(user).can('Administrate', 'TranslationData');
   return json({
     success: true,
     document: {
@@ -89,7 +89,7 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
-  if (defineAbilityFor(user).cannot('Delete', 'DataManagement')) {
+  if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
     return json({ success: false, message: 'You are not authorised to delete data.' }, { status: 403 });
   }
 

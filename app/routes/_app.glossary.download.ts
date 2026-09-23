@@ -12,9 +12,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
-  // The <Can I="Download" this="Glossary"> wrapper on the icon only hides the link; this is
+  // The <Can I="Maintain" this="GlossaryData"> wrapper on the icon only hides the link; this is
   // what stops a direct request for the full export.
-  if (defineAbilityFor(user).cannot('Download', 'Glossary')) {
+  if (defineAbilityFor(user).cannot('Maintain', 'GlossaryData')) {
     throw redirect('/glossary');
   }
   const format = parseExportFormat(new URL(request.url).searchParams.get('format'));

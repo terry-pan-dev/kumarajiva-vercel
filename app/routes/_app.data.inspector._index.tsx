@@ -19,9 +19,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
-  // The raw-data inspector is admin-only; the sidebar hides the link, but this
+  // The raw-data inspector needs Administrate; the sidebar hides the link, but this
   // is the gate that actually holds.
-  if (defineAbilityFor(user).cannot('Read', 'Inspector')) {
+  if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
     throw redirect('/data');
   }
   try {

@@ -12,7 +12,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
-  if (defineAbilityFor(user).cannot('Download', 'Glossary')) {
+  if (defineAbilityFor(user).cannot('Maintain', 'GlossaryData')) {
     throw redirect('/data/glossary');
   }
   const format = parseExportFormat(new URL(request.url).searchParams.get('format'));

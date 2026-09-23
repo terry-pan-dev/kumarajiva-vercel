@@ -1,6 +1,6 @@
 // The raw arrays (Source of Truth)
 export const LANG_VALUES = ['chinese', 'english', 'sanskrit', 'indonesian'] as const;
-export const ROLE_VALUES = ['admin', 'leader', 'editor', 'reader', 'assistant', 'manager'] as const;
+export const ROLE_VALUES = ['admin', 'leader', 'editor', 'reader', 'assistant', 'manager', 'tech'] as const;
 export const NOTIFICATION_VALUES = ['info', 'error', 'success', 'warning'] as const;
 export const CONTRIBUTOR_ROLE_VALUES = ['author', 'translator', 'commentator', 'editor'] as const;
 

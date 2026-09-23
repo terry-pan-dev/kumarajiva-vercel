@@ -111,7 +111,7 @@ export const Workspace = ({ paragraph }: { paragraph: WorkspaceParagraph }) => {
             ) : (
               <>
                 <Paragraph id={id} text={origin} title="Origin" />
-                <Can I="Update" this="OriginText">
+                <Can I="Maintain" this="Translation">
                   <Button
                     size="icon"
                     variant="ghost"
@@ -129,7 +129,7 @@ export const Workspace = ({ paragraph }: { paragraph: WorkspaceParagraph }) => {
           <div className="mt-auto grid w-full gap-2">
             <input type="hidden" name="paragraphId" value={targetId || id} />
             <input name="kind" type="hidden" value={targetId ? 'update' : 'insert'} />
-            <Can I="Read" this="Paragraph">
+            <Can I="Update" this="Translation">
               <Textarea
                 name="translation"
                 value={translation}

@@ -98,9 +98,9 @@ export default function DataGlossary() {
   // Cosmetic only — each route gates itself server-side. These just avoid offering a card
   // that would redirect on click.
   const ability = useAbility(AbilityContext);
-  const canDownload = ability.can('Download', 'Glossary');
-  const canImport = ability.can('Create', 'Glossary');
-  const canReplace = ability.can('Delete', 'Glossary');
+  const canDownload = ability.can('Maintain', 'GlossaryData');
+  const canImport = ability.can('Maintain', 'GlossaryData');
+  const canReplace = ability.can('Administrate', 'GlossaryData');
 
   return (
     <div className="container mx-auto max-w-5xl space-y-6 p-6">

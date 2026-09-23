@@ -73,10 +73,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
-  // Admin-only, like the Document Inspector. The sidebar hides the link; this is the gate
+  // Needs Administrate, like the Document Inspector. The sidebar hides the link; this is the gate
   // that actually holds.
   const ability = defineAbilityFor(user);
-  if (ability.cannot('Read', 'Inspector')) {
+  if (ability.cannot('Administrate', 'GlossaryData')) {
     throw redirect('/data');
   }
 
@@ -109,8 +109,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     },
     query,
     checkIndex,
-    canCleanUp: ability.can('Delete', 'Glossary'),
-    canReindex: ability.can('Update', 'Glossary'),
+    canCleanUp: ability.can('Administrate', 'GlossaryData'),
+    canReindex: ability.can('Maintain', 'GlossaryData'),
   });
 };
 

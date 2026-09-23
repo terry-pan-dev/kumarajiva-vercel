@@ -95,7 +95,7 @@ export default function TranslationLayout() {
           {/* <SideBarTrigger /> */}
           <BreadcrumbLine />
           {params.sectionId ? (
-            <Can I="Download" this="Paragraph">
+            <Can I="Maintain" this="TranslationData">
               <Button
                 size="icon"
                 variant="ghost"

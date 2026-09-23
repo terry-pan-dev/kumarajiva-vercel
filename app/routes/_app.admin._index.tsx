@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { ZodError } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
+import { defineAbilityFor } from '~/authorisation';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
@@ -29,6 +30,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
+  if (defineAbilityFor(user).cannot('Administrate', 'Users')) {
+    throw redirect('/dashboard');
+  }
   const users = await readUsers();
   const teams = await readTeams();
   const notifications = await readAllNotifications();
@@ -44,6 +48,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
+  }
+  // Creating users and changing roles is how anyone gets any permission, so this must hold even
+  // though the admin pages are hidden from everyone else.
+  if (defineAbilityFor(user).cannot('Administrate', 'Users')) {
+    return json({ success: false, errors: [{ path: ['kind'], message: 'Not allowed.' }] }, { status: 403 });
   }
   const formData = await request.formData();
   const kind = formData.get('kind');
