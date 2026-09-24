@@ -1,10 +1,12 @@
 import { Link, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, FileDown } from 'lucide-react';
 import { useState } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
+import { Can } from '~/authorisation/can';
 import { ErrorInfo } from '~/components/ErrorInfo';
+import { Button } from '~/components/ui/button';
 import { getProjects } from '~/services/project.service';
 import { getSectionIdsWithParagraphs } from '~/services/text.service';
 
@@ -174,6 +176,21 @@ export default function TranslationIndex() {
                     </div>
                   </div>
                 </div>
+                {visibleSections.length > 0 && (
+                  <Can I="Maintain" this="Translation">
+                    <Button asChild size="sm" variant="outline">
+                      {/* The card toggles on click; following this link must not toggle it too. */}
+                      <Link
+                        onClick={(e) => e.stopPropagation()}
+                        to={`/translation/working-document/${project.id}`}
+                        title="Export a working document for a translation working group meeting"
+                      >
+                        <FileDown size={14} className="mr-1.5" />
+                        Working document
+                      </Link>
+                    </Button>
+                  </Can>
+                )}
               </div>
 
               {isOpen && (
