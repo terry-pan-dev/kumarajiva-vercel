@@ -1,4 +1,4 @@
-import { boolean, foreignKey, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { boolean, foreignKey, json, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
 import { documentsTable } from './document';
@@ -19,6 +19,10 @@ export const projectsTable = pgTable(
     sourceDocumentId: uuid('source_document_id').notNull(),
     targetDocumentId: uuid('target_document_id').notNull(),
     finish: boolean('finish').notNull().default(false),
+    // Open-ended per-project settings and state that features add as they need
+    // them (e.g. the working document export), so each doesn't need its own
+    // column or table. Same shape as works.metadata / documents.metadata.
+    metadata: json('metadata').$type<Record<string, unknown>>(),
     teamId: uuid('team_id')
       .references(() => teamsTable.id)
       .notNull(),
