@@ -12,6 +12,16 @@ export const getProject = async (id: string) => {
   return DbProjects.findById(id);
 };
 
+// A project with just its reference documents, in order — much lighter than
+// getProject, which also loads every document's sections.
+export const getProjectWithReferences = async (id: string) => {
+  const [[project], references] = await Promise.all([
+    DbProjects.findByIds([id]),
+    DbProjectReferences.findByProjectId(id),
+  ]);
+  return project ? { ...project, references } : undefined;
+};
+
 export const getProjectBySourceDocumentId = async (sourceDocumentId: string) => {
   return DbProjects.findBySourceDocumentId(sourceDocumentId);
 };
@@ -146,4 +156,14 @@ export const reorderProjectReferences = async ({
     documentIds.map((documentId, index) => DbProjectReferences.updateOrder(projectId, documentId, index + 1)),
   );
   return { projectId };
+};
+
+// ---- METADATA ----
+// Features keep their own settings and state in projects.metadata, each under
+// its own top-level key (a "section"); see utils/metadata.ts for reading it.
+
+// Merges fields into one section of the project's metadata, keeping everything
+// else. Metadata is not the project's data, so the audit columns are untouched.
+export const mergeProjectMetadata = async (projectId: string, section: string, fields: Record<string, unknown>) => {
+  return DbProjects.mergeMetadataSection(projectId, section, fields);
 };

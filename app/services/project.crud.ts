@@ -4,6 +4,7 @@ import type { CreateProject, CreateProjectReference } from '~/drizzle/schema';
 
 import { projectReferencesTable, projectsTable } from '~/drizzle/schema';
 import { getDb } from '~/lib/db.server';
+import { mergeMetadataSection } from '~/lib/metadata.server';
 
 const db = getDb();
 
@@ -129,6 +130,12 @@ export const DbProjects = {
 
   deleteById: async (id: string) => {
     return db.delete(projectsTable).where(eq(projectsTable.id, id));
+  },
+
+  // Merges fields into one section of the project's metadata; audit columns
+  // are left untouched.
+  mergeMetadataSection: async (id: string, section: string, fields: Record<string, unknown>) => {
+    return mergeMetadataSection(projectsTable, id, section, fields);
   },
 };
 

@@ -10,7 +10,11 @@ export function BreadcrumbLine() {
     .map((match) => ({
       href: match.pathname,
       // name: match.pathname.replace('/', '').replace('translation', 'tripitaka').toUpperCase(),
-      name: match.pathname.split('/').filter(Boolean).length === 1 ? 'Sutra' : 'Roll',
+      name: match.pathname.includes('/working-document/')
+        ? 'Working document'
+        : match.pathname.split('/').filter(Boolean).length === 1
+          ? 'Translation Projects'
+          : 'Section',
     }));
   return (
     <Breadcrumb>
