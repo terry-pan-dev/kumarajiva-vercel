@@ -8,7 +8,6 @@ import type {
   ReadComment,
   ReadHistory,
   ReadParagraphNew,
-  ReadReference,
 } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
@@ -107,6 +106,12 @@ export const getDocuments = async () => {
 export const getDocumentParagraphCounts = async (): Promise<Map<string, number>> => {
   const rows = await DbParagraphsNew.countByDocument();
   return new Map(rows.map((r) => [r.documentId, r.count]));
+};
+
+// sectionId → non-parked paragraph count, for one document's sections.
+export const getSectionParagraphCounts = async (documentId: string): Promise<Map<string, number>> => {
+  const rows = await DbParagraphsNew.countBySectionForDocument(documentId);
+  return new Map(rows.map((r) => [r.sectionId, r.count]));
 };
 
 export const getDocumentsByWork = async (workId: string) => {
@@ -213,6 +218,23 @@ export const reorderSections = async (updates: Array<{ id: string; order: number
 // alignment: a translation lives in the project's target document and carries
 // the same passage_key as its source paragraph.
 
+// A document a project consults alongside its source and translation. It is
+// an ordinary document; only project_references makes it a reference. This is
+// the shape project reference reads return, so callers pass them on as-is.
+export interface ReferenceDocument {
+  documentId: string;
+  document: { key: string | null; title: string };
+}
+
+// One reference document's text for a paragraph, paired by passage_key.
+// `content` is null when that document has no paragraph for the passage yet.
+export interface ParagraphReference {
+  documentId: string;
+  key: string | null;
+  title: string;
+  content: string | null;
+}
+
 // Same consumer-facing shape as the legacy IParagraph so readers can swap over.
 export interface IParagraphNew {
   id: string;
@@ -223,71 +245,104 @@ export interface IParagraphNew {
   origin: string;
   target: string | null;
   targetId?: string;
-  references: ReadReference[];
+  // One entry per reference document asked for, in the order given.
+  references: ParagraphReference[];
   histories: ReadHistory[];
   originComments: ReadComment[];
   targetComments: ReadComment[];
 }
 
-const toIParagraph = (paragraph: ReadParagraphNew, target?: ReadParagraphNew): IParagraphNew => ({
+const toIParagraph = (
+  paragraph: ReadParagraphNew,
+  target: ReadParagraphNew | undefined,
+  references: ParagraphReference[],
+): IParagraphNew => ({
   ...paragraph,
   origin: paragraph.content,
   target: target?.content ?? null,
   targetId: target?.id,
-  // References, comments and history still hang off the legacy paragraphs
-  // table; they move over in a later migration step.
-  references: [],
+  references,
+  // Comments and history still hang off the legacy paragraphs table; they move
+  // over in a later migration step.
   histories: [],
   originComments: [],
   targetComments: [],
 });
-
-// Legacy readParagraphsByRollId analog: a section takes the roll's place. Pass
-// targetDocumentId (from the project) to pair each source paragraph with its
-// translation by passage_key.
-export const readParagraphsBySectionId = async ({
-  sectionId,
-  targetDocumentId,
-  limit,
-}: {
-  sectionId: string;
-  targetDocumentId?: string;
-  limit?: number;
-}): Promise<IParagraphNew[]> => {
-  const paragraphs = await DbParagraphsNew.findBySectionId(sectionId, limit);
-
-  const targetByPassageKey = await findTargetsByPassageKey(paragraphs, targetDocumentId);
-
-  return paragraphs.map((paragraph) =>
-    toIParagraph(paragraph, paragraph.passageKey ? targetByPassageKey.get(paragraph.passageKey) : undefined),
-  );
-};
-
-// Legacy readParagraphsByRollIdForLanguage analog: language now lives on the
-// document, so reading one language's text means reading its document.
-export const readParagraphsByDocumentId = async ({
-  documentId,
-  targetDocumentId,
-  limit,
-}: {
-  documentId: string;
-  targetDocumentId?: string;
-  limit?: number;
-}): Promise<IParagraphNew[]> => {
-  const paragraphs = await DbParagraphsNew.findByDocumentId(documentId, limit);
-
-  const targetByPassageKey = await findTargetsByPassageKey(paragraphs, targetDocumentId);
-
-  return paragraphs.map((paragraph) =>
-    toIParagraph(paragraph, paragraph.passageKey ? targetByPassageKey.get(paragraph.passageKey) : undefined),
-  );
-};
 
 const findTargetsByPassageKey = async (paragraphs: ReadParagraphNew[], targetDocumentId?: string) => {
   if (!targetDocumentId) return new Map<string, ReadParagraphNew>();
   const passageKeys = paragraphs.map((p) => p.passageKey).filter((key): key is string => Boolean(key));
   const targets = await DbParagraphsNew.findByDocumentIdAndPassageKeys(targetDocumentId, passageKeys);
   return new Map(targets.filter((t) => t.passageKey).map((t) => [t.passageKey as string, t]));
+};
+
+// Pairs each source paragraph with its translation (in targetDocumentId) and
+// each reference document's paragraph, all by passage_key.
+const pairParagraphs = async (
+  paragraphs: ReadParagraphNew[],
+  targetDocumentId: string | undefined,
+  references: ReferenceDocument[],
+): Promise<IParagraphNew[]> => {
+  const [targetByPassageKey, ...referenceByPassageKey] = await Promise.all([
+    findTargetsByPassageKey(paragraphs, targetDocumentId),
+    ...references.map((reference) => findTargetsByPassageKey(paragraphs, reference.documentId)),
+  ]);
+  return paragraphs.map((paragraph) => {
+    const paired = (byPassageKey: Map<string, ReadParagraphNew>) =>
+      paragraph.passageKey ? byPassageKey.get(paragraph.passageKey) : undefined;
+    return toIParagraph(
+      paragraph,
+      paired(targetByPassageKey),
+      references.map((reference, i) => ({
+        documentId: reference.documentId,
+        key: reference.document.key,
+        title: reference.document.title,
+        content: paired(referenceByPassageKey[i])?.content ?? null,
+      })),
+    );
+  });
+};
+
+// Legacy readParagraphsByRollId analog: a section takes the roll's place. Pass
+// targetDocumentId (from the project) to pair each source paragraph with its
+// translation, and the project's references to pair its reference texts —
+// all by passage_key.
+export const readParagraphsBySectionId = async ({
+  sectionId,
+  targetDocumentId,
+  references = [],
+  limit,
+}: {
+  sectionId: string;
+  targetDocumentId?: string;
+  references?: ReferenceDocument[];
+  limit?: number;
+}): Promise<IParagraphNew[]> => {
+  const paragraphs = await DbParagraphsNew.findBySectionId(sectionId, limit);
+  return pairParagraphs(paragraphs, targetDocumentId, references);
+};
+
+// Legacy readParagraphsByRollIdForLanguage analog: language now lives on the
+// document, so reading one language's text means reading its document. Returns
+// the whole document in reading order: paragraph order restarts in every
+// section, so it sorts by section order first (and applies `limit` after).
+export const readParagraphsByDocumentId = async ({
+  documentId,
+  targetDocumentId,
+  references = [],
+  limit,
+}: {
+  documentId: string;
+  targetDocumentId?: string;
+  references?: ReferenceDocument[];
+  limit?: number;
+}): Promise<IParagraphNew[]> => {
+  const paragraphs = (await DbParagraphsNew.findByDocumentId(documentId))
+    .sort((a, b) => a.section.order - b.section.order || a.order - b.order)
+    .slice(0, limit)
+    // The joined section was only needed for sorting.
+    .map(({ section: _section, ...paragraph }) => paragraph);
+  return pairParagraphs(paragraphs, targetDocumentId, references);
 };
 
 export const getParagraph = async (id: string) => {

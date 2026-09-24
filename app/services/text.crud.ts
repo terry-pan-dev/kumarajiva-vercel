@@ -287,6 +287,15 @@ export const DbParagraphsNew = {
   },
 
   // Row counts per document (including parked rows) for the document picker.
+  // Non-parked paragraph count per section of one document.
+  countBySectionForDocument: async (documentId: string) => {
+    return db
+      .select({ sectionId: paragraphsTableNew.sectionId, count: count() })
+      .from(paragraphsTableNew)
+      .where(and(eq(paragraphsTableNew.documentId, documentId), gte(paragraphsTableNew.order, 0)))
+      .groupBy(paragraphsTableNew.sectionId);
+  },
+
   countByDocument: async () => {
     return db
       .select({ documentId: paragraphsTableNew.documentId, count: count() })

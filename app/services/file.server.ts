@@ -35,8 +35,13 @@ import {
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
 import { DbProjectReferences, DbProjects } from './project.crud';
 import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
-import { DbParagraphsNew } from './text.crud';
-import { findTargetSection, getDocument, getSection, readParagraphsBySectionId } from './text.service';
+import {
+  findTargetSection,
+  getDocument,
+  getSection,
+  readParagraphsBySectionId,
+  type ReferenceDocument,
+} from './text.service';
 
 export const db = getDb();
 
@@ -689,55 +694,39 @@ export async function replaceSectionData(
 
 /**
  * Preview of the existing paragraphs_new data for a section — what the import
- * page shows before the user confirms an import. The translation is paired from
- * the project's target document via passage_key; each reference document's
- * paragraph sharing the same passage_key is shown as a reference column (labelled
- * by the reference document's key).
+ * page shows before the user confirms an import. The translation and each
+ * reference document's text are paired by passage_key (see
+ * readParagraphsBySectionId); references are shown as columns labelled by the
+ * reference document's key, so only keyed references appear.
  */
 export async function getExistingDataPreviewForSection(
   sectionId: string,
   targetDocumentId?: string | null,
-  referenceDocuments: { id: string; key: string | null }[] = [],
+  references: ReferenceDocument[] = [],
 ): Promise<ExistingDataPreview> {
   const paragraphs = await readParagraphsBySectionId({
     sectionId,
     targetDocumentId: targetDocumentId ?? undefined,
+    references: references.filter((reference) => reference.document.key),
   });
 
   const preview = paragraphs.slice(0, PREVIEW_LIMIT);
-  const passageKeys = preview.map((p) => p.passageKey).filter((k): k is string => !!k);
-
-  // For each keyed reference document, map passage_key → its paragraph so we can
-  // attach reference content to the matching preview row.
-  const keyedReferences = referenceDocuments.filter((ref) => ref.key);
-  const referenceParagraphs = await Promise.all(
-    keyedReferences.map(async (ref) => {
-      const paras = passageKeys.length ? await DbParagraphsNew.findByDocumentIdAndPassageKeys(ref.id, passageKeys) : [];
-      const byPassageKey = new Map(paras.filter((p) => p.passageKey).map((p) => [p.passageKey as string, p]));
-      return { key: ref.key as string, byPassageKey };
-    }),
-  );
 
   let totalReferences = 0;
   const previewParagraphs = preview.map((p) => {
-    const references = p.passageKey
-      ? referenceParagraphs
-          .map(({ key, byPassageKey }) => {
-            const refPara = byPassageKey.get(p.passageKey as string);
-            return refPara
-              ? { id: refPara.id, order: String(refPara.order), sutraName: key, content: refPara.content }
-              : null;
-          })
-          .filter((r): r is NonNullable<typeof r> => r !== null)
-      : [];
-    totalReferences += references.length;
+    const paragraphReferences = p.references.flatMap((reference) =>
+      reference.content === null
+        ? []
+        : [{ id: reference.documentId, order: String(p.order), sutraName: reference.key!, content: reference.content }],
+    );
+    totalReferences += paragraphReferences.length;
     return {
       id: p.id,
       order: String(p.order),
       origin: p.origin,
       targetId: p.targetId,
       target: p.target,
-      references,
+      references: paragraphReferences,
     };
   });
 

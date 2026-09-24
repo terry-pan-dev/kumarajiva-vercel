@@ -79,7 +79,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const referenceDocuments = references.map((r) => ({ id: r.documentId, key: r.document?.key ?? null }));
   const referenceKeys = referenceDocuments.map((r) => r.key).filter((k): k is string => !!k);
 
-  const existing = await getExistingDataPreviewForSection(originSectionId, targetDocumentId, referenceDocuments);
+  const existing = await getExistingDataPreviewForSection(originSectionId, targetDocumentId, references);
 
   return json({
     originDocumentId,
