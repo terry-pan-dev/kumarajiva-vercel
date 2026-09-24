@@ -148,6 +148,13 @@
       "when": 1790094870142,
       "tag": "0021_add-tech-role",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790253264451,
+      "tag": "0022_add-project-metadata",
+      "breakpoints": true
     }
   ]
 }
