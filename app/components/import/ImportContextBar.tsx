@@ -1,3 +1,7 @@
+import { useTranslation } from 'react-i18next';
+
+import type { Lang } from '~/utils/constants';
+
 type Props = {
   originSutraName: string;
   targetSutraName: string;
@@ -9,9 +13,9 @@ type Props = {
 
 function ContextTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border bg-muted/30 px-4 py-3">
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-base font-semibold text-foreground">{value}</p>
+    <div className="bg-muted/30 rounded-lg border px-4 py-3">
+      <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">{label}</p>
+      <p className="text-foreground text-base font-semibold">{value}</p>
     </div>
   );
 }
@@ -24,14 +28,16 @@ export function ImportContextBar({
   originalLanguage,
   translationLanguage,
 }: Props) {
+  const { t } = useTranslation(['data', 'common']);
+  const language = (lang: string) => t(`common:languages.${lang as Lang}`);
   return (
     <div className="grid grid-cols-3 gap-3">
-      <ContextTile label="Origin Sutra" value={originSutraName} />
-      <ContextTile label="Origin Roll" value={originRollName} />
-      <ContextTile label="Origin Language" value={originalLanguage} />
-      <ContextTile label="Target Sutra" value={targetSutraName} />
-      <ContextTile label="Target Roll" value={targetRollName} />
-      <ContextTile value={translationLanguage} label="Translation Language" />
+      <ContextTile value={originSutraName} label={t('projects.import.context.originDocument')} />
+      <ContextTile value={originRollName} label={t('projects.import.context.originSection')} />
+      <ContextTile value={language(originalLanguage)} label={t('projects.import.context.originLanguage')} />
+      <ContextTile value={targetSutraName} label={t('projects.import.context.targetDocument')} />
+      <ContextTile value={targetRollName} label={t('projects.import.context.targetSection')} />
+      <ContextTile value={language(translationLanguage)} label={t('projects.import.context.targetLanguage')} />
     </div>
   );
 }

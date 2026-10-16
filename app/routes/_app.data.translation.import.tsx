@@ -1,12 +1,15 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
 import { useActionData, useLoaderData, useNavigation } from '@remix-run/react';
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { DataComparisonPanel } from '~/components/import/DataComparisonPanel';
 import { FileUploadForm } from '~/components/import/FileUploadForm';
 import { ImportContextBar } from '~/components/import/ImportContextBar';
 import { ImportInstructions } from '~/components/import/ImportInstructions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import { localizeError } from '~/i18n/errors';
+import { getFixedT } from '~/i18n/locale.server';
 import { getExistingDataPreviewForSection, replaceSectionData } from '~/services/file.server';
 import {
   parseCSV,
@@ -104,9 +107,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  const t = await getFixedT(request);
   if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
     return json<ActionResponse>(
-      { intent: 'error', result: { success: false, message: 'You are not authorised to import translations.' } },
+      { intent: 'error', result: { success: false, message: t('data:projects.import.errors.notAuthorised') } },
       { status: 403 },
     );
   }
@@ -123,7 +127,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (!file) {
       return json<ActionResponse>(
-        { intent: 'error', result: { success: false, message: 'Please select a file to import.' } },
+        { intent: 'error', result: { success: false, message: t('data:projects.import.errors.noFile') } },
         { status: 400 },
       );
     }
@@ -149,7 +153,7 @@ export async function action({ request }: ActionFunctionArgs) {
         return json<ActionResponse>(
           {
             intent: 'error',
-            result: { success: false, message: 'Invalid file type. Please upload a CSV or XLSX file.' },
+            result: { success: false, message: t('data:projects.import.errors.invalidType') },
           },
           { status: 400 },
         );
@@ -159,7 +163,7 @@ export async function action({ request }: ActionFunctionArgs) {
         return json<ActionResponse>(
           {
             intent: 'error',
-            result: { success: false, message: 'No valid data found in the file. Please check the file format.' },
+            result: { success: false, message: t('data:projects.import.errors.noRows') },
           },
           { status: 400 },
         );
@@ -177,9 +181,14 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     } catch (error) {
       console.error('Preview error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return json<ActionResponse>(
-        { intent: 'error', result: { success: false, message: `Failed to parse file: ${errorMessage}` } },
+        {
+          intent: 'error',
+          result: {
+            success: false,
+            message: t('data:projects.import.errors.parseFailed', { error: localizeError(error, t) }),
+          },
+        },
         { status: 500 },
       );
     }
@@ -194,18 +203,22 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (!rowsJson || !originDocumentId || !originSectionId || !targetDocumentId) {
       return json<ActionResponse>(
-        { intent: 'error', result: { success: false, message: 'Missing required data for replace operation.' } },
+        { intent: 'error', result: { success: false, message: t('data:projects.import.errors.missingData') } },
         { status: 400 },
       );
     }
 
     const rows: ExcelTranslationRow[] = JSON.parse(rowsJson);
-    const result = await replaceSectionData(rows, {
-      originDocumentId,
-      originSectionId,
-      targetDocumentId,
-      userId: user.id,
-    });
+    const result = await replaceSectionData(
+      rows,
+      {
+        originDocumentId,
+        originSectionId,
+        targetDocumentId,
+        userId: user.id,
+      },
+      t,
+    );
 
     return json<ActionResponse>({ intent: 'replace', result });
   }
@@ -235,6 +248,7 @@ export default function DataImport() {
   const navigationIntent = (navigation.formData?.get('intent') as string) ?? null;
 
   const [fileName, setFileName] = useState('');
+  const { t } = useTranslation('data');
 
   const fileRows = actionData?.intent === 'preview' ? actionData.fileRows : null;
   const formValues = actionData?.intent === 'preview' ? actionData.formValues : null;
@@ -245,17 +259,21 @@ export default function DataImport() {
     <div className="container mx-auto max-w-5xl p-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-primary text-2xl">Import Data</CardTitle>
+          <CardTitle className="text-primary text-2xl">{t('projects.import.title')}</CardTitle>
           <CardDescription className="text-base">
-            Upload a CSV or XLSX file whose column headers are document keys
             {originKey || targetKey ? (
-              <>
-                {' '}
-                (e.g. <strong>{originKey ?? 'origin'}</strong>, <strong>{targetKey ?? 'translation'}</strong>)
-              </>
-            ) : null}
-            . Include any subset of the documents — the rows are matched to existing data by passage key and/or
-            position, and existing rows not in the file are left unchanged.
+              <Trans
+                t={t}
+                components={{ strong: <strong /> }}
+                i18nKey="projects.import.descriptionWithKeys"
+                values={{
+                  origin: originKey ?? t('projects.import.originPlaceholder'),
+                  target: targetKey ?? t('projects.import.translationPlaceholder'),
+                }}
+              />
+            ) : (
+              t('projects.import.description')
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

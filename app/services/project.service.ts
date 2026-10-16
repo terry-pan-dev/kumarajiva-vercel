@@ -1,6 +1,8 @@
 import type { CreateProject } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
+import { LocalizedError } from '~/i18n/errors';
+
 import { DbProjectReferences, DbProjects } from './project.crud';
 import { DbDocuments } from './text.crud';
 
@@ -47,7 +49,7 @@ export const createProject = async (
 export const deleteProject = async ({ id }: { id: string }) => {
   const project = await DbProjects.findById(id);
   if (!project) {
-    throw new Error('Project not found');
+    throw new LocalizedError('data:errors.projectNotFound');
   }
 
   await DbProjectReferences.deleteByProjectId(id);
@@ -112,7 +114,7 @@ export const syncProjectReferences = async ({
 }) => {
   const project = await DbProjects.findById(projectId);
   if (!project) {
-    throw new Error('Project not found');
+    throw new LocalizedError('data:errors.projectNotFound');
   }
 
   // A reference can be neither the source/target of the project nor listed twice.

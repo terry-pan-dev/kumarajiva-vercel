@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 type Reference = { id?: string; sutraName?: string; content?: string };
 
 type Props = {
@@ -10,6 +12,7 @@ type Props = {
 
 export function ParagraphPreviewCard({ order, origin, target, references, variant = 'existing' }: Props) {
   const isIncoming = variant === 'incoming';
+  const { t } = useTranslation('data');
   const cardClass = isIncoming ? 'rounded-lg border border-secondary bg-secondary/20 p-3' : 'rounded-lg border p-3';
   const badgeClass = isIncoming
     ? 'rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground'
@@ -21,21 +24,21 @@ export function ParagraphPreviewCard({ order, origin, target, references, varian
       <div className="mb-1">
         <span className={badgeClass}>#{order}</span>
       </div>
-      <p className="mb-0.5 text-xs font-medium text-muted-foreground">Original:</p>
-      <p className="text-sm text-foreground">{origin}</p>
+      <p className="text-muted-foreground mb-0.5 text-xs font-medium">{t('projects.import.preview.original')}</p>
+      <p className="text-foreground text-sm">{origin}</p>
       <div className={dividerClass}>
-        <p className="mb-0.5 text-xs font-medium text-muted-foreground">Translation:</p>
+        <p className="text-muted-foreground mb-0.5 text-xs font-medium">{t('projects.import.preview.translation')}</p>
         {target ? (
-          <p className="text-sm text-foreground">{target}</p>
+          <p className="text-foreground text-sm">{target}</p>
         ) : (
-          <p className="text-sm italic text-muted-foreground">No translation</p>
+          <p className="text-muted-foreground text-sm italic">{t('projects.import.preview.noTranslation')}</p>
         )}
       </div>
       {!!references?.length && (
         <div className={dividerClass}>
           {references.map((ref, idx) => (
-            <p key={ref.id ?? idx} className="text-xs text-muted-foreground">
-              <span className="font-medium text-muted-foreground">{ref.sutraName}:</span> {ref.content}
+            <p key={ref.id ?? idx} className="text-muted-foreground text-xs">
+              <span className="text-muted-foreground font-medium">{ref.sutraName}:</span> {ref.content}
             </p>
           ))}
         </div>

@@ -38,6 +38,10 @@
   "locale": {
     "label": "介面語言"
   },
+  "separators": {
+    "list": "、",
+    "semicolon": "；"
+  },
   "errors": {
     "invalidLanguage": "無效的語言",
     "unknownIntent": "未知的操作"

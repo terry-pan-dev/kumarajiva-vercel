@@ -1,5 +1,6 @@
 import { Form } from '@remix-run/react';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import type { ImportResult } from '~/services/file.service';
 
@@ -31,6 +32,7 @@ export function FileUploadForm({
   errorResult,
   replaceResult,
 }: Props) {
+  const { t } = useTranslation(['data', 'common']);
   return (
     <Form method="post" className="space-y-4" encType="multipart/form-data">
       <input type="hidden" name="intent" value="preview" />
@@ -40,7 +42,7 @@ export function FileUploadForm({
 
       <div className="space-y-2">
         <Label htmlFor="file" className="text-primary text-lg">
-          Data File *
+          {t('projects.import.upload.file')}
         </Label>
         <div className="flex items-center gap-3">
           <Input
@@ -55,7 +57,7 @@ export function FileUploadForm({
         </div>
         {fileName && (
           <p>
-            <span className="text-muted-foreground text-lg">Selected: </span>
+            <span className="text-muted-foreground text-lg">{t('projects.import.upload.selected')} </span>
             <span className="text-foreground text-base font-semibold">{fileName}</span>
           </p>
         )}
@@ -77,7 +79,7 @@ export function FileUploadForm({
               {replaceResult.errors && replaceResult.errors.length > 0 && (
                 <details className="mt-2">
                   <summary className="cursor-pointer text-sm font-medium">
-                    View errors ({replaceResult.errors.length})
+                    {t('projects.import.upload.viewErrors', { count: replaceResult.errors.length })}
                   </summary>
                   <ul className="mt-2 space-y-1 text-xs">
                     {replaceResult.errors.map((error, idx) => (
@@ -93,10 +95,14 @@ export function FileUploadForm({
 
       <div className="flex justify-end gap-3">
         <Button asChild type="button" variant="outline" className="text-muted-foreground text-base">
-          <a href="/data/translation">Cancel</a>
+          <a href="/data/translation">{t('common:actions.cancel')}</a>
         </Button>
         <Button type="submit" className="text-base" disabled={isSubmitting}>
-          {isSubmitting && navigationIntent === 'preview' ? 'Reading file...' : 'Preview Import'}
+          {t(
+            isSubmitting && navigationIntent === 'preview'
+              ? 'projects.import.upload.reading'
+              : 'projects.import.upload.preview',
+          )}
         </Button>
       </div>
     </Form>
