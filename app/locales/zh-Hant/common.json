@@ -2,13 +2,15 @@
   "actions": {
     "add": "新增",
     "cancel": "取消",
+    "copy": "複製",
     "delete": "刪除",
     "reset": "重設",
     "saving": "儲存中…"
   },
   "toast": {
     "done": "完成",
-    "oops": "出錯了！"
+    "oops": "出錯了！",
+    "copied": "已複製"
   },
   "delete": {
     "title": "刪除{{entity}}？",

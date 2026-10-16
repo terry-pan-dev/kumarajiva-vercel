@@ -148,7 +148,7 @@ export default function ParagraphsIndex() {
                       {project.targetDocument && <span className="font-normal"> / {project.targetDocument.title}</span>}
                     </div>
                     <div className="text-muted-foreground text-xs">
-                      {t('paragraphs.index.sectionCount', { count: sourceSections.length })}
+                      {t('rawData.sectionCount', { count: sourceSections.length })}
                     </div>
                   </div>
                 </div>

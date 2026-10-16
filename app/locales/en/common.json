@@ -2,13 +2,15 @@
   "actions": {
     "add": "Add",
     "cancel": "Cancel",
+    "copy": "Copy",
     "delete": "Delete",
     "reset": "Reset",
     "saving": "Saving…"
   },
   "toast": {
     "done": "Done",
-    "oops": "Oops!"
+    "oops": "Oops!",
+    "copied": "Copied"
   },
   "delete": {
     "title": "Delete {{entity}}?",

@@ -4,14 +4,17 @@
 // two documents to compare them side by side, paired by passage_key.
 import { Link, useLoaderData, useNavigate, useRouteError } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
-import { Columns2, Copy, Eye } from 'lucide-react';
+import { Columns2, Eye } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import type { Lang } from '~/utils/constants';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { CopyButton } from '~/components/data/CopyButton';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Badge, Button } from '~/components/ui';
-import { useToast } from '~/hooks/use-toast';
 import { getDocumentParagraphCounts, getDocuments, getWorks } from '~/services/text.service';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -67,30 +70,13 @@ export const ErrorBoundary = () => {
 
 const MONO = 'font-mono text-xs';
 
-function CopyButton({ value }: { value: string }) {
-  const { toast } = useToast();
-  return (
-    <button
-      title="Copy"
-      type="button"
-      className="text-muted-foreground hover:text-foreground shrink-0"
-      onClick={(e) => {
-        e.stopPropagation();
-        navigator.clipboard?.writeText(value);
-        toast({ variant: 'default', title: 'Copied', position: 'top-right' });
-      }}
-    >
-      <Copy className="h-3 w-3" />
-    </button>
-  );
-}
-
 export default function DocumentInspectorIndex() {
   const { works } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   // Selection order matters: the first pick is the left/origin side of a
   // comparison. At most two documents can be selected, across all works.
   const [selected, setSelected] = useState<string[]>([]);
+  const { t } = useTranslation(['data', 'common']);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -103,8 +89,8 @@ export default function DocumentInspectorIndex() {
   if (works.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-lg">
-        <p>No works available.</p>
-        <p>Please create works and documents in Data Management first.</p>
+        <p>{t('inspector.index.noWorks')}</p>
+        <p>{t('inspector.index.noWorksHint')}</p>
       </div>
     );
   }
@@ -115,9 +101,7 @@ export default function DocumentInspectorIndex() {
         {/* Sticky so the actions stay visible while scrolling a long list. */}
         <div className="bg-secondary sticky top-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 px-4 py-2">
           <div className="text-muted-foreground text-sm">
-            {selected.length === 2
-              ? 'Two documents selected — click "Compare documents".'
-              : 'Select one document to inspect its sections and paragraph rows, or two documents to compare them side by side (first selected = origin).'}
+            {t(selected.length === 2 ? 'inspector.index.twoSelected' : 'inspector.index.selectHint')}
           </div>
           <div className="flex gap-2">
             <Button
@@ -126,7 +110,7 @@ export default function DocumentInspectorIndex() {
               disabled={selected.length !== 1}
               onClick={() => navigate(`/data/inspector/${selected[0]}`)}
             >
-              <Eye className="mr-1 h-4 w-4" /> View document
+              <Eye className="mr-1 h-4 w-4" /> {t('inspector.index.viewDocument')}
             </Button>
             <Button
               size="sm"
@@ -134,7 +118,7 @@ export default function DocumentInspectorIndex() {
               variant={selected.length === 2 ? 'default' : 'secondary'}
               onClick={() => navigate(`/data/inspector/${selected[0]}?compare=${selected[1]}`)}
             >
-              <Columns2 className="mr-1 h-4 w-4" /> Compare documents
+              <Columns2 className="mr-1 h-4 w-4" /> {t('inspector.index.compareDocuments')}
             </Button>
           </div>
         </div>
@@ -146,7 +130,9 @@ export default function DocumentInspectorIndex() {
               {work.cbeta && <Badge variant="secondary">{work.cbeta}</Badge>}
               <span className={`${MONO} text-muted-foreground`}>{work.id}</span>
               <CopyButton value={work.id} />
-              <span className="text-muted-foreground text-xs">· {work.documents.length} documents</span>
+              <span className="text-muted-foreground text-xs">
+                · {t('inspector.index.documentCount', { count: work.documents.length })}
+              </span>
             </div>
 
             <div className="divide-border divide-y border-t">
@@ -176,18 +162,20 @@ export default function DocumentInspectorIndex() {
                           {document.subtitle && (
                             <span className="text-muted-foreground text-sm font-normal">{document.subtitle}</span>
                           )}
-                          <Badge variant="secondary">{document.language}</Badge>
+                          <Badge variant="secondary">{t(`common:languages.${document.language as Lang}`)}</Badge>
                           {isSelected && selected.length === 2 && (
-                            <Badge variant="default">{selectionIndex === 0 ? 'origin' : 'compare'}</Badge>
+                            <Badge variant="default">
+                              {t(selectionIndex === 0 ? 'inspector.index.originBadge' : 'inspector.index.compareBadge')}
+                            </Badge>
                           )}
                         </div>
                         <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                           <span className={MONO}>{document.id}</span>
                           <CopyButton value={document.id} />
                           <span>·</span>
-                          <span>{document.sectionCount} sections</span>
+                          <span>{t('rawData.sectionCount', { count: document.sectionCount })}</span>
                           <span>·</span>
-                          <span>{document.paragraphCount} paragraphs</span>
+                          <span>{t('rawData.paragraphCount', { count: document.paragraphCount })}</span>
                         </div>
                       </div>
                       {/* Hidden once a pair is selected — the next step is the
@@ -198,14 +186,14 @@ export default function DocumentInspectorIndex() {
                           to={`/data/inspector/${document.id}`}
                           className="text-muted-foreground hover:text-foreground shrink-0 text-xs underline"
                         >
-                          view
+                          {t('inspector.index.view')}
                         </Link>
                       )}
                     </div>
                   );
                 })
               ) : (
-                <div className="text-muted-foreground p-4 text-center text-sm">No documents for this work.</div>
+                <div className="text-muted-foreground p-4 text-center text-sm">{t('inspector.index.noDocuments')}</div>
               )}
             </div>
           </div>
