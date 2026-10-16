@@ -1,0 +1,43 @@
+{
+  "actions": {
+    "add": "Add",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "reset": "Reset",
+    "saving": "Saving…"
+  },
+  "toast": {
+    "done": "Done",
+    "oops": "Oops!"
+  },
+  "delete": {
+    "title": "Delete {{entity}}?",
+    "button": "Delete {{entity}}",
+    "description": "This permanently deletes “{{label}}”. It cannot be undone, and only works if nothing else references it."
+  },
+  "entities": {
+    "work": "work",
+    "document": "document",
+    "project": "project",
+    "glossaryEntry": "glossary entry"
+  },
+  "languages": {
+    "chinese": "Chinese",
+    "english": "English",
+    "sanskrit": "Sanskrit",
+    "indonesian": "Indonesian"
+  },
+  "contributorRoles": {
+    "author": "Author",
+    "translator": "Translator",
+    "commentator": "Commentator",
+    "editor": "Editor"
+  },
+  "locale": {
+    "label": "Interface language"
+  },
+  "errors": {
+    "invalidLanguage": "Invalid language",
+    "unknownIntent": "Unknown intent"
+  }
+}

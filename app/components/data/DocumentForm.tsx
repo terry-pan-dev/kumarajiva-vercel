@@ -1,8 +1,9 @@
 import { useFetcher } from '@remix-run/react';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { CONTRIBUTOR_ROLE_VALUES, SUPPORTED_LANGUAGES } from '~/utils/constants';
+import { CONTRIBUTOR_ROLE_VALUES, LANG_VALUES } from '~/utils/constants';
 
 import { inputClass, selectClass, textareaClass } from './fieldClasses';
 
@@ -39,6 +40,7 @@ export function DocumentForm({
 }) {
   const fetcher = useFetcher<{ success: boolean; error?: string }>();
   const isSubmitting = fetcher.state === 'submitting';
+  const { t } = useTranslation(['data', 'common']);
   const error = fetcher.state === 'idle' && fetcher.data && !fetcher.data.success ? fetcher.data.error : null;
 
   const [contributors, setContributors] = useState<Contributor[]>(
@@ -68,7 +70,7 @@ export function DocumentForm({
     <div className="bg-primary text-primary-foreground rounded-lg p-5 shadow-xl">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-primary-foreground text-sm font-semibold">
-          {document ? 'Edit Document' : 'Add New Document'}
+          {t(document ? 'documents.documentForm.editHeading' : 'documents.documentForm.addHeading')}
         </h2>
         <button
           type="button"
@@ -94,54 +96,56 @@ export function DocumentForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
-              Title <span className="text-destructive">*</span>
+              {t('documents.documentForm.title')} <span className="text-destructive">*</span>
             </label>
             <textarea
               required
               rows={2}
               name="title"
-              placeholder="e.g., 大般若波羅蜜多經"
               className={textareaClass(bg)}
               defaultValue={document?.title ?? ''}
-            />
-          </div>
-          <div>
-            <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">Subtitle</label>
-            <textarea
-              rows={2}
-              name="subtitle"
-              className={textareaClass(bg)}
-              placeholder="Optional subtitle"
-              defaultValue={document?.subtitle ?? ''}
+              placeholder={t('documents.documentForm.titlePlaceholder')}
             />
           </div>
           <div>
             <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
-              Language <span className="text-destructive">*</span>
+              {t('documents.documentForm.subtitle')}
+            </label>
+            <textarea
+              rows={2}
+              name="subtitle"
+              className={textareaClass(bg)}
+              defaultValue={document?.subtitle ?? ''}
+              placeholder={t('documents.documentForm.subtitlePlaceholder')}
+            />
+          </div>
+          <div>
+            <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
+              {t('documents.documentForm.language')} <span className="text-destructive">*</span>
             </label>
             <select required name="language" className={selectClass(bg)} defaultValue={document?.language ?? 'chinese'}>
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.value} value={lang.value}>
-                  {lang.label}
+              {LANG_VALUES.map((lang) => (
+                <option key={lang} value={lang}>
+                  {t(`common:languages.${lang}`)}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">Key</label>
+            <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
+              {t('documents.documentForm.key')}
+            </label>
             <input
               name="key"
               value={key}
               className={inputClass(bg)}
-              placeholder="e.g., xuanzang"
+              placeholder={t('documents.documentForm.keyPlaceholder')}
               onChange={(e) => {
                 setKey(e.target.value);
                 setKeyEdited(true);
               }}
             />
-            <p className="text-primary-foreground/50 mt-1 text-xs">
-              Unique within the work; used as the import column header.
-            </p>
+            <p className="text-primary-foreground/50 mt-1 text-xs">{t('documents.documentForm.keyHint')}</p>
           </div>
         </div>
 
@@ -150,14 +154,16 @@ export function DocumentForm({
         {/* Contributors */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-primary-foreground/70 text-xs font-semibold tracking-wider uppercase">Contributors</p>
+            <p className="text-primary-foreground/70 text-xs font-semibold tracking-wider uppercase">
+              {t('documents.documentForm.contributors')}
+            </p>
             <button
               type="button"
               onClick={addContributor}
               className="text-primary-foreground/70 hover:bg-primary-foreground/10 hover:text-primary-foreground flex items-center gap-1 rounded px-2 py-1 text-xs transition"
             >
               <Plus size={12} />
-              Add
+              {t('common:actions.add')}
             </button>
           </div>
           <div className="space-y-3">
@@ -165,19 +171,19 @@ export function DocumentForm({
               <div key={i} className="border-primary-foreground/15 space-y-2 rounded border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <label className="text-primary-foreground/70 block flex-1 text-xs font-medium">
-                    Name
+                    {t('documents.documentForm.contributorName')}
                     <input
                       value={c.name}
-                      placeholder="e.g., 玄奘"
                       className={inputClass(bg) + ' mt-1'}
                       onChange={(e) => updateContributor(i, 'name', e.target.value)}
+                      placeholder={t('documents.documentForm.contributorNamePlaceholder')}
                     />
                   </label>
                   {contributors.length > 1 && (
                     <button
                       type="button"
-                      title="Remove contributor"
                       onClick={() => removeContributor(i)}
+                      title={t('documents.documentForm.removeContributorTooltip')}
                       className="text-primary-foreground/50 hover:text-primary-foreground mt-5 transition"
                     >
                       <Trash2 size={14} />
@@ -185,7 +191,7 @@ export function DocumentForm({
                   )}
                 </div>
                 <label className="text-primary-foreground/70 block text-xs font-medium">
-                  Role
+                  {t('documents.documentForm.contributorRole')}
                   <select
                     value={c.role}
                     className={selectClass(bg) + ' mt-1 w-40'}
@@ -193,7 +199,7 @@ export function DocumentForm({
                   >
                     {CONTRIBUTOR_ROLE_VALUES.map((role) => (
                       <option key={role} value={role}>
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                        {t(`common:contributorRoles.${role}`)}
                       </option>
                     ))}
                   </select>
@@ -211,14 +217,16 @@ export function DocumentForm({
             onClick={onClose}
             className="text-primary-foreground/70 hover:text-primary-foreground rounded px-4 py-2 text-sm transition"
           >
-            Cancel
+            {t('common:actions.cancel')}
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
             className="bg-background text-foreground hover:bg-muted rounded px-4 py-2 text-sm font-medium transition disabled:opacity-50"
           >
-            {isSubmitting ? 'Saving…' : document ? 'Update Document' : 'Create Document'}
+            {isSubmitting
+              ? t('common:actions.saving')
+              : t(document ? 'documents.documentForm.update' : 'documents.documentForm.create')}
           </button>
         </div>
       </fetcher.Form>

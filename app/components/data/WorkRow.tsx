@@ -1,5 +1,6 @@
 import { ChevronRight, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { DeleteEntityButton } from './DeleteEntityButton';
 import { DocumentForm } from './DocumentForm';
@@ -55,6 +56,7 @@ export function WorkRow({
   onEditDocumentClose,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const { t } = useTranslation('data');
 
   return (
     <div className="border-border bg-background overflow-hidden rounded-lg border shadow-sm">
@@ -72,7 +74,7 @@ export function WorkRow({
               {work.title}
               <button
                 type="button"
-                title="Edit work"
+                title={t('documents.work.editTooltip')}
                 className="text-muted-foreground hover:bg-secondary hover:text-secondary-foreground rounded p-1 transition"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -89,13 +91,12 @@ export function WorkRow({
                   label={work.title}
                   intent="delete-work"
                   disabled={work.documents.length > 0}
-                  disabledReason="Delete this work's documents before deleting the work"
+                  disabledReason={t('documents.work.deleteDisabledReason')}
                 />
               )}
             </h3>
             <div className="text-muted-foreground text-xs">
-              {work.documents.length} {work.documents.length === 1 ? 'Document' : 'Documents'} • {work.cbeta} •{' '}
-              {work.category}
+              {t('documents.work.documentCount', { count: work.documents.length })} • {work.cbeta} • {work.category}
             </div>
           </div>
         </div>
@@ -103,7 +104,7 @@ export function WorkRow({
         {isOpen && (
           <button
             type="button"
-            title="Add document"
+            title={t('documents.work.addDocumentTooltip')}
             onClick={(e) => {
               e.stopPropagation();
               onAddDocumentToggle();
@@ -111,7 +112,7 @@ export function WorkRow({
             className="bg-primary text-primary-foreground hover:bg-primary/80 flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition"
           >
             <Plus size={13} />
-            Add Document
+            {t('documents.work.addDocument')}
           </button>
         )}
       </div>
@@ -148,7 +149,7 @@ export function WorkRow({
                 />
               ))
             ) : (
-              <div className="text-muted-foreground p-4 text-center text-sm">No documents found for this work.</div>
+              <div className="text-muted-foreground p-4 text-center text-sm">{t('documents.work.noDocuments')}</div>
             )}
           </div>
 

@@ -1,0 +1,85 @@
+{
+  "layout": {
+    "title": "Data Management",
+    "subtitles": {
+      "glossaryInspector": "Glossary Inspector",
+      "glossaryImport": "Glossary Import",
+      "translation": "Translation",
+      "documentInspector": "Document Inspector",
+      "paragraphs": "Paragraphs",
+      "documents": "Works and Documents"
+    }
+  },
+  "documents": {
+    "title": "Works & Documents",
+    "description": "Manage works and their language documents. Expand a work to view and add documents.",
+    "addWork": "Add Work",
+    "addWorkTooltip": "Add new work",
+    "empty": "No works found. Click \"Add Work\" to create the first one.",
+    "workDeleted": "Work deleted.",
+    "documentDeleted": "Document deleted.",
+    "notAuthorisedToChange": "You are not authorised to change works or documents.",
+    "notAuthorisedToDeleteWorks": "You are not authorised to delete works.",
+    "notAuthorisedToDeleteDocuments": "You are not authorised to delete documents.",
+    "work": {
+      "editTooltip": "Edit work",
+      "documentCount_one": "{{count}} Document",
+      "documentCount_other": "{{count}} Documents",
+      "addDocument": "Add Document",
+      "addDocumentTooltip": "Add document",
+      "noDocuments": "No documents found for this work.",
+      "deleteDisabledReason": "Delete this work's documents before deleting the work"
+    },
+    "workForm": {
+      "addHeading": "Add New Work",
+      "editHeading": "Edit Work",
+      "title": "Title",
+      "titlePlaceholder": "e.g., 大般若波羅蜜多經",
+      "cbeta": "CBETA Code",
+      "cbetaPlaceholder": "e.g., T0220",
+      "category": "Category",
+      "categoryPlaceholder": "e.g., Prajnaparamita",
+      "passageKeyPrefix": "Passage Key Prefix",
+      "passageKeyPrefixPlaceholder": "e.g., T0220",
+      "create": "Create Work",
+      "update": "Update Work"
+    },
+    "document": {
+      "editTooltip": "Edit document"
+    },
+    "documentForm": {
+      "addHeading": "Add New Document",
+      "editHeading": "Edit Document",
+      "title": "Title",
+      "titlePlaceholder": "e.g., 大般若波羅蜜多經",
+      "subtitle": "Subtitle",
+      "subtitlePlaceholder": "Optional subtitle",
+      "language": "Language",
+      "key": "Key",
+      "keyPlaceholder": "e.g., xuanzang",
+      "keyHint": "Unique within the work; used as the import column header.",
+      "contributors": "Contributors",
+      "contributorName": "Name",
+      "contributorNamePlaceholder": "e.g., 玄奘",
+      "contributorRole": "Role",
+      "removeContributorTooltip": "Remove contributor",
+      "create": "Create Document",
+      "update": "Update Document"
+    }
+  },
+  "errors": {
+    "workNotFound": "Work not found",
+    "workHasDocuments_one": "This work still has {{count}} document. Delete its documents before deleting the work.",
+    "workHasDocuments_other": "This work still has {{count}} documents. Delete its documents before deleting the work.",
+    "documentNotFound": "Document not found",
+    "documentHasSections_one": "This document still has {{count}} section. Delete its sections before deleting the document.",
+    "documentHasSections_other": "This document still has {{count}} sections. Delete its sections before deleting the document.",
+    "documentHasParagraphs_one": "This document still has {{count}} paragraph. Remove it before deleting the document.",
+    "documentHasParagraphs_other": "This document still has {{count}} paragraphs. Remove them before deleting the document.",
+    "documentUsedByProjects_one": "This document is used by {{count}} project. Remove that project before deleting the document.",
+    "documentUsedByProjects_other": "This document is used by {{count}} projects. Remove those projects before deleting the document.",
+    "documentReferencedByProjects_one": "This document is a reference for {{count}} project. Remove it from that project before deleting the document.",
+    "documentReferencedByProjects_other": "This document is a reference for {{count}} projects. Remove it from those projects before deleting the document.",
+    "documentKeyTaken": "Another document in this work already uses the key “{{key}}”. Keys must be unique per work."
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "actions": {
+    "add": "新增",
+    "cancel": "取消",
+    "delete": "刪除",
+    "reset": "重設",
+    "saving": "儲存中…"
+  },
+  "toast": {
+    "done": "完成",
+    "oops": "出錯了！"
+  },
+  "delete": {
+    "title": "刪除{{entity}}？",
+    "button": "刪除{{entity}}",
+    "description": "此操作將永久刪除「{{label}}」，且無法復原；僅在沒有其他資料引用時才能刪除。"
+  },
+  "entities": {
+    "work": "典籍",
+    "document": "文本",
+    "project": "專案",
+    "glossaryEntry": "詞彙條目"
+  },
+  "languages": {
+    "chinese": "中文",
+    "english": "英文",
+    "sanskrit": "梵文",
+    "indonesian": "印尼文"
+  },
+  "contributorRoles": {
+    "author": "作者",
+    "translator": "譯者",
+    "commentator": "註釋者",
+    "editor": "編者"
+  },
+  "locale": {
+    "label": "介面語言"
+  },
+  "errors": {
+    "invalidLanguage": "無效的語言",
+    "unknownIntent": "未知的操作"
+  }
+}

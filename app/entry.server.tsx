@@ -4,6 +4,10 @@ import { RemixServer } from '@remix-run/react';
 import * as Sentry from '@sentry/remix';
 import { waitUntil } from '@vercel/functions';
 import { handleRequest } from '@vercel/remix';
+import { I18nextProvider } from 'react-i18next';
+
+import { createI18n } from '~/i18n/config';
+import { getLocale } from '~/i18n/locale.server';
 
 // Initialize Sentry for both production and Vercel preview deployments
 if (process.env.NODE_ENV === 'production') {
@@ -19,13 +23,19 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-export default function (
+export default async function (
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
   remixContext: EntryContext,
 ) {
-  let remixServer = <RemixServer url={request.url} context={remixContext} />;
+  // A fresh instance per request, so concurrent renders in different languages can't interfere.
+  const i18n = createI18n(await getLocale(request));
+  let remixServer = (
+    <I18nextProvider i18n={i18n}>
+      <RemixServer url={request.url} context={remixContext} />
+    </I18nextProvider>
+  );
   return handleRequest(request, responseStatusCode, responseHeaders, remixServer);
 }
 
