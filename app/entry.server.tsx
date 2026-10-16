@@ -23,14 +23,14 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-export default async function (
+export default function (
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
   remixContext: EntryContext,
 ) {
   // A fresh instance per request, so concurrent renders in different languages can't interfere.
-  const i18n = createI18n(await getLocale(request));
+  const i18n = createI18n(getLocale(request));
   let remixServer = (
     <I18nextProvider i18n={i18n}>
       <RemixServer url={request.url} context={remixContext} />

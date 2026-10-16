@@ -7,7 +7,6 @@ import {
   ScrollRestoration,
   type MetaFunction,
   useRouteError,
-  useRouteLoaderData,
 } from '@remix-run/react';
 import { captureRemixErrorBoundaryError, withSentry } from '@sentry/remix';
 import { Analytics } from '@vercel/analytics/react';
@@ -15,10 +14,8 @@ import { type LinksFunction, type LoaderFunctionArgs } from '@vercel/remix';
 
 import './tailwind.css';
 
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { DEFAULT_LOCALE } from '~/i18n/config';
 import { getLocale } from '~/i18n/locale.server';
 
 export const links: LinksFunction = () => [
@@ -56,23 +53,21 @@ const fontSizeScript = `try {
   }
 } catch (e) {}`;
 
+// The request's locale, for meta functions (see pageLocale). Components read the language
+// from the i18n instance instead: the toggle switches it in the browser without reloading
+// this data, so after a switch this value is stale until the next full load.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  return json({ locale: await getLocale(request) });
+  return json({ locale: getLocale(request) });
 };
 
 export function Layout() {
-  // Layout also wraps the error boundary, where the root loader data may be missing.
-  const locale = useRouteLoaderData<typeof loader>('root')?.locale ?? DEFAULT_LOCALE;
+  // The i18n instance is the source of truth for the language: the server's is created for
+  // this request's locale, and the browser's follows the toggle. useTranslation re-renders
+  // this on a switch, which keeps <html lang> current.
   const { i18n } = useTranslation();
 
-  // The language toggle posts to /locale, which revalidates this loader with the new locale.
-  // This lives in Layout rather than App because Layout renders the Outlet itself.
-  useEffect(() => {
-    if (i18n.language !== locale) i18n.changeLanguage(locale);
-  }, [locale, i18n]);
-
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={i18n.language} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
