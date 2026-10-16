@@ -1,8 +1,6 @@
 import { Outlet, useFetcher, useLoaderData, useRouteError } from '@remix-run/react';
-import { useLocalStorage } from '@uidotdev/usehooks';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
-import { useEffect, useMemo } from 'react';
-import { ClientOnly } from 'remix-utils/client-only';
+import { useMemo } from 'react';
 
 import { assertAuthUser } from '~/auth.server';
 import { AbilityContext, defineAbilityFor } from '~/authorisation';
@@ -77,20 +75,8 @@ export default function AppLayout() {
               </main>
             </div>
           </SideBarMenuContextProvider>
-          <ClientOnly>{() => <SettingLoader />}</ClientOnly>
         </CommentProvider>
       </SearchProvider>
     </AbilityContext.Provider>
   );
 }
-
-const SettingLoader = () => {
-  const fontSize = useLocalStorage<number>('fontPreference', 14);
-
-  useEffect(() => {
-    document.documentElement.style.setProperty('--font-size', `${fontSize[0]}px`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return null;
-};

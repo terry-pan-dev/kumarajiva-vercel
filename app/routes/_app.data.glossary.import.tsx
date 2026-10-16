@@ -216,7 +216,7 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium">{t.glossary}</p>
                 {t.status && (
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${TRANSLATION_STATUS_STYLES[t.status]}`}>
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${TRANSLATION_STATUS_STYLES[t.status]}`}>
                     {TRANSLATION_STATUS_LABELS[t.status]}
                   </span>
                 )}

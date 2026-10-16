@@ -60,11 +60,18 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
-  --text-base: var(--font-size);
-  --text-sm: calc(var(--font-size) * 0.8);
-  --text-md: calc(var(--font-size) * 1);
-  --text-lg: calc(var(--font-size) * 1.2);
-  --text-xl: calc(var(--font-size) * 1.4);
+  /* The whole type scale follows the user's font preference (--font-size, 14–20px),
+     which is the size of buttons, menus and labels (text-sm). Small print is one step
+     below it and reading text one step above. At the default of 14px this is exactly
+     Tailwind's stock scale. */
+  --text-xs: calc(var(--font-size) - 2px);
+  --text-sm: var(--font-size);
+  --text-base: calc(var(--font-size) + 2px);
+  --text-md: calc(var(--font-size) + 2px);
+  --text-lg: calc((var(--font-size) + 2px) * 1.125);
+  --text-xl: calc((var(--font-size) + 2px) * 1.25);
+  --text-2xl: calc((var(--font-size) + 2px) * 1.5);
+  --text-3xl: calc((var(--font-size) + 2px) * 1.875);
 }
 
 @keyframes accordion-down {
@@ -183,7 +190,7 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-base;
   }
 }
 
