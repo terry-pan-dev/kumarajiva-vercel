@@ -1,5 +1,7 @@
 import Papa from 'papaparse';
 
+import { LocalizedError } from '~/i18n/errors';
+
 // Client-safe glossary file parsing.
 //
 // This module is imported by browser event handlers (the Preview button on the
@@ -34,7 +36,8 @@ export type GroupedTerm = {
 };
 
 // Thrown for problems we can explain to the user; anything else is an unexpected parse failure.
-export class GlossaryParseError extends Error {}
+// Parsing runs in the browser, so the page renders it with localizeError in the viewer's language.
+export class GlossaryParseError extends LocalizedError {}
 
 // Maps lowercase header variants to canonical GlossaryImportRow field names.
 const XLSX_COLUMNS: Record<string, keyof GlossaryImportRow> = {
@@ -134,11 +137,11 @@ export async function parseGlossaryFile(file: File): Promise<GlossaryImportRow[]
   } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
     rows = await parseGlossaryXLSX(file);
   } else {
-    throw new GlossaryParseError('Invalid file type. Please upload a CSV or XLSX file.');
+    throw new GlossaryParseError('glossary:errors.invalidFileType');
   }
 
   if (rows.length === 0) {
-    throw new GlossaryParseError('No valid rows found. Ensure the file has a ChineseTerm column.');
+    throw new GlossaryParseError('glossary:errors.noValidRows');
   }
 
   return rows;

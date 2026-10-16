@@ -4,6 +4,7 @@ import { useAbility } from '@casl/react';
 import { redirect } from '@remix-run/node';
 import { Link } from '@remix-run/react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { assertAuthUser } from '~/auth.server';
 import { AbilityContext } from '~/authorisation';
@@ -12,6 +13,7 @@ import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Separator } from '~/components/ui/separator';
 import { useToast } from '~/hooks/use-toast';
+import { CHUNK_SIZE } from '~/services/glossary.parse';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
@@ -30,6 +32,7 @@ function DownloadGlossaryButton({
 }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation('glossary');
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -44,7 +47,7 @@ function DownloadGlossaryButton({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast({ title: 'Download failed', description: 'Please try again.', variant: 'error' });
+      toast({ title: t('index.downloadFailed'), description: t('index.tryAgain'), variant: 'error' });
     } finally {
       setIsDownloading(false);
     }
@@ -57,39 +60,37 @@ function DownloadGlossaryButton({
       ) : (
         <Icons.Download className="mr-2 h-4 w-4" />
       )}
-      {isDownloading ? 'Preparing download…' : label}
+      {isDownloading ? t('index.preparingDownload') : label}
     </Button>
   );
 }
 
 function ImportGlossaryLink() {
+  const { t } = useTranslation('glossary');
   return (
     <div className="flex items-center gap-3">
       <Button asChild>
         <Link to="/data/glossary/import">
           <Icons.Add className="mr-2 h-4 w-4" />
-          Go to Import Page
+          {t('index.goToImport')}
         </Link>
       </Button>
-      <p className="text-muted-foreground text-sm">
-        Upload a CSV, review entries side-by-side, and import in chunks of 15 terms.
-      </p>
+      <p className="text-muted-foreground text-sm">{t('index.importHint', { chunkSize: CHUNK_SIZE })}</p>
     </div>
   );
 }
 
 function ReplaceGlossaryLink() {
+  const { t } = useTranslation('glossary');
   return (
     <div className="flex items-center gap-3">
       <Button asChild>
         <Link to="/data/glossary/replace">
           <Icons.Add className="mr-2 h-4 w-4" />
-          Go to Replace Page
+          {t('index.goToReplace')}
         </Link>
       </Button>
-      <p className="text-muted-foreground text-sm">
-        Upload a CSV to discard the current glossary and replace it with the file&apos;s entries.
-      </p>
+      <p className="text-muted-foreground text-sm">{t('index.replaceHint')}</p>
     </div>
   );
 }
@@ -101,21 +102,19 @@ export default function DataGlossary() {
   const canDownload = ability.can('Maintain', 'GlossaryData');
   const canImport = ability.can('Maintain', 'GlossaryData');
   const canReplace = ability.can('Administrate', 'GlossaryData');
+  const { t } = useTranslation('glossary');
 
   return (
     <div className="container mx-auto max-w-5xl space-y-6 p-6">
       {canDownload && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-primary text-2xl">Download Glossary</CardTitle>
-            <CardDescription className="text-base">
-              Export the full glossary as an Excel or CSV file. Either can be re-uploaded on the import and replace
-              pages.
-            </CardDescription>
+            <CardTitle className="text-primary text-2xl">{t('index.downloadTitle')}</CardTitle>
+            <CardDescription className="text-base">{t('index.downloadDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center gap-3">
-            <DownloadGlossaryButton format="xlsx" label="Download Excel" />
-            <DownloadGlossaryButton format="csv" variant="secondary" label="Download CSV" />
+            <DownloadGlossaryButton format="xlsx" label={t('index.downloadExcel')} />
+            <DownloadGlossaryButton format="csv" variant="secondary" label={t('index.downloadCsv')} />
           </CardContent>
         </Card>
       )}
@@ -126,10 +125,8 @@ export default function DataGlossary() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-primary text-2xl">Import Glossary</CardTitle>
-              <CardDescription className="text-base">
-                Upload a CSV file to bulk-import glossary entries. The file must match the downloaded format.
-              </CardDescription>
+              <CardTitle className="text-primary text-2xl">{t('index.importTitle')}</CardTitle>
+              <CardDescription className="text-base">{t('index.importDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <ImportGlossaryLink />
@@ -144,11 +141,8 @@ export default function DataGlossary() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-primary text-2xl">Replace Glossary</CardTitle>
-              <CardDescription className="text-base">
-                Upload a CSV file to completely replace the glossary. Every existing entry is deleted first, so download
-                a backup before you start.
-              </CardDescription>
+              <CardTitle className="text-primary text-2xl">{t('index.replaceTitle')}</CardTitle>
+              <CardDescription className="text-base">{t('index.replaceDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <ReplaceGlossaryLink />
