@@ -31,11 +31,13 @@ import {
   useSearchParams,
 } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
-import { Check, Copy, Loader2, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
+import { Check, Loader2, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { CopyButton } from '~/components/data/CopyButton';
 import { DeleteConfirmDialog } from '~/components/data/DeleteConfirmDialog';
 import { formatElapsed, IndeterminateBar, ProgressBar, useElapsedSeconds } from '~/components/data/ProgressBar';
 import { ErrorInfo } from '~/components/ErrorInfo';
@@ -43,6 +45,7 @@ import { Badge, Button, Input } from '~/components/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { type ReadGlossary } from '~/drizzle/tables';
 import { useToast } from '~/hooks/use-toast';
+import { LocalizedError, localizeError, translateKey } from '~/i18n/errors';
 import {
   type EntryIndexRecord,
   type GlossaryIssue,
@@ -50,7 +53,7 @@ import {
   type OrphanIndexRecord,
   type RemovableRecordClass,
 } from '~/services/glossary.analyse';
-import { findGlossaryRowsForInspection, inspectGlossary } from '~/services/glossary.inspect';
+import { findGlossaryRowsForInspection, inspectGlossary, type RecordDeletionResult } from '~/services/glossary.inspect';
 import { readTrashedGlossaries } from '~/services/glossary.service';
 import { readUsers } from '~/services/user.service';
 
@@ -139,7 +142,7 @@ async function postJob<K extends keyof JobPayloads>(
   // A lapsed session redirects to the login page, which is HTML rather than the shape below.
   const payload = (await response.json().catch(() => null)) as JobResponse | null;
   if (!payload) {
-    throw new Error(`The server returned ${response.status}. Your session may have expired — reload the page.`);
+    throw new LocalizedError('glossary:inspector.errors.sessionExpired', { status: response.status });
   }
   if (!payload.ok) throw new Error(payload.message);
   // The wire type is the union of every job's payload; the intent picks which one this is, and
@@ -152,8 +155,19 @@ function wasCancelled(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
 }
 
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+// Job errors are LocalizedErrors from this page, or messages the job route already
+// translated for the request's language.
+function errorMessage(error: unknown, fallback: string, t: (...args: never[]) => unknown): string {
+  return error instanceof Error ? localizeError(error, t) : fallback;
+}
+
+type Skipped = RecordDeletionResult['skipped'][number];
+
+// Why the server kept a record, in the viewer's language.
+function skipReason(skipped: Skipped | undefined, t: (...args: never[]) => unknown): string | null {
+  if (!skipped) return null;
+  const key = { 'not-in-index': 'notInIndex', canonical: 'canonical', 'last-record': 'lastRecord' }[skipped.code];
+  return translateKey(t, `glossary:inspector.skipReasons.${key}`, { term: skipped.term });
 }
 
 // Keeps an in-flight job cancellable, and cancels it if the page navigates away mid-run.
@@ -197,36 +211,37 @@ const COLUMNS: { key: keyof ReadGlossary; label: string }[] = [
 
 // Serialised rows arrive with dates as strings; null and empty string are different states
 // worth telling apart when debugging, so neither is rendered as blank.
+// `null` stays literal: it is the database value, not prose.
+function EmptyValue({ value }: { value: null | undefined | '' }) {
+  const { t } = useTranslation('glossary');
+  return <span className={`${SUBTLE} italic`}>{value === '' ? t('inspector.entry.emptyString') : 'null'}</span>;
+}
+
 function renderValue(value: unknown) {
-  if (value === null || value === undefined) return <span className={`${SUBTLE} italic`}>null</span>;
-  if (value === '') return <span className={`${SUBTLE} italic`}>empty string</span>;
+  if (value === null || value === undefined || value === '') return <EmptyValue value={value} />;
   return <span className="break-all">{String(value)}</span>;
 }
 
-function CopyButton({ value }: { value: string }) {
-  const { toast } = useToast();
-  return (
-    <button
-      title="Copy"
-      type="button"
-      className={`${SUBTLE} hover:text-foreground shrink-0`}
-      onClick={() => {
-        navigator.clipboard?.writeText(value);
-        toast({ variant: 'default', title: 'Copied', position: 'top-right' });
-      }}
-    >
-      <Copy className="h-3 w-3" />
-    </button>
-  );
-}
-
+// The code stays as the badge, since it is what the stats and logs use; the explanation is
+// translated from it.
 function IssueList({ issues }: { issues: GlossaryIssue[] }) {
+  const { t } = useTranslation('glossary');
+  const describe = (issue: GlossaryIssue) => {
+    const values = issue.values ?? {};
+    const what = [
+      values.whitespace && t('inspector.issues.whitespace'),
+      values.hiddenCharacters && t('inspector.issues.hiddenCharacters'),
+    ]
+      .filter(Boolean)
+      .join(t('inspector.issues.and'));
+    return translateKey(t, `glossary:inspector.issues.details.${issue.code}`, { count: values.count, what });
+  };
   return (
     <ul className="space-y-1">
       {issues.map((issue) => (
         <li key={issue.code} className="flex flex-wrap items-baseline gap-2 text-sm">
           <Badge variant={issue.severity === 'error' ? 'destructive' : 'secondary'}>{issue.code}</Badge>
-          <span className="text-muted-foreground">{issue.detail}</span>
+          <span className="text-muted-foreground">{describe(issue)}</span>
         </li>
       ))}
     </ul>
@@ -260,9 +275,10 @@ function ColumnTable({ row }: { row: ReadGlossary }) {
 // All fields of every stored translation. The keys come from the data rather than a fixed
 // list: the JSON column has no schema, so an unexpected key is itself worth seeing.
 function TranslationsTable({ row }: { row: ReadGlossary }) {
+  const { t } = useTranslation('glossary');
   const translations = row.translations ?? [];
   if (translations.length === 0) {
-    return <p className={`${SUBTLE} text-xs italic`}>No translations stored.</p>;
+    return <p className={`${SUBTLE} text-xs italic`}>{t('inspector.entry.noTranslations')}</p>;
   }
   const keys = [...new Set(translations.flatMap((translation) => Object.keys(translation)))];
 
@@ -302,6 +318,7 @@ function TranslationsTable({ row }: { row: ReadGlossary }) {
 // request, so this is the only write here with nothing to show a progress bar for.
 function DeleteRecordButton({ objectID, onDeleted }: { objectID: string; onDeleted: () => void }) {
   const { toast } = useToast();
+  const { t } = useTranslation(['glossary', 'common']);
   const { begin } = useJobAbort();
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -310,14 +327,15 @@ function DeleteRecordButton({ objectID, onDeleted }: { objectID: string; onDelet
     setSubmitting(true);
     try {
       const { deleted, skipped } = await postJob('delete-records', [['objectId', objectID]], begin());
-      const kept = skipped[0];
       toast({
         variant: deleted > 0 ? 'default' : 'error',
-        title: deleted > 0 ? 'Record deleted' : 'Kept',
+        title: t(deleted > 0 ? 'inspector.records.deletedTitle' : 'inspector.records.keptTitle'),
         description:
           deleted > 0
-            ? 'Deleted 1 search record. The glossary entry itself is untouched.'
-            : `This record was kept: ${kept?.reason ?? 'the server refused the delete'}.`,
+            ? t('inspector.records.deletedDescription')
+            : t('inspector.records.keptDescription', {
+                reason: skipReason(skipped[0], t) ?? t('inspector.records.refused'),
+              }),
         position: 'top-right',
       });
       if (deleted > 0) {
@@ -328,8 +346,8 @@ function DeleteRecordButton({ objectID, onDeleted }: { objectID: string; onDelet
       if (wasCancelled(error)) return;
       toast({
         variant: 'error',
-        title: 'Oops!',
-        description: errorMessage(error, 'Failed to delete the search record.'),
+        title: t('common:toast.oops'),
+        description: errorMessage(error, t('inspector.records.deleteFailed'), t),
         position: 'top-right',
       });
     } finally {
@@ -340,7 +358,7 @@ function DeleteRecordButton({ objectID, onDeleted }: { objectID: string; onDelet
   if (done) {
     return (
       <Badge className="gap-1" variant="secondary">
-        <Check className="h-3 w-3" /> deleted
+        <Check className="h-3 w-3" /> {t('inspector.records.deletedBadge')}
       </Badge>
     );
   }
@@ -350,8 +368,8 @@ function DeleteRecordButton({ objectID, onDeleted }: { objectID: string; onDelet
       type="button"
       onClick={remove}
       disabled={submitting}
-      title="Delete this search record"
-      aria-label={`delete search record ${objectID}`}
+      title={t('inspector.records.deleteTooltip')}
+      aria-label={t('inspector.records.deleteLabel', { id: objectID })}
       className={`${SUBTLE} hover:text-destructive disabled:pointer-events-none disabled:opacity-60`}
     >
       {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -374,9 +392,10 @@ function IndexRecordsTable({
   // re-scan after a single delete, so a row that disappeared would look like a render bug.
   const [deleted, setDeleted] = useState<string[]>([]);
   const markDeleted = useCallback((objectID: string) => setDeleted((ids) => [...ids, objectID]), []);
+  const { t } = useTranslation('glossary');
 
   if (records.length === 0) {
-    return <p className={`${SUBTLE} text-xs italic`}>No search records carry this uuid.</p>;
+    return <p className={`${SUBTLE} text-xs italic`}>{t('inspector.records.none')}</p>;
   }
   return (
     <div className="overflow-x-auto">
@@ -385,8 +404,8 @@ function IndexRecordsTable({
           <tr className="border-b">
             <th className={`${LABEL} py-1 pr-3 font-medium`}>objectID</th>
             <th className={`${LABEL} py-1 pr-3 font-medium`}>id</th>
-            <th className={`${LABEL} py-1 pr-3 font-medium`}>role</th>
-            {canCleanUp && <th className={`${LABEL} py-1 font-medium`}>fix</th>}
+            <th className={`${LABEL} py-1 pr-3 font-medium`}>{t('inspector.records.role')}</th>
+            {canCleanUp && <th className={`${LABEL} py-1 font-medium`}>{t('inspector.records.fix')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -404,11 +423,11 @@ function IndexRecordsTable({
               <td className={`py-1 pr-3 ${MONO}`}>{renderValue(record.id)}</td>
               <td className="py-1 pr-3">
                 {record.canonical ? (
-                  <Badge variant="secondary">kept · search_id points here</Badge>
+                  <Badge variant="secondary">{t('inspector.records.kept')}</Badge>
                 ) : record.removable ? (
-                  <Badge variant="destructive">duplicate</Badge>
+                  <Badge variant="destructive">{t('inspector.records.duplicate')}</Badge>
                 ) : (
-                  <Badge variant="secondary">only record · keep</Badge>
+                  <Badge variant="secondary">{t('inspector.records.onlyRecord')}</Badge>
                 )}
               </td>
               {canCleanUp && (
@@ -426,9 +445,8 @@ function IndexRecordsTable({
       </table>
       {records.length > 1 && (
         <p className={`${SUBTLE} mt-2 text-xs`}>
-          Deleting the duplicate leaves {searchId ? 'the kept record' : 'the remaining record'} and the glossary entry
-          itself untouched.
-          {deleted.length > 0 && ' The counts above still include it until you run the index check again.'}
+          {t(searchId ? 'inspector.records.noteKept' : 'inspector.records.noteRemaining')}
+          {deleted.length > 0 && t('inspector.records.stillCounted')}
         </p>
       )}
     </div>
@@ -438,6 +456,7 @@ function IndexRecordsTable({
 function EntryCard({ entry, canCleanUp }: { entry: InspectedEntry; canCleanUp: boolean }) {
   const { row, issues, indexRecords } = entry;
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation('glossary');
 
   return (
     <Card>
@@ -445,31 +464,31 @@ function EntryCard({ entry, canCleanUp }: { entry: InspectedEntry; canCleanUp: b
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-primary text-xl">{row.glossary}</CardTitle>
           <Button size="sm" variant="secondary" onClick={() => setOpen((value) => !value)}>
-            {open ? 'Hide columns' : 'Show all columns'}
+            {t(open ? 'inspector.entry.hideColumns' : 'inspector.entry.showColumns')}
           </Button>
         </div>
         <div className={`flex flex-wrap items-center gap-2 ${MONO}`}>
           <span>{row.id}</span>
           <CopyButton value={row.id} />
           <span className={SUBTLE}>·</span>
-          <span>{row.translations?.length ?? 0} translation(s)</span>
+          <span>{t('inspector.counts.translation', { count: row.translations?.length ?? 0 })}</span>
           <span className={SUBTLE}>·</span>
-          <span>{indexRecords.length} search record(s)</span>
+          <span>{t('inspector.counts.searchRecord', { count: indexRecords.length })}</span>
         </div>
         <IssueList issues={issues} />
       </CardHeader>
       {open && (
         <CardContent className="space-y-4">
           <section className="space-y-1">
-            <h4 className="text-foreground text-sm font-semibold">Columns</h4>
+            <h4 className="text-foreground text-sm font-semibold">{t('inspector.entry.columns')}</h4>
             <ColumnTable row={row} />
           </section>
           <section className="space-y-1">
-            <h4 className="text-foreground text-sm font-semibold">translations (json)</h4>
+            <h4 className="text-foreground text-sm font-semibold">{t('inspector.entry.translationsJson')}</h4>
             <TranslationsTable row={row} />
           </section>
           <section className="space-y-1">
-            <h4 className="text-foreground text-sm font-semibold">Search index records</h4>
+            <h4 className="text-foreground text-sm font-semibold">{t('inspector.entry.searchRecords')}</h4>
             <IndexRecordsTable records={indexRecords} searchId={row.searchId} canCleanUp={canCleanUp} />
           </section>
         </CardContent>
@@ -479,6 +498,7 @@ function EntryCard({ entry, canCleanUp }: { entry: InspectedEntry; canCleanUp: b
 }
 
 function LookupCard({ row }: { row: ReadGlossary }) {
+  const { t } = useTranslation('glossary');
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -491,7 +511,7 @@ function LookupCard({ row }: { row: ReadGlossary }) {
       <CardContent className="space-y-4">
         <ColumnTable row={row} />
         <section className="space-y-1">
-          <h4 className="text-foreground text-sm font-semibold">translations (json)</h4>
+          <h4 className="text-foreground text-sm font-semibold">{t('inspector.entry.translationsJson')}</h4>
           <TranslationsTable row={row} />
         </section>
       </CardContent>
@@ -513,6 +533,8 @@ function LookupCard({ row }: { row: ReadGlossary }) {
 // from the start again without harm.
 function ReindexButton({ entries }: { entries: number }) {
   const { toast } = useToast();
+  const { t } = useTranslation(['glossary', 'common']);
+  const entryCount = (count: number) => t('inspector.counts.entry', { count });
   const { begin, cancel } = useJobAbort();
   // null until the first run; kept after it finishes so the outcome stays on the page.
   const [progress, setProgress] = useState<{ indexed: number; repointed: number } | null>(null);
@@ -539,20 +561,25 @@ function ReindexButton({ entries }: { entries: number }) {
         afterId = page.nextAfterId;
         if (!afterId) break;
       }
-      const pointerNote = repointed ? ` ${repointed} row(s) had their search_id corrected.` : '';
       toast({
         variant: 'default',
-        title: 'Re-indexed',
-        description: `Re-indexed ${indexed} entr(ies) from the database.${pointerNote} Records left at old objectIDs now belong to no entry — run the index check to see them as orphans, then clean them up.`,
+        title: t('inspector.reindex.doneTitle'),
+        description: t('inspector.reindex.doneDescription', {
+          entries: entryCount(indexed),
+          pointerNote: repointed ? t('inspector.reindex.pointerNote', { count: repointed }) : '',
+        }),
         position: 'top-right',
       });
     } catch (error) {
       toast({
         variant: wasCancelled(error) ? 'default' : 'error',
-        title: wasCancelled(error) ? 'Stopped' : 'Oops!',
+        title: wasCancelled(error) ? t('inspector.jobs.stopped') : t('common:toast.oops'),
         description: wasCancelled(error)
-          ? `Stopped after ${indexed} entr(ies). Those are indexed and stay indexed; run it again to finish the rest.`
-          : `${errorMessage(error, 'Failed to re-index the glossary.')} ${indexed} entr(ies) were indexed before it failed.`,
+          ? t('inspector.reindex.stoppedDescription', { entries: entryCount(indexed) })
+          : t('inspector.reindex.failedDescription', {
+              error: errorMessage(error, t('inspector.reindex.failed'), t),
+              entries: entryCount(indexed),
+            }),
         position: 'top-right',
       });
     } finally {
@@ -566,25 +593,20 @@ function ReindexButton({ entries }: { entries: number }) {
         <Button size="sm" onClick={start} disabled={running} variant="secondary" className="shrink-0">
           {running ? (
             <span className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Re-indexing…
+              <Loader2 className="h-4 w-4 animate-spin" /> {t('inspector.reindex.running')}
             </span>
           ) : (
             <span className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" /> Re-index {entries} entries
+              <RefreshCw className="h-4 w-4" /> {t('inspector.reindex.button', { count: entries })}
             </span>
           )}
         </Button>
         {running && (
           <Button size="sm" onClick={cancel} variant="outline">
-            Stop
+            {t('inspector.jobs.stop')}
           </Button>
         )}
-        <p className="text-muted-foreground min-w-56 flex-1 text-sm">
-          Writes every entry into the index again from the database, keyed by the entry&rsquo;s own uuid. Search stays
-          up throughout — records are overwritten in place, never cleared first. Run this after changing what the index
-          holds, or when entries are missing from search. It takes about a minute and leaves terms and translations
-          untouched. Records left behind at old objectIDs become orphans, which the cleanup below removes.
-        </p>
+        <p className="text-muted-foreground min-w-56 flex-1 text-sm">{t('inspector.reindex.blurb')}</p>
       </div>
 
       {progress && (
@@ -592,10 +614,10 @@ function ReindexButton({ entries }: { entries: number }) {
           <ProgressBar max={entries} value={progress.indexed} />
           <p className={`${SUBTLE} text-xs`}>
             {running
-              ? `Indexed ${progress.indexed} of about ${entries} entries.`
-              : `Indexed ${progress.indexed} entr(ies).`}
-            {progress.repointed > 0 && ` ${progress.repointed} search_id(s) corrected.`}
-            {running && ' Stopping is safe — the entries already written stay indexed.'}
+              ? t('inspector.reindex.progressRunning', { indexed: progress.indexed, entries: entryCount(entries) })
+              : t('inspector.reindex.progressDone', { entries: entryCount(progress.indexed) })}
+            {progress.repointed > 0 && t('inspector.reindex.repointed', { count: progress.repointed })}
+            {running && t('inspector.reindex.stopSafe')}
           </p>
         </div>
       )}
@@ -631,6 +653,8 @@ function BulkCleanupButton({
   dangerous?: boolean;
 }) {
   const { toast } = useToast();
+  const { t } = useTranslation(['glossary', 'common']);
+  const recordCount = (count: number) => t('inspector.counts.record', { count });
   const { begin, cancel } = useJobAbort();
   const [confirming, setConfirming] = useState(false);
   const [progress, setProgress] = useState<
@@ -646,14 +670,17 @@ function BulkCleanupButton({
 
     let deleted = 0;
     let kept = 0;
-    let firstKeptReason: string | null = null;
+    let firstKept: Skipped | undefined;
     try {
       const { objectIDs, scanned } = await postJob('cleanup-scan', [['recordClass', recordClass]], signal);
       if (objectIDs.length === 0) {
         toast({
           variant: 'default',
-          title: 'Nothing to delete',
-          description: `Scanned ${scanned} search record(s); none of them are ${label} any more.`,
+          title: t('inspector.cleanup.nothingTitle'),
+          description: t('inspector.cleanup.nothingDescription', {
+            records: t('inspector.counts.searchRecord', { count: scanned }),
+            label,
+          }),
           position: 'top-right',
         });
         onFinished();
@@ -670,25 +697,32 @@ function BulkCleanupButton({
         );
         deleted += result.deleted;
         kept += result.skipped.length;
-        firstKeptReason = firstKeptReason ?? result.skipped[0]?.reason ?? null;
+        firstKept = firstKept ?? result.skipped[0];
         setProgress({ phase: 'deleting', deleted, kept, total: objectIDs.length });
       }
 
-      const keptNote = kept ? ` Kept ${kept}: ${firstKeptReason}.` : '';
       toast({
         variant: 'default',
-        title: 'Done',
-        description: `Scanned ${scanned} search record(s) and deleted ${deleted} (${recordClass}).${keptNote} No glossary entry was changed.`,
+        title: t('common:toast.done'),
+        description: t('inspector.cleanup.doneDescription', {
+          scanned: t('inspector.counts.searchRecord', { count: scanned }),
+          deleted,
+          label,
+          keptNote: kept ? t('inspector.jobs.keptNote', { count: kept, reason: skipReason(firstKept, t) }) : '',
+        }),
         position: 'top-right',
       });
       onFinished();
     } catch (error) {
       toast({
         variant: wasCancelled(error) ? 'default' : 'error',
-        title: wasCancelled(error) ? 'Stopped' : 'Oops!',
+        title: wasCancelled(error) ? t('inspector.jobs.stopped') : t('common:toast.oops'),
         description: wasCancelled(error)
-          ? `Stopped after deleting ${deleted} record(s). Deletes already made stand; run it again to finish the rest.`
-          : `${errorMessage(error, 'Failed to clean up search records.')} ${deleted} record(s) were deleted before it failed.`,
+          ? t('inspector.cleanup.stoppedDescription', { records: recordCount(deleted) })
+          : t('inspector.cleanup.failedDescription', {
+              error: errorMessage(error, t('inspector.cleanup.failed'), t),
+              records: recordCount(deleted),
+            }),
         position: 'top-right',
       });
       if (deleted > 0) onFinished();
@@ -709,15 +743,15 @@ function BulkCleanupButton({
         >
           {submitting ? (
             <span className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Deleting…
+              <Loader2 className="h-4 w-4 animate-spin" /> {t('inspector.jobs.deleting')}
             </span>
           ) : (
-            `Delete ${count} ${label}`
+            t('inspector.cleanup.button', { count, label })
           )}
         </Button>
         {submitting && (
           <Button size="sm" onClick={cancel} variant="outline">
-            Stop
+            {t('inspector.jobs.stop')}
           </Button>
         )}
         <p className="text-muted-foreground min-w-56 flex-1 text-sm">{blurb}</p>
@@ -726,18 +760,15 @@ function BulkCleanupButton({
       {progress?.phase === 'scanning' && (
         <div className="space-y-1">
           <IndeterminateBar />
-          <p className={`${SUBTLE} text-xs`}>
-            Rescanning the whole index to decide what may go — {formatElapsed(elapsed)} so far. Nothing has been deleted
-            yet.
-          </p>
+          <p className={`${SUBTLE} text-xs`}>{t('inspector.cleanup.scanning', { elapsed: formatElapsed(elapsed) })}</p>
         </div>
       )}
       {progress?.phase === 'deleting' && (
         <div className="space-y-1">
           <ProgressBar max={progress.total} value={progress.deleted + progress.kept} />
           <p className={`${SUBTLE} text-xs`}>
-            Deleted {progress.deleted} of {progress.total} record(s).
-            {progress.kept > 0 && ` ${progress.kept} kept — the server judged them still in use.`}
+            {t('inspector.cleanup.progress', { deleted: progress.deleted, records: recordCount(progress.total) })}
+            {progress.kept > 0 && t('inspector.cleanup.progressKept', { count: progress.kept })}
           </p>
         </div>
       )}
@@ -774,13 +805,12 @@ function Stat({ label, value, tone }: { label: string; value: number | null; ton
 // about being unable to say how far along it is, while still showing that it is alive.
 function ScanProgress({ scanning }: { scanning: boolean }) {
   const elapsed = useElapsedSeconds(scanning);
+  const { t } = useTranslation('glossary');
   if (!scanning) return null;
   return (
     <div className="w-full space-y-1">
       <IndeterminateBar />
-      <p className={`${SUBTLE} text-xs`}>
-        Browsing every record in the index — {formatElapsed(elapsed)} so far, usually about a minute.
-      </p>
+      <p className={`${SUBTLE} text-xs`}>{t('inspector.check.progress', { elapsed: formatElapsed(elapsed) })}</p>
     </div>
   );
 }
@@ -814,55 +844,55 @@ export default function GlossaryInspector() {
   indexCheckParams.set('index', '1');
 
   const orphansWithoutLiveTerm = stats.orphanIndexRecords - stats.orphansWithLiveTerm;
+  const { t } = useTranslation('glossary');
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-6">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-primary text-2xl">Glossary Inspector</CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Cross-checks every glossary row against the Algolia index and shows every stored column. It can rebuild the
-            index from the database and delete stray search records without touching terms or translations, and it is
-            where entries deleted from the glossary wait in the trash to be restored or deleted for good.
-          </p>
+          <CardTitle className="text-primary text-2xl">{t('inspector.title')}</CardTitle>
+          <p className="text-muted-foreground text-sm">{t('inspector.description')}</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-            <Stat label="entries" value={stats.entries} />
-            <Stat label="in trash" value={stats.trashedEntries} />
-            <Stat label="translations" value={stats.translations} />
-            <Stat label="rows with search_id" value={stats.indexedEntries} />
-            <Stat label="index records" value={indexChecked ? stats.indexRecords : null} />
-            <Stat tone="bad" label="duplicate records" value={indexChecked ? stats.redundantIndexRecords : null} />
-            <Stat tone="bad" label="orphan records" value={indexChecked ? stats.orphanIndexRecords : null} />
+            <Stat value={stats.entries} label={t('inspector.stats.entries')} />
+            <Stat value={stats.trashedEntries} label={t('inspector.stats.inTrash')} />
+            <Stat value={stats.translations} label={t('inspector.stats.translations')} />
+            <Stat value={stats.indexedEntries} label={t('inspector.stats.rowsWithSearchId')} />
+            <Stat label={t('inspector.stats.indexRecords')} value={indexChecked ? stats.indexRecords : null} />
+            <Stat
+              tone="bad"
+              label={t('inspector.stats.duplicateRecords')}
+              value={indexChecked ? stats.redundantIndexRecords : null}
+            />
+            <Stat
+              tone="bad"
+              label={t('inspector.stats.orphanRecords')}
+              value={indexChecked ? stats.orphanIndexRecords : null}
+            />
           </div>
 
           {indexChecked && stats.orphanIndexRecords > 0 && (
             <p className="text-muted-foreground text-sm">
-              Of {stats.orphanIndexRecords} orphan record(s), {stats.orphansWithLiveTerm} name a term that is still in
-              the glossary under a different uuid — entries re-created by an import — and{' '}
-              {stats.orphanIndexRecords - stats.orphansWithLiveTerm} name a term that is no longer there at all.
+              {t('inspector.orphanBreakdown', {
+                orphans: t('inspector.counts.orphanRecord', { count: stats.orphanIndexRecords }),
+                live: stats.orphansWithLiveTerm,
+                gone: orphansWithoutLiveTerm,
+              })}
             </p>
           )}
 
-          {indexError && (
-            <p className="text-destructive text-sm">
-              The search index could not be read, so index checks were skipped: {indexError}
-            </p>
-          )}
+          {indexError && <p className="text-destructive text-sm">{t('inspector.indexError', { error: indexError })}</p>}
 
           {!checkIndex && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed p-3">
               <Button asChild size="sm" variant="secondary">
-                <Link to={`?${indexCheckParams.toString()}`}>Check the search index</Link>
+                <Link to={`?${indexCheckParams.toString()}`}>{t('inspector.check.button')}</Link>
               </Button>
               {isScanningIndex ? (
                 <ScanProgress scanning />
               ) : (
-                <p className="text-muted-foreground text-sm">
-                  Off by default: it browses every record in the index and takes up to a minute. It finds entries listed
-                  more than once in search, entries missing from it, and records left behind by deleted entries.
-                </p>
+                <p className="text-muted-foreground text-sm">{t('inspector.check.hint')}</p>
               )}
             </div>
           )}
@@ -872,19 +902,16 @@ export default function GlossaryInspector() {
               <Button size="sm" variant="secondary" disabled={isLoading} onClick={() => revalidator.revalidate()}>
                 {isScanningIndex ? (
                   <span className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Scanning…
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t('inspector.check.scanning')}
                   </span>
                 ) : (
-                  'Run the check again'
+                  t('inspector.check.runAgain')
                 )}
               </Button>
               {isScanningIndex ? (
                 <ScanProgress scanning />
               ) : (
-                <p className="text-muted-foreground text-sm">
-                  These counts are a snapshot from when the page loaded. Re-run after changing the index, or after
-                  changing which Algolia app the site points at.
-                </p>
+                <p className="text-muted-foreground text-sm">{t('inspector.check.snapshotHint')}</p>
               )}
             </div>
           )}
@@ -895,31 +922,31 @@ export default function GlossaryInspector() {
             <div className="space-y-3">
               <BulkCleanupButton
                 recordClass="duplicates"
-                label="duplicate records"
                 onFinished={refreshCounts}
                 count={stats.redundantIndexRecords}
-                title={`Delete ${stats.redundantIndexRecords} duplicate search records?`}
-                blurb="Extra records on entries that also have the record their search_id names. Deleting them is what stops an entry appearing several times in search."
-                description="The index is rescanned first, and only extra records on entries that still have their own canonical record are deleted. Every entry keeps that record, so nothing leaves search, and no glossary row or translation is touched."
+                label={t('inspector.cleanup.duplicates.label')}
+                blurb={t('inspector.cleanup.duplicates.blurb')}
+                description={t('inspector.cleanup.duplicates.description')}
+                title={t('inspector.cleanup.duplicates.title', { count: stats.redundantIndexRecords })}
               />
               <BulkCleanupButton
                 onFinished={refreshCounts}
                 recordClass="orphans-live-term"
                 count={stats.orphansWithLiveTerm}
-                label="orphan records whose term is still in the glossary"
-                title={`Delete ${stats.orphansWithLiveTerm} orphan records with a live term?`}
-                blurb="Left over from entries that were re-created under a new uuid. The live entry has its own record, so nothing here is the last copy of anything."
-                description="The index is rescanned first. Each of these records names a term that still exists in the glossary under a different uuid, and that live entry keeps its own record. No glossary row or translation is touched."
+                label={t('inspector.cleanup.orphansLiveTerm.label')}
+                blurb={t('inspector.cleanup.orphansLiveTerm.blurb')}
+                description={t('inspector.cleanup.orphansLiveTerm.description')}
+                title={t('inspector.cleanup.orphansLiveTerm.title', { count: stats.orphansWithLiveTerm })}
               />
               <BulkCleanupButton
                 dangerous
                 onFinished={refreshCounts}
                 count={orphansWithoutLiveTerm}
                 recordClass="orphans-missing-term"
-                label="orphan records whose term is gone"
-                title={`Delete ${orphansWithoutLiveTerm} orphan records for terms no longer in the glossary?`}
-                description="The index is rescanned first. Nothing in the glossary holds these terms, so deleting costs nothing in search — but it also destroys the only remaining record of what those entries said. Export or copy anything you might want to restore first."
-                blurb="No glossary entry holds these terms any more. Each record is the last trace of a deleted entry — it still carries the term, its phonetic and the words of its translations, though not their sutra citations. Look at them in the table below before deleting."
+                label={t('inspector.cleanup.orphansMissingTerm.label')}
+                blurb={t('inspector.cleanup.orphansMissingTerm.blurb')}
+                description={t('inspector.cleanup.orphansMissingTerm.description')}
+                title={t('inspector.cleanup.orphansMissingTerm.title', { count: orphansWithoutLiveTerm })}
               />
             </div>
           )}
@@ -938,10 +965,8 @@ export default function GlossaryInspector() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-primary text-xl">Look up an entry</CardTitle>
-          <p className="text-muted-foreground text-sm">
-            By uuid, search_id, or any part of a term or translation. Shows every column, issues or not.
-          </p>
+          <CardTitle className="text-primary text-xl">{t('inspector.lookup.title')}</CardTitle>
+          <p className="text-muted-foreground text-sm">{t('inspector.lookup.description')}</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <Form method="get" className="flex items-center gap-2">
@@ -951,20 +976,20 @@ export default function GlossaryInspector() {
               autoComplete="off"
               defaultValue={query}
               disabled={isLoading}
-              placeholder="法 or 0b3f…-…"
-              aria-label="glossary lookup"
+              aria-label={t('inspector.lookup.label')}
+              placeholder={t('inspector.lookup.placeholder')}
             />
-            <Button type="submit" className="w-24" disabled={isLoading}>
-              {isLoading ? 'Searching…' : 'Look up'}
+            <Button type="submit" className="min-w-24" disabled={isLoading}>
+              {t(isLoading ? 'inspector.lookup.searching' : 'inspector.lookup.button')}
             </Button>
           </Form>
           {query && lookupRows.length === 0 && !isLoading && (
-            <p className="text-muted-foreground text-sm">No entry matches “{query}”.</p>
+            <p className="text-muted-foreground text-sm">{t('inspector.lookup.noMatch', { query })}</p>
           )}
           {lookupRows.length > 0 && (
             <div className="space-y-4">
               <p className="text-muted-foreground text-sm">
-                {lookupRows.length} match(es) for “{query}”.
+                {t('inspector.lookup.matches', { count: lookupRows.length, query })}
               </p>
               {lookupRows.map((row) => (
                 <LookupCard key={row.id} row={row as unknown as ReadGlossary} />
@@ -987,14 +1012,15 @@ export default function GlossaryInspector() {
 
       <div className="space-y-4">
         <h3 className="text-foreground text-lg font-semibold">
-          Entries with issues{' '}
+          {t('inspector.issues.heading')}{' '}
           <span className={`${LABEL} font-normal`}>
-            ({entries.length}
-            {truncatedEntries ? ` of ${stats.entriesWithIssues}` : ''})
+            {truncatedEntries
+              ? t('inspector.issues.countOf', { shown: entries.length, total: stats.entriesWithIssues })
+              : t('inspector.issues.count', { shown: entries.length })}
           </span>
         </h3>
         {entries.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No issues found.</p>
+          <p className="text-muted-foreground text-sm">{t('inspector.issues.none')}</p>
         ) : (
           entries.map((entry) => (
             <EntryCard key={entry.row.id} canCleanUp={canCleanUp} entry={entry as unknown as InspectedEntry} />
@@ -1023,6 +1049,8 @@ function OrphanRecordsCard({
   canCleanUp: boolean;
 }) {
   const { toast } = useToast();
+  const { t } = useTranslation(['glossary', 'common']);
+  const recordCount = (count: number) => t('inspector.counts.searchRecord', { count });
   const { begin, cancel } = useJobAbort();
   const [selected, setSelected] = useState<string[]>([]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -1043,7 +1071,7 @@ function OrphanRecordsCard({
 
     let deleted = 0;
     let kept = 0;
-    let firstKeptReason: string | null = null;
+    let firstKept: Skipped | undefined;
     try {
       for (let start = 0; start < objectIDs.length; start += DELETE_CHUNK) {
         const chunk = objectIDs.slice(start, start + DELETE_CHUNK);
@@ -1054,24 +1082,29 @@ function OrphanRecordsCard({
         );
         deleted += result.deleted;
         kept += result.skipped.length;
-        firstKeptReason = firstKeptReason ?? result.skipped[0]?.reason ?? null;
+        firstKept = firstKept ?? result.skipped[0];
         setProgress({ done: deleted + kept, total: objectIDs.length });
       }
-      const keptNote = kept ? ` Kept ${kept}: ${firstKeptReason}.` : '';
       toast({
         variant: 'default',
-        title: 'Done',
-        description: `Deleted ${deleted} search record(s).${keptNote} The glossary entries themselves are untouched.`,
+        title: t('common:toast.done'),
+        description: t('inspector.orphans.doneDescription', {
+          records: recordCount(deleted),
+          keptNote: kept ? t('inspector.jobs.keptNote', { count: kept, reason: skipReason(firstKept, t) }) : '',
+        }),
         position: 'top-right',
       });
       setSelected([]);
     } catch (error) {
       toast({
         variant: wasCancelled(error) ? 'default' : 'error',
-        title: wasCancelled(error) ? 'Stopped' : 'Oops!',
+        title: wasCancelled(error) ? t('inspector.jobs.stopped') : t('common:toast.oops'),
         description: wasCancelled(error)
-          ? `Stopped after deleting ${deleted} record(s). Deletes already made stand.`
-          : `${errorMessage(error, 'Failed to delete search records.')} ${deleted} record(s) were deleted before it failed.`,
+          ? t('inspector.orphans.stoppedDescription', { records: recordCount(deleted) })
+          : t('inspector.orphans.failedDescription', {
+              error: errorMessage(error, t('inspector.orphans.failed'), t),
+              records: recordCount(deleted),
+            }),
         position: 'top-right',
       });
     } finally {
@@ -1082,14 +1115,8 @@ function OrphanRecordsCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-primary text-xl">Orphan index records</CardTitle>
-        <p className="text-muted-foreground text-sm">
-          Records whose uuid matches no glossary row. Search drops them, so they cost a result slot and nothing more —
-          until a re-import reuses their uuid, at which point that entry starts appearing twice. The last column says
-          whether the term itself still exists under a different uuid: if it does, this is a leftover from an entry that
-          was re-created, and the live entry has its own record. If it does not, this record is the only remaining trace
-          of that term.
-        </p>
+        <CardTitle className="text-primary text-xl">{t('inspector.orphans.title')}</CardTitle>
+        <p className="text-muted-foreground text-sm">{t('inspector.orphans.description')}</p>
       </CardHeader>
       <CardContent className="space-y-3">
         {canCleanUp && (
@@ -1103,7 +1130,7 @@ function OrphanRecordsCard({
                   disabled={submitting}
                   onChange={(event) => setSelected(event.target.checked ? shownIds : [])}
                 />
-                Select all {shownIds.length} shown
+                {t('inspector.selection.selectAll', { count: shownIds.length })}
               </label>
               <Button
                 size="sm"
@@ -1112,11 +1139,13 @@ function OrphanRecordsCard({
                 onClick={deleteSelected}
                 disabled={submitting || selected.length === 0}
               >
-                {submitting ? 'Deleting…' : `Delete ${selected.length} selected`}
+                {submitting
+                  ? t('inspector.jobs.deleting')
+                  : t('inspector.orphans.deleteSelected', { count: selected.length })}
               </Button>
               {submitting && (
                 <Button size="sm" onClick={cancel} variant="outline">
-                  Stop
+                  {t('inspector.jobs.stop')}
                 </Button>
               )}
             </div>
@@ -1124,7 +1153,7 @@ function OrphanRecordsCard({
               <div className="space-y-1">
                 <ProgressBar max={progress.total} value={progress.done} />
                 <p className={`${SUBTLE} text-xs`}>
-                  {progress.done} of {progress.total} record(s) done.
+                  {t('inspector.orphans.progress', { done: progress.done, records: recordCount(progress.total) })}
                 </p>
               </div>
             )}
@@ -1134,11 +1163,11 @@ function OrphanRecordsCard({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b">
-                {canCleanUp && <th className={`${LABEL} py-1 pr-3 font-medium`}>select</th>}
+                {canCleanUp && <th className={`${LABEL} py-1 pr-3 font-medium`}>{t('inspector.selection.select')}</th>}
                 <th className={`${LABEL} py-1 pr-3 font-medium`}>objectID</th>
-                <th className={`${LABEL} py-1 pr-3 font-medium`}>id (no such row)</th>
+                <th className={`${LABEL} py-1 pr-3 font-medium`}>{t('inspector.orphans.idNoRow')}</th>
                 <th className={`${LABEL} py-1 pr-3 font-medium`}>glossary</th>
-                <th className={`${LABEL} py-1 font-medium`}>term in glossary?</th>
+                <th className={`${LABEL} py-1 font-medium`}>{t('inspector.orphans.termInGlossary')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1151,9 +1180,9 @@ function OrphanRecordsCard({
                         className="h-4 w-4"
                         disabled={submitting}
                         value={record.objectID}
-                        aria-label={`select ${record.objectID}`}
                         onChange={() => toggle(record.objectID)}
                         checked={selected.includes(record.objectID)}
+                        aria-label={t('inspector.selection.selectItem', { item: record.objectID })}
                       />
                     </td>
                   )}
@@ -1162,17 +1191,17 @@ function OrphanRecordsCard({
                   <td className={`py-1 pr-3 ${MONO}`}>{renderValue(record.glossary)}</td>
                   <td className="py-1">
                     {record.inTrash ? (
-                      <Badge variant="secondary">entry in trash</Badge>
+                      <Badge variant="secondary">{t('inspector.orphans.inTrash')}</Badge>
                     ) : record.liveRowWithSameTerm ? (
                       <div className={`flex items-center gap-2 ${MONO}`}>
-                        <Badge variant="secondary">live</Badge>
+                        <Badge variant="secondary">{t('inspector.orphans.live')}</Badge>
                         <span>{record.liveRowWithSameTerm.id}</span>
                         <CopyButton value={record.liveRowWithSameTerm.id} />
                       </div>
                     ) : record.glossary ? (
-                      <Badge variant="destructive">term not in glossary</Badge>
+                      <Badge variant="destructive">{t('inspector.orphans.termGone')}</Badge>
                     ) : (
-                      <span className={`${SUBTLE} text-xs italic`}>record has no term</span>
+                      <span className={`${SUBTLE} text-xs italic`}>{t('inspector.orphans.noTerm')}</span>
                     )}
                   </td>
                 </tr>
@@ -1182,7 +1211,7 @@ function OrphanRecordsCard({
         </div>
         {truncated && (
           <p className="text-muted-foreground text-sm">
-            Showing the first {records.length} of {total}. Use the whole-index cleanup above for the rest.
+            {t('inspector.orphans.truncated', { shown: records.length, total })}
           </p>
         )}
       </CardContent>
@@ -1206,6 +1235,8 @@ const TRASH_CHUNK = 50;
 // rescans the whole index, which is a minute's wait to learn what this card already knows.
 function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: number; canCleanUp: boolean }) {
   const { toast } = useToast();
+  const { t } = useTranslation(['glossary', 'common']);
+  const entryCount = (count: number) => t('inspector.counts.entry', { count });
   const { begin, cancel } = useJobAbort();
   const [gone, setGone] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -1250,24 +1281,28 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
         setGone((current) => [...current, ...chunk]);
         setProgress({ job, done: done + skipped, total: ids.length });
       }
-      const skippedNote = skipped ? ` ${skipped} had already left the trash.` : '';
+      const skippedNote = skipped ? t('inspector.trash.skippedNote', { count: skipped }) : '';
       toast({
         variant: 'default',
-        title: job === 'restore-trash' ? 'Restored' : 'Deleted',
-        description:
-          job === 'restore-trash'
-            ? `Restored ${done} entr(ies) to the glossary and search.${skippedNote}`
-            : `Permanently deleted ${done} entr(ies) and their translations.${skippedNote}`,
+        title: t(job === 'restore-trash' ? 'inspector.trash.restoredTitle' : 'inspector.trash.purgedTitle'),
+        description: t(
+          job === 'restore-trash' ? 'inspector.trash.restoredDescription' : 'inspector.trash.purgedDescription',
+          { entries: entryCount(done), skippedNote },
+        ),
         position: 'top-right',
       });
     } catch (error) {
-      const verb = job === 'restore-trash' ? 'restoring' : 'deleting';
       toast({
         variant: wasCancelled(error) ? 'default' : 'error',
-        title: wasCancelled(error) ? 'Stopped' : 'Oops!',
+        title: wasCancelled(error) ? t('inspector.jobs.stopped') : t('common:toast.oops'),
         description: wasCancelled(error)
-          ? `Stopped after ${verb} ${done} entr(ies). Those stand; the rest are still in the trash.`
-          : `${errorMessage(error, 'Failed to update the trash.')} ${done} entr(ies) were done before it failed.`,
+          ? t(job === 'restore-trash' ? 'inspector.trash.stoppedRestoring' : 'inspector.trash.stoppedDeleting', {
+              entries: entryCount(done),
+            })
+          : t('inspector.trash.failedDescription', {
+              error: errorMessage(error, t('inspector.trash.failed'), t),
+              entries: entryCount(done),
+            }),
         position: 'top-right',
       });
     } finally {
@@ -1280,24 +1315,21 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
   const purgeLabel =
     purgeCount === 1
       ? `“${rows.find((row) => row.id === confirmingPurge?.[0])?.glossary ?? ''}”`
-      : `${purgeCount} entries`;
+      : entryCount(purgeCount);
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-primary text-xl">
-          Trash <span className={`${LABEL} text-base font-normal`}>({remaining})</span>
+          {t('inspector.trash.title')}{' '}
+          <span className={`${LABEL} text-base font-normal`}>{t('inspector.issues.count', { shown: remaining })}</span>
         </CardTitle>
-        <p className="text-muted-foreground text-sm">
-          Entries deleted from the glossary page. They are already gone from the glossary, search and editing, but the
-          row and every translation are kept. Restoring puts an entry back in search exactly as it was; deleting it here
-          is permanent. Creating or importing a term that is in the trash replaces the trashed entry with the new one.
-        </p>
+        <p className="text-muted-foreground text-sm">{t('inspector.trash.description')}</p>
       </CardHeader>
       <CardContent className="space-y-3">
         {visible.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            {remaining > 0 ? 'Reload the page to see the rest of the trash.' : 'The trash is empty.'}
+            {t(remaining > 0 ? 'inspector.trash.reloadForRest' : 'inspector.trash.empty')}
           </p>
         ) : (
           <>
@@ -1312,7 +1344,7 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
                       disabled={submitting}
                       onChange={(event) => setSelected(event.target.checked ? shownIds : [])}
                     />
-                    Select all {shownIds.length} shown
+                    {t('inspector.selection.selectAll', { count: shownIds.length })}
                   </label>
                   <Button
                     size="sm"
@@ -1321,7 +1353,9 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
                     disabled={submitting || selected.length === 0}
                     onClick={() => run('restore-trash', selected)}
                   >
-                    {progress?.job === 'restore-trash' ? 'Restoring…' : `Restore ${selected.length} selected`}
+                    {progress?.job === 'restore-trash'
+                      ? t('inspector.trash.restoring')
+                      : t('inspector.trash.restoreSelected', { count: selected.length })}
                   </Button>
                   <Button
                     size="sm"
@@ -1330,11 +1364,13 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
                     onClick={() => setConfirmingPurge(selected)}
                     disabled={submitting || selected.length === 0}
                   >
-                    {progress?.job === 'purge-trash' ? 'Deleting…' : `Delete ${selected.length} permanently`}
+                    {progress?.job === 'purge-trash'
+                      ? t('inspector.jobs.deleting')
+                      : t('inspector.trash.deletePermanently', { count: selected.length })}
                   </Button>
                   {submitting && (
                     <Button size="sm" onClick={cancel} variant="outline">
-                      Stop
+                      {t('inspector.jobs.stop')}
                     </Button>
                   )}
                 </div>
@@ -1342,7 +1378,7 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
                   <div className="space-y-1">
                     <ProgressBar max={progress.total} value={progress.done} />
                     <p className={`${SUBTLE} text-xs`}>
-                      {progress.done} of {progress.total} entr(ies) done.
+                      {t('inspector.trash.progress', { done: progress.done, entries: entryCount(progress.total) })}
                     </p>
                   </div>
                 )}
@@ -1352,12 +1388,14 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b">
-                    {canCleanUp && <th className={`${LABEL} py-1 pr-3 font-medium`}>select</th>}
+                    {canCleanUp && (
+                      <th className={`${LABEL} py-1 pr-3 font-medium`}>{t('inspector.selection.select')}</th>
+                    )}
                     <th className={`${LABEL} py-1 pr-3 font-medium`}>glossary</th>
-                    <th className={`${LABEL} py-1 pr-3 font-medium`}>translations</th>
+                    <th className={`${LABEL} py-1 pr-3 font-medium`}>{t('inspector.trash.translations')}</th>
                     <th className={`${LABEL} py-1 pr-3 font-medium`}>deleted_at</th>
-                    <th className={`${LABEL} py-1 pr-3 font-medium`}>deleted by</th>
-                    <th className={`${LABEL} py-1 font-medium`}>actions</th>
+                    <th className={`${LABEL} py-1 pr-3 font-medium`}>{t('inspector.trash.deletedBy')}</th>
+                    <th className={`${LABEL} py-1 font-medium`}>{t('inspector.trash.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1380,7 +1418,7 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
             </div>
             {total > rows.length && (
               <p className="text-muted-foreground text-sm">
-                Showing the {rows.length} most recently deleted of {total}. Reload after clearing these to see the rest.
+                {t('inspector.trash.showingRecent', { shown: rows.length, total })}
               </p>
             )}
           </>
@@ -1389,10 +1427,10 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
         <DeleteConfirmDialog
           submitting={submitting}
           open={confirmingPurge !== null}
-          title={`Permanently delete ${purgeLabel}?`}
           onOpenChange={(open) => !open && setConfirmingPurge(null)}
+          title={t('inspector.trash.purgeTitle', { what: purgeLabel })}
           onConfirm={() => confirmingPurge && run('purge-trash', confirmingPurge)}
-          description={`This deletes ${purgeLabel} and every translation ${purgeCount === 1 ? 'it holds' : 'they hold'} from the database, along with any search record still carrying ${purgeCount === 1 ? 'its' : 'their'} uuid. It cannot be undone — restore instead if you might want ${purgeCount === 1 ? 'it' : 'them'} back.`}
+          description={t('inspector.trash.purgeDescription', { count: purgeCount, what: purgeLabel })}
         />
       </CardContent>
     </Card>
@@ -1422,6 +1460,7 @@ function TrashRow({
 }) {
   const translations = row.translations ?? [];
   const columns = canCleanUp ? 6 : 5;
+  const { t } = useTranslation('glossary');
 
   return (
     <>
@@ -1434,7 +1473,7 @@ function TrashRow({
               className="h-4 w-4"
               disabled={disabled}
               onChange={onToggleSelected}
-              aria-label={`select ${row.glossary}`}
+              aria-label={t('inspector.selection.selectItem', { item: row.glossary })}
             />
           </td>
         )}
@@ -1464,10 +1503,10 @@ function TrashRow({
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                title="Restore"
                 onClick={onRestore}
                 disabled={disabled}
-                aria-label={`restore ${row.glossary}`}
+                title={t('inspector.trash.restore')}
+                aria-label={t('inspector.trash.restoreLabel', { term: row.glossary })}
                 className={`${SUBTLE} hover:text-foreground disabled:pointer-events-none disabled:opacity-60`}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -1476,8 +1515,8 @@ function TrashRow({
                 type="button"
                 onClick={onPurge}
                 disabled={disabled}
-                title="Delete permanently"
-                aria-label={`permanently delete ${row.glossary}`}
+                title={t('inspector.trash.purge')}
+                aria-label={t('inspector.trash.purgeLabel', { term: row.glossary })}
                 className={`${SUBTLE} hover:text-destructive disabled:pointer-events-none disabled:opacity-60`}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -1493,7 +1532,7 @@ function TrashRow({
           <td colSpan={columns} className="space-y-4 py-3">
             <ColumnTable row={row} />
             <section className="space-y-1">
-              <h4 className="text-foreground text-sm font-semibold">translations (json)</h4>
+              <h4 className="text-foreground text-sm font-semibold">{t('inspector.entry.translationsJson')}</h4>
               <TranslationsTable row={row} />
             </section>
           </td>

@@ -17,8 +17,10 @@ import { json, redirect, type ActionFunctionArgs } from '@vercel/remix';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { localizeError } from '~/i18n/errors';
+import { getFixedT } from '~/i18n/locale.server';
 import { REMOVABLE_RECORD_CLASSES, type RemovableRecordClass } from '~/services/glossary.analyse';
-import { deleteIndexRecords, findRemovableIndexRecords } from '~/services/glossary.inspect';
+import { deleteIndexRecords, findRemovableIndexRecords, type RecordDeletionResult } from '~/services/glossary.inspect';
 import { purgeTrashedGlossaries, reindexGlossaryPage, restoreTrashedGlossaries } from '~/services/glossary.service';
 
 // cleanup-scan browses every record in the index — on the order of 30k records and 20s on the
@@ -33,7 +35,7 @@ export const config = {
 export type JobPayloads = {
   'reindex-page': { indexed: number; repointed: number; nextAfterId: string | null };
   'cleanup-scan': { objectIDs: string[]; scanned: number };
-  'delete-records': { deleted: number; skipped: { objectID: string; reason: string }[] };
+  'delete-records': { deleted: number; skipped: RecordDeletionResult['skipped'] };
   // skipped: ids that were not in the trash any more — restored or purged since the page loaded.
   'restore-trash': { done: number; skipped: number };
   'purge-trash': { done: number; skipped: number };
@@ -47,6 +49,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return redirect('/login');
   }
   const ability = defineAbilityFor(user);
+  const t = await getFixedT(request);
   const formData = await request.formData();
   const intent = formData.get('intent');
 
@@ -56,7 +59,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // be undone.
   const needed = intent === 'reindex-page' || intent === 'restore-trash' ? 'Maintain' : 'Administrate';
   if (ability.cannot(needed, 'GlossaryData')) {
-    return json<JobResponse>({ ok: false, message: 'You are not authorised to change search records.' }, 403);
+    return json<JobResponse>({ ok: false, message: t('glossary:inspector.errors.notAuthorised') }, 403);
   }
 
   if (intent === 'reindex-page') {
@@ -67,7 +70,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json<JobResponse>({ ok: true, ...page });
     } catch (error) {
       console.error('Error re-indexing a glossary page:', error);
-      const message = error instanceof Error ? error.message : 'Failed to re-index the glossary.';
+      const message = error instanceof Error ? localizeError(error, t) : t('glossary:inspector.reindex.failed');
       return json<JobResponse>({ ok: false, message }, 500);
     }
   }
@@ -75,14 +78,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (intent === 'cleanup-scan') {
     const recordClass = String(formData.get('recordClass')) as RemovableRecordClass;
     if (!REMOVABLE_RECORD_CLASSES.includes(recordClass)) {
-      return json<JobResponse>({ ok: false, message: 'Unknown record class.' }, 400);
+      return json<JobResponse>({ ok: false, message: t('glossary:inspector.errors.unknownRecordClass') }, 400);
     }
     try {
       const { objectIDs, scanned } = await findRemovableIndexRecords(recordClass);
       return json<JobResponse>({ ok: true, objectIDs, scanned });
     } catch (error) {
       console.error('Error scanning for removable glossary index records:', error);
-      const message = error instanceof Error ? error.message : 'Failed to scan the search index.';
+      const message = error instanceof Error ? localizeError(error, t) : t('glossary:inspector.errors.scanFailed');
       return json<JobResponse>({ ok: false, message }, 500);
     }
   }
@@ -90,7 +93,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (intent === 'delete-records') {
     const objectIds = formData.getAll('objectId').map(String);
     if (objectIds.length === 0) {
-      return json<JobResponse>({ ok: false, message: 'No records selected.' }, 400);
+      return json<JobResponse>({ ok: false, message: t('glossary:inspector.errors.noRecords') }, 400);
     }
     try {
       // Re-derives per record whether the delete is safe, so ids that came back from the
@@ -99,7 +102,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json<JobResponse>({ ok: true, deleted: deleted.length, skipped });
     } catch (error) {
       console.error('Error deleting glossary index records:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete search records.';
+      const message = error instanceof Error ? localizeError(error, t) : t('glossary:inspector.orphans.failed');
       return json<JobResponse>({ ok: false, message }, 500);
     }
   }
@@ -107,7 +110,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (intent === 'restore-trash' || intent === 'purge-trash') {
     const ids = formData.getAll('glossaryId').map(String);
     if (ids.length === 0) {
-      return json<JobResponse>({ ok: false, message: 'No entries selected.' }, 400);
+      return json<JobResponse>({ ok: false, message: t('glossary:inspector.errors.noEntries') }, 400);
     }
     try {
       // Both act only on ids that are still in the trash, so a stale page cannot purge an entry
@@ -117,10 +120,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json<JobResponse>({ ok: true, ...result });
     } catch (error) {
       console.error(`Error running ${intent}:`, error);
-      const message = error instanceof Error ? error.message : 'Failed to update the trash.';
+      const message = error instanceof Error ? localizeError(error, t) : t('glossary:inspector.trash.failed');
       return json<JobResponse>({ ok: false, message }, 500);
     }
   }
 
-  return json<JobResponse>({ ok: false, message: 'Unknown action.' }, 400);
+  return json<JobResponse>({ ok: false, message: t('glossary:errors.unknownAction') }, 400);
 };

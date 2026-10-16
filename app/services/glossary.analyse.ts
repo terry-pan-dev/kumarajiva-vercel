@@ -30,7 +30,10 @@ export type GlossaryIssueCode =
 export type GlossaryIssue = {
   code: GlossaryIssueCode;
   severity: 'error' | 'warning';
+  // English, for logs and tests. The inspector shows the translation of `code` instead,
+  // filled in from `values`.
   detail: string;
+  values?: { count?: number; whitespace?: boolean; hiddenCharacters?: boolean };
 };
 
 // What the index holds for one record. `id` is the uuid of the row it should belong to; it is
@@ -123,11 +126,17 @@ export type GlossaryInspection = {
 // whitespace, zero-width joiners and marks, and the BOM.
 const INVISIBLE = /[​-‏‪-‮⁠﻿]/;
 
-function describeInvisible(term: string): string | null {
+function findInvisible(term: string): { whitespace: boolean; hiddenCharacters: boolean } | null {
+  const whitespace = term !== term.trim();
+  const hiddenCharacters = INVISIBLE.test(term);
+  return whitespace || hiddenCharacters ? { whitespace, hiddenCharacters } : null;
+}
+
+function describeInvisible({ whitespace, hiddenCharacters }: { whitespace: boolean; hiddenCharacters: boolean }) {
   const problems: string[] = [];
-  if (term !== term.trim()) problems.push('leading or trailing whitespace');
-  if (INVISIBLE.test(term)) problems.push('zero-width or direction-marking characters');
-  return problems.length ? problems.join(' and ') : null;
+  if (whitespace) problems.push('leading or trailing whitespace');
+  if (hiddenCharacters) problems.push('zero-width or direction-marking characters');
+  return problems.join(' and ');
 }
 
 // The comparison that decides whether two distinct rows are "the same term". Compatibility
@@ -235,6 +244,7 @@ export function analyseGlossary({
           code: 'duplicate-index-record',
           severity: 'error',
           detail: `${entryRecords.length} search records carry this uuid, so the entry appears ${entryRecords.length} times in search results. Every copy is this one row: editing any of them edits all of them.`,
+          values: { count: entryRecords.length },
         });
       }
       if (row.searchId && !recordsByObjectId.has(row.searchId)) {
@@ -260,15 +270,17 @@ export function analyseGlossary({
         code: 'near-duplicate-term',
         severity: 'error',
         detail: `${sameTerm.length} other row(s) hold the same term once case, width and surrounding space are ignored. These are genuinely separate rows with separate uuids — deleting one does not affect the other.`,
+        values: { count: sameTerm.length },
       });
     }
 
-    const invisible = describeInvisible(row.glossary);
+    const invisible = findInvisible(row.glossary);
     if (invisible) {
       issues.push({
         code: 'term-has-invisible-characters',
         severity: 'warning',
-        detail: `The term contains ${invisible}, so lookups by the visible text will miss it.`,
+        detail: `The term contains ${describeInvisible(invisible)}, so lookups by the visible text will miss it.`,
+        values: invisible,
       });
     }
 
@@ -284,6 +296,7 @@ export function analyseGlossary({
         code: 'blank-translation',
         severity: 'warning',
         detail: `${blank} translation(s) have no text.`,
+        values: { count: blank },
       });
     }
 

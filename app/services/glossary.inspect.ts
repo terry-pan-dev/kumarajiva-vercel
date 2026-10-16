@@ -86,8 +86,11 @@ export type RecordDeletionResult = {
   deleted: string[];
   // Records the server refused to delete, with the reason. Shown rather than swallowed: a
   // refusal means the page's view of the index was out of date.
-  skipped: { objectID: string; reason: string }[];
+  // `reason` is English for logs; the page translates `code` (with `term` for last-record).
+  skipped: { objectID: string; reason: string; code: SkipReason; term?: string }[];
 };
+
+export type SkipReason = 'not-in-index' | 'canonical' | 'last-record';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -152,11 +155,15 @@ export async function deleteIndexRecords(objectIDs: string[]): Promise<RecordDel
   for (const objectID of requested) {
     const record = records.get(objectID);
     if (!record) {
-      skipped.push({ objectID, reason: 'no longer in the index' });
+      skipped.push({ objectID, code: 'not-in-index', reason: 'no longer in the index' });
       continue;
     }
     if (rowBySearchId.has(objectID)) {
-      skipped.push({ objectID, reason: 'this is the record an entry points at, so search needs it' });
+      skipped.push({
+        objectID,
+        code: 'canonical',
+        reason: 'this is the record an entry points at, so search needs it',
+      });
       continue;
     }
     const owner = record.id ? rowById.get(record.id) : undefined;
@@ -165,6 +172,8 @@ export async function deleteIndexRecords(objectIDs: string[]): Promise<RecordDel
       if (!canonicalExists) {
         skipped.push({
           objectID,
+          code: 'last-record',
+          term: owner.glossary,
           reason: `“${owner.glossary}” has no other index record, so deleting this one would drop it from search`,
         });
         continue;
