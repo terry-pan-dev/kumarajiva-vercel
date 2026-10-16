@@ -67,6 +67,50 @@
       "update": "Update Document"
     }
   },
+  "paragraphs": {
+    "index": {
+      "description": "Select a section to inspect its raw paragraph data — order, number, UUIDs and content — for debugging corrupt entries.",
+      "noProjects": "No projects available.",
+      "noProjectsHint": "Please set up a project in Data Management first.",
+      "untitledProject": "Untitled project",
+      "sectionCount_one": "{{count}} section",
+      "sectionCount_other": "{{count}} sections",
+      "noSections": "No sections found for this project."
+    },
+    "section": {
+      "back": "Back to sections",
+      "sectionId": "roll {{id}}",
+      "paragraphCount_one": "{{count}} paragraph",
+      "paragraphCount_other": "{{count}} paragraphs",
+      "flaggedCount_one": "{{count}} flagged",
+      "flaggedCount_other": "{{count}} flagged",
+      "filterPlaceholder": "Filter rows (content, uuid, order…)",
+      "originColumn": "Origin",
+      "translationColumn": "Translation",
+      "order": "order {{order}}",
+      "relatedCounts": "r{{references}} c{{comments}} h{{history}}",
+      "relatedCountsTooltip": "{{references}} references · {{comments}} comments · {{history}} history",
+      "duplicate": "dup",
+      "copy": "Copy",
+      "copied": "Copied",
+      "deleteOriginTooltip": "Delete this paragraph and its translation child",
+      "deleteTranslationTooltip": "Delete this translation",
+      "orphan": "orphan translation — parent paragraph missing",
+      "notTranslated": "— not translated —",
+      "noParagraphs": "No paragraphs found for this section.",
+      "noMatches": "No rows match the filter.",
+      "deleteTitle": "Delete this paragraph?",
+      "deleteDescription": "This permanently removes the paragraph together with its references, comments, history and search-index entry. This cannot be undone.",
+      "deleteOriginNote": "This is an origin paragraph — its translation child will also be deleted.",
+      "deleteTranslationNote": "This is a translation paragraph.",
+      "deleteRelated": "Related rows: {{references}} references, {{comments}} comments, {{history}} history.",
+      "deletedWithChild": "Deleted paragraph and its translation child ({{count}} rows).",
+      "deleted": "Deleted paragraph and its related data.",
+      "deleteFailed": "Failed to delete paragraph.",
+      "notAuthorisedToDelete": "You are not authorised to delete paragraphs.",
+      "unknownAction": "Unknown action."
+    }
+  },
   "errors": {
     "workNotFound": "Work not found",
     "workHasDocuments_one": "This work still has {{count}} document. Delete its documents before deleting the work.",

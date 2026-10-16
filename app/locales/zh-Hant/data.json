@@ -66,6 +66,47 @@
       "update": "更新文本"
     }
   },
+  "paragraphs": {
+    "index": {
+      "description": "選擇一個章節，以檢視其原始段落資料（順序、編號、UUID 及內容），用於排查損壞的資料。",
+      "noProjects": "目前沒有任何專案。",
+      "noProjectsHint": "請先在資料管理中建立專案。",
+      "untitledProject": "未命名專案",
+      "sectionCount_other": "{{count}} 個章節",
+      "noSections": "此專案尚無章節。"
+    },
+    "section": {
+      "back": "返回章節列表",
+      "sectionId": "卷 {{id}}",
+      "paragraphCount_other": "{{count}} 個段落",
+      "flaggedCount_other": "{{count}} 筆異常",
+      "filterPlaceholder": "篩選資料列（內容、UUID、順序…）",
+      "originColumn": "原文",
+      "translationColumn": "譯文",
+      "order": "順序 {{order}}",
+      "relatedCounts": "引{{references}} 評{{comments}} 歷{{history}}",
+      "relatedCountsTooltip": "{{references}} 筆引用 · {{comments}} 則評論 · {{history}} 筆歷史紀錄",
+      "duplicate": "重複",
+      "copy": "複製",
+      "copied": "已複製",
+      "deleteOriginTooltip": "刪除此段落及其譯文",
+      "deleteTranslationTooltip": "刪除此譯文",
+      "orphan": "孤立譯文 — 找不到原文段落",
+      "notTranslated": "— 尚未翻譯 —",
+      "noParagraphs": "此章節尚無段落。",
+      "noMatches": "沒有符合篩選條件的資料列。",
+      "deleteTitle": "刪除此段落？",
+      "deleteDescription": "此操作將永久刪除該段落，以及其引用、評論、歷史紀錄和搜尋索引；且無法復原。",
+      "deleteOriginNote": "這是原文段落，其譯文也會一併刪除。",
+      "deleteTranslationNote": "這是譯文段落。",
+      "deleteRelated": "相關資料：{{references}} 筆引用、{{comments}} 則評論、{{history}} 筆歷史紀錄。",
+      "deletedWithChild": "已刪除段落及其譯文（共 {{count}} 筆）。",
+      "deleted": "已刪除段落及其相關資料。",
+      "deleteFailed": "刪除段落失敗。",
+      "notAuthorisedToDelete": "您沒有權限刪除段落。",
+      "unknownAction": "未知的操作。"
+    }
+  },
   "errors": {
     "workNotFound": "找不到該典籍",
     "workHasDocuments_other": "此典籍仍有 {{count}} 份文本。請先刪除其文本，再刪除典籍。",

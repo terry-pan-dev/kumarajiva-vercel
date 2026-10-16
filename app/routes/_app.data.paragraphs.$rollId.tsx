@@ -2,6 +2,7 @@ import { Link, useActionData, useLoaderData, useNavigation, useRouteError } from
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { ArrowLeft, Copy, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
@@ -9,6 +10,7 @@ import { DeleteConfirmDialog } from '~/components/data/DeleteConfirmDialog';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Badge } from '~/components/ui';
 import { useToast } from '~/hooks/use-toast';
+import { getFixedT } from '~/i18n/locale.server';
 import { deleteParagraphCleanly, readParagraphsForDebug, type IParagraphDebugRow } from '~/services/paragraph.service';
 import { getSection } from '~/services/text.service';
 
@@ -41,8 +43,9 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
+  const t = await getFixedT(request);
   if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
-    return json({ success: false, message: 'You are not authorised to delete paragraphs.' }, { status: 403 });
+    return json({ success: false, message: t('data:paragraphs.section.notAuthorisedToDelete') }, { status: 403 });
   }
 
   const formData = Object.fromEntries(await request.formData());
@@ -55,17 +58,17 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({
         success: true,
         message: result.deletedChild
-          ? `Deleted paragraph and its translation child (${result.deletedParagraphIds.length} rows).`
-          : 'Deleted paragraph and its related data.',
+          ? t('data:paragraphs.section.deletedWithChild', { count: result.deletedParagraphIds.length })
+          : t('data:paragraphs.section.deleted'),
         id: paragraphId,
       });
     } catch (error) {
       console.error('Error deleting paragraph:', error);
-      return json({ success: false, message: 'Failed to delete paragraph.' }, { status: 500 });
+      return json({ success: false, message: t('data:paragraphs.section.deleteFailed') }, { status: 500 });
     }
   }
 
-  return json({ success: false, message: 'Unknown action.' }, { status: 400 });
+  return json({ success: false, message: t('data:paragraphs.section.unknownAction') }, { status: 400 });
 }
 
 // A row is anomalous when its ordering fields are out of the expected range or
@@ -83,14 +86,15 @@ const MONO = 'font-mono text-xs';
 
 function CopyButton({ value }: { value: string }) {
   const { toast } = useToast();
+  const { t } = useTranslation('data');
   return (
     <button
-      title="Copy"
       type="button"
+      title={t('paragraphs.section.copy')}
       className="text-muted-foreground hover:text-foreground shrink-0"
       onClick={() => {
         navigator.clipboard?.writeText(value);
-        toast({ variant: 'default', title: 'Copied', position: 'top-right' });
+        toast({ variant: 'default', title: t('paragraphs.section.copied'), position: 'top-right' });
       }}
     >
       <Copy className="h-3 w-3" />
@@ -116,26 +120,29 @@ function ParagraphCell({
 }) {
   const badOrder = orderIsNegative(row.order) || isNegative(row.number);
   const isDup = (duplicateContent.get(row.content) ?? 0) > 1;
+  const { t } = useTranslation('data');
+  const related = { references: row.referenceCount, comments: row.commentCount, history: row.historyCount };
 
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-        <span className={badOrder ? 'font-semibold text-red-600' : 'text-muted-foreground'}>order {row.order}</span>
+        <span className={badOrder ? 'font-semibold text-red-600' : 'text-muted-foreground'}>
+          {t('paragraphs.section.order', { order: row.order })}
+        </span>
         <span className={MONO}>{row.id}</span>
         <CopyButton value={row.id} />
-        <span
-          className="text-muted-foreground"
-          title={`${row.referenceCount} references · ${row.commentCount} comments · ${row.historyCount} history`}
-        >
-          r{row.referenceCount} c{row.commentCount} h{row.historyCount}
+        <span className="text-muted-foreground" title={t('paragraphs.section.relatedCountsTooltip', related)}>
+          {t('paragraphs.section.relatedCounts', related)}
         </span>
-        {isDup && <Badge variant="destructive">dup</Badge>}
+        {isDup && <Badge variant="destructive">{t('paragraphs.section.duplicate')}</Badge>}
         {canDelete && (
           <button
             type="button"
             onClick={() => onDelete(row)}
             className="text-muted-foreground hover:text-destructive"
-            title={row.isOrigin ? 'Delete this paragraph and its translation child' : 'Delete this translation'}
+            title={t(
+              row.isOrigin ? 'paragraphs.section.deleteOriginTooltip' : 'paragraphs.section.deleteTranslationTooltip',
+            )}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -151,6 +158,7 @@ export default function ParagraphsDebug() {
   const actionData = useActionData<{ success: boolean; message: string; id?: string }>();
   const navigation = useNavigation();
   const { toast } = useToast();
+  const { t } = useTranslation(['data', 'common']);
 
   const [filter, setFilter] = useState('');
   const [pendingDelete, setPendingDelete] = useState<IParagraphDebugRow | null>(null);
@@ -159,12 +167,12 @@ export default function ParagraphsDebug() {
     if (!actionData) return;
     toast({
       variant: actionData.success ? 'default' : 'error',
-      title: actionData.success ? 'Done' : 'Oops!',
+      title: actionData.success ? t('common:toast.done') : t('common:toast.oops'),
       description: actionData.message,
       position: 'top-right',
     });
     if (actionData.success) setPendingDelete(null);
-  }, [actionData, toast]);
+  }, [actionData, toast, t]);
 
   // Content duplicated within this section — the primary corruption signal.
   const duplicateContent = useMemo(() => {
@@ -226,7 +234,7 @@ export default function ParagraphsDebug() {
             to="/data/paragraphs"
             className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to sections
+            <ArrowLeft className="h-4 w-4" /> {t('paragraphs.section.back')}
           </Link>
           <h2 className="text-foreground mt-1 text-lg font-semibold">
             {sectionInfo?.documentTitle}
@@ -235,13 +243,13 @@ export default function ParagraphsDebug() {
             )}
           </h2>
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
-            <span className={MONO}>roll {rollId}</span>
+            <span className={MONO}>{t('paragraphs.section.sectionId', { id: rollId })}</span>
             <span>·</span>
-            <span>{rows.length} paragraphs</span>
+            <span>{t('paragraphs.section.paragraphCount', { count: rows.length })}</span>
             {anomalyCount > 0 && (
               <>
                 <span>·</span>
-                <Badge variant="destructive">{anomalyCount} flagged</Badge>
+                <Badge variant="destructive">{t('paragraphs.section.flaggedCount', { count: anomalyCount })}</Badge>
               </>
             )}
           </div>
@@ -250,7 +258,7 @@ export default function ParagraphsDebug() {
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter rows (content, uuid, order…)"
+          placeholder={t('paragraphs.section.filterPlaceholder')}
           className="border-border bg-background w-64 rounded border px-2 py-1 text-sm"
         />
       </div>
@@ -260,8 +268,8 @@ export default function ParagraphsDebug() {
           <thead className="bg-muted sticky top-0 z-10 text-xs">
             <tr className="[&>th]:px-2 [&>th]:py-2 [&>th]:font-medium">
               <th className="w-8">#</th>
-              <th className="w-1/2">Origin</th>
-              <th className="w-1/2">Translation</th>
+              <th className="w-1/2">{t('paragraphs.section.originColumn')}</th>
+              <th className="w-1/2">{t('paragraphs.section.translationColumn')}</th>
             </tr>
           </thead>
           <tbody className="text-sm">
@@ -292,9 +300,7 @@ export default function ParagraphsDebug() {
                         duplicateContent={duplicateContent}
                       />
                     ) : (
-                      <span className="text-muted-foreground text-xs italic">
-                        orphan translation — parent paragraph missing
-                      </span>
+                      <span className="text-muted-foreground text-xs italic">{t('paragraphs.section.orphan')}</span>
                     )}
                   </td>
                   <td className="space-y-3 break-words">
@@ -309,7 +315,7 @@ export default function ParagraphsDebug() {
                         />
                       ))
                     ) : (
-                      <span className="text-muted-foreground text-xs">— not translated —</span>
+                      <span className="text-muted-foreground text-xs">{t('paragraphs.section.notTranslated')}</span>
                     )}
                   </td>
                 </tr>
@@ -318,7 +324,7 @@ export default function ParagraphsDebug() {
             {visiblePairs.length === 0 && (
               <tr>
                 <td colSpan={3} className="text-muted-foreground p-6 text-center text-sm">
-                  {rows.length === 0 ? 'No paragraphs found for this section.' : 'No rows match the filter.'}
+                  {t(rows.length === 0 ? 'paragraphs.section.noParagraphs' : 'paragraphs.section.noMatches')}
                 </td>
               </tr>
             )}
@@ -330,20 +336,25 @@ export default function ParagraphsDebug() {
         submitting={isDeleting}
         intent="delete-paragraph"
         open={pendingDelete !== null}
-        title="Delete this paragraph?"
+        title={t('paragraphs.section.deleteTitle')}
         fields={{ paragraphId: pendingDelete?.id ?? '' }}
+        description={t('paragraphs.section.deleteDescription')}
         onOpenChange={(open) => !open && setPendingDelete(null)}
-        description="This permanently removes the paragraph together with its references, comments, history and search-index entry. This cannot be undone."
       >
         {pendingDelete && (
           <div className="bg-muted rounded p-3 text-sm">
             <div className={`${MONO} mb-1`}>{pendingDelete.id}</div>
             <div className="text-muted-foreground text-xs">
-              {pendingDelete.isOrigin
-                ? 'This is an origin paragraph — its translation child will also be deleted.'
-                : 'This is a translation paragraph.'}{' '}
-              Related rows: {pendingDelete.referenceCount} references, {pendingDelete.commentCount} comments,{' '}
-              {pendingDelete.historyCount} history.
+              {t(
+                pendingDelete.isOrigin
+                  ? 'paragraphs.section.deleteOriginNote'
+                  : 'paragraphs.section.deleteTranslationNote',
+              )}{' '}
+              {t('paragraphs.section.deleteRelated', {
+                references: pendingDelete.referenceCount,
+                comments: pendingDelete.commentCount,
+                history: pendingDelete.historyCount,
+              })}
             </div>
             <div className="mt-2 line-clamp-3">{pendingDelete.content}</div>
           </div>
