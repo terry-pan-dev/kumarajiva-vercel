@@ -1,5 +1,6 @@
 import { Form } from '@remix-run/react';
 import { AlertCircle, ArrowLeftRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import type { ExcelTranslationRow, ExistingDataPreview, ImportOptionsNew } from '~/services/file.service';
 
@@ -19,17 +20,16 @@ type Props = {
 };
 
 export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitting, navigationIntent }: Props) {
+  const { t } = useTranslation('data');
   return (
     <Card className="mt-6">
       <CardHeader>
         <CardTitle className="text-primary flex items-center gap-2 text-xl">
           <ArrowLeftRight className="h-5 w-5" />
-          Data Comparison
+          {t('projects.import.comparison.title')}
         </CardTitle>
         <CardDescription className="text-base">
-          {fileRows
-            ? 'Review the existing data and the imported file data before replacing.'
-            : 'Existing data for this section. Upload a file above to compare.'}
+          {t(fileRows ? 'projects.import.comparison.descriptionWithFile' : 'projects.import.comparison.description')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -37,14 +37,17 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
           {/* Existing data — always shown */}
           <div>
             <h4 className="text-primary mb-3 text-base font-medium">
-              Existing Data{' '}
+              {t('projects.import.comparison.existing')}{' '}
               <span className="text-muted-foreground text-sm font-normal">
-                (first {Math.min(PREVIEW_LIMIT, existing.paragraphs.length)} of {existing.totalParagraphs})
+                {t('projects.import.comparison.firstOf', {
+                  shown: Math.min(PREVIEW_LIMIT, existing.paragraphs.length),
+                  total: existing.totalParagraphs,
+                })}
               </span>
             </h4>
             {existing.paragraphs.length === 0 ? (
               <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
-                No existing data for this section
+                {t('projects.import.comparison.noExisting')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -60,7 +63,9 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
                 ))}
                 {existing.totalParagraphs > PREVIEW_LIMIT && (
                   <p className="text-muted-foreground text-center text-xs">
-                    ... and {existing.totalParagraphs - PREVIEW_LIMIT} more paragraphs
+                    {t('projects.import.comparison.moreParagraphs', {
+                      count: existing.totalParagraphs - PREVIEW_LIMIT,
+                    })}
                   </p>
                 )}
               </div>
@@ -70,10 +75,13 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
           {/* File data — placeholder until a file is previewed */}
           <div>
             <h4 className="text-primary mb-3 text-base font-medium">
-              File Data{' '}
+              {t('projects.import.comparison.file')}{' '}
               {fileRows && (
                 <span className="text-muted-foreground text-sm font-normal">
-                  (first {Math.min(PREVIEW_LIMIT, fileRows.length)} of {fileRows.length})
+                  {t('projects.import.comparison.firstOf', {
+                    shown: Math.min(PREVIEW_LIMIT, fileRows.length),
+                    total: fileRows.length,
+                  })}
                 </span>
               )}
             </h4>
@@ -91,13 +99,13 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
                 ))}
                 {fileRows.length > PREVIEW_LIMIT && (
                   <p className="text-muted-foreground text-center text-xs">
-                    ... and {fileRows.length - PREVIEW_LIMIT} more rows
+                    {t('projects.import.comparison.moreRows', { count: fileRows.length - PREVIEW_LIMIT })}
                   </p>
                 )}
               </div>
             ) : (
               <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
-                Upload and preview a file to see incoming data here
+                {t('projects.import.comparison.filePlaceholder')}
               </p>
             )}
           </div>
@@ -108,10 +116,7 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
           <>
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Clicking "Import Data" adds or updates the rows in the file, matched by passage key and/or position.
-                Existing paragraphs not present in the file are left unchanged — nothing is deleted.
-              </AlertDescription>
+              <AlertDescription>{t('projects.import.comparison.importNote')}</AlertDescription>
             </Alert>
 
             <Form method="post">
@@ -123,7 +128,11 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
 
               <div className="flex justify-end gap-3">
                 <Button type="submit" className="text-base" disabled={isSubmitting}>
-                  {isSubmitting && navigationIntent === 'replace' ? 'Importing...' : 'Import Data'}
+                  {t(
+                    isSubmitting && navigationIntent === 'replace'
+                      ? 'projects.import.comparison.importing'
+                      : 'projects.import.comparison.import',
+                  )}
                 </Button>
               </div>
             </Form>

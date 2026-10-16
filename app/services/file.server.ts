@@ -22,6 +22,8 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CreateParagraphNew, ReadParagraphNew } from '~/drizzle/schema';
 
 import { paragraphsTable, paragraphsTableNew, referencesTable } from '~/drizzle/schema';
+import { translator, type AppTFunction } from '~/i18n/config';
+import { LocalizedError, localizeError, translateKey } from '~/i18n/errors';
 import { getDb } from '~/lib/db.server';
 import { PREVIEW_LIMIT } from '~/utils/constants';
 
@@ -362,7 +364,9 @@ export async function getExistingDataPreviewForRollId(
 // Thrown when the file's passage keys / row order can't be reconciled with what
 // is already in the database. Carries a user-facing message returned verbatim
 // rather than wrapped as a generic failure.
-class ImportConflictError extends Error {}
+// A file that disagrees with existing data. Its message is shown to the admin
+// in their language, so it carries a translation key rather than prose.
+class ImportConflictError extends LocalizedError {}
 
 const normaliseKey = (key: string): string => key.trim().toLowerCase();
 
@@ -411,8 +415,13 @@ type InvolvedDocument = {
 export async function replaceSectionData(
   rows: ExcelTranslationRow[],
   options: ImportOptionsNew,
+  // Renders the result messages; the import route passes the request's locale.
+  t: AppTFunction = translator('en'),
 ): Promise<ImportResult> {
   const { originDocumentId, originSectionId, targetDocumentId, userId } = options;
+  const r = (key: string, values?: Record<string, unknown>) =>
+    translateKey(t, `data:projects.import.result.${key}`, values);
+  const joinColumns = (columns: string[]) => columns.join(t('separators.semicolon'));
 
   try {
     const [originDocument, originSection, targetDocument] = await Promise.all([
@@ -421,7 +430,7 @@ export async function replaceSectionData(
       getDocument(targetDocumentId),
     ]);
     if (!originDocument || !originSection) {
-      return { success: false, message: 'Origin document or section not found.' };
+      return { success: false, message: r('originNotFound') };
     }
 
     const passageKeyPrefix = originDocument.work?.passageKeyPrefix ?? originDocument.workId;
@@ -435,7 +444,7 @@ export async function replaceSectionData(
 
     // Origin.
     involved.push({
-      label: 'origin',
+      label: r('originLabel'),
       documentId: originDocumentId,
       sectionId: originSectionId,
       getValue: (row) => row.origin || null,
@@ -449,15 +458,10 @@ export async function replaceSectionData(
       : null;
     const wantsTarget = has((r) => r.target);
     if (wantsTarget && (!targetSection || !targetSection.title?.trim())) {
-      return {
-        success: false,
-        message:
-          'The translation section for this section has not been created and named yet. ' +
-          'Create and name it in Data Management → Translation Projects (edit the section and set a translation title) before importing translation data.',
-      };
+      return { success: false, message: r('translationSectionMissing') };
     }
     involved.push({
-      label: 'translation',
+      label: r('translationLabel'),
       documentId: targetDocumentId,
       sectionId: targetSection?.id ?? null,
       getValue: (row) => row.target,
@@ -481,7 +485,7 @@ export async function replaceSectionData(
     for (const columnKey of fileReferenceKeys) {
       const ref = referenceByKey.get(normaliseKey(columnKey));
       if (!ref) {
-        skippedColumns.push(`"${columnKey}" (not a reference document on this project)`);
+        skippedColumns.push(r('skippedNotReference', { column: columnKey }));
         continue;
       }
       const refSection = await findTargetSection({
@@ -489,7 +493,7 @@ export async function replaceSectionData(
         targetDocumentId: ref.documentId,
       });
       if (!refSection || !refSection.title?.trim()) {
-        skippedColumns.push(`"${columnKey}" (its section is missing or unnamed — create and name it first)`);
+        skippedColumns.push(r('skippedNoSection', { column: columnKey }));
         continue;
       }
       involved.push({
@@ -507,8 +511,8 @@ export async function replaceSectionData(
         success: false,
         message:
           skippedColumns.length > 0
-            ? `Nothing was imported. Skipped column(s): ${skippedColumns.join('; ')}.`
-            : 'No importable content found. The file has no columns matching a document key (origin, translation or a reference key).',
+            ? r('nothingImported', { columns: joinColumns(skippedColumns) })
+            : r('noImportableContent'),
       };
     }
 
@@ -553,11 +557,12 @@ export async function replaceSectionData(
             .map((sid) => paraAtOrder(sid, positionOrder))
             .find((p) => p?.passageKey && p.passageKey !== fileKey);
           if (clash) {
-            throw new ImportConflictError(
-              `Row ${idx + 1}: passage_key "${fileKey}" is new, but position ${positionOrder} already holds a ` +
-                `paragraph keyed "${clash.passageKey}". Reconcile the passage keys / row order in the database ` +
-                `(via Data Management / the inspector) so the file agrees with existing data, then re-import.`,
-            );
+            throw new ImportConflictError('data:projects.import.result.conflictNewKey', {
+              row: idx + 1,
+              key: fileKey,
+              position: positionOrder,
+              existingKey: clash.passageKey,
+            });
           }
           rowKeys.push(fileKey);
           rowOrders.push(positionOrder);
@@ -570,10 +575,11 @@ export async function replaceSectionData(
           anchorSectionIds.map((sid) => paraAtOrder(sid, positionOrder)?.passageKey).filter((k): k is string => !!k),
         );
         if (keysAtOrder.size > 1) {
-          throw new ImportConflictError(
-            `Row ${idx + 1} (position ${positionOrder}): existing documents disagree on the passage key here ` +
-              `(${[...keysAtOrder].join(', ')}). Reconcile them in the database so each position has one key, then re-import.`,
-          );
+          throw new ImportConflictError('data:projects.import.result.conflictDisagree', {
+            row: idx + 1,
+            position: positionOrder,
+            keys: [...keysAtOrder].join(', '),
+          });
         }
         rowKeys.push([...keysAtOrder][0] ?? `${passageKeyPrefix}.${sectionOrder}.${positionOrder}`);
         rowOrders.push(positionOrder);
@@ -663,30 +669,35 @@ export async function replaceSectionData(
 
     const searchErrors = algoliaResults
       .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-      .map((r) => `Search sync failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+      .map((result) =>
+        r('searchSyncFailed', {
+          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+        }),
+      );
 
     if (searchErrors.length > 0) {
       console.error('Algolia sync errors after import:', searchErrors);
     }
 
-    const writtenLabels = writeDocs.map((d) => d.label).join(', ');
+    const writtenLabels = writeDocs.map((d) => d.label).join(t('separators.list'));
     return {
       success: true,
       inserted: counts.insertedCount,
       message:
-        `Updated ${counts.updatedCount} paragraph(s) and inserted ${counts.insertedCount} new across ${writeDocs.length} document(s) (${writtenLabels}). Existing rows not in the file were left unchanged.` +
-        (skippedColumns.length > 0 ? ` Skipped column(s): ${skippedColumns.join('; ')}.` : ''),
+        r('success', { updated: counts.updatedCount, inserted: counts.insertedCount, documents: writtenLabels }) +
+        (skippedColumns.length > 0 ? r('skippedSuffix', { columns: joinColumns(skippedColumns) }) : ''),
       ...(searchErrors.length > 0 && { errors: searchErrors }),
     };
   } catch (error) {
     if (error instanceof ImportConflictError) {
-      return { success: false, message: error.message, errors: [error.message] };
+      const message = localizeError(error, t);
+      return { success: false, message, errors: [message] };
     }
     console.error('replaceSectionData error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       success: false,
-      message: `Failed to replace data: ${errorMessage}`,
+      message: r('failed', { error: errorMessage }),
       errors: [errorMessage],
     };
   }

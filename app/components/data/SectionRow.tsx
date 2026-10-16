@@ -1,6 +1,7 @@
 import type { DragControls } from 'framer-motion';
 
 import { Download, FileText, GripVertical, Pencil, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { SectionForm, type ReferenceSectionForForm } from './SectionForm';
 
@@ -43,6 +44,7 @@ export function SectionRow({
   dragControls,
 }: Props) {
   const targetTitle = targetSection?.title ?? null;
+  const { t } = useTranslation(['data', 'common']);
   const namedReferences = references.filter((r) => r.sectionId && r.title);
 
   return (
@@ -63,8 +65,8 @@ export function SectionRow({
               {targetTitle && <span className="text-muted-foreground font-normal">/ {targetTitle}</span>}
               <button
                 type="button"
-                title="Edit section"
                 onClick={onEditToggle}
+                title={t('projects.section.editTooltip')}
                 className="text-muted-foreground hover:bg-secondary hover:text-secondary-foreground rounded p-0.5 transition"
               >
                 <Pencil size={12} />
@@ -85,7 +87,7 @@ export function SectionRow({
             href={`/data/translation/import?originDocumentId=${documentId}&originSectionId=${section.id}&targetDocumentId=${targetDocumentId}`}
           >
             <Upload size={14} />
-            Import & Replace
+            {t('projects.section.importReplace')}
           </a>
           {hasData ? (
             <a
@@ -95,11 +97,11 @@ export function SectionRow({
               className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2 rounded px-3 py-1.5 text-xs font-medium"
             >
               <Download size={14} />
-              Export xlsx
+              {t('projects.section.exportXlsx')}
             </a>
           ) : (
             <span className="text-muted-foreground flex items-center gap-2 px-3 py-1.5 text-xs italic">
-              No data to export
+              {t('projects.section.noData')}
             </span>
           )}
         </div>

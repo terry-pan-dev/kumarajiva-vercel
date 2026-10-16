@@ -1,6 +1,9 @@
 import { useFetcher } from '@remix-run/react';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import type { Lang } from '~/utils/constants';
 
 import { DocumentForm } from './DocumentForm';
 import { inputClass, selectClass } from './fieldClasses';
@@ -37,6 +40,7 @@ export function ProjectForm({
 }) {
   const fetcher = useFetcher<{ success: boolean }>();
   const isSubmitting = fetcher.state === 'submitting';
+  const { t } = useTranslation(['data', 'common']);
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data?.success) onClose();
@@ -54,9 +58,11 @@ export function ProjectForm({
   const [showNewDocument, setShowNewDocument] = useState(false);
 
   const workDocuments = works.find((w) => w.id === workId)?.documents ?? [];
+  const optionLabel = (doc: { title: string; language: string }) =>
+    t('projects.form.documentOption', { title: doc.title, language: t(`common:languages.${doc.language as Lang}`) });
   const documentLabel = (id: string) => {
     const doc = workDocuments.find((d) => d.id === id);
-    return doc ? `${doc.title} (${doc.language})` : id;
+    return doc ? optionLabel(doc) : id;
   };
 
   // Candidate reference documents: same work, minus the source/target and any
@@ -87,7 +93,7 @@ export function ProjectForm({
     <div className="bg-primary text-primary-foreground rounded-lg p-5 shadow-xl">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-primary-foreground text-sm font-semibold">
-          {project ? 'Edit Project' : 'Add New Project'}
+          {t(project ? 'projects.form.editHeading' : 'projects.form.addHeading')}
         </h2>
         <button
           type="button"
@@ -106,18 +112,18 @@ export function ProjectForm({
         ))}
 
         <div>
-          <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">Project Name</label>
+          <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">{t('projects.form.name')}</label>
           <input
             name="name"
             className={inputClass(bg)}
             defaultValue={project?.name ?? ''}
-            placeholder="e.g., Great Prajnaparamita Sutra"
+            placeholder={t('projects.form.namePlaceholder')}
           />
         </div>
 
         <div>
           <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
-            Work <span className="text-destructive">*</span>
+            {t('projects.form.work')} <span className="text-destructive">*</span>
           </label>
           <select
             required
@@ -125,7 +131,7 @@ export function ProjectForm({
             className={selectClass(bg)}
             onChange={(e) => handleWorkChange(e.target.value)}
           >
-            <option value="">Select work…</option>
+            <option value="">{t('projects.form.selectWork')}</option>
             {works.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.title}
@@ -139,7 +145,7 @@ export function ProjectForm({
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
                 <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
-                  Source Document <span className="text-destructive">*</span>
+                  {t('projects.form.source')} <span className="text-destructive">*</span>
                 </label>
                 <select
                   required
@@ -148,12 +154,12 @@ export function ProjectForm({
                   className={selectClass(bg)}
                   onChange={(e) => setSourceId(e.target.value)}
                 >
-                  <option value="">Select source document…</option>
+                  <option value="">{t('projects.form.selectSource')}</option>
                   {workDocuments
                     .filter((doc) => doc.id !== targetId)
                     .map((doc) => (
                       <option key={doc.id} value={doc.id}>
-                        {doc.title} ({doc.language})
+                        {optionLabel(doc)}
                       </option>
                     ))}
                 </select>
@@ -161,7 +167,7 @@ export function ProjectForm({
 
               <div>
                 <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
-                  Target Document <span className="text-destructive">*</span>
+                  {t('projects.form.target')} <span className="text-destructive">*</span>
                 </label>
                 <select
                   required
@@ -170,12 +176,12 @@ export function ProjectForm({
                   className={selectClass(bg)}
                   onChange={(e) => setTargetId(e.target.value)}
                 >
-                  <option value="">Select target document…</option>
+                  <option value="">{t('projects.form.selectTarget')}</option>
                   {workDocuments
                     .filter((doc) => doc.id !== sourceId)
                     .map((doc) => (
                       <option key={doc.id} value={doc.id}>
-                        {doc.title} ({doc.language})
+                        {optionLabel(doc)}
                       </option>
                     ))}
                 </select>
@@ -184,7 +190,9 @@ export function ProjectForm({
 
             {/* References: other documents of this work the project consults */}
             <div>
-              <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">References</label>
+              <label className="text-primary-foreground/70 mb-1 block text-xs font-medium">
+                {t('projects.form.references')}
+              </label>
               {referenceIds.length > 0 && (
                 <ul className="mb-2 space-y-1.5">
                   {referenceIds.map((id) => (
@@ -195,8 +203,8 @@ export function ProjectForm({
                       <span>{documentLabel(id)}</span>
                       <button
                         type="button"
-                        title="Remove reference"
                         onClick={() => removeReference(id)}
+                        title={t('projects.form.removeReferenceTooltip')}
                         className="text-primary-foreground/50 hover:text-primary-foreground transition"
                       >
                         <X size={14} />
@@ -213,13 +221,15 @@ export function ProjectForm({
                   onChange={(e) => setPendingReferenceId(e.target.value)}
                 >
                   <option value="">
-                    {referenceCandidates.length === 0
-                      ? 'No more documents in this work'
-                      : 'Select a reference document…'}
+                    {t(
+                      referenceCandidates.length === 0
+                        ? 'projects.form.noMoreDocuments'
+                        : 'projects.form.selectReference',
+                    )}
                   </option>
                   {referenceCandidates.map((doc) => (
                     <option key={doc.id} value={doc.id}>
-                      {doc.title} ({doc.language})
+                      {optionLabel(doc)}
                     </option>
                   ))}
                 </select>
@@ -230,7 +240,7 @@ export function ProjectForm({
                   className="bg-background text-foreground hover:bg-muted flex items-center gap-1 rounded px-3 py-2 text-sm font-medium transition disabled:opacity-50"
                 >
                   <Plus size={14} />
-                  Add
+                  {t('common:actions.add')}
                 </button>
               </div>
             </div>
@@ -243,14 +253,14 @@ export function ProjectForm({
             onClick={onClose}
             className="text-primary-foreground/70 hover:text-primary-foreground rounded px-4 py-2 text-sm transition"
           >
-            Cancel
+            {t('common:actions.cancel')}
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
             className="bg-background text-foreground hover:bg-muted rounded px-4 py-2 text-sm font-medium transition disabled:opacity-50"
           >
-            {isSubmitting ? 'Saving…' : project ? 'Update Project' : 'Create Project'}
+            {isSubmitting ? t('common:actions.saving') : t(project ? 'projects.form.update' : 'projects.form.create')}
           </button>
         </div>
       </fetcher.Form>
@@ -267,7 +277,7 @@ export function ProjectForm({
             className="text-primary-foreground/70 hover:text-primary-foreground flex items-center gap-1.5 text-xs font-medium transition"
           >
             <Plus size={14} className={showNewDocument ? 'rotate-45 transition' : 'transition'} />
-            Create new document in this work
+            {t('projects.form.newDocument')}
           </button>
           {showNewDocument && (
             <div className="mt-3">

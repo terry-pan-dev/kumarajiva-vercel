@@ -18,6 +18,8 @@ import ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 import 'dotenv/config';
 
+import { LocalizedError } from '~/i18n/errors';
+
 import { type IParagraph } from './paragraph.service';
 
 // =============================================================================
@@ -210,7 +212,7 @@ export async function parseXLSX(fileBuffer: ArrayBuffer, keys: ImportColumnKeys)
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {
-    throw new Error('The workbook has no worksheets.');
+    throw new LocalizedError('data:errors.noWorksheets');
   }
 
   const headerRow = worksheet.getRow(1);

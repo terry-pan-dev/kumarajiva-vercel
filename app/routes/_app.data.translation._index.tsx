@@ -2,6 +2,7 @@ import { useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { Lang } from '~/utils/constants';
 
@@ -10,6 +11,8 @@ import { defineAbilityFor } from '~/authorisation';
 import { ProjectForm } from '~/components/data/ProjectForm';
 import { ProjectRow } from '~/components/data/ProjectRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
+import { localizeError } from '~/i18n/errors';
+import { getFixedT } from '~/i18n/locale.server';
 import {
   createProject,
   deleteProject,
@@ -36,8 +39,9 @@ import { parseContributors } from '~/utils/contributors';
 export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  const t = await getFixedT(request);
   if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
-    return json({ success: false, error: 'You are not authorised to change translation projects.' }, { status: 403 });
+    return json({ success: false, error: t('data:projects.notAuthorisedToChange') }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -96,7 +100,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // reference), so fetch it once for any counterpart we may need to create.
     const sourceSection = await getSection(sectionId);
     if (!sourceSection) {
-      return json({ success: false, error: 'Section not found' }, { status: 404 });
+      return json({ success: false, error: t('data:errors.sectionNotFound') }, { status: 404 });
     }
 
     if (translationTitle) {
@@ -139,7 +143,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const language = formData.get('language') as string;
 
     if (!LANG_VALUES.includes(language as Lang)) {
-      return json({ success: false, error: 'Invalid language' }, { status: 400 });
+      return json({ success: false, error: t('errors.invalidLanguage') }, { status: 400 });
     }
 
     try {
@@ -152,7 +156,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       return json({ success: true });
     } catch (error) {
-      return json({ success: false, error: (error as Error).message }, { status: 400 });
+      return json({ success: false, error: localizeError(error, t) }, { status: 400 });
     }
   }
 
@@ -190,21 +194,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       await syncProjectReferences({ projectId, documentIds: referenceDocumentIds });
       return json({ success: true });
     } catch (error) {
-      return json({ success: false, error: (error as Error).message }, { status: 400 });
+      return json({ success: false, error: localizeError(error, t) }, { status: 400 });
     }
   }
 
   // ── Project: delete ──
   if (intent === 'delete-project') {
     if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
-      return json({ success: false, error: 'You are not authorised to delete projects.' }, { status: 403 });
+      return json({ success: false, error: t('data:projects.notAuthorisedToDelete') }, { status: 403 });
     }
     const projectId = formData.get('projectId') as string;
     try {
       await deleteProject({ id: projectId });
-      return json({ success: true, message: 'Project deleted.' });
+      return json({ success: true, message: t('data:projects.projectDeleted') });
     } catch (error) {
-      return json({ success: false, error: (error as Error).message }, { status: 400 });
+      return json({ success: false, error: localizeError(error, t) }, { status: 400 });
     }
   }
 
@@ -216,7 +220,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true });
   }
 
-  return json({ success: false, error: 'Unknown intent' }, { status: 400 });
+  return json({ success: false, error: t('errors.unknownIntent') }, { status: 400 });
 };
 
 // ─── Loader ─────────────────────────────────────────────────────────────────
@@ -265,20 +269,19 @@ export default function DataManagementIndex() {
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [addingSectionToProjectId, setAddingSectionToProjectId] = useState<string | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const { t } = useTranslation('data');
 
   return (
     <div className="container mx-auto max-w-5xl p-6">
       {/* Page header */}
       <div className="border-border mb-6 flex items-start justify-between border-b pb-4">
         <div>
-          <h1 className="text-foreground text-2xl font-bold">Manage the data for translations</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Import translations, export data from sections to Excel, edit project and section metadata.
-          </p>
+          <h1 className="text-foreground text-2xl font-bold">{t('projects.title')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('projects.description')}</p>
         </div>
         <button
           type="button"
-          title="Add new project"
+          title={t('projects.addProjectTooltip')}
           onClick={() => {
             setShowAddProjectForm((v) => !v);
             setEditingProjectId(null);
@@ -286,7 +289,7 @@ export default function DataManagementIndex() {
           className="bg-primary text-primary-foreground hover:bg-primary/80 flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium transition"
         >
           <Plus size={16} />
-          Add Project
+          {t('projects.addProject')}
         </button>
       </div>
 

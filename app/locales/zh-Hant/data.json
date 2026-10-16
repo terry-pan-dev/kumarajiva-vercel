@@ -66,12 +66,153 @@
       "update": "更新文本"
     }
   },
+  "projects": {
+    "untitled": "未命名專案",
+    "title": "管理翻譯資料",
+    "description": "匯入譯文、將章節資料匯出為 Excel，以及編輯專案與章節的資訊。",
+    "addProject": "新增專案",
+    "addProjectTooltip": "新增專案",
+    "notAuthorisedToChange": "您沒有權限修改翻譯專案。",
+    "notAuthorisedToDelete": "您沒有權限刪除專案。",
+    "projectDeleted": "專案已刪除。",
+    "row": {
+      "editTooltip": "編輯專案",
+      "deleteDescription": "此操作將永久刪除專案「{{name}}」，且無法復原。配對的文本及其章節、段落都會保留，只會移除配對關係。",
+      "addSection": "新增章節",
+      "addSectionTooltip": "新增章節",
+      "noSections": "此專案尚無章節。"
+    },
+    "form": {
+      "addHeading": "新增專案",
+      "editHeading": "編輯專案",
+      "name": "專案名稱",
+      "namePlaceholder": "例如：大般若波羅蜜多經",
+      "work": "典籍",
+      "selectWork": "選擇典籍…",
+      "source": "原文文本",
+      "selectSource": "選擇原文文本…",
+      "target": "譯文文本",
+      "selectTarget": "選擇譯文文本…",
+      "references": "參考文本",
+      "removeReferenceTooltip": "移除參考文本",
+      "noMoreDocuments": "此典籍已無其他文本",
+      "selectReference": "選擇參考文本…",
+      "documentOption": "{{title}}（{{language}}）",
+      "create": "建立專案",
+      "update": "更新專案",
+      "newDocument": "在此典籍中建立新文本"
+    },
+    "section": {
+      "editTooltip": "編輯章節",
+      "importReplace": "匯入並取代",
+      "exportXlsx": "匯出 xlsx",
+      "noData": "無資料可匯出",
+      "addHeading": "新增章節",
+      "editHeading": "編輯章節",
+      "original": "原文",
+      "translation": "譯文",
+      "title": "標題",
+      "originPlaceholder": "例如：卷一",
+      "translationPlaceholder": "例如：Volume One",
+      "references": "參考文本",
+      "referencesHint": "為參考文本填寫標題，即可在相同順序建立（或重新命名）其章節，之後才能將資料匯入該參考文本。留空則略過。",
+      "create": "建立章節",
+      "update": "更新章節"
+    },
+    "import": {
+      "title": "匯入資料",
+      "description": "上傳 CSV 或 XLSX 檔案，其欄位標題須為文本的鍵值。可只包含部分文本 — 資料列會依段落鍵及／或位置與既有資料配對，檔案中未包含的既有資料維持不變。",
+      "descriptionWithKeys": "上傳 CSV 或 XLSX 檔案，其欄位標題須為文本的鍵值（例如 <strong>{{origin}}</strong>、<strong>{{target}}</strong>）。可只包含部分文本 — 資料列會依段落鍵及／或位置與既有資料配對，檔案中未包含的既有資料維持不變。",
+      "originPlaceholder": "原文",
+      "translationPlaceholder": "譯文",
+      "context": {
+        "originDocument": "原文文本",
+        "originSection": "原文章節",
+        "originLanguage": "原文語言",
+        "targetDocument": "譯文文本",
+        "targetSection": "譯文章節",
+        "targetLanguage": "譯文語言"
+      },
+      "upload": {
+        "file": "資料檔案 *",
+        "selected": "已選擇：",
+        "viewErrors": "檢視錯誤（{{count}}）",
+        "reading": "讀取檔案中…",
+        "preview": "預覽匯入"
+      },
+      "comparison": {
+        "title": "資料對照",
+        "descriptionWithFile": "取代之前，請先檢查既有資料與匯入檔案的資料。",
+        "description": "此章節的既有資料。請在上方上傳檔案以進行對照。",
+        "existing": "既有資料",
+        "firstOf": "（前 {{shown}} 筆，共 {{total}} 筆）",
+        "noExisting": "此章節沒有既有資料",
+        "moreParagraphs_other": "… 還有 {{count}} 個段落",
+        "file": "檔案資料",
+        "moreRows_other": "… 還有 {{count}} 列",
+        "filePlaceholder": "上傳並預覽檔案後，匯入的資料會顯示在這裡",
+        "importNote": "點選「匯入資料」會新增或更新檔案中的資料列，並依段落鍵及／或位置配對。檔案中未包含的既有段落維持不變 — 不會刪除任何資料。",
+        "importing": "匯入中…",
+        "import": "匯入資料"
+      },
+      "preview": {
+        "original": "原文：",
+        "translation": "譯文：",
+        "noTranslation": "尚無譯文"
+      },
+      "instructions": {
+        "title": "檔案格式說明",
+        "columnsHeading": "欄位即文本鍵值",
+        "columnsBody": "每個欄位標題是其所填入文本的<strong>鍵值</strong>。文本的鍵值顯示於「資料管理 → 典籍與文本」中該文本旁。標題與鍵值的比對不分大小寫。",
+        "keysHeading": "此章節的鍵值",
+        "origin": "原文：",
+        "translation": "譯文：",
+        "references": "參考文本：",
+        "noKeyYet": " — 尚未設定鍵值；請至「典籍與文本」設定",
+        "passageKey": "<code>passage_key</code> — 選填；各文本間同一資料列的共同識別碼",
+        "csvHeading": "CSV 範例",
+        "xlsxNote": "XLSX 檔案的用法相同 — 將文本鍵值放在第一列（標題列）。",
+        "matchingHeading": "資料列如何配對",
+        "matchingSubset": "可包含<strong>任意部分</strong>文本 — 一欄或全部皆可。新的參考文本之後也可以單獨一欄匯入。",
+        "matchingAlign": "資料列依<strong>段落鍵及／或位置</strong>與既有資料對齊，且須與已存資料一致。加入 <code>passage_key</code> 欄位即可不論列序而指定特定段落。",
+        "matchingUpsert": "匯入只做新增或更新：配對到的資料列會被更新、新的資料列會被新增，而<strong>檔案中未包含的既有資料列維持不變</strong> — 不會刪除任何資料。因此只需包含需要修改的資料列。",
+        "matchingEmptyCells": "空白儲存格會被略過；整欄空白（或不存在）時，該文本不受影響。",
+        "matchingEmptyRows": "完全空白的資料列會被忽略。",
+        "setupHeading": "設定須知",
+        "setupSection": "每份文本的對應章節（依順序與此章節配對）必須已存在並已命名。",
+        "setupSkipped": "若參考欄位的鍵值不是此專案的參考文本，或其章節尚未設定，該欄會被略過，並於匯入後回報。"
+      },
+      "errors": {
+        "notAuthorised": "您沒有權限匯入譯文。",
+        "noFile": "請選擇要匯入的檔案。",
+        "invalidType": "檔案類型無效。請上傳 CSV 或 XLSX 檔案。",
+        "noRows": "檔案中找不到有效資料。請檢查檔案格式。",
+        "parseFailed": "無法解析檔案：{{error}}",
+        "missingData": "缺少取代操作所需的資料。"
+      },
+      "result": {
+        "originLabel": "原文",
+        "translationLabel": "譯文",
+        "originNotFound": "找不到原文文本或章節。",
+        "translationSectionMissing": "此章節的譯文章節尚未建立及命名。請先至「資料管理 → 翻譯專案」編輯該章節並設定譯文標題，再匯入譯文資料。",
+        "skippedNotReference": "「{{column}}」（不是此專案的參考文本）",
+        "skippedNoSection": "「{{column}}」（其章節不存在或未命名 — 請先建立並命名）",
+        "nothingImported": "未匯入任何資料。略過的欄位：{{columns}}。",
+        "noImportableContent": "找不到可匯入的內容。檔案中沒有任何欄位符合文本鍵值（原文、譯文或參考文本的鍵值）。",
+        "success": "匯入完成。更新段落：{{updated}}；新增段落：{{inserted}}；文本：{{documents}}。檔案中未包含的既有資料維持不變。",
+        "skippedSuffix": "略過的欄位：{{columns}}。",
+        "failed": "取代資料失敗：{{error}}",
+        "searchSyncFailed": "搜尋索引同步失敗：{{error}}",
+        "conflictNewKey": "第 {{row}} 列：段落鍵「{{key}}」是新的，但位置 {{position}} 已有段落鍵為「{{existingKey}}」的段落。請先在資料庫中（透過資料管理／檢查工具）調整段落鍵或列序，使檔案與既有資料一致，再重新匯入。",
+        "conflictDisagree": "第 {{row}} 列（位置 {{position}}）：既有文本在此位置的段落鍵不一致（{{keys}}）。請先在資料庫中調整，使每個位置只有一個段落鍵，再重新匯入。"
+      }
+    }
+  },
   "paragraphs": {
     "index": {
       "description": "選擇一個章節，以檢視其原始段落資料（順序、編號、UUID 及內容），用於排查損壞的資料。",
       "noProjects": "目前沒有任何專案。",
       "noProjectsHint": "請先在資料管理中建立專案。",
-      "untitledProject": "未命名專案",
       "noSections": "此專案尚無章節。"
     },
     "section": {
@@ -160,6 +301,8 @@
     "documentReferencedByProjects_other": "此文本是 {{count}} 個專案的參考文本。請先從這些專案中移除，再刪除文本。",
     "documentKeyTaken": "此典籍中已有其他文本使用鍵值「{{key}}」。鍵值在同一典籍內必須唯一。",
     "sectionNotFound": "找不到該章節",
-    "sectionHasChildren": "此章節有子章節。請先刪除或移動子章節，再刪除此章節。"
+    "sectionHasChildren": "此章節有子章節。請先刪除或移動子章節，再刪除此章節。",
+    "projectNotFound": "找不到該專案",
+    "noWorksheets": "活頁簿中沒有工作表。"
   }
 }

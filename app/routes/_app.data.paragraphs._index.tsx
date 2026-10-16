@@ -140,9 +140,7 @@ export default function ParagraphsIndex() {
                     <ChevronRight size={20} />
                   </div>
                   <div>
-                    <h3 className="text-foreground text-lg font-semibold">
-                      {project.name || t('paragraphs.index.untitledProject')}
-                    </h3>
+                    <h3 className="text-foreground text-lg font-semibold">{project.name || t('projects.untitled')}</h3>
                     <div className="text-muted-foreground text-sm">
                       {project.sourceDocument?.title}
                       {project.targetDocument && <span className="font-normal"> / {project.targetDocument.title}</span>}

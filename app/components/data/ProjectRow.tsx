@@ -2,6 +2,7 @@ import { useFetcher } from '@remix-run/react';
 import { Reorder, useDragControls } from 'framer-motion';
 import { ChevronRight, Pencil, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { DeleteEntityButton } from './DeleteEntityButton';
 import { ProjectForm, type ProjectForForm } from './ProjectForm';
@@ -135,6 +136,7 @@ export function ProjectRow({
   onEditSectionClose,
 }: Props) {
   const fetcher = useFetcher();
+  const { t } = useTranslation('data');
   const [isOpen, setIsOpen] = useState(false);
   const [sections, setSections] = useState(project.sourceDocument.sections);
   const sectionsRef = useRef(sections);
@@ -159,6 +161,7 @@ export function ProjectRow({
   };
 
   const referenceLabel = (doc: ProjectReference['document']) => doc.key ?? doc.title;
+  const projectName = project.name || t('projects.untitled');
 
   // The reference title boxes for a given section order — its counterpart in each
   // reference document when one exists (matched by order), else an empty box to
@@ -187,10 +190,10 @@ export function ProjectRow({
           </div>
           <div>
             <h3 className="text-foreground flex items-center gap-1.5 text-lg font-semibold">
-              {project.name || 'Untitled project'}
+              {projectName}
               <button
                 type="button"
-                title="Edit project"
+                title={t('projects.row.editTooltip')}
                 className="text-muted-foreground hover:bg-secondary hover:text-secondary-foreground rounded p-1 transition"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -204,9 +207,9 @@ export function ProjectRow({
                   id={project.id}
                   entity="project"
                   idName="projectId"
+                  label={projectName}
                   intent="delete-project"
-                  label={project.name || 'Untitled project'}
-                  description={`This permanently deletes the project “${project.name || 'Untitled project'}”. It cannot be undone. The paired documents, their sections and paragraphs are kept — only the pairing is removed.`}
+                  description={t('projects.row.deleteDescription', { name: projectName })}
                 />
               )}
             </h3>
@@ -214,14 +217,16 @@ export function ProjectRow({
               {project.sourceDocument.title}
               {project.targetDocument.title && <span className="font-normal"> / {project.targetDocument.title}</span>}
             </div>
-            <div className="text-muted-foreground text-xs">{project.sourceDocument.sections.length} Sections</div>
+            <div className="text-muted-foreground text-xs">
+              {t('rawData.sectionCount', { count: project.sourceDocument.sections.length })}
+            </div>
           </div>
         </div>
 
         {isOpen && (
           <button
             type="button"
-            title="Add section"
+            title={t('projects.row.addSectionTooltip')}
             onClick={(e) => {
               e.stopPropagation();
               onAddSectionToggle();
@@ -229,7 +234,7 @@ export function ProjectRow({
             className="bg-primary text-primary-foreground hover:bg-primary/80 flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition"
           >
             <Plus size={13} />
-            Add Section
+            {t('projects.row.addSection')}
           </button>
         )}
       </div>
@@ -273,7 +278,7 @@ export function ProjectRow({
                 ));
               })()
             ) : (
-              <div className="text-muted-foreground p-4 text-center text-sm">No sections found for this project.</div>
+              <div className="text-muted-foreground p-4 text-center text-sm">{t('projects.row.noSections')}</div>
             )}
           </Reorder.Group>
 

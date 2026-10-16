@@ -67,12 +67,155 @@
       "update": "Update Document"
     }
   },
+  "projects": {
+    "untitled": "Untitled project",
+    "title": "Manage the data for translations",
+    "description": "Import translations, export data from sections to Excel, edit project and section metadata.",
+    "addProject": "Add Project",
+    "addProjectTooltip": "Add new project",
+    "notAuthorisedToChange": "You are not authorised to change translation projects.",
+    "notAuthorisedToDelete": "You are not authorised to delete projects.",
+    "projectDeleted": "Project deleted.",
+    "row": {
+      "editTooltip": "Edit project",
+      "deleteDescription": "This permanently deletes the project “{{name}}”. It cannot be undone. The paired documents, their sections and paragraphs are kept — only the pairing is removed.",
+      "addSection": "Add Section",
+      "addSectionTooltip": "Add section",
+      "noSections": "No sections found for this project."
+    },
+    "form": {
+      "addHeading": "Add New Project",
+      "editHeading": "Edit Project",
+      "name": "Project Name",
+      "namePlaceholder": "e.g., Great Prajnaparamita Sutra",
+      "work": "Work",
+      "selectWork": "Select work…",
+      "source": "Source Document",
+      "selectSource": "Select source document…",
+      "target": "Target Document",
+      "selectTarget": "Select target document…",
+      "references": "References",
+      "removeReferenceTooltip": "Remove reference",
+      "noMoreDocuments": "No more documents in this work",
+      "selectReference": "Select a reference document…",
+      "documentOption": "{{title}} ({{language}})",
+      "create": "Create Project",
+      "update": "Update Project",
+      "newDocument": "Create new document in this work"
+    },
+    "section": {
+      "editTooltip": "Edit section",
+      "importReplace": "Import & Replace",
+      "exportXlsx": "Export xlsx",
+      "noData": "No data to export",
+      "addHeading": "Add New Section",
+      "editHeading": "Edit Section",
+      "original": "Original",
+      "translation": "Translation",
+      "title": "Title",
+      "originPlaceholder": "e.g., 卷一",
+      "translationPlaceholder": "e.g., Volume One",
+      "references": "References",
+      "referencesHint": "Give a reference a title to create (or rename) its section at this same order — this is what lets you import data into that reference. Leave blank to skip.",
+      "create": "Create Section",
+      "update": "Update Section"
+    },
+    "import": {
+      "title": "Import Data",
+      "description": "Upload a CSV or XLSX file whose column headers are document keys. Include any subset of the documents — the rows are matched to existing data by passage key and/or position, and existing rows not in the file are left unchanged.",
+      "descriptionWithKeys": "Upload a CSV or XLSX file whose column headers are document keys (e.g. <strong>{{origin}}</strong>, <strong>{{target}}</strong>). Include any subset of the documents — the rows are matched to existing data by passage key and/or position, and existing rows not in the file are left unchanged.",
+      "originPlaceholder": "origin",
+      "translationPlaceholder": "translation",
+      "context": {
+        "originDocument": "Origin Document",
+        "originSection": "Origin Section",
+        "originLanguage": "Origin Language",
+        "targetDocument": "Target Document",
+        "targetSection": "Target Section",
+        "targetLanguage": "Translation Language"
+      },
+      "upload": {
+        "file": "Data File *",
+        "selected": "Selected:",
+        "viewErrors": "View errors ({{count}})",
+        "reading": "Reading file...",
+        "preview": "Preview Import"
+      },
+      "comparison": {
+        "title": "Data Comparison",
+        "descriptionWithFile": "Review the existing data and the imported file data before replacing.",
+        "description": "Existing data for this section. Upload a file above to compare.",
+        "existing": "Existing Data",
+        "firstOf": "(first {{shown}} of {{total}})",
+        "noExisting": "No existing data for this section",
+        "moreParagraphs_one": "... and {{count}} more paragraph",
+        "moreParagraphs_other": "... and {{count}} more paragraphs",
+        "file": "File Data",
+        "moreRows_one": "... and {{count}} more row",
+        "moreRows_other": "... and {{count}} more rows",
+        "filePlaceholder": "Upload and preview a file to see incoming data here",
+        "importNote": "Clicking \"Import Data\" adds or updates the rows in the file, matched by passage key and/or position. Existing paragraphs not present in the file are left unchanged — nothing is deleted.",
+        "importing": "Importing...",
+        "import": "Import Data"
+      },
+      "preview": {
+        "original": "Original:",
+        "translation": "Translation:",
+        "noTranslation": "No translation"
+      },
+      "instructions": {
+        "title": "File Format Instructions",
+        "columnsHeading": "Columns are document keys",
+        "columnsBody": "Each column header is the <strong>key</strong> of the document it fills. A document's key is shown next to it in Data Management → Works & Documents. Headers are matched to keys case-insensitively.",
+        "keysHeading": "This section's keys",
+        "origin": "Origin:",
+        "translation": "Translation:",
+        "references": "References:",
+        "noKeyYet": " — no key set yet; set one in Works & Documents",
+        "passageKey": "<code>passage_key</code> — optional; the shared identity for a row across every document",
+        "csvHeading": "CSV example",
+        "xlsxNote": "An XLSX file works the same way — put the document keys in the first (header) row.",
+        "matchingHeading": "How rows are matched",
+        "matchingSubset": "Include <strong>any subset</strong> of the documents — one column or all of them. A new reference can be added later as a single column.",
+        "matchingAlign": "Rows are aligned to existing data by <strong>passage key and/or position</strong>, which must be consistent with what's already stored. Add a <code>passage_key</code> column to target specific passages regardless of row order.",
+        "matchingUpsert": "The import is a pure upsert: matching rows are updated, new rows inserted, and <strong>existing rows not in the file are left unchanged</strong> — nothing is deleted. So only the rows that need changing need to be included.",
+        "matchingEmptyCells": "Empty cells are skipped; a column that is entirely empty (or absent) leaves that document untouched.",
+        "matchingEmptyRows": "Fully-empty rows are ignored.",
+        "setupHeading": "Setup notes",
+        "setupSection": "Each document's section (matched to this section by order) must already exist and be named.",
+        "setupSkipped": "Reference columns whose key isn't a reference on this project, or whose section isn't set up, are skipped and reported after import."
+      },
+      "errors": {
+        "notAuthorised": "You are not authorised to import translations.",
+        "noFile": "Please select a file to import.",
+        "invalidType": "Invalid file type. Please upload a CSV or XLSX file.",
+        "noRows": "No valid data found in the file. Please check the file format.",
+        "parseFailed": "Failed to parse file: {{error}}",
+        "missingData": "Missing required data for replace operation."
+      },
+      "result": {
+        "originLabel": "origin",
+        "translationLabel": "translation",
+        "originNotFound": "Origin document or section not found.",
+        "translationSectionMissing": "The translation section for this section has not been created and named yet. Create and name it in Data Management → Translation Projects (edit the section and set a translation title) before importing translation data.",
+        "skippedNotReference": "\"{{column}}\" (not a reference document on this project)",
+        "skippedNoSection": "\"{{column}}\" (its section is missing or unnamed — create and name it first)",
+        "nothingImported": "Nothing was imported. Skipped column(s): {{columns}}.",
+        "noImportableContent": "No importable content found. The file has no columns matching a document key (origin, translation or a reference key).",
+        "success": "Import complete. Paragraphs updated: {{updated}}. New paragraphs: {{inserted}}. Documents: {{documents}}. Existing rows not in the file were left unchanged.",
+        "skippedSuffix": " Skipped column(s): {{columns}}.",
+        "failed": "Failed to replace data: {{error}}",
+        "searchSyncFailed": "Search sync failed: {{error}}",
+        "conflictNewKey": "Row {{row}}: passage_key \"{{key}}\" is new, but position {{position}} already holds a paragraph keyed \"{{existingKey}}\". Reconcile the passage keys / row order in the database (via Data Management / the inspector) so the file agrees with existing data, then re-import.",
+        "conflictDisagree": "Row {{row}} (position {{position}}): existing documents disagree on the passage key here ({{keys}}). Reconcile them in the database so each position has one key, then re-import."
+      }
+    }
+  },
   "paragraphs": {
     "index": {
       "description": "Select a section to inspect its raw paragraph data — order, number, UUIDs and content — for debugging corrupt entries.",
       "noProjects": "No projects available.",
       "noProjectsHint": "Please set up a project in Data Management first.",
-      "untitledProject": "Untitled project",
       "noSections": "No sections found for this project."
     },
     "section": {
@@ -175,6 +318,8 @@
     "documentReferencedByProjects_other": "This document is a reference for {{count}} projects. Remove it from those projects before deleting the document.",
     "documentKeyTaken": "Another document in this work already uses the key “{{key}}”. Keys must be unique per work.",
     "sectionNotFound": "Section not found",
-    "sectionHasChildren": "This section has child sections. Delete or reassign them before deleting it."
+    "sectionHasChildren": "This section has child sections. Delete or reassign them before deleting it.",
+    "projectNotFound": "Project not found",
+    "noWorksheets": "The workbook has no worksheets."
   }
 }

@@ -38,6 +38,10 @@
   "locale": {
     "label": "Interface language"
   },
+  "separators": {
+    "list": ", ",
+    "semicolon": "; "
+  },
   "errors": {
     "invalidLanguage": "Invalid language",
     "unknownIntent": "Unknown intent"
