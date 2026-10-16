@@ -1,4 +1,7 @@
 import { Pencil } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+
+import type { ContributorRole, Lang } from '~/utils/constants';
 
 import { DeleteEntityButton } from './DeleteEntityButton';
 import { DocumentForm } from './DocumentForm';
@@ -24,6 +27,7 @@ type Props = {
 };
 
 export function DocumentRow({ document, canDelete, isEditing, onEditToggle, onEditClose }: Props) {
+  const { t } = useTranslation(['data', 'common']);
   return (
     <div>
       <div className="flex items-center justify-between px-4 py-3">
@@ -32,8 +36,8 @@ export function DocumentRow({ document, canDelete, isEditing, onEditToggle, onEd
             <span className="text-foreground text-sm font-medium">{document.title}</span>
             <button
               type="button"
-              title="Edit document"
               onClick={onEditToggle}
+              title={t('documents.document.editTooltip')}
               className="text-muted-foreground hover:bg-secondary hover:text-secondary-foreground rounded p-0.5 transition"
             >
               <Pencil size={11} />
@@ -52,7 +56,7 @@ export function DocumentRow({ document, canDelete, isEditing, onEditToggle, onEd
           {document.subtitle && <div className="text-muted-foreground text-xs">{document.subtitle}</div>}
           <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
             <span className="bg-muted rounded-full px-2 py-0.5">
-              <span className="capitalize">{document.language}</span>
+              {t(`common:languages.${document.language as Lang}`)}
             </span>
             {document.key && (
               <span className="bg-muted rounded-full px-2 py-0.5">
@@ -60,7 +64,11 @@ export function DocumentRow({ document, canDelete, isEditing, onEditToggle, onEd
               </span>
             )}
             {document.contributors.length > 0 && (
-              <span>{document.contributors.map((c) => `${c.name} (${c.role})`).join(', ')}</span>
+              <span>
+                {document.contributors
+                  .map((c) => `${c.name} (${t(`common:contributorRoles.${c.role as ContributorRole}`)})`)
+                  .join(', ')}
+              </span>
             )}
           </div>
         </div>

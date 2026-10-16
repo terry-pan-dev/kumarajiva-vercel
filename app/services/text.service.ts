@@ -11,6 +11,8 @@ import type {
 } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
+import { LocalizedError } from '~/i18n/errors';
+
 import { DbProjectReferences, DbProjects } from './project.crud';
 import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
 import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
@@ -41,12 +43,10 @@ export const getDocument = async (id: string) => {
 export const deleteWork = async ({ id }: { id: string }) => {
   const work = await DbWorks.findById(id);
   if (!work) {
-    throw new Error('Work not found');
+    throw new LocalizedError('data:errors.workNotFound');
   }
   if (work.documents.length > 0) {
-    throw new Error(
-      `This work still has ${work.documents.length} document(s). Delete its documents before deleting the work.`,
-    );
+    throw new LocalizedError('data:errors.workHasDocuments', { count: work.documents.length });
   }
 
   await DbWorks.deleteById(id);
@@ -59,35 +59,27 @@ export const deleteWork = async ({ id }: { id: string }) => {
 export const deleteDocument = async ({ id }: { id: string }) => {
   const document = await DbDocuments.findById(id);
   if (!document) {
-    throw new Error('Document not found');
+    throw new LocalizedError('data:errors.documentNotFound');
   }
   if (document.sections.length > 0) {
-    throw new Error(
-      `This document still has ${document.sections.length} section(s). Delete its sections before deleting the document.`,
-    );
+    throw new LocalizedError('data:errors.documentHasSections', { count: document.sections.length });
   }
 
   const paragraphCount = await DbParagraphsNew.countByDocumentId(id);
   if (paragraphCount > 0) {
-    throw new Error(
-      `This document still has ${paragraphCount} paragraph(s). Remove them before deleting the document.`,
-    );
+    throw new LocalizedError('data:errors.documentHasParagraphs', { count: paragraphCount });
   }
 
   const projects = await DbProjects.findByDocumentId(id);
   if (projects.length > 0) {
-    throw new Error(
-      `This document is used by ${projects.length} project(s). Remove those projects before deleting the document.`,
-    );
+    throw new LocalizedError('data:errors.documentUsedByProjects', { count: projects.length });
   }
 
   // A document can also be attached to a project as a reference without being
   // its source or target, which the check above would miss.
   const referencingProjects = await DbProjectReferences.findByDocumentId(id);
   if (referencingProjects.length > 0) {
-    throw new Error(
-      `This document is a reference for ${referencingProjects.length} project(s). Remove it from those projects before deleting the document.`,
-    );
+    throw new LocalizedError('data:errors.documentReferencedByProjects', { count: referencingProjects.length });
   }
 
   // Contributors hang off the document and carry no independent meaning, so
@@ -125,7 +117,7 @@ const assertDocumentKeyUnique = async (workId: string, key: string | null | unde
   if (!key) return;
   const documents = await DbDocuments.findByWorkId(workId);
   if (documents.some((doc) => doc.key === key && doc.id !== excludeId)) {
-    throw new Error(`Another document in this work already uses the key “${key}”. Keys must be unique per work.`);
+    throw new LocalizedError('data:errors.documentKeyTaken', { key });
   }
 };
 

@@ -1,12 +1,16 @@
 import { useFetcher } from '@remix-run/react';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useToast } from '~/hooks/use-toast';
 
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 
 type DeleteResult = { success: boolean; message?: string; error?: string };
+
+// Keys of `entities` in common.json; the name is shown in the button tooltip and dialog title.
+type Entity = 'work' | 'document' | 'project' | 'glossaryEntry';
 
 // Trash button + confirmation dialog for deleting an entity via a fetcher (so
 // the surrounding page does not navigate). The server decides whether the row
@@ -25,7 +29,7 @@ export function DeleteEntityButton({
   description,
   action,
 }: {
-  entity: string;
+  entity: Entity;
   intent: string;
   idName: string;
   id: string;
@@ -41,6 +45,8 @@ export function DeleteEntityButton({
 }) {
   const fetcher = useFetcher<DeleteResult>();
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const entityName = t(`entities.${entity}`);
   const [open, setOpen] = useState(false);
   const isSubmitting = fetcher.state !== 'idle';
 
@@ -48,19 +54,19 @@ export function DeleteEntityButton({
     if (fetcher.state !== 'idle' || !fetcher.data) return;
     toast({
       variant: fetcher.data.success ? 'default' : 'error',
-      title: fetcher.data.success ? 'Done' : 'Oops!',
+      title: fetcher.data.success ? t('toast.done') : t('toast.oops'),
       description: fetcher.data.success ? fetcher.data.message : fetcher.data.error,
       position: 'top-right',
     });
     if (fetcher.data.success) setOpen(false);
-  }, [fetcher.state, fetcher.data, toast]);
+  }, [fetcher.state, fetcher.data, toast, t]);
 
   return (
     <>
       <button
         type="button"
         disabled={disabled}
-        title={disabled ? disabledReason : `Delete ${entity}`}
+        title={disabled ? disabledReason : t('delete.button', { entity: entityName })}
         onClick={(e) => {
           e.stopPropagation();
           setOpen(true);
@@ -77,12 +83,9 @@ export function DeleteEntityButton({
         onOpenChange={setOpen}
         fields={{ [idName]: id }}
         submitting={isSubmitting}
-        title={`Delete ${entity}?`}
         FormComponent={fetcher.Form}
-        description={
-          description ??
-          `This permanently deletes “${label}”. It cannot be undone, and only works if nothing else references it.`
-        }
+        title={t('delete.title', { entity: entityName })}
+        description={description ?? t('delete.description', { label })}
       />
     </>
   );

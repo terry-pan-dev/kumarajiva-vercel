@@ -1,5 +1,6 @@
 import { Form as RemixForm } from '@remix-run/react';
 import { type ElementType, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { Icons } from '~/components/icons';
 import {
@@ -55,6 +56,7 @@ export function DeleteConfirmDialog({
   onConfirm?: () => void;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent onClick={(e) => e.stopPropagation()}>
@@ -66,12 +68,12 @@ export function DeleteConfirmDialog({
         <DialogFooter className="gap-2">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={submitting}>
-              Cancel
+              {t('actions.cancel')}
             </Button>
           </DialogClose>
           {onConfirm ? (
             <Button type="button" onClick={onConfirm} variant="destructive" disabled={submitting}>
-              {submitting ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Delete'}
+              {submitting ? <Icons.Loader className="h-4 w-4 animate-spin" /> : t('actions.delete')}
             </Button>
           ) : (
             <FormComponent method="post" action={action}>
@@ -81,7 +83,7 @@ export function DeleteConfirmDialog({
                   <input key={name} name={name} type="hidden" value={value} />
                 ))}
               <Button type="submit" variant="destructive" disabled={submitting}>
-                {submitting ? <Icons.Loader className="h-4 w-4 animate-spin" /> : 'Delete'}
+                {submitting ? <Icons.Loader className="h-4 w-4 animate-spin" /> : t('actions.delete')}
               </Button>
             </FormComponent>
           )}

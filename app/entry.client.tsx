@@ -2,6 +2,9 @@ import { RemixBrowser, useLocation, useMatches } from '@remix-run/react';
 import * as Sentry from '@sentry/remix';
 import { startTransition, StrictMode, useEffect } from 'react';
 import { hydrateRoot } from 'react-dom/client';
+import { I18nextProvider } from 'react-i18next';
+
+import { createI18n, DEFAULT_LOCALE, isLocale } from '~/i18n/config';
 
 process.env.NODE_ENV === 'production' &&
   Sentry.init({
@@ -25,11 +28,18 @@ process.env.NODE_ENV === 'production' &&
     tracePropagationTargets: ['https://btts-kumarajiva.org'],
   });
 
+// Start in the language the server rendered, so hydration matches. Later changes
+// come from the root loader (see Layout in root.tsx).
+const serverLocale = document.documentElement.lang;
+const i18n = createI18n(isLocale(serverLocale) ? serverLocale : DEFAULT_LOCALE);
+
 startTransition(() => {
   hydrateRoot(
     document,
     <StrictMode>
-      <RemixBrowser />
+      <I18nextProvider i18n={i18n}>
+        <RemixBrowser />
+      </I18nextProvider>
     </StrictMode>,
   );
 });

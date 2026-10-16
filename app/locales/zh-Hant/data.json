@@ -1,0 +1,79 @@
+{
+  "layout": {
+    "title": "資料管理",
+    "subtitles": {
+      "glossaryInspector": "詞彙檢查",
+      "glossaryImport": "詞彙匯入",
+      "translation": "翻譯",
+      "documentInspector": "文本檢查",
+      "paragraphs": "段落",
+      "documents": "典籍與文本"
+    }
+  },
+  "documents": {
+    "title": "典籍與文本",
+    "description": "管理典籍及其各語言文本。展開典籍即可檢視及新增文本。",
+    "addWork": "新增典籍",
+    "addWorkTooltip": "新增典籍",
+    "empty": "尚無典籍。點選「新增典籍」以建立第一筆。",
+    "workDeleted": "典籍已刪除。",
+    "documentDeleted": "文本已刪除。",
+    "notAuthorisedToChange": "您沒有權限修改典籍或文本。",
+    "notAuthorisedToDeleteWorks": "您沒有權限刪除典籍。",
+    "notAuthorisedToDeleteDocuments": "您沒有權限刪除文本。",
+    "work": {
+      "editTooltip": "編輯典籍",
+      "documentCount_other": "{{count}} 份文本",
+      "addDocument": "新增文本",
+      "addDocumentTooltip": "新增文本",
+      "noDocuments": "此典籍尚無文本。",
+      "deleteDisabledReason": "請先刪除此典籍的所有文本，才能刪除典籍"
+    },
+    "workForm": {
+      "addHeading": "新增典籍",
+      "editHeading": "編輯典籍",
+      "title": "標題",
+      "titlePlaceholder": "例如：大般若波羅蜜多經",
+      "cbeta": "CBETA 編號",
+      "cbetaPlaceholder": "例如：T0220",
+      "category": "類別",
+      "categoryPlaceholder": "例如：般若部",
+      "passageKeyPrefix": "段落鍵前綴",
+      "passageKeyPrefixPlaceholder": "例如：T0220",
+      "create": "建立典籍",
+      "update": "更新典籍"
+    },
+    "document": {
+      "editTooltip": "編輯文本"
+    },
+    "documentForm": {
+      "addHeading": "新增文本",
+      "editHeading": "編輯文本",
+      "title": "標題",
+      "titlePlaceholder": "例如：大般若波羅蜜多經",
+      "subtitle": "副標題",
+      "subtitlePlaceholder": "選填副標題",
+      "language": "語言",
+      "key": "鍵值",
+      "keyPlaceholder": "例如：xuanzang",
+      "keyHint": "在同一典籍內須唯一；用作匯入時的欄位標題。",
+      "contributors": "貢獻者",
+      "contributorName": "姓名",
+      "contributorNamePlaceholder": "例如：玄奘",
+      "contributorRole": "角色",
+      "removeContributorTooltip": "移除貢獻者",
+      "create": "建立文本",
+      "update": "更新文本"
+    }
+  },
+  "errors": {
+    "workNotFound": "找不到該典籍",
+    "workHasDocuments_other": "此典籍仍有 {{count}} 份文本。請先刪除其文本，再刪除典籍。",
+    "documentNotFound": "找不到該文本",
+    "documentHasSections_other": "此文本仍有 {{count}} 個章節。請先刪除其章節，再刪除文本。",
+    "documentHasParagraphs_other": "此文本仍有 {{count}} 個段落。請先移除段落，再刪除文本。",
+    "documentUsedByProjects_other": "此文本仍被 {{count}} 個專案使用。請先移除這些專案，再刪除文本。",
+    "documentReferencedByProjects_other": "此文本是 {{count}} 個專案的參考文本。請先從這些專案中移除，再刪除文本。",
+    "documentKeyTaken": "此典籍中已有其他文本使用鍵值「{{key}}」。鍵值在同一典籍內必須唯一。"
+  }
+}

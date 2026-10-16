@@ -2,6 +2,7 @@ import { useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { Lang } from '~/utils/constants';
 
@@ -10,6 +11,8 @@ import { defineAbilityFor } from '~/authorisation';
 import { WorkForm } from '~/components/data/WorkForm';
 import { WorkRow } from '~/components/data/WorkRow';
 import { ErrorInfo } from '~/components/ErrorInfo';
+import { localizeError } from '~/i18n/errors';
+import { getFixedT } from '~/i18n/locale.server';
 import { DbContributors } from '~/services/text.crud';
 import {
   createDocument,
@@ -28,8 +31,9 @@ import { parseContributors } from '~/utils/contributors';
 export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  const t = await getFixedT(request);
   if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
-    return json({ success: false, error: 'You are not authorised to change works or documents.' }, { status: 403 });
+    return json({ success: false, error: t('data:documents.notAuthorisedToChange') }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -67,7 +71,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const language = formData.get('language') as string;
 
     if (!LANG_VALUES.includes(language as Lang)) {
-      return json({ success: false, error: 'Invalid language' }, { status: 400 });
+      return json({ success: false, error: t('errors.invalidLanguage') }, { status: 400 });
     }
 
     try {
@@ -80,7 +84,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       return json({ success: true });
     } catch (error) {
-      return json({ success: false, error: (error as Error).message }, { status: 400 });
+      return json({ success: false, error: localizeError(error, t) }, { status: 400 });
     }
   }
 
@@ -93,7 +97,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const language = formData.get('language') as string;
 
     if (!LANG_VALUES.includes(language as Lang)) {
-      return json({ success: false, error: 'Invalid language' }, { status: 400 });
+      return json({ success: false, error: t('errors.invalidLanguage') }, { status: 400 });
     }
 
     try {
@@ -107,39 +111,39 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       return json({ success: true });
     } catch (error) {
-      return json({ success: false, error: (error as Error).message }, { status: 400 });
+      return json({ success: false, error: localizeError(error, t) }, { status: 400 });
     }
   }
 
   // ── Work: delete ──
   if (intent === 'delete-work') {
     if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
-      return json({ success: false, error: 'You are not authorised to delete works.' }, { status: 403 });
+      return json({ success: false, error: t('data:documents.notAuthorisedToDeleteWorks') }, { status: 403 });
     }
     const workId = formData.get('workId') as string;
     try {
       await deleteWork({ id: workId });
-      return json({ success: true, message: 'Work deleted.' });
+      return json({ success: true, message: t('data:documents.workDeleted') });
     } catch (error) {
-      return json({ success: false, error: (error as Error).message }, { status: 400 });
+      return json({ success: false, error: localizeError(error, t) }, { status: 400 });
     }
   }
 
   // ── Document: delete ──
   if (intent === 'delete-document') {
     if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
-      return json({ success: false, error: 'You are not authorised to delete documents.' }, { status: 403 });
+      return json({ success: false, error: t('data:documents.notAuthorisedToDeleteDocuments') }, { status: 403 });
     }
     const documentId = formData.get('documentId') as string;
     try {
       await deleteDocument({ id: documentId });
-      return json({ success: true, message: 'Document deleted.' });
+      return json({ success: true, message: t('data:documents.documentDeleted') });
     } catch (error) {
-      return json({ success: false, error: (error as Error).message }, { status: 400 });
+      return json({ success: false, error: localizeError(error, t) }, { status: 400 });
     }
   }
 
-  return json({ success: false, error: 'Unknown intent' }, { status: 400 });
+  return json({ success: false, error: t('errors.unknownIntent') }, { status: 400 });
 };
 
 // ─── Loader ─────────────────────────────────────────────────────────────────
@@ -173,20 +177,19 @@ export default function DocumentsPage() {
   const [editingWorkId, setEditingWorkId] = useState<string | null>(null);
   const [addingDocumentToWorkId, setAddingDocumentToWorkId] = useState<string | null>(null);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
+  const { t } = useTranslation('data');
 
   return (
     <div className="container mx-auto max-w-5xl p-6">
       {/* Page header */}
       <div className="border-border mb-6 flex items-start justify-between border-b pb-4">
         <div>
-          <h1 className="text-foreground text-2xl font-bold">Works & Documents</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Manage works and their language documents. Expand a work to view and add documents.
-          </p>
+          <h1 className="text-foreground text-2xl font-bold">{t('documents.title')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('documents.description')}</p>
         </div>
         <button
           type="button"
-          title="Add new work"
+          title={t('documents.addWorkTooltip')}
           onClick={() => {
             setShowAddWorkForm((v) => !v);
             setEditingWorkId(null);
@@ -194,7 +197,7 @@ export default function DocumentsPage() {
           className="bg-primary text-primary-foreground hover:bg-primary/80 flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium transition"
         >
           <Plus size={16} />
-          Add Work
+          {t('documents.addWork')}
         </button>
       </div>
 
@@ -209,7 +212,7 @@ export default function DocumentsPage() {
       <div className="space-y-4">
         {works.length === 0 && (
           <div className="border-border text-muted-foreground rounded-lg border p-8 text-center text-sm">
-            No works found. Click "Add Work" to create the first one.
+            {t('documents.empty')}
           </div>
         )}
         {works.map((work) => (

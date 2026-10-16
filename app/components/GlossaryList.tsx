@@ -288,7 +288,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
                     size={24}
                     id={glossary.id}
                     idName="glossaryId"
-                    entity="glossary entry"
+                    entity="glossaryEntry"
                     intent="delete-glossary"
                     // Also rendered on /settings, whose action knows nothing about glossaries.
                     action="/glossary?index"
