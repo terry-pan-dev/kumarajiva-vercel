@@ -1,11 +1,12 @@
 import { Link, useActionData, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { ArrowLeft, Copy, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { CopyButton } from '~/components/data/CopyButton';
 import { DeleteConfirmDialog } from '~/components/data/DeleteConfirmDialog';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Badge } from '~/components/ui';
@@ -64,11 +65,11 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     } catch (error) {
       console.error('Error deleting paragraph:', error);
-      return json({ success: false, message: t('data:paragraphs.section.deleteFailed') }, { status: 500 });
+      return json({ success: false, message: t('data:rawData.deleteFailed') }, { status: 500 });
     }
   }
 
-  return json({ success: false, message: t('data:paragraphs.section.unknownAction') }, { status: 400 });
+  return json({ success: false, message: t('data:rawData.unknownAction') }, { status: 400 });
 }
 
 // A row is anomalous when its ordering fields are out of the expected range or
@@ -83,24 +84,6 @@ function orderIsNegative(order: string) {
 }
 
 const MONO = 'font-mono text-xs';
-
-function CopyButton({ value }: { value: string }) {
-  const { toast } = useToast();
-  const { t } = useTranslation('data');
-  return (
-    <button
-      type="button"
-      title={t('paragraphs.section.copy')}
-      className="text-muted-foreground hover:text-foreground shrink-0"
-      onClick={() => {
-        navigator.clipboard?.writeText(value);
-        toast({ variant: 'default', title: t('paragraphs.section.copied'), position: 'top-right' });
-      }}
-    >
-      <Copy className="h-3 w-3" />
-    </button>
-  );
-}
 
 // One display row: an origin paragraph together with the translation
 // child(ren) that point at it. `origin` is null for orphan translations whose
@@ -127,14 +110,14 @@ function ParagraphCell({
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         <span className={badOrder ? 'font-semibold text-red-600' : 'text-muted-foreground'}>
-          {t('paragraphs.section.order', { order: row.order })}
+          {t('rawData.order', { order: row.order })}
         </span>
         <span className={MONO}>{row.id}</span>
         <CopyButton value={row.id} />
         <span className="text-muted-foreground" title={t('paragraphs.section.relatedCountsTooltip', related)}>
           {t('paragraphs.section.relatedCounts', related)}
         </span>
-        {isDup && <Badge variant="destructive">{t('paragraphs.section.duplicate')}</Badge>}
+        {isDup && <Badge variant="destructive">{t('rawData.duplicate')}</Badge>}
         {canDelete && (
           <button
             type="button"
@@ -245,11 +228,11 @@ export default function ParagraphsDebug() {
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <span className={MONO}>{t('paragraphs.section.sectionId', { id: rollId })}</span>
             <span>·</span>
-            <span>{t('paragraphs.section.paragraphCount', { count: rows.length })}</span>
+            <span>{t('rawData.paragraphCount', { count: rows.length })}</span>
             {anomalyCount > 0 && (
               <>
                 <span>·</span>
-                <Badge variant="destructive">{t('paragraphs.section.flaggedCount', { count: anomalyCount })}</Badge>
+                <Badge variant="destructive">{t('rawData.flaggedCount', { count: anomalyCount })}</Badge>
               </>
             )}
           </div>
@@ -324,7 +307,7 @@ export default function ParagraphsDebug() {
             {visiblePairs.length === 0 && (
               <tr>
                 <td colSpan={3} className="text-muted-foreground p-6 text-center text-sm">
-                  {t(rows.length === 0 ? 'paragraphs.section.noParagraphs' : 'paragraphs.section.noMatches')}
+                  {t(rows.length === 0 ? 'paragraphs.section.noParagraphs' : 'rawData.noMatches')}
                 </td>
               </tr>
             )}
@@ -336,7 +319,7 @@ export default function ParagraphsDebug() {
         submitting={isDeleting}
         intent="delete-paragraph"
         open={pendingDelete !== null}
-        title={t('paragraphs.section.deleteTitle')}
+        title={t('rawData.deleteTitle')}
         fields={{ paragraphId: pendingDelete?.id ?? '' }}
         description={t('paragraphs.section.deleteDescription')}
         onOpenChange={(open) => !open && setPendingDelete(null)}

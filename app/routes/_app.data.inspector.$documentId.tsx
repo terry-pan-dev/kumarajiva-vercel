@@ -10,15 +10,21 @@
 // deliberate.
 import { Link, useActionData, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { ArrowLeft, Copy, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import type { Lang } from '~/utils/constants';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { CopyButton } from '~/components/data/CopyButton';
 import { DeleteConfirmDialog } from '~/components/data/DeleteConfirmDialog';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Badge } from '~/components/ui';
 import { useToast } from '~/hooks/use-toast';
+import { localizeError } from '~/i18n/errors';
+import { getFixedT } from '~/i18n/locale.server';
 import {
   deleteParagraph,
   deleteSectionWithParagraphs,
@@ -89,8 +95,9 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
+  const t = await getFixedT(request);
   if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
-    return json({ success: false, message: 'You are not authorised to delete data.' }, { status: 403 });
+    return json({ success: false, message: t('data:inspector.document.notAuthorisedToDelete') }, { status: 403 });
   }
 
   const formData = Object.fromEntries(await request.formData());
@@ -100,10 +107,10 @@ export async function action({ request }: ActionFunctionArgs) {
     const paragraphId = formData['paragraphId'] as string;
     try {
       await deleteParagraph({ id: paragraphId });
-      return json({ success: true, message: 'Deleted paragraph and its search-index entry.' });
+      return json({ success: true, message: t('data:inspector.document.paragraphDeleted') });
     } catch (error) {
       console.error('Error deleting paragraph:', error);
-      return json({ success: false, message: 'Failed to delete paragraph.' }, { status: 500 });
+      return json({ success: false, message: t('data:rawData.deleteFailed') }, { status: 500 });
     }
   }
 
@@ -113,16 +120,17 @@ export async function action({ request }: ActionFunctionArgs) {
       const result = await deleteSectionWithParagraphs({ id: sectionId });
       return json({
         success: true,
-        message: `Deleted section and ${result.deletedParagraphCount} paragraph(s) with their search-index entries.`,
+        message: t('data:inspector.document.sectionDeleted', { count: result.deletedParagraphCount }),
       });
     } catch (error) {
       console.error('Error deleting section:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete section.';
+      const message =
+        error instanceof Error ? localizeError(error, t) : t('data:inspector.document.deleteSectionFailed');
       return json({ success: false, message }, { status: 500 });
     }
   }
 
-  return json({ success: false, message: 'Unknown action.' }, { status: 400 });
+  return json({ success: false, message: t('data:rawData.unknownAction') }, { status: 400 });
 }
 
 // A row is anomalous when it is parked (negative order), lacks the passage key
@@ -132,23 +140,6 @@ function isParked(row: IParagraphNewDebugRow) {
 }
 
 const MONO = 'font-mono text-xs';
-
-function CopyButton({ value }: { value: string }) {
-  const { toast } = useToast();
-  return (
-    <button
-      title="Copy"
-      type="button"
-      className="text-muted-foreground hover:text-foreground shrink-0"
-      onClick={() => {
-        navigator.clipboard?.writeText(value);
-        toast({ variant: 'default', title: 'Copied', position: 'top-right' });
-      }}
-    >
-      <Copy className="h-3 w-3" />
-    </button>
-  );
-}
 
 type SectionInfo = { id: string; title: string | null; order: number; childCount: number };
 
@@ -168,25 +159,26 @@ function ParagraphCell({
   onDelete: (row: IParagraphNewDebugRow) => void;
 }) {
   const isDup = (duplicateContent.get(row.content) ?? 0) > 1;
+  const { t } = useTranslation('data');
 
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         <span className={isParked(row) ? 'font-semibold text-red-600' : 'text-muted-foreground'}>
-          order {row.order}
+          {t('rawData.order', { order: row.order })}
         </span>
         <span className={row.passageKey ? 'text-muted-foreground' : 'font-semibold text-red-600'}>
-          {row.passageKey ?? 'no passage key'}
+          {row.passageKey ?? t('inspector.document.noPassageKey')}
         </span>
         <span className={MONO}>{row.id}</span>
         <CopyButton value={row.id} />
-        {isParked(row) && <Badge variant="destructive">parked</Badge>}
-        {isDup && <Badge variant="destructive">dup</Badge>}
+        {isParked(row) && <Badge variant="destructive">{t('inspector.document.parked')}</Badge>}
+        {isDup && <Badge variant="destructive">{t('rawData.duplicate')}</Badge>}
         {canDelete && (
           <button
             type="button"
             onClick={() => onDelete(row)}
-            title="Delete this paragraph"
+            title={t('inspector.document.deleteParagraphTooltip')}
             className="text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -203,6 +195,7 @@ export default function DocumentInspector() {
   const actionData = useActionData<{ success: boolean; message: string }>();
   const navigation = useNavigation();
   const { toast } = useToast();
+  const { t } = useTranslation(['data', 'common']);
 
   const [filter, setFilter] = useState('');
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
@@ -213,12 +206,12 @@ export default function DocumentInspector() {
     if (!actionData) return;
     toast({
       variant: actionData.success ? 'default' : 'error',
-      title: actionData.success ? 'Done' : 'Oops!',
+      title: actionData.success ? t('common:toast.done') : t('common:toast.oops'),
       description: actionData.message,
       position: 'top-right',
     });
     if (actionData.success) setPendingDelete(null);
-  }, [actionData, toast]);
+  }, [actionData, toast, t]);
 
   // Content duplicated within the same document — the primary corruption signal.
   const duplicateContent = useMemo(() => {
@@ -278,30 +271,32 @@ export default function DocumentInspector() {
             to="/data/inspector"
             className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to documents
+            <ArrowLeft className="h-4 w-4" /> {t('inspector.document.back')}
           </Link>
           <h2 className="text-foreground mt-1 text-lg font-semibold">
             {document.workTitle && <span className="text-muted-foreground font-normal">{document.workTitle} / </span>}
-            {document.title} <Badge variant="secondary">{document.language}</Badge>
+            {document.title} <Badge variant="secondary">{t(`common:languages.${document.language as Lang}`)}</Badge>
             {compareDocument && (
               <span className="text-muted-foreground font-normal">
                 {' '}
-                vs {compareDocument.title} <Badge variant="secondary">{compareDocument.language}</Badge>
+                {t('inspector.document.versus')} {compareDocument.title}{' '}
+                <Badge variant="secondary">{t(`common:languages.${compareDocument.language as Lang}`)}</Badge>
               </span>
             )}
           </h2>
           <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-            <span className={MONO}>document {document.id}</span>
+            <span className={MONO}>{t('inspector.document.documentId', { id: document.id })}</span>
             <CopyButton value={document.id} />
             <span>·</span>
             <span>
-              {sections.length} sections / {rows.length} paragraphs
-              {isComparing && ` vs ${compareRows.length} paragraphs`}
+              {t('rawData.sectionCount', { count: sections.length })} /{' '}
+              {t('rawData.paragraphCount', { count: rows.length })}
+              {isComparing && ` ${t('inspector.document.versusParagraphCount', { count: compareRows.length })}`}
             </span>
             {anomalyCount > 0 && (
               <>
                 <span>·</span>
-                <Badge variant="destructive">{anomalyCount} flagged</Badge>
+                <Badge variant="destructive">{t('rawData.flaggedCount', { count: anomalyCount })}</Badge>
               </>
             )}
           </div>
@@ -310,7 +305,7 @@ export default function DocumentInspector() {
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter rows (content, uuid, passage key…)"
+          placeholder={t('inspector.document.filterPlaceholder')}
           className="border-border bg-background w-64 rounded border px-2 py-1 text-sm"
         />
       </div>
@@ -324,22 +319,26 @@ export default function DocumentInspector() {
             <div key={section.id} className="border-border rounded border">
               <div className="bg-muted flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 text-sm">
                 <span className="font-medium">
-                  {section.title ?? <span className="text-muted-foreground italic">untitled section</span>}
+                  {section.title ?? (
+                    <span className="text-muted-foreground italic">{t('inspector.document.untitledSection')}</span>
+                  )}
                 </span>
-                <span className="text-muted-foreground text-xs">order {section.order}</span>
+                <span className="text-muted-foreground text-xs">{t('rawData.order', { order: section.order })}</span>
                 <span className={MONO}>{section.id}</span>
                 <CopyButton value={section.id} />
-                <span className="text-muted-foreground text-xs">· {totalInSection} paragraphs</span>
-                {totalInSection === 0 && <Badge variant="destructive">empty</Badge>}
+                <span className="text-muted-foreground text-xs">
+                  · {t('rawData.paragraphCount', { count: totalInSection })}
+                </span>
+                {totalInSection === 0 && <Badge variant="destructive">{t('inspector.document.empty')}</Badge>}
                 <div className="flex-1" />
                 {canDelete && !isComparing && (
                   <button
                     type="button"
-                    title="Delete this section and all its paragraphs"
+                    title={t('inspector.document.deleteSectionTooltip')}
                     className="text-muted-foreground hover:text-destructive flex items-center gap-1 text-xs"
                     onClick={() => setPendingDelete({ type: 'section', section, paragraphCount: totalInSection })}
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> Delete section
+                    <Trash2 className="h-3.5 w-3.5" /> {t('inspector.document.deleteSection')}
                   </button>
                 )}
               </div>
@@ -389,7 +388,9 @@ export default function DocumentInspector() {
                                   duplicateContent={duplicateContent}
                                 />
                               ) : (
-                                <span className="text-muted-foreground text-xs">— no counterpart —</span>
+                                <span className="text-muted-foreground text-xs">
+                                  {t('inspector.document.noCounterpart')}
+                                </span>
                               )}
                             </td>
                           )}
@@ -400,7 +401,7 @@ export default function DocumentInspector() {
                 </table>
               ) : (
                 <div className="text-muted-foreground p-3 text-center text-xs">
-                  {totalInSection === 0 ? 'No paragraphs in this section.' : 'No rows match the filter.'}
+                  {t(totalInSection === 0 ? 'inspector.document.noParagraphsInSection' : 'rawData.noMatches')}
                 </div>
               )}
             </div>
@@ -410,8 +411,7 @@ export default function DocumentInspector() {
         {isComparing && orphanCompareRows.length > 0 && (
           <div className="border-destructive/50 rounded border">
             <div className="bg-destructive/10 px-3 py-2 text-sm font-medium">
-              Unmatched in {compareDocument?.title} — {orphanCompareRows.length} paragraph(s) with no counterpart by
-              passage key
+              {t('inspector.document.unmatched', { title: compareDocument?.title, count: orphanCompareRows.length })}
             </div>
             <table className="w-full table-fixed border-collapse text-left">
               <tbody className="text-sm">
@@ -433,7 +433,7 @@ export default function DocumentInspector() {
         )}
 
         {sections.length === 0 && (
-          <div className="text-muted-foreground p-6 text-center text-sm">No sections found for this document.</div>
+          <div className="text-muted-foreground p-6 text-center text-sm">{t('inspector.document.noSections')}</div>
         )}
       </div>
 
@@ -442,7 +442,12 @@ export default function DocumentInspector() {
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
         intent={pendingDelete?.type === 'section' ? 'delete-section' : 'delete-paragraph'}
-        title={pendingDelete?.type === 'section' ? 'Delete this section?' : 'Delete this paragraph?'}
+        title={t(pendingDelete?.type === 'section' ? 'inspector.document.deleteSectionTitle' : 'rawData.deleteTitle')}
+        description={t(
+          pendingDelete?.type === 'section'
+            ? 'inspector.document.deleteSectionDescription'
+            : 'inspector.document.deleteParagraphDescription',
+        )}
         fields={
           pendingDelete?.type === 'section'
             ? { sectionId: pendingDelete.section.id }
@@ -450,29 +455,30 @@ export default function DocumentInspector() {
               ? { paragraphId: pendingDelete.row.id }
               : undefined
         }
-        description={
-          pendingDelete?.type === 'section'
-            ? 'This permanently removes the section together with ALL its paragraphs and their search-index entries. This cannot be undone.'
-            : 'This permanently removes the paragraph and its search-index entry. Its counterpart (paired by passage key) is NOT deleted automatically. This cannot be undone.'
-        }
       >
         {pendingDelete?.type === 'paragraph' && (
           <div className="bg-muted rounded p-3 text-sm">
             <div className={`${MONO} mb-1`}>{pendingDelete.row.id}</div>
             <div className="text-muted-foreground text-xs">
-              order {pendingDelete.row.order} · passage key {pendingDelete.row.passageKey ?? '—'}
+              {t('inspector.document.paragraphDetails', {
+                order: pendingDelete.row.order,
+                passageKey: pendingDelete.row.passageKey ?? '—',
+              })}
             </div>
             <div className="mt-2 line-clamp-3">{pendingDelete.row.content}</div>
           </div>
         )}
         {pendingDelete?.type === 'section' && (
           <div className="bg-muted rounded p-3 text-sm">
-            <div className="font-medium">{pendingDelete.section.title ?? 'untitled section'}</div>
+            <div className="font-medium">{pendingDelete.section.title ?? t('inspector.document.untitledSection')}</div>
             <div className={`${MONO} mb-1`}>{pendingDelete.section.id}</div>
             <div className="text-muted-foreground text-xs">
-              order {pendingDelete.section.order} · {pendingDelete.paragraphCount} paragraph(s) will be deleted with it.
+              {t('inspector.document.sectionDetails', {
+                order: pendingDelete.section.order,
+                count: pendingDelete.paragraphCount,
+              })}
               {pendingDelete.section.childCount > 0 &&
-                ` This section has ${pendingDelete.section.childCount} child section(s) — deletion will be refused until they are removed.`}
+                ` ${t('inspector.document.childSectionsWarning', { count: pendingDelete.section.childCount })}`}
             </div>
           </div>
         )}

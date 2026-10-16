@@ -506,10 +506,10 @@ export const readParagraphsForDebugByDocumentId = async (documentId: string): Pr
 export const deleteSectionWithParagraphs = async ({ id }: { id: string }) => {
   const section = await DbSections.findById(id);
   if (!section) {
-    throw new Error('Section not found');
+    throw new LocalizedError('data:errors.sectionNotFound');
   }
   if (section.children.length > 0) {
-    throw new Error('This section has child sections. Delete or reassign them before deleting it.');
+    throw new LocalizedError('data:errors.sectionHasChildren');
   }
 
   const paragraphs = await DbParagraphsNew.findAllBySectionIdForDebug(id);
