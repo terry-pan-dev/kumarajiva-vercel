@@ -139,7 +139,7 @@ export function WorkingDocumentPreview({
   const present = blocks.filter((block) => texts[block.key]?.trim());
   return (
     <div className="rounded-md border bg-white p-3 text-sm text-black">
-      <div className="text-[10px] text-gray-500">{number}</div>
+      <div className="text-xs text-gray-500">{number}</div>
       {present.map((block, i) => (
         <p
           key={block.key}

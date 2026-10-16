@@ -31,12 +31,23 @@ export const meta: MetaFunction = () => [
   },
 ];
 
+// Applies the saved font preference (see FontSizePreference in settings) before the
+// first paint, so pages don't render at the default size and then jump. It sets an
+// inline style on <html>, hence suppressHydrationWarning there.
+const fontSizeScript = `try {
+  var size = JSON.parse(localStorage.getItem('fontPreference'));
+  if (typeof size === 'number' && size >= 12 && size <= 24) {
+    document.documentElement.style.setProperty('--font-size', size + 'px');
+  }
+} catch (e) {}`;
+
 export function Layout() {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script dangerouslySetInnerHTML={{ __html: fontSizeScript }} />
         <Meta />
         <Links />
       </head>

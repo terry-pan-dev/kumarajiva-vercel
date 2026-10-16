@@ -135,7 +135,7 @@ export function SideBarMenu({
                     to={item.href}
                     aria-label={item.label}
                     className={cn(
-                      'text-md flex items-center py-3 font-medium text-white',
+                      'flex items-center py-3 text-sm font-medium text-white',
                       isOpen ? 'justify-start px-6' : 'justify-center px-3',
                       'hover:bg-slate-200/50 hover:text-yellow-600',
                       pathname.startsWith(item.href)
@@ -173,7 +173,7 @@ export function SideBarMenu({
                       }
                     }}
                     className={cn(
-                      'text-md flex w-full items-center py-3 font-medium text-white',
+                      'flex w-full items-center py-3 text-sm font-medium text-white',
                       isOpen ? 'justify-start px-6' : 'justify-center px-3',
                       'hover:bg-slate-200/50 hover:text-yellow-600',
                       pathname.startsWith('/data')
@@ -206,7 +206,7 @@ export function SideBarMenu({
                         to="/data/glossary"
                         className={({ isActive }) =>
                           cn(
-                            'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                            'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
                             'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                             isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
                           )
@@ -219,7 +219,7 @@ export function SideBarMenu({
                           to="/data/glossary/inspector"
                           className={({ isActive }) =>
                             cn(
-                              'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                              'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
                               'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                               isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
                             )
@@ -236,7 +236,7 @@ export function SideBarMenu({
                         to="/data/translation"
                         className={({ isActive }) =>
                           cn(
-                            'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                            'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
                             'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                             isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
                           )
@@ -248,7 +248,7 @@ export function SideBarMenu({
                         to="/data/documents"
                         className={({ isActive }) =>
                           cn(
-                            'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                            'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
                             'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                             isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
                           )
@@ -260,7 +260,7 @@ export function SideBarMenu({
                         to="/data/paragraphs"
                         className={({ isActive }) =>
                           cn(
-                            'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                            'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
                             'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                             isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
                           )
@@ -273,7 +273,7 @@ export function SideBarMenu({
                           to="/data/inspector"
                           className={({ isActive }) =>
                             cn(
-                              'text-md flex items-center py-2 pr-4 pl-14 font-medium text-white',
+                              'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
                               'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                               isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
                             )
@@ -294,7 +294,7 @@ export function SideBarMenu({
               <div
                 onClick={() => setOpen(true)}
                 className={cn(
-                  'text-md flex cursor-pointer items-center py-3 font-medium text-white',
+                  'flex cursor-pointer items-center py-3 text-sm font-medium text-white',
                   isOpen ? 'justify-start px-6' : 'justify-center px-3',
                   'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
                 )}

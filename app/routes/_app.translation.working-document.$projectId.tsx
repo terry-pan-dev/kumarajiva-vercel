@@ -178,7 +178,10 @@ function ParagraphCard({
           const text = card.texts[block.key];
           return (
             <div key={block.key} className="flex min-w-0 gap-2 text-sm">
-              <span style={{ color: block.color }} className="w-24 shrink-0 truncate text-xs leading-5 font-semibold">
+              <span
+                style={{ color: block.color }}
+                className="w-[7.5em] shrink-0 truncate text-xs leading-5 font-semibold"
+              >
                 {block.label}
               </span>
               {text ? (

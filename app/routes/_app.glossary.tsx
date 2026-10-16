@@ -123,11 +123,7 @@ const GlossaryCreateModal = () => {
     <FormModal
       schema={glossaryFormSchema}
       title="Create Glossary For Chinese And English"
-      trigger={
-        <Button className="w-20" variant="default">
-          Add New Entry
-        </Button>
-      }
+      trigger={<Button variant="default">Add New Entry</Button>}
     >
       <GlossaryCreateForm />
     </FormModal>
