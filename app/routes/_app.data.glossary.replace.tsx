@@ -4,14 +4,18 @@ import { json, redirect } from '@remix-run/node';
 import { Form, useActionData, useFetcher, useNavigation } from '@remix-run/react';
 import { AlertCircle, CheckCircle2, ChevronRight, FileText } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { GlossaryFileColumns } from '~/components/data/GlossaryFileColumns';
 import { Icons } from '~/components/icons';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Separator } from '~/components/ui/separator';
+import { localizeError } from '~/i18n/errors';
+import { getFixedT } from '~/i18n/locale.server';
 import {
   CHUNK_SIZE,
   chunkGroupsToRows,
@@ -46,9 +50,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  const t = await getFixedT(request);
   // The gate that matters: a non-admin POSTing here directly must not reach deleteAllGlossaries.
   if (defineAbilityFor(user).cannot('Administrate', 'GlossaryData')) {
-    return json<ActionResponse>({ intent: 'error', message: 'Not allowed.' }, { status: 403 });
+    return json<ActionResponse>({ intent: 'error', message: t('glossary:errors.notAllowed') }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -60,7 +65,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const wipe = formData.get('wipe') === 'true';
 
     if (!rowsJson) {
-      return json<ActionResponse>({ intent: 'error', message: 'No rows provided.' }, { status: 400 });
+      return json<ActionResponse>({ intent: 'error', message: t('glossary:errors.noRows') }, { status: 400 });
     }
 
     try {
@@ -71,12 +76,12 @@ export async function action({ request }: ActionFunctionArgs) {
       const result = await importGlossaries(rows, user.id);
       return json<ActionResponse>({ intent: 'import-chunk', ...result });
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Import failed.';
+      const message = e instanceof Error ? localizeError(e, t) : t('glossary:errors.importFailed');
       return json<ActionResponse>({ intent: 'error', message }, { status: 500 });
     }
   }
 
-  return json<ActionResponse>({ intent: 'error', message: 'Unknown action.' }, { status: 400 });
+  return json<ActionResponse>({ intent: 'error', message: t('glossary:errors.unknownAction') }, { status: 400 });
 }
 
 // ─── GlossaryTermCard ─────────────────────────────────────────────────────────
@@ -86,6 +91,7 @@ export async function action({ request }: ActionFunctionArgs) {
 function GlossaryTermCard({ group }: { group: GroupedTerm }) {
   const first = group.rows[0];
   const { chineseTerm, phonetic, author, cbetaFrequency } = first;
+  const { t } = useTranslation('glossary');
 
   const translations = group.rows
     .filter((r) => r.englishTerm)
@@ -104,30 +110,30 @@ function GlossaryTermCard({ group }: { group: GroupedTerm }) {
       {(phonetic || author || cbetaFrequency) && (
         <div className="text-muted-foreground space-y-0.5 text-xs">
           {phonetic && <p>{phonetic}</p>}
-          {author && <p>Author: {author}</p>}
-          {cbetaFrequency && <p>CBETA: {cbetaFrequency}</p>}
+          {author && <p>{t('chunked.author', { author })}</p>}
+          {cbetaFrequency && <p>{t('chunked.cbeta', { frequency: cbetaFrequency })}</p>}
         </div>
       )}
 
       {translations.length > 0 ? (
         <div className="space-y-1.5 pt-0.5">
-          {translations.map((t, i) => (
+          {translations.map((tr, i) => (
             <div key={i} className="bg-background text-foreground space-y-0.5 rounded border p-2 text-xs">
-              <p className="font-medium">{t.glossary}</p>
-              {(t.sutraName || t.volume) && (
-                <p className="text-muted-foreground">{[t.sutraName, t.volume].filter(Boolean).join(' · ')}</p>
+              <p className="font-medium">{tr.glossary}</p>
+              {(tr.sutraName || tr.volume) && (
+                <p className="text-muted-foreground">{[tr.sutraName, tr.volume].filter(Boolean).join(' · ')}</p>
               )}
-              {t.originSutraText && (
-                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{t.originSutraText}&rdquo;</p>
+              {tr.originSutraText && (
+                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.originSutraText}&rdquo;</p>
               )}
-              {t.targetSutraText && (
-                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{t.targetSutraText}&rdquo;</p>
+              {tr.targetSutraText && (
+                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetSutraText}&rdquo;</p>
               )}
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground text-xs italic">No translations</p>
+        <p className="text-muted-foreground text-xs italic">{t('chunked.noTranslations')}</p>
       )}
     </div>
   );
@@ -135,82 +141,53 @@ function GlossaryTermCard({ group }: { group: GroupedTerm }) {
 
 // ─── ReplaceInstructions ──────────────────────────────────────────────────────
 
+const richText = { strong: <strong />, em: <em />, code: <code /> };
+
 function ReplaceInstructions() {
+  const { t } = useTranslation('glossary');
   return (
     <Card className="mt-6">
       <CardHeader>
         <CardTitle className="text-primary flex items-center gap-2 text-lg">
           <FileText className="h-4 w-4" />
-          File Format &amp; Replace Instructions
+          {t('replace.instructions.title')}
         </CardTitle>
       </CardHeader>
       <CardContent className="text-muted-foreground space-y-4 text-sm">
         <div>
-          <p className="text-foreground mb-1 font-medium">CSV / XLSX columns (header row required)</p>
-          <ul className="ml-4 list-disc space-y-0.5">
-            <li>
-              <code>UUID</code> — optional; groups rows into one entry and preserves the entry&apos;s ID
-            </li>
-            <li>
-              <code>ChineseTerm</code> — <strong>required</strong>; the primary glossary entry
-            </li>
-            <li>
-              <code>EnglishTerm</code> — English translation; rows without this field contribute metadata only
-            </li>
-            <li>
-              <code>Phonetic</code> — pronunciation guide (applies to the whole entry)
-            </li>
-            <li>
-              <code>Author</code> — translation author (applies to the whole entry)
-            </li>
-            <li>
-              <code>CBetaFrequency</code> — frequency in the CBETA corpus
-            </li>
-            <li>
-              <code>SutraName</code> — source sutra for this translation
-            </li>
-            <li>
-              <code>Volume</code> — volume within the source sutra
-            </li>
-            <li>
-              <code>ChineseSutraText</code> — Chinese context sentence for the translation
-            </li>
-            <li>
-              <code>EnglishSutraText</code> — English context sentence for the translation
-            </li>
-          </ul>
-          <p className="mt-2">
-            Multiple rows sharing the same UUID or Chinese term are merged into one glossary entry with multiple
-            translations.
-          </p>
+          <GlossaryFileColumns variant="replace" />
+          <p className="mt-2">{t('replace.instructions.mergedRows')}</p>
         </div>
 
         <Separator />
 
         <div>
-          <p className="text-foreground mb-1 font-medium">Chunked replace process</p>
+          <p className="text-foreground mb-1 font-medium">{t('replace.instructions.processHeading')}</p>
           <ol className="ml-4 list-decimal space-y-1">
             <li>
-              <strong>Upload</strong> — select your CSV or XLSX file and click <em>Preview</em>. Both file types are
-              parsed locally in your browser — no file data is sent to the server, so large files are handled without
-              hitting upload size limits.
+              <Trans t={t} components={richText} i18nKey="chunked.stepUpload" />
             </li>
             <li>
-              <strong>Chunk display</strong> — the file is divided into chunks of{' '}
-              <strong>{CHUNK_SIZE} glossary terms</strong> (not rows). Each term may span several rows when it has
-              multiple translations.
+              <Trans
+                t={t}
+                components={richText}
+                values={{ chunkSize: CHUNK_SIZE }}
+                i18nKey="replace.instructions.stepChunks"
+              />
             </li>
             <li>
-              <strong>Review</strong> — each chunk lists the entries it will write. There is no side-by-side comparison,
-              because the existing glossary is discarded rather than merged.
+              <Trans t={t} components={richText} i18nKey="replace.instructions.stepReview" />
             </li>
             <li>
-              <strong>Import Chunk</strong> — writes the current chunk and advances. The first write deletes every
-              existing glossary entry before inserting.
+              <Trans t={t} components={richText} i18nKey="replace.instructions.stepImport" />
             </li>
             <li>
-              <strong>Repeat</strong> until all chunks are written. The progress bar at the top tracks how far along you
-              are.
+              <Trans
+                t={t}
+                components={richText}
+                i18nKey="chunked.stepRepeat"
+                values={{ done: t('replace.instructions.repeatDone') }}
+              />
             </li>
           </ol>
         </div>
@@ -218,16 +195,12 @@ function ReplaceInstructions() {
         <Separator />
 
         <div>
-          <p className="text-foreground mb-1 font-medium">Replacing existing data</p>
+          <p className="text-foreground mb-1 font-medium">{t('replace.instructions.existingHeading')}</p>
           <p>
-            Starting the import <strong>permanently deletes every existing glossary entry</strong>, then writes the
-            file&apos;s entries as new records. There is no per-row matching or merging against current data — the file
-            becomes the complete glossary. New entries are indexed in Algolia automatically.
+            <Trans t={t} components={richText} i18nKey="replace.instructions.existingWipe" />
           </p>
           <p className="mt-2">
-            The wipe happens as part of the first chunk&apos;s write, and the remaining chunks are separate requests. If
-            you stop partway the glossary will contain only the chunks written so far, so{' '}
-            <strong>download a CSV backup before you start</strong>.
+            <Trans t={t} components={richText} i18nKey="replace.instructions.existingPartial" />
           </p>
         </div>
       </CardContent>
@@ -238,8 +211,6 @@ function ReplaceInstructions() {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 type ChunkResult = { created: number; updated: number; failed: number };
-
-const WIPE_CONFIRM = 'This permanently deletes all existing glossary entries before importing. Continue?';
 
 export default function GlossaryReplacePage() {
   const actionData = useActionData<ActionResponse>();
@@ -264,6 +235,8 @@ export default function GlossaryReplacePage() {
   const [chunkResults, setChunkResults] = useState<ChunkResult[]>([]);
   const [isFullyImported, setIsFullyImported] = useState(false);
   const [isAutoImporting, setIsAutoImporting] = useState(false);
+  const { t } = useTranslation(['glossary', 'common']);
+  const wipeConfirm = t('replace.confirmWipe');
 
   const totalGroups = groups.length;
   const totalChunks = Math.ceil(totalGroups / CHUNK_SIZE);
@@ -307,7 +280,7 @@ export default function GlossaryReplacePage() {
       setGroups(groupRows(rows));
       setTotalRows(rows.length);
     } catch (e) {
-      setParseError(e instanceof GlossaryParseError ? e.message : 'Failed to parse file.');
+      setParseError(e instanceof GlossaryParseError ? localizeError(e, t) : t('errors.parseFailed'));
     } finally {
       setIsParsing(false);
     }
@@ -331,7 +304,7 @@ export default function GlossaryReplacePage() {
 
   // ── Auto-import: submit one chunk at a time via fetcher ──
   const handleImportAll = () => {
-    if (isFirstChunk && !window.confirm(WIPE_CONFIRM)) return;
+    if (isFirstChunk && !window.confirm(wipeConfirm)) return;
 
     const queue = chunkGroupsToRows(groups.slice(chunkIndex * CHUNK_SIZE));
     if (queue.length === 0) return;
@@ -382,19 +355,13 @@ export default function GlossaryReplacePage() {
       {/* ── File upload ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-primary text-2xl">Replace Glossary</CardTitle>
-          <CardDescription className="text-base">
-            Upload a CSV or XLSX file to replace the entire glossary. The first write clears all existing entries, then
-            the file is imported in chunks of {CHUNK_SIZE} terms at a time.
-          </CardDescription>
+          <CardTitle className="text-primary text-2xl">{t('replace.title')}</CardTitle>
+          <CardDescription className="text-base">{t('replace.description', { chunkSize: CHUNK_SIZE })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Starting the import permanently deletes every existing glossary entry before writing the file. This cannot
-              be undone — download a CSV backup first.
-            </AlertDescription>
+            <AlertDescription>{t('replace.warning')}</AlertDescription>
           </Alert>
 
           <div className="flex items-center gap-3">
@@ -403,7 +370,7 @@ export default function GlossaryReplacePage() {
               className="hover:bg-accent text-foreground flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium"
             >
               <Icons.Add className="h-4 w-4" />
-              {fileName || 'Choose CSV or XLSX file'}
+              {fileName || t('chunked.chooseFile')}
             </label>
             <input
               type="file"
@@ -422,10 +389,10 @@ export default function GlossaryReplacePage() {
               {isParsing ? (
                 <>
                   <Icons.Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Parsing…
+                  {t('chunked.parsing')}
                 </>
               ) : (
-                'Preview'
+                t('chunked.preview')
               )}
             </Button>
           </div>
@@ -444,14 +411,14 @@ export default function GlossaryReplacePage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {uuidConflicts.length} {uuidConflicts.length === 1 ? 'term carries' : 'terms carry'} more than one UUID in
-            this file (
-            {uuidConflicts
-              .slice(0, 5)
-              .map((g) => g.key)
-              .join('、')}
-            {uuidConflicts.length > 5 ? '…' : ''}). Each term can only be one entry, so the first UUID is kept and the
-            others are discarded. Fix the file if those ids matter.
+            {t('replace.uuidConflicts', {
+              count: uuidConflicts.length,
+              terms:
+                uuidConflicts
+                  .slice(0, 5)
+                  .map((g) => g.key)
+                  .join('、') + (uuidConflicts.length > 5 ? '…' : ''),
+            })}
           </AlertDescription>
         </Alert>
       )}
@@ -461,10 +428,10 @@ export default function GlossaryReplacePage() {
         <div className="space-y-3 rounded-lg border p-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-foreground font-medium">
-              {isAllDone ? 'Replace complete' : `Chunk ${chunkIndex + 1} of ${totalChunks}`}
+              {isAllDone ? t('replace.complete') : t('chunked.chunkOf', { index: chunkIndex + 1, total: totalChunks })}
             </span>
             <span className="text-muted-foreground">
-              {totalGroups} terms &middot; {totalRows} rows
+              {t('chunked.termCount', { count: totalGroups })} &middot; {t('chunked.rowCount', { count: totalRows })}
             </span>
           </div>
           <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
@@ -476,16 +443,18 @@ export default function GlossaryReplacePage() {
           {!isAllDone && (
             <div className="flex items-center justify-between">
               <p className="text-muted-foreground text-xs">
-                {remainingRows.length} rows remaining across {totalChunks - chunkIndex}{' '}
-                {totalChunks - chunkIndex === 1 ? 'chunk' : 'chunks'}
+                {t('chunked.remaining', {
+                  rows: t('chunked.rowCount', { count: remainingRows.length }),
+                  chunks: t('chunked.chunkCount', { count: totalChunks - chunkIndex }),
+                })}
               </p>
               {isAutoImporting ? (
                 <Button size="sm" variant="outline" onClick={handleCancelAutoImport}>
-                  Cancel
+                  {t('common:actions.cancel')}
                 </Button>
               ) : (
                 <Button size="sm" variant="secondary" disabled={isSubmitting} onClick={handleImportAll}>
-                  Import All
+                  {t('chunked.importAll')}
                 </Button>
               )}
             </div>
@@ -499,28 +468,31 @@ export default function GlossaryReplacePage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-primary flex items-center gap-2 text-lg">
               <CheckCircle2 className="h-5 w-5" />
-              Replace Complete
+              {t('replace.completeTitle')}
             </CardTitle>
             <CardDescription>
-              {totalGroups} terms from file &middot; {totalRows} rows written
+              {t('replace.completeSummary', {
+                terms: t('chunked.termCount', { count: totalGroups }),
+                rows: t('chunked.rowCount', { count: totalRows }),
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="rounded-lg border p-4">
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400">{totals.created}</p>
-                <p className="text-foreground mt-1 text-sm font-medium">Created</p>
-                <p className="text-muted-foreground text-xs">new entries added</p>
+                <p className="text-foreground mt-1 text-sm font-medium">{t('chunked.created')}</p>
+                <p className="text-muted-foreground text-xs">{t('chunked.createdHint')}</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{totals.updated}</p>
-                <p className="text-foreground mt-1 text-sm font-medium">Updated</p>
-                <p className="text-muted-foreground text-xs">already existed — expected 0</p>
+                <p className="text-foreground mt-1 text-sm font-medium">{t('chunked.updated')}</p>
+                <p className="text-muted-foreground text-xs">{t('replace.updatedHint')}</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-destructive text-3xl font-bold">{totals.failed}</p>
-                <p className="text-foreground mt-1 text-sm font-medium">Failed</p>
-                <p className="text-muted-foreground text-xs">entries not imported</p>
+                <p className="text-foreground mt-1 text-sm font-medium">{t('chunked.failed')}</p>
+                <p className="text-muted-foreground text-xs">{t('chunked.failedHint')}</p>
               </div>
             </div>
           </CardContent>
@@ -533,12 +505,13 @@ export default function GlossaryReplacePage() {
           <CardHeader>
             <CardTitle className="text-primary flex items-center gap-2 text-xl">
               <FileText className="h-5 w-5" />
-              Chunk {chunkIndex + 1} of {totalChunks}
+              {t('chunked.chunkOf', { index: chunkIndex + 1, total: totalChunks })}
             </CardTitle>
             <CardDescription className="text-base">
-              Writing {currentChunkGroups.length} {currentChunkGroups.length === 1 ? 'term' : 'terms'} (
-              {currentChunkRows.length} {currentChunkRows.length === 1 ? 'row' : 'rows'}). Upload a new file above to
-              start over.
+              {t('replace.writing', {
+                terms: t('chunked.termCount', { count: currentChunkGroups.length }),
+                rows: t('chunked.rowCount', { count: currentChunkRows.length }),
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -553,17 +526,17 @@ export default function GlossaryReplacePage() {
             <div className="flex items-center justify-end gap-3">
               {isAutoImporting ? (
                 <Button variant="outline" onClick={handleCancelAutoImport}>
-                  Cancel
+                  {t('common:actions.cancel')}
                 </Button>
               ) : (
                 <Button variant="secondary" disabled={isSubmitting} onClick={handleImportAll}>
-                  Import All
+                  {t('chunked.importAll')}
                 </Button>
               )}
               <Form
                 method="post"
                 onSubmit={(e) => {
-                  if (isFirstChunk && !window.confirm(WIPE_CONFIRM)) e.preventDefault();
+                  if (isFirstChunk && !window.confirm(wipeConfirm)) e.preventDefault();
                 }}
               >
                 <input type="hidden" name="intent" value="import-chunk" />
@@ -573,11 +546,11 @@ export default function GlossaryReplacePage() {
                   {isSubmitting && navigationIntent === 'import-chunk' ? (
                     <>
                       <Icons.Loader className="h-4 w-4 animate-spin" />
-                      Importing…
+                      {t('chunked.importing')}
                     </>
                   ) : (
                     <>
-                      Import Chunk
+                      {t('chunked.importChunk')}
                       <ChevronRight className="h-4 w-4" />
                     </>
                   )}

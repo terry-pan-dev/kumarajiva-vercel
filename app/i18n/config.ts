@@ -2,8 +2,10 @@ import { createInstance, type i18n, type TFunction } from 'i18next';
 
 import enCommon from '~/locales/en/common.json';
 import enData from '~/locales/en/data.json';
+import enGlossary from '~/locales/en/glossary.json';
 import zhHantCommon from '~/locales/zh-Hant/common.json';
 import zhHantData from '~/locales/zh-Hant/data.json';
+import zhHantGlossary from '~/locales/zh-Hant/glossary.json';
 
 // UI language only. This is unrelated to a user's originLang/targetLang, which
 // describe the translation pair they work on, not the language they read the UI in.
@@ -22,11 +24,11 @@ export const isLocale = (value: unknown): value is Locale => SUPPORTED_LOCALES.i
 // The translations are small enough to bundle, so every instance initialises
 // synchronously and the server render already has the right strings.
 export const resources = {
-  en: { common: enCommon, data: enData },
-  'zh-Hant': { common: zhHantCommon, data: zhHantData },
+  en: { common: enCommon, data: enData, glossary: enGlossary },
+  'zh-Hant': { common: zhHantCommon, data: zhHantData, glossary: zhHantGlossary },
 } as const;
 
-export const NAMESPACES = ['common', 'data'] as const;
+export const NAMESPACES = ['common', 'data', 'glossary'] as const;
 type Namespaces = typeof NAMESPACES;
 
 // Unprefixed keys resolve in `common`; other namespaces are addressed as `data:...`.

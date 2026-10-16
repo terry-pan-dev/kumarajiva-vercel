@@ -2,6 +2,7 @@ import 'i18next';
 
 import type enCommon from '~/locales/en/common.json';
 import type enData from '~/locales/en/data.json';
+import type enGlossary from '~/locales/en/glossary.json';
 
 // English is the source of truth for keys, so `t('...')` is checked against it.
 declare module 'i18next' {
@@ -10,6 +11,7 @@ declare module 'i18next' {
     resources: {
       common: typeof enCommon;
       data: typeof enData;
+      glossary: typeof enGlossary;
     };
   }
 }

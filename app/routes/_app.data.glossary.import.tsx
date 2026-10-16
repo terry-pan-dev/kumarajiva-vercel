@@ -4,15 +4,19 @@ import { json, redirect } from '@remix-run/node';
 import { Form, Link, useActionData, useFetcher, useNavigation } from '@remix-run/react';
 import { AlertCircle, ArrowLeftRight, CheckCircle2, ChevronRight, FileText } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
+import { GlossaryFileColumns } from '~/components/data/GlossaryFileColumns';
 import { Icons } from '~/components/icons';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Separator } from '~/components/ui/separator';
+import { localizeError } from '~/i18n/errors';
+import { getFixedT } from '~/i18n/locale.server';
 import { mergeTranslationsWithStatus, type TranslationStatus } from '~/services/glossary.merge';
 import {
   CHUNK_SIZE,
@@ -74,9 +78,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
+  const t = await getFixedT(request);
   // Covers both intents — fetch-existing reads glossary rows, import-chunk writes them.
   if (defineAbilityFor(user).cannot('Maintain', 'GlossaryData')) {
-    return json<ActionResponse>({ intent: 'error', message: 'Not allowed.' }, { status: 403 });
+    return json<ActionResponse>({ intent: 'error', message: t('glossary:errors.notAllowed') }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -104,7 +109,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const rowsJson = formData.get('rows') as string;
 
     if (!rowsJson) {
-      return json<ActionResponse>({ intent: 'error', message: 'No rows provided.' }, { status: 400 });
+      return json<ActionResponse>({ intent: 'error', message: t('glossary:errors.noRows') }, { status: 400 });
     }
 
     try {
@@ -112,12 +117,12 @@ export async function action({ request }: ActionFunctionArgs) {
       const result = await importGlossaries(rows, user.id);
       return json<ActionResponse>({ intent: 'import-chunk', ...result });
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Import failed.';
+      const message = e instanceof Error ? localizeError(e, t) : t('glossary:errors.importFailed');
       return json<ActionResponse>({ intent: 'error', message }, { status: 500 });
     }
   }
 
-  return json<ActionResponse>({ intent: 'error', message: 'Unknown action.' }, { status: 400 });
+  return json<ActionResponse>({ intent: 'error', message: t('glossary:errors.unknownAction') }, { status: 400 });
 }
 
 // ─── GlossaryTermCard ─────────────────────────────────────────────────────────
@@ -127,10 +132,10 @@ type TermCardProps = {
   variant: 'existing' | 'incoming';
 };
 
-const TRANSLATION_STATUS_LABELS: Record<TranslationStatus, string> = {
-  kept: 'Kept',
-  new: 'New',
-};
+const TRANSLATION_STATUS_LABELS = {
+  kept: 'import.statusKept',
+  new: 'import.statusNew',
+} as const satisfies Record<TranslationStatus, string>;
 
 const TRANSLATION_STATUS_STYLES: Record<TranslationStatus, string> = {
   kept: 'bg-muted text-muted-foreground',
@@ -141,11 +146,12 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
   const isIncoming = variant === 'incoming';
   const isNew = !group.existing;
   const first = group.rows[0];
+  const { t } = useTranslation('glossary');
 
   if (!isIncoming && !group.existing) {
     return (
       <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
-        No existing entry
+        {t('import.noExistingEntry')}
       </div>
     );
   }
@@ -196,7 +202,7 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
         <span className="text-base leading-tight font-semibold">{chineseTerm}</span>
         {isIncoming && (
           <Badge className="shrink-0 text-xs" variant={isNew ? 'default' : 'secondary'}>
-            {isNew ? 'New' : 'Update'}
+            {t(isNew ? 'import.newBadge' : 'import.updateBadge')}
           </Badge>
         )}
       </div>
@@ -204,37 +210,37 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
       {(phonetic || author || cbetaFrequency) && (
         <div className="text-muted-foreground space-y-0.5 text-xs">
           {phonetic && <p>{phonetic}</p>}
-          {author && <p>Author: {author}</p>}
-          {cbetaFrequency && <p>CBETA: {cbetaFrequency}</p>}
+          {author && <p>{t('chunked.author', { author })}</p>}
+          {cbetaFrequency && <p>{t('chunked.cbeta', { frequency: cbetaFrequency })}</p>}
         </div>
       )}
 
       {translations.length > 0 ? (
         <div className="space-y-1.5 pt-0.5">
-          {translations.map((t, i) => (
+          {translations.map((tr, i) => (
             <div key={i} className="bg-background text-foreground space-y-0.5 rounded border p-2 text-xs">
               <div className="flex items-start justify-between gap-2">
-                <p className="font-medium">{t.glossary}</p>
-                {t.status && (
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${TRANSLATION_STATUS_STYLES[t.status]}`}>
-                    {TRANSLATION_STATUS_LABELS[t.status]}
+                <p className="font-medium">{tr.glossary}</p>
+                {tr.status && (
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${TRANSLATION_STATUS_STYLES[tr.status]}`}>
+                    {t(TRANSLATION_STATUS_LABELS[tr.status])}
                   </span>
                 )}
               </div>
-              {(t.sutraName || t.volume) && (
-                <p className="text-muted-foreground">{[t.sutraName, t.volume].filter(Boolean).join(' · ')}</p>
+              {(tr.sutraName || tr.volume) && (
+                <p className="text-muted-foreground">{[tr.sutraName, tr.volume].filter(Boolean).join(' · ')}</p>
               )}
-              {t.originSutraText && (
-                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{t.originSutraText}&rdquo;</p>
+              {tr.originSutraText && (
+                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.originSutraText}&rdquo;</p>
               )}
-              {t.targetSutraText && (
-                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{t.targetSutraText}&rdquo;</p>
+              {tr.targetSutraText && (
+                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetSutraText}&rdquo;</p>
               )}
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground text-xs italic">No translations</p>
+        <p className="text-muted-foreground text-xs italic">{t('chunked.noTranslations')}</p>
       )}
     </div>
   );
@@ -242,84 +248,53 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
 
 // ─── ImportInstructions ───────────────────────────────────────────────────────
 
+const richText = { strong: <strong />, em: <em />, code: <code /> };
+
 function ImportInstructions() {
+  const { t } = useTranslation('glossary');
   return (
     <Card className="mt-6">
       <CardHeader>
         <CardTitle className="text-primary flex items-center gap-2 text-lg">
           <FileText className="h-4 w-4" />
-          File Format &amp; Import Instructions
+          {t('import.instructions.title')}
         </CardTitle>
       </CardHeader>
       <CardContent className="text-muted-foreground space-y-4 text-sm">
         <div>
-          <p className="text-foreground mb-1 font-medium">CSV / XLSX columns (header row required)</p>
-          <ul className="ml-4 list-disc space-y-0.5">
-            <li>
-              <code>UUID</code> — optional; links a row to an existing database entry (use the downloaded export to
-              preserve IDs)
-            </li>
-            <li>
-              <code>ChineseTerm</code> — <strong>required</strong>; the primary glossary entry
-            </li>
-            <li>
-              <code>EnglishTerm</code> — English translation; rows without this field are used only for metadata updates
-            </li>
-            <li>
-              <code>Phonetic</code> — pronunciation guide (applies to the whole entry)
-            </li>
-            <li>
-              <code>Author</code> — translation author (applies to the whole entry)
-            </li>
-            <li>
-              <code>CBetaFrequency</code> — frequency in the CBETA corpus
-            </li>
-            <li>
-              <code>SutraName</code> — source sutra for this translation
-            </li>
-            <li>
-              <code>Volume</code> — volume within the source sutra
-            </li>
-            <li>
-              <code>ChineseSutraText</code> — Chinese context sentence for the translation
-            </li>
-            <li>
-              <code>EnglishSutraText</code> — English context sentence for the translation
-            </li>
-          </ul>
-          <p className="mt-2">
-            Multiple CSV rows sharing the same UUID or Chinese term are merged into one glossary entry with multiple
-            translations.
-          </p>
+          <GlossaryFileColumns variant="import" />
+          <p className="mt-2">{t('import.instructions.mergedRows')}</p>
         </div>
 
         <Separator />
 
         <div>
-          <p className="text-foreground mb-1 font-medium">Chunked import process</p>
+          <p className="text-foreground mb-1 font-medium">{t('import.instructions.processHeading')}</p>
           <ol className="ml-4 list-decimal space-y-1">
             <li>
-              <strong>Upload</strong> — select your CSV or XLSX file and click <em>Preview</em>. Both file types are
-              parsed locally in your browser — no file data is sent to the server, so large files are handled without
-              hitting upload size limits.
+              <Trans t={t} components={richText} i18nKey="chunked.stepUpload" />
             </li>
             <li>
-              <strong>Chunk display</strong> — the file is divided into chunks of{' '}
-              <strong>{CHUNK_SIZE} glossary terms</strong> (not rows). Each term may span several CSV rows when it has
-              multiple translations.
+              <Trans
+                t={t}
+                components={richText}
+                values={{ chunkSize: CHUNK_SIZE }}
+                i18nKey="import.instructions.stepChunks"
+              />
             </li>
             <li>
-              <strong>Review</strong> — the left column shows what is currently in the database; the right column shows
-              the entry as it will be stored after the merge. Green cards are new entries; amber cards are updates.
-              Within a card, each translation is tagged <em>Kept</em>, <em>Updated</em> or <em>New</em>.
+              <Trans t={t} components={richText} i18nKey="import.instructions.stepReview" />
             </li>
             <li>
-              <strong>Import Chunk</strong> — click the button to write the current chunk to the database, then the next
-              chunk is shown automatically.
+              <Trans t={t} components={richText} i18nKey="import.instructions.stepImport" />
             </li>
             <li>
-              <strong>Repeat</strong> until all chunks are imported. The progress bar at the top tracks how far along
-              you are.
+              <Trans
+                t={t}
+                components={richText}
+                i18nKey="chunked.stepRepeat"
+                values={{ done: t('import.instructions.repeatDone') }}
+              />
             </li>
           </ol>
         </div>
@@ -327,24 +302,12 @@ function ImportInstructions() {
         <Separator />
 
         <div>
-          <p className="text-foreground mb-1 font-medium">Conflict resolution</p>
-          <p>
-            Rows with a UUID are matched to the existing record by primary key. Rows without a UUID are matched by
-            Chinese term. New entries are created and indexed in Algolia automatically.
-          </p>
+          <p className="text-foreground mb-1 font-medium">{t('import.instructions.conflictHeading')}</p>
+          <p>{t('import.instructions.conflictMatching')}</p>
           <p className="mt-2">
-            When a match is found the entry&apos;s translations are <strong>merged</strong>, not replaced — translations
-            already in the database are kept even if the file does not mention them, so an import file only needs to
-            carry the terms it is adding. A translation is considered the same as a stored one when its{' '}
-            <code>EnglishTerm</code>, <code>SutraName</code> and <code>Volume</code> all match; in that case the file
-            wins and the stored sutra text is overwritten. Everything else is appended. Re-importing the same file
-            therefore changes nothing.
+            <Trans t={t} components={richText} i18nKey="import.instructions.conflictMerge" />
           </p>
-          <p className="mt-2">
-            Entry-level metadata (phonetic, author, CBETA frequency) is overwritten by the file when supplied; leaving a
-            cell blank keeps the stored value. To remove a translation, edit the entry directly — an import cannot
-            delete one.
-          </p>
+          <p className="mt-2">{t('import.instructions.conflictMetadata')}</p>
         </div>
       </CardContent>
     </Card>
@@ -383,6 +346,7 @@ export default function GlossaryImportPage() {
   const [chunkResults, setChunkResults] = useState<ChunkResult[]>([]);
   const [isFullyImported, setIsFullyImported] = useState(false);
   const [isAutoImporting, setIsAutoImporting] = useState(false);
+  const { t } = useTranslation(['glossary', 'common']);
 
   const totalGroups = groups.length;
   const totalCsvRows = totalRows;
@@ -429,7 +393,7 @@ export default function GlossaryImportPage() {
       setGroups(groupRows(rows));
       setTotalRows(rows.length);
     } catch (e) {
-      setParseError(e instanceof GlossaryParseError ? e.message : 'Failed to parse file.');
+      setParseError(e instanceof GlossaryParseError ? localizeError(e, t) : t('errors.parseFailed'));
     } finally {
       setIsParsing(false);
     }
@@ -524,10 +488,8 @@ export default function GlossaryImportPage() {
       {/* ── File upload ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-primary text-2xl">Import Glossary</CardTitle>
-          <CardDescription className="text-base">
-            Upload a CSV or XLSX file to review and import glossary entries in chunks of {CHUNK_SIZE} terms at a time.
-          </CardDescription>
+          <CardTitle className="text-primary text-2xl">{t('import.title')}</CardTitle>
+          <CardDescription className="text-base">{t('import.description', { chunkSize: CHUNK_SIZE })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
@@ -536,7 +498,7 @@ export default function GlossaryImportPage() {
               className="hover:bg-accent text-foreground flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium"
             >
               <Icons.Add className="h-4 w-4" />
-              {fileName || 'Choose CSV or XLSX file'}
+              {fileName || t('chunked.chooseFile')}
             </label>
             <input
               type="file"
@@ -555,10 +517,10 @@ export default function GlossaryImportPage() {
               {isParsing ? (
                 <>
                   <Icons.Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Parsing…
+                  {t('chunked.parsing')}
                 </>
               ) : (
-                'Preview'
+                t('chunked.preview')
               )}
             </Button>
           </div>
@@ -577,10 +539,11 @@ export default function GlossaryImportPage() {
         <div className="space-y-3 rounded-lg border p-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-foreground font-medium">
-              {isAllDone ? 'Import complete' : `Chunk ${chunkIndex + 1} of ${totalChunks}`}
+              {isAllDone ? t('import.complete') : t('chunked.chunkOf', { index: chunkIndex + 1, total: totalChunks })}
             </span>
             <span className="text-muted-foreground">
-              {totalGroups} terms &middot; {totalCsvRows} CSV rows
+              {t('chunked.termCount', { count: totalGroups })} &middot;{' '}
+              {t('chunked.csvRowCount', { count: totalCsvRows })}
             </span>
           </div>
           <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
@@ -592,16 +555,18 @@ export default function GlossaryImportPage() {
           {!isAllDone && (
             <div className="flex items-center justify-between">
               <p className="text-muted-foreground text-xs">
-                {remainingRows.length} rows remaining across {totalChunks - chunkIndex}{' '}
-                {totalChunks - chunkIndex === 1 ? 'chunk' : 'chunks'}
+                {t('chunked.remaining', {
+                  rows: t('chunked.rowCount', { count: remainingRows.length }),
+                  chunks: t('chunked.chunkCount', { count: totalChunks - chunkIndex }),
+                })}
               </p>
               {isAutoImporting ? (
                 <Button size="sm" variant="outline" onClick={handleCancelAutoImport}>
-                  Cancel
+                  {t('common:actions.cancel')}
                 </Button>
               ) : (
                 <Button size="sm" variant="secondary" disabled={isSubmitting} onClick={handleImportAll}>
-                  Import All
+                  {t('chunked.importAll')}
                 </Button>
               )}
             </div>
@@ -615,28 +580,31 @@ export default function GlossaryImportPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-primary flex items-center gap-2 text-lg">
               <CheckCircle2 className="h-5 w-5" />
-              Import Complete
+              {t('import.completeTitle')}
             </CardTitle>
             <CardDescription>
-              {totalGroups} terms from file &middot; {totalCsvRows} CSV rows processed
+              {t('import.completeSummary', {
+                terms: t('chunked.termCount', { count: totalGroups }),
+                rows: t('chunked.csvRowCount', { count: totalCsvRows }),
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="rounded-lg border p-4">
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400">{totals.created}</p>
-                <p className="text-foreground mt-1 text-sm font-medium">Created</p>
-                <p className="text-muted-foreground text-xs">new entries added</p>
+                <p className="text-foreground mt-1 text-sm font-medium">{t('chunked.created')}</p>
+                <p className="text-muted-foreground text-xs">{t('chunked.createdHint')}</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{totals.updated}</p>
-                <p className="text-foreground mt-1 text-sm font-medium">Updated</p>
-                <p className="text-muted-foreground text-xs">existing entries merged</p>
+                <p className="text-foreground mt-1 text-sm font-medium">{t('chunked.updated')}</p>
+                <p className="text-muted-foreground text-xs">{t('import.updatedHint')}</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-destructive text-3xl font-bold">{totals.failed}</p>
-                <p className="text-foreground mt-1 text-sm font-medium">Failed</p>
-                <p className="text-muted-foreground text-xs">entries not imported</p>
+                <p className="text-foreground mt-1 text-sm font-medium">{t('chunked.failed')}</p>
+                <p className="text-muted-foreground text-xs">{t('chunked.failedHint')}</p>
               </div>
             </div>
           </CardContent>
@@ -651,24 +619,26 @@ export default function GlossaryImportPage() {
           <CardHeader>
             <CardTitle className="text-primary flex items-center gap-2 text-xl">
               <ArrowLeftRight className="h-5 w-5" />
-              Chunk {chunkIndex + 1} of {totalChunks}
+              {t('chunked.chunkOf', { index: chunkIndex + 1, total: totalChunks })}
             </CardTitle>
             <CardDescription className="text-base">
-              Reviewing {currentChunk.length} {currentChunk.length === 1 ? 'term' : 'terms'} ({currentChunkRows.length}{' '}
-              CSV {currentChunkRows.length === 1 ? 'row' : 'rows'}). Upload a new file above to start over.
+              {t('import.reviewing', {
+                terms: t('chunked.termCount', { count: currentChunk.length }),
+                rows: t('chunked.csvRowCount', { count: currentChunkRows.length }),
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {isLoadingExisting ? (
               <div className="text-muted-foreground flex items-center justify-center gap-2 py-8 text-sm">
                 <Icons.Loader className="h-4 w-4 animate-spin" />
-                Loading comparison data…
+                {t('import.loadingComparison')}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 {/* Left: current database state */}
                 <div>
-                  <h4 className="text-primary mb-3 text-base font-medium">Current Database</h4>
+                  <h4 className="text-primary mb-3 text-base font-medium">{t('import.currentDatabase')}</h4>
                   <div className="space-y-2">
                     {currentChunk.map((group) => (
                       <GlossaryTermCard group={group} key={group.key} variant="existing" />
@@ -679,10 +649,12 @@ export default function GlossaryImportPage() {
                 {/* Right: incoming from file */}
                 <div>
                   <h4 className="text-primary mb-3 text-base font-medium">
-                    Incoming from File{' '}
+                    {t('import.incoming')}{' '}
                     <span className="text-muted-foreground text-sm font-normal">
-                      ({currentChunk.filter((g) => !g.existing).length} new,{' '}
-                      {currentChunk.filter((g) => g.existing).length} updates)
+                      {t('import.incomingCounts', {
+                        new: currentChunk.filter((g) => !g.existing).length,
+                        updates: currentChunk.filter((g) => g.existing).length,
+                      })}
                     </span>
                   </h4>
                   <div className="space-y-2">
@@ -699,11 +671,11 @@ export default function GlossaryImportPage() {
             <div className="flex items-center justify-end gap-3">
               {isAutoImporting ? (
                 <Button variant="outline" onClick={handleCancelAutoImport}>
-                  Cancel
+                  {t('common:actions.cancel')}
                 </Button>
               ) : (
                 <Button variant="secondary" disabled={isSubmitting} onClick={handleImportAll}>
-                  Import All
+                  {t('chunked.importAll')}
                 </Button>
               )}
               <Form method="post">
@@ -713,11 +685,11 @@ export default function GlossaryImportPage() {
                   {isSubmitting && navigationIntent === 'import-chunk' ? (
                     <>
                       <Icons.Loader className="h-4 w-4 animate-spin" />
-                      Importing…
+                      {t('chunked.importing')}
                     </>
                   ) : (
                     <>
-                      Import Chunk
+                      {t('chunked.importChunk')}
                       <ChevronRight className="h-4 w-4" />
                     </>
                   )}
@@ -739,19 +711,16 @@ export default function GlossaryImportPage() {
 // they just did — but the state worth looking at is the glossary as a whole, not only the
 // entries this file touched. The inspector is where that lives.
 function InspectAfterImportCard() {
+  const { t } = useTranslation('glossary');
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-primary text-lg">Check the glossary</CardTitle>
-        <CardDescription>
-          The Glossary Inspector shows every entry with its uuid, search_id and stored columns, and — when you run the
-          index check — entries listed more than once in search, entries missing from it, and records left behind by
-          deleted entries.
-        </CardDescription>
+        <CardTitle className="text-primary text-lg">{t('import.inspectTitle')}</CardTitle>
+        <CardDescription>{t('import.inspectDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <Button asChild size="sm" variant="secondary">
-          <Link to="/data/glossary/inspector">Open the Glossary Inspector</Link>
+          <Link to="/data/glossary/inspector">{t('import.openInspector')}</Link>
         </Button>
       </CardContent>
     </Card>
