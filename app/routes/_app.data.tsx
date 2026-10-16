@@ -11,7 +11,8 @@ import { LanguageToggle } from '~/components/LanguageToggle';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
-import { DEFAULT_LOCALE, translator } from '~/i18n/config';
+import { translator } from '~/i18n/config';
+import { pageLocale } from '~/i18n/locale';
 import { readUsers } from '~/services';
 
 type Subtitle =
@@ -33,8 +34,7 @@ function getDataSubtitle(pathname: string): Subtitle | null {
 }
 
 export const meta: MetaFunction<unknown, { root: typeof rootLoader }> = ({ location, matches }) => {
-  const locale = matches.find((match) => match.id === 'root')?.data?.locale ?? DEFAULT_LOCALE;
-  const t = translator(locale);
+  const t = translator(pageLocale(matches.find((match) => match.id === 'root')?.data?.locale));
   const title = t('data:layout.title');
   const subtitle = getDataSubtitle(location.pathname);
   return [{ title: subtitle ? `${title} - ${t(`data:layout.subtitles.${subtitle}`)}` : title }];

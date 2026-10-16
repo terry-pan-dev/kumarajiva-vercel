@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { resources, SUPPORTED_LOCALES, translator } from '~/i18n/config';
 import { LocalizedError, localizeError } from '~/i18n/errors';
-import { matchAcceptLanguage, resolveLocale } from '~/i18n/locale';
+import { matchAcceptLanguage, pageLocale, readLocaleCookie, resolveLocale } from '~/i18n/locale';
 
 // Plural forms differ by language (English has _one/_other, Chinese only
 // _other), so keys are compared without their plural suffix.
@@ -62,6 +62,33 @@ describe('resolveLocale', () => {
   it('ignores an invalid cookie', () => {
     expect(resolveLocale('fr', 'zh-TW')).toBe('zh-Hant');
     expect(resolveLocale(undefined, null)).toBe('en');
+  });
+});
+
+describe('readLocaleCookie', () => {
+  it('reads the plain cookie the language toggle writes', () => {
+    expect(readLocaleCookie('lng=zh-Hant')).toBe('zh-Hant');
+    expect(readLocaleCookie('_session=abc; lng=en; other=1')).toBe('en');
+  });
+
+  it('reads the base64 JSON value earlier versions stored', () => {
+    expect(readLocaleCookie('lng=InpoLUhhbnQi')).toBe('zh-Hant');
+    expect(readLocaleCookie('lng=ImVuIg%3D%3D')).toBe('en');
+  });
+
+  it('ignores a missing or unsupported value', () => {
+    expect(readLocaleCookie(null)).toBeNull();
+    expect(readLocaleCookie('_session=abc')).toBeNull();
+    expect(readLocaleCookie('lng=fr')).toBeNull();
+    expect(readLocaleCookie('xlng=zh-Hant')).toBeNull();
+  });
+});
+
+describe('pageLocale', () => {
+  // The browser branch reads <html lang>; tests run in node, where only the loader value counts.
+  it('uses the root loader locale on the server', () => {
+    expect(pageLocale('zh-Hant')).toBe('zh-Hant');
+    expect(pageLocale(undefined)).toBe('en');
   });
 });
 
