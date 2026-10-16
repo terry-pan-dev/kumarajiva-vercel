@@ -2,6 +2,7 @@ import { Link, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
@@ -98,6 +99,7 @@ function SectionRow({ section, depth }: { section: SectionNode; depth: number })
 export default function ParagraphsIndex() {
   const { projects } = useLoaderData<typeof loader>();
   const [openProjects, setOpenProjects] = useState<Set<string>>(new Set());
+  const { t } = useTranslation('data');
 
   const toggleProject = (projectId: string) => {
     setOpenProjects((prev) => {
@@ -111,8 +113,8 @@ export default function ParagraphsIndex() {
   if (projects.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-lg">
-        <p>No projects available.</p>
-        <p>Please set up a project in Data Management first.</p>
+        <p>{t('paragraphs.index.noProjects')}</p>
+        <p>{t('paragraphs.index.noProjectsHint')}</p>
       </div>
     );
   }
@@ -120,10 +122,7 @@ export default function ParagraphsIndex() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-3 p-4">
-        <div className="text-muted-foreground text-sm">
-          Select a section to inspect its raw paragraph data — order, number, UUIDs and content — for debugging corrupt
-          entries.
-        </div>
+        <div className="text-muted-foreground text-sm">{t('paragraphs.index.description')}</div>
         {projects.map((project) => {
           const isOpen = openProjects.has(project.id);
           const sourceSections = project.sourceDocument?.sections ?? [];
@@ -141,12 +140,16 @@ export default function ParagraphsIndex() {
                     <ChevronRight size={20} />
                   </div>
                   <div>
-                    <h3 className="text-foreground text-lg font-semibold">{project.name || 'Untitled project'}</h3>
+                    <h3 className="text-foreground text-lg font-semibold">
+                      {project.name || t('paragraphs.index.untitledProject')}
+                    </h3>
                     <div className="text-muted-foreground text-sm">
                       {project.sourceDocument?.title}
                       {project.targetDocument && <span className="font-normal"> / {project.targetDocument.title}</span>}
                     </div>
-                    <div className="text-muted-foreground text-xs">{sourceSections.length} sections</div>
+                    <div className="text-muted-foreground text-xs">
+                      {t('paragraphs.index.sectionCount', { count: sourceSections.length })}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -164,7 +167,7 @@ export default function ParagraphsIndex() {
                     })()
                   ) : (
                     <div className="text-muted-foreground p-4 text-center text-sm">
-                      No sections found for this project.
+                      {t('paragraphs.index.noSections')}
                     </div>
                   )}
                 </div>
