@@ -1,5 +1,6 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
 import { useActionData, useLoaderData, useNavigation } from '@remix-run/react';
+import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
@@ -7,19 +8,17 @@ import { DataComparisonPanel } from '~/components/import/DataComparisonPanel';
 import { FileUploadForm } from '~/components/import/FileUploadForm';
 import { ImportContextBar } from '~/components/import/ImportContextBar';
 import { ImportInstructions } from '~/components/import/ImportInstructions';
+import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { localizeError } from '~/i18n/errors';
 import { getFixedT } from '~/i18n/locale.server';
-import { getExistingDataPreviewForSection, replaceSectionData } from '~/services/file.server';
 import {
-  parseCSV,
-  parseXLSX,
-  type ExcelTranslationRow,
-  type ImportOptionsNew,
-  type ImportResult,
-} from '~/services/file.service';
-import { getProjectBySourceDocumentId, getProjectReferences } from '~/services/project.service';
-import { getDocument, getSection } from '~/services/text.service';
+  getExistingDataPreviewForSection,
+  replaceSectionData,
+  resolveImportContext,
+  type ImportContext,
+} from '~/services/file.server';
+import { parseCSV, parseXLSX, type ExcelTranslationRow, type ImportResult } from '~/services/file.service';
 
 import { assertAuthUser } from '../auth.server';
 import { defineAbilityFor } from '../authorisation';
@@ -27,7 +26,7 @@ import { defineAbilityFor } from '../authorisation';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ActionResponse =
-  | { intent: 'preview'; fileRows: ExcelTranslationRow[]; formValues: ImportOptionsNew }
+  | { intent: 'preview'; fileRows: ExcelTranslationRow[] }
   | { intent: 'replace'; result: ImportResult }
   | { intent: 'error'; result: ImportResult };
 
@@ -35,76 +34,63 @@ type ActionResponse =
 
 // Imports write to the refactored tables (documents / sections /
 // paragraphs_new) so no more data accumulates in the legacy paragraph tables.
+//
+// The URL names the project and the origin section; everything else — the
+// project's documents and each one's counterpart section — is resolved on the
+// server in one query (resolveImportContext). The loader and both action
+// intents resolve it afresh, so nothing about where data goes comes from the
+// client.
 
-export async function loader({ request }: LoaderFunctionArgs) {
+// A reference document as the existing-data preview expects it.
+const previewReferences = (context: ImportContext) =>
+  context.references.map((r) => ({
+    documentId: r.document.id,
+    document: { key: r.document.key, title: r.document.title },
+  }));
+
+// Column keys the parser should recognise.
+const columnKeys = (context: ImportContext) => ({
+  originKey: context.origin.document.key,
+  targetKey: context.target.document.key,
+  referenceKeys: context.references.map((r) => r.document.key).filter((k): k is string => !!k),
+});
+
+export async function loader({ request, params }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
   if (defineAbilityFor(user).cannot('Maintain', 'TranslationData')) {
     throw redirect('/data');
   }
 
-  const url = new URL(request.url);
-  const originDocumentId = url.searchParams.get('originDocumentId');
-  const targetDocumentId = url.searchParams.get('targetDocumentId');
-  const originSectionId = url.searchParams.get('originSectionId');
-  const targetSectionId = url.searchParams.get('targetSectionId');
-
-  if (!originDocumentId || !targetDocumentId || !originSectionId) {
-    console.error('[import loader] missing required params', {
-      originDocumentId,
-      targetDocumentId,
-      originSectionId,
-      targetSectionId,
-    });
+  const { projectId, sectionId } = params;
+  const context = projectId && sectionId ? await resolveImportContext(projectId, sectionId) : null;
+  if (!context) {
+    console.error('[import loader] project or section not found', { projectId, sectionId });
     return redirect('/data');
   }
 
-  const [originDocument, originSection, targetDocument, targetSection] = await Promise.all([
-    getDocument(originDocumentId),
-    getSection(originSectionId),
-    getDocument(targetDocumentId),
-    targetSectionId ? getSection(targetSectionId) : Promise.resolve(null),
-  ]);
-
-  if (!originDocument || !originSection || !targetDocument) {
-    console.error('[import loader] missing documents or origin section', {
-      originDocument: !!originDocument,
-      originSection: !!originSection,
-      targetDocument: !!targetDocument,
-    });
-    return redirect('/data');
-  }
-
-  // Reference documents — the other columns an import file may carry, and the
-  // extra columns shown in the existing-data preview.
-  const project = await getProjectBySourceDocumentId(originDocumentId);
-  const references = project ? await getProjectReferences(project.id) : [];
-  const referenceDocuments = references.map((r) => ({ id: r.documentId, key: r.document?.key ?? null }));
-  const referenceKeys = referenceDocuments.map((r) => r.key).filter((k): k is string => !!k);
-
-  const existing = await getExistingDataPreviewForSection(originSectionId, targetDocumentId, references);
+  const { origin, target } = context;
+  const existing = await getExistingDataPreviewForSection(
+    origin.section.id,
+    target.document.id,
+    previewReferences(context),
+  );
 
   return json({
-    originDocumentId,
-    targetDocumentId,
-    originSectionId,
-    originDocumentName: originDocument.title,
-    targetDocumentName: targetDocument.title,
-    originSectionName: originSection.title ?? '',
-    targetSectionName: targetSection?.title ?? '',
-    originalLanguage: originDocument.language,
-    translationLanguage: targetDocument.language,
-    originKey: originDocument.key,
-    targetKey: targetDocument.key,
-    referenceKeys,
+    originDocumentName: origin.document.title,
+    targetDocumentName: target.document.title,
+    originSectionName: origin.section.title ?? '',
+    targetSectionName: target.section?.title ?? '',
+    originalLanguage: origin.document.language,
+    translationLanguage: target.document.language,
+    ...columnKeys(context),
     existing,
-    userId: user.id,
   });
 }
 
 // ─── Action ──────────────────────────────────────────────────────────────────
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, params }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
   const t = await getFixedT(request);
@@ -115,15 +101,21 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 
+  const { projectId, sectionId } = params;
+  const context = projectId && sectionId ? await resolveImportContext(projectId, sectionId) : null;
+  if (!context) {
+    return json<ActionResponse>(
+      { intent: 'error', result: { success: false, message: t('data:projects.import.result.originNotFound') } },
+      { status: 404 },
+    );
+  }
+
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
 
   // ── Preview: parse file only ──
   if (intent === 'preview') {
     const file = formData.get('file') as File;
-    const originDocumentId = formData.get('originDocumentId') as string;
-    const originSectionId = formData.get('originSectionId') as string;
-    const targetDocumentId = formData.get('targetDocumentId') as string;
 
     if (!file) {
       return json<ActionResponse>(
@@ -132,21 +124,11 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
-    // Columns are identified by each document's key. Both keys are optional — the
-    // file may carry any subset of documents — so we pass whatever keys exist and
-    // let the parser match the columns that are present. Reference keys let it
-    // recognise their `<key>.<field>` metadata columns.
-    const [originDocument, targetDocument, project] = await Promise.all([
-      getDocument(originDocumentId),
-      getDocument(targetDocumentId),
-      getProjectBySourceDocumentId(originDocumentId),
-    ]);
-    const references = project ? await getProjectReferences(project.id) : [];
-    const keys = {
-      originKey: originDocument?.key ?? null,
-      targetKey: targetDocument?.key ?? null,
-      referenceKeys: references.map((r) => r.document?.key).filter((k): k is string => !!k),
-    };
+    // Columns are identified by each document's key. Every key is optional —
+    // the file may carry any subset of documents — so we pass whatever keys
+    // exist and let the parser match the columns that are present. Reference
+    // keys let it recognise their `<key>.<field>` metadata columns.
+    const keys = columnKeys(context);
 
     try {
       const fileName = file.name.toLowerCase();
@@ -176,16 +158,7 @@ export async function action({ request }: ActionFunctionArgs) {
         );
       }
 
-      return json<ActionResponse>({
-        intent: 'preview',
-        fileRows: rows,
-        formValues: {
-          originDocumentId,
-          originSectionId,
-          targetDocumentId,
-          userId: user.id,
-        },
-      });
+      return json<ActionResponse>({ intent: 'preview', fileRows: rows });
     } catch (error) {
       console.error('Preview error:', error);
       return json<ActionResponse>(
@@ -204,11 +177,8 @@ export async function action({ request }: ActionFunctionArgs) {
   // ── Replace: insert parsed rows into the database ──
   if (intent === 'replace') {
     const rowsJson = formData.get('rows') as string;
-    const originDocumentId = formData.get('originDocumentId') as string;
-    const originSectionId = formData.get('originSectionId') as string;
-    const targetDocumentId = formData.get('targetDocumentId') as string;
 
-    if (!rowsJson || !originDocumentId || !originSectionId || !targetDocumentId) {
+    if (!rowsJson) {
       return json<ActionResponse>(
         { intent: 'error', result: { success: false, message: t('data:projects.import.errors.missingData') } },
         { status: 400 },
@@ -216,16 +186,7 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     const rows: ExcelTranslationRow[] = JSON.parse(rowsJson);
-    const result = await replaceSectionData(
-      rows,
-      {
-        originDocumentId,
-        originSectionId,
-        targetDocumentId,
-        userId: user.id,
-      },
-      t,
-    );
+    const result = await replaceSectionData(rows, context, user.id, t);
 
     return json<ActionResponse>({ intent: 'replace', result });
   }
@@ -235,9 +196,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function DataImport() {
   const {
-    originDocumentId,
-    targetDocumentId,
-    originSectionId,
     originDocumentName,
     targetDocumentName,
     originSectionName,
@@ -258,7 +216,6 @@ export default function DataImport() {
   const { t } = useTranslation('data');
 
   const fileRows = actionData?.intent === 'preview' ? actionData.fileRows : null;
-  const formValues = actionData?.intent === 'preview' ? actionData.formValues : null;
   const replaceResult = actionData?.intent === 'replace' ? actionData.result : null;
   const errorResult = actionData?.intent === 'error' ? actionData.result : null;
 
@@ -292,15 +249,19 @@ export default function DataImport() {
             targetSutraName={targetDocumentName}
             translationLanguage={translationLanguage}
           />
+          {/* Translation columns can't be imported until the counterpart section is named. */}
+          {!targetSectionName.trim() && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{t('projects.import.result.translationSectionMissing')}</AlertDescription>
+            </Alert>
+          )}
           <FileUploadForm
             fileName={fileName}
             errorResult={errorResult}
             isSubmitting={isSubmitting}
             replaceResult={replaceResult}
-            originSectionId={originSectionId}
-            originDocumentId={originDocumentId}
             navigationIntent={navigationIntent}
-            targetDocumentId={targetDocumentId}
             onFileChange={(e) => setFileName(e.target.files?.[0]?.name ?? '')}
           />
         </CardContent>
@@ -309,7 +270,6 @@ export default function DataImport() {
       <DataComparisonPanel
         existing={existing}
         fileRows={fileRows}
-        formValues={formValues}
         isSubmitting={isSubmitting}
         navigationIntent={navigationIntent}
       />

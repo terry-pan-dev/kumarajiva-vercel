@@ -67,6 +67,7 @@ type Props = {
 
 type DraggableItemProps = {
   section: Section;
+  projectId: string;
   documentId: string;
   targetDocumentId: string;
   // The counterpart section in the target document (matched by order), when it
@@ -83,6 +84,7 @@ type DraggableItemProps = {
 
 function DraggableSectionRow({
   section,
+  projectId,
   documentId,
   targetDocumentId,
   targetSection,
@@ -108,6 +110,7 @@ function DraggableSectionRow({
         section={section}
         hasData={hasData}
         isEditing={isEditing}
+        projectId={projectId}
         documentId={documentId}
         references={references}
         onEditClose={onEditClose}
@@ -265,6 +268,7 @@ export function ProjectRow({
                   <DraggableSectionRow
                     key={section.id}
                     section={section}
+                    projectId={project.id}
                     onDragEnd={handleDragEnd}
                     onEditClose={onEditSectionClose}
                     documentId={project.sourceDocument.id}

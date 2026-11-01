@@ -2,7 +2,7 @@ import { Form } from '@remix-run/react';
 import { AlertCircle, ArrowLeftRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import type { ExcelTranslationRow, ExistingDataPreview, ImportOptionsNew } from '~/services/file.service';
+import type { ExcelTranslationRow, ExistingDataPreview } from '~/services/file.service';
 
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
@@ -14,12 +14,11 @@ import { ParagraphPreviewCard } from './ParagraphPreviewCard';
 type Props = {
   existing: ExistingDataPreview;
   fileRows: ExcelTranslationRow[] | null;
-  formValues: ImportOptionsNew | null;
   isSubmitting: boolean;
   navigationIntent: string | null;
 };
 
-export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitting, navigationIntent }: Props) {
+export function DataComparisonPanel({ existing, fileRows, isSubmitting, navigationIntent }: Props) {
   const { t } = useTranslation('data');
   return (
     <Card className="mt-6">
@@ -115,7 +114,7 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
         </div>
 
         {/* Import action — only shown after a file has been previewed */}
-        {fileRows && formValues && (
+        {fileRows && (
           <>
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -125,9 +124,6 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
             <Form method="post">
               <input type="hidden" name="intent" value="replace" />
               <input name="rows" type="hidden" value={JSON.stringify(fileRows)} />
-              <input type="hidden" name="originDocumentId" value={formValues.originDocumentId} />
-              <input type="hidden" name="originSectionId" value={formValues.originSectionId} />
-              <input type="hidden" name="targetDocumentId" value={formValues.targetDocumentId} />
 
               <div className="flex justify-end gap-3">
                 <Button type="submit" className="text-base" disabled={isSubmitting}>

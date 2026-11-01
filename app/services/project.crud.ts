@@ -86,6 +86,25 @@ export const DbProjects = {
     });
   },
 
+  // Everything the section importer needs, in one query: the project's work (for
+  // generated passage keys) and each of its documents — source, target and
+  // references — with all their sections, so counterparts can be matched by
+  // order in memory (see selectImportContext).
+  findForImport: async (id: string) => {
+    return db.query.projectsTable.findFirst({
+      where: eq(projectsTable.id, id),
+      with: {
+        work: true,
+        sourceDocument: { with: { sections: true } },
+        targetDocument: { with: { sections: true } },
+        references: {
+          with: { document: { with: { sections: true } } },
+          orderBy: (references, { asc }) => [asc(references.order)],
+        },
+      },
+    });
+  },
+
   findByIds: async (ids: string[]) => {
     if (!ids.length) return [];
     return db.query.projectsTable.findMany({
