@@ -1,56 +1,79 @@
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
 
+import type { IParagraphNew } from '~/services/text.service';
+
 import {
-  type ExcelTranslationRow,
-  buildColumns,
   buildExportFilename,
   buildExportWorkbook,
   classifyHeaders,
-  extractReferenceSources,
   matchMetadataHeader,
   mergeParagraphMetadata,
   parseCSV,
   parseXLSX,
-  translationRowToExcelRow,
+  sectionExportColumns,
+  sectionExportDocuments,
 } from '~/services/file.service';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
-
-const makeParagraph = (overrides: Partial<ExcelTranslationRow> = {}): ExcelTranslationRow => ({
-  origin: '原文',
-  target: 'Translation',
-  passageKey: null,
-  references: [],
-  ...overrides,
-});
 
 // Columns are identified by document keys; these tests use "origin"/"translation"
 // as the origin/translation document keys.
 const KEYS = { originKey: 'origin', targetKey: 'translation' };
 
-const sampleParagraphs: ExcelTranslationRow[] = [
-  makeParagraph({
-    origin: 'Origin A',
-    target: 'Target A',
+// A paired paragraph as readParagraphsBySectionId returns it: source T262,
+// translation EN, references cleary (ref-c) and kalavinka (ref-k).
+const paired = (
+  passageKey: string | null,
+  texts: { origin: string; target?: string; cleary?: string; kalavinka?: string },
+  pages: { origin?: string; target?: string; cleary?: string; kalavinka?: string } = {},
+): IParagraphNew => {
+  const meta = (page?: string) => (page ? { page } : null);
+  return {
+    id: `p-${passageKey}`,
+    order: 1,
+    passageKey,
+    documentId: 'd-origin',
+    sectionId: 's',
+    origin: texts.origin,
+    target: texts.target ?? null,
+    metadata: meta(pages.origin),
+    targetMetadata: meta(pages.target),
     references: [
-      { sutraName: 'Cleary', content: 'Cleary text A' },
-      { sutraName: 'Kalavinka', content: 'Kalavinka text A' },
+      {
+        documentId: 'ref-c',
+        key: 'cleary',
+        title: 'Cleary',
+        content: texts.cleary ?? null,
+        metadata: meta(pages.cleary),
+      },
+      {
+        documentId: 'ref-k',
+        key: 'kalavinka',
+        title: 'Kalavinka',
+        content: texts.kalavinka ?? null,
+        metadata: meta(pages.kalavinka),
+      },
     ],
-  }),
-  makeParagraph({
-    origin: 'Origin B',
-    target: 'Target B',
-    references: [{ sutraName: 'Cleary', content: 'Cleary text B' }],
-  }),
-  makeParagraph({
-    origin: 'Origin C',
-    target: '',
-    references: [
-      { sutraName: 'Kalavinka', content: 'Kalavinka text C' },
-      { sutraName: 'BTTS', content: 'BTTS text C' },
-    ],
-  }),
+    histories: [],
+    originComments: [],
+    targetComments: [],
+  };
+};
+
+const EXPORT_REFERENCES = [
+  { documentId: 'ref-c', document: { key: 'cleary', title: 'Cleary' } },
+  { documentId: 'ref-k', document: { key: 'kalavinka', title: 'Kalavinka' } },
+];
+const EXPORT_DOCUMENTS = sectionExportDocuments({ originKey: 'T262', targetKey: 'EN', references: EXPORT_REFERENCES });
+
+const exportParagraphs = [
+  paired(
+    'k.1',
+    { origin: '如是我聞', target: 'Thus I have heard', cleary: 'Thus have I heard' },
+    { origin: '1c', cleary: '201' },
+  ),
+  paired('k.2', { origin: '一時', target: 'At one time', kalavinka: 'At one time' }, { kalavinka: '315' }),
 ];
 
 /** Build an in-memory XLSX buffer from a simple column/row spec. */
@@ -65,146 +88,101 @@ async function buildXlsx(
   return wb.xlsx.writeBuffer() as Promise<ArrayBuffer>;
 }
 
-// ─── extractReferenceSources ─────────────────────────────────────────────────
+// ─── Section export ──────────────────────────────────────────────────────────
 
-describe('extractReferenceSources', () => {
-  it('returns sorted unique source names', () => {
-    expect(extractReferenceSources(sampleParagraphs)).toEqual(['BTTS', 'Cleary', 'Kalavinka']);
-  });
-
-  it('returns empty array when no references exist', () => {
-    expect(extractReferenceSources([makeParagraph()])).toEqual([]);
-  });
-
-  it('skips references without sutraName', () => {
-    const paragraphs = [
-      makeParagraph({
-        references: [{ content: 'no name' }, { sutraName: 'Named', content: 'has name' }],
-      }),
-    ];
-    expect(extractReferenceSources(paragraphs)).toEqual(['Named']);
-  });
-
-  it('deduplicates sources across paragraphs', () => {
-    const paragraphs = [
-      makeParagraph({ references: [{ sutraName: 'Cleary', content: 'a' }] }),
-      makeParagraph({ references: [{ sutraName: 'Cleary', content: 'b' }] }),
-    ];
-    expect(extractReferenceSources(paragraphs)).toEqual(['Cleary']);
+describe('sectionExportDocuments', () => {
+  it('heads each document by its key, falling back for documents without one', () => {
+    const documents = sectionExportDocuments({
+      originKey: null,
+      targetKey: null,
+      references: [{ documentId: 'r', document: { key: null, title: 'Commentary' } }],
+    });
+    expect(documents.map((d) => d.header)).toEqual(['Origin', 'Translation', 'Commentary']);
+    expect(EXPORT_DOCUMENTS.map((d) => d.header)).toEqual(['T262', 'EN', 'cleary', 'kalavinka']);
   });
 });
 
-// ─── buildColumns ─────────────────────────────────────────────────────────────
+describe('sectionExportColumns', () => {
+  const columns = sectionExportColumns(exportParagraphs, EXPORT_DOCUMENTS);
 
-describe('buildColumns', () => {
-  it('returns base columns when no references', () => {
-    const cols = buildColumns([]);
-    expect(cols).toEqual([
-      { header: 'Origin', key: 'origin', width: 40 },
-      { header: 'Translation', key: 'target', width: 40 },
+  it('leads with passage_key and puts each metadata field after its document', () => {
+    expect(columns.map((c) => c.header)).toEqual([
+      'passage_key',
+      'T262',
+      'T262.page',
+      'EN',
+      'cleary',
+      'cleary.page',
+      'kalavinka',
+      'kalavinka.page',
     ]);
   });
 
-  it('appends a column per reference source', () => {
-    const cols = buildColumns(['Cleary', 'Kalavinka']);
-    expect(cols).toHaveLength(4);
-    expect(cols[2]).toEqual({ header: 'Cleary', key: 'Cleary', width: 40 });
-    expect(cols[3]).toEqual({ header: 'Kalavinka', key: 'Kalavinka', width: 40 });
+  it('fills cells from each paragraph, empty where a document has no text or page', () => {
+    const row = (p: IParagraphNew) => columns.map((c) => c.value(p));
+    expect(row(exportParagraphs[0])).toEqual([
+      'k.1',
+      '如是我聞',
+      '1c',
+      'Thus I have heard',
+      'Thus have I heard',
+      '201',
+      '',
+      '',
+    ]);
+    expect(row(exportParagraphs[1])).toEqual(['k.2', '一時', '', 'At one time', '', '', 'At one time', '315']);
+  });
+
+  it('adds no metadata columns when no paragraph has metadata', () => {
+    const plain = [paired('k.1', { origin: '如是我聞' })];
+    expect(sectionExportColumns(plain, EXPORT_DOCUMENTS).map((c) => c.header)).toEqual([
+      'passage_key',
+      'T262',
+      'EN',
+      'cleary',
+      'kalavinka',
+    ]);
+  });
+
+  it('sorts several fields of one document', () => {
+    const p = paired('k.1', { origin: 'x' });
+    p.metadata = { page: '1', 'cbeta.line': 'T09n0262_p0001c01' };
+    expect(
+      sectionExportColumns([p], EXPORT_DOCUMENTS)
+        .map((c) => c.header)
+        .slice(1, 4),
+    ).toEqual(['T262', 'T262.cbeta.line', 'T262.page']);
   });
 });
-
-// ─── translationRowToExcelRow ─────────────────────────────────────────────────
-
-describe('paragraphToRow', () => {
-  const sources = ['BTTS', 'Cleary', 'Kalavinka'];
-
-  it('maps origin and target', () => {
-    const row = translationRowToExcelRow(sampleParagraphs[0], sources);
-    expect(row.origin).toBe('Origin A');
-    expect(row.target).toBe('Target A');
-  });
-
-  it('maps matching reference content', () => {
-    const row = translationRowToExcelRow(sampleParagraphs[0], sources);
-    expect(row['Cleary']).toBe('Cleary text A');
-    expect(row['Kalavinka']).toBe('Kalavinka text A');
-  });
-
-  it('uses empty string for missing reference', () => {
-    const row = translationRowToExcelRow(sampleParagraphs[0], sources);
-    expect(row['BTTS']).toBe('');
-  });
-
-  it('uses empty string for missing origin/target', () => {
-    const row = translationRowToExcelRow(
-      makeParagraph({ origin: undefined as unknown as string, target: undefined }),
-      [],
-    );
-    expect(row.origin).toBe('');
-    expect(row.target).toBe('');
-  });
-});
-
-// ─── buildExportWorkbook ──────────────────────────────────────────────────────
 
 describe('buildExportWorkbook', () => {
-  it('creates a workbook with correct sheet name', async () => {
-    const wb = await buildExportWorkbook(sampleParagraphs);
-    const ws = wb.getWorksheet('Translation Data');
-    expect(ws).toBeDefined();
+  const build = () => buildExportWorkbook(exportParagraphs, sectionExportColumns(exportParagraphs, EXPORT_DOCUMENTS));
+
+  it('writes a bold, shaded header row and one wrapped row per paragraph', async () => {
+    const ws = (await build()).getWorksheet('Translation Data')!;
+    expect(ws.rowCount).toBe(exportParagraphs.length + 1);
+    expect(ws.getRow(1).font).toMatchObject({ bold: true });
+    expect(ws.getRow(1).fill).toMatchObject({ type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } });
+    expect(ws.getRow(2).getCell(2).alignment).toMatchObject({ wrapText: true });
   });
 
-  it('has header row + data rows', async () => {
-    const wb = await buildExportWorkbook(sampleParagraphs);
-    const ws = wb.getWorksheet('Translation Data')!;
-    expect(ws.rowCount).toBe(sampleParagraphs.length + 1);
-  });
-
-  it('header row is bold with fill', async () => {
-    const wb = await buildExportWorkbook(sampleParagraphs);
-    const ws = wb.getWorksheet('Translation Data')!;
-    const headerRow = ws.getRow(1);
-    expect(headerRow.font).toMatchObject({ bold: true });
-    expect(headerRow.fill).toMatchObject({
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' },
+  it('round-trips through the importer’s parser: text, passage keys and pages', async () => {
+    const buffer = (await (await build()).xlsx.writeBuffer()) as ArrayBuffer;
+    const rows = await parseXLSX(buffer, {
+      originKey: 'T262',
+      targetKey: 'EN',
+      referenceKeys: ['cleary', 'kalavinka'],
     });
-  });
 
-  it('data cells have wrapText alignment', async () => {
-    const wb = await buildExportWorkbook(sampleParagraphs);
-    const ws = wb.getWorksheet('Translation Data')!;
-    const cell = ws.getRow(2).getCell(1);
-    expect(cell.alignment).toMatchObject({ wrapText: true });
-  });
-
-  it('columns match expected count', async () => {
-    const wb = await buildExportWorkbook(sampleParagraphs);
-    const ws = wb.getWorksheet('Translation Data')!;
-    // 2 base + 3 reference sources (BTTS, Cleary, Kalavinka)
-    expect(ws.columns?.length).toBe(5);
-  });
-
-  it('produces a valid xlsx buffer', async () => {
-    const wb = await buildExportWorkbook(sampleParagraphs);
-    const buffer = await wb.xlsx.writeBuffer();
-    expect(buffer).toBeInstanceOf(Buffer);
-    expect((buffer as Buffer).length).toBeGreaterThan(0);
-
-    // Round-trip: read back and verify
-    const wb2 = new ExcelJS.Workbook();
-    await wb2.xlsx.load(buffer as Buffer);
-    const ws2 = wb2.getWorksheet('Translation Data')!;
-    expect(ws2.getRow(2).getCell(1).value).toBe('Origin A');
-  });
-
-  it('handles paragraphs with no references', async () => {
-    const paragraphs = [makeParagraph({ references: [] })];
-    const wb = await buildExportWorkbook(paragraphs);
-    const ws = wb.getWorksheet('Translation Data')!;
-    expect(ws.columns?.length).toBe(2);
-    expect(ws.rowCount).toBe(2);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ origin: '如是我聞', target: 'Thus I have heard', passageKey: 'k.1' });
+    expect(rows[0].references).toEqual([{ sutraName: 'cleary', content: 'Thus have I heard' }]);
+    expect(rows[0].metadata).toEqual([
+      { documentKey: 'T262', field: 'page', value: '1c' },
+      { documentKey: 'cleary', field: 'page', value: '201' },
+      { documentKey: 'kalavinka', field: 'page', value: '' },
+    ]);
+    expect(rows[1].metadata).toContainEqual({ documentKey: 'kalavinka', field: 'page', value: '315' });
   });
 });
 

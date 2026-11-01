@@ -21,6 +21,7 @@ import 'dotenv/config';
 import { LocalizedError } from '~/i18n/errors';
 
 import { type IParagraph } from './paragraph.service';
+import { type IParagraphNew, type ReferenceDocument } from './text.service';
 
 // =============================================================================
 // SECTION 1: Excel-layer types & constants
@@ -348,52 +349,80 @@ export async function parseXLSX(fileBuffer: ArrayBuffer, keys: ImportColumnKeys)
 // SECTION 6: Export workbook generation
 // =============================================================================
 
-export function extractReferenceSources(rows: ExcelTranslationRow[]): string[] {
-  const sources = new Set<string>();
-  rows.forEach((row) => {
-    row.references.forEach((r) => {
-      if (r.sutraName) sources.add(r.sutraName);
-    });
-  });
-  return Array.from(sources).sort();
+// A section is exported with one text column per document, headed by the
+// document's key (what the importer matches on), so an exported file can be
+// re-imported as is. Each metadata field a document's paragraphs carry gets a
+// `<key>.<field>` column right after that document's text; `passage_key` leads.
+
+export interface SectionExportDocument {
+  // The column header: the document's key, or a fallback when it has none.
+  header: string;
+  text: (paragraph: IParagraphNew) => string | null;
+  metadata: (paragraph: IParagraphNew) => Record<string, string> | null;
 }
 
-export function buildColumns(referenceSources: string[]): { header: string; key: string; width: number }[] {
-  const columns = [
-    { header: COLUMN_HEADERS_ORIGIN, key: 'origin', width: 40 },
-    { header: COLUMN_HEADERS_TARGET, key: 'target', width: 40 },
+export interface SectionExportColumn {
+  header: string;
+  value: (paragraph: IParagraphNew) => string;
+  width: number;
+}
+
+// The documents of a section export, in column order: source, translation,
+// then each reference. A reference without a key is headed by its title, which
+// the importer will report as unknown rather than guess at.
+export function sectionExportDocuments({
+  originKey,
+  targetKey,
+  references,
+}: {
+  originKey: string | null;
+  targetKey: string | null;
+  references: ReferenceDocument[];
+}): SectionExportDocument[] {
+  return [
+    { header: originKey ?? COLUMN_HEADERS_ORIGIN, text: (p) => p.origin, metadata: (p) => p.metadata },
+    { header: targetKey ?? COLUMN_HEADERS_TARGET, text: (p) => p.target, metadata: (p) => p.targetMetadata },
+    ...references.map((ref) => {
+      const of = (p: IParagraphNew) => p.references.find((r) => r.documentId === ref.documentId);
+      return {
+        header: ref.document.key ?? ref.document.title,
+        text: (p: IParagraphNew) => of(p)?.content ?? null,
+        metadata: (p: IParagraphNew) => of(p)?.metadata ?? null,
+      };
+    }),
   ];
-
-  referenceSources.forEach((source) => {
-    columns.push({ header: source, key: source, width: 40 });
-  });
-
-  return columns;
 }
 
-export function translationRowToExcelRow(row: ExcelTranslationRow, referenceSources: string[]): Record<string, string> {
-  const ExcelRow: Record<string, string> = {
-    origin: row.origin || '',
-    target: row.target || '',
-  };
-
-  referenceSources.forEach((source) => {
-    const ref = row.references.find((r) => r.sutraName === source);
-    ExcelRow[source] = ref?.content || '';
-  });
-
-  return ExcelRow;
+export function sectionExportColumns(
+  paragraphs: IParagraphNew[],
+  documents: SectionExportDocument[],
+): SectionExportColumn[] {
+  return [
+    { header: 'passage_key', value: (p) => p.passageKey ?? '', width: 18 },
+    ...documents.flatMap((doc) => {
+      const fields = [...new Set(paragraphs.flatMap((p) => Object.keys(doc.metadata(p) ?? {})))].sort();
+      return [
+        { header: doc.header, value: (p: IParagraphNew) => doc.text(p) ?? '', width: 40 },
+        ...fields.map((field) => ({
+          header: `${doc.header}.${field}`,
+          value: (p: IParagraphNew) => doc.metadata(p)?.[field] ?? '',
+          width: 12,
+        })),
+      ];
+    }),
+  ];
 }
 
-export async function buildExportWorkbook(rows: ExcelTranslationRow[]): Promise<ExcelJS.Workbook> {
+export async function buildExportWorkbook(
+  paragraphs: IParagraphNew[],
+  columns: SectionExportColumn[],
+): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Translation Data');
 
-  const referenceSources = extractReferenceSources(rows);
-  worksheet.columns = buildColumns(referenceSources);
-
-  rows.forEach((row) => {
-    worksheet.addRow(translationRowToExcelRow(row, referenceSources));
+  worksheet.columns = columns.map(({ header, width }, i) => ({ header, key: String(i), width }));
+  paragraphs.forEach((paragraph) => {
+    worksheet.addRow(Object.fromEntries(columns.map((column, i) => [String(i), column.value(paragraph)])));
   });
 
   worksheet.getRow(1).font = { bold: true };
