@@ -5,9 +5,11 @@
 // Built on the generic paragraph reads in text.service.ts and the project's
 // metadata.
 //
-// Paragraphs are numbered "<section order>.<position in section>" (e.g. 5.3) —
+// Paragraphs are numbered by their position in their section (e.g. 3) —
 // always present and readable, unlike passage keys, which are not yet filled in
-// consistently. Position counts non-parked paragraphs in reading order.
+// consistently. Position counts non-parked paragraphs in reading order. The
+// section isn't part of the number: its order is only its place in the list,
+// not e.g. its roll number, so it can't be relied on to mean anything.
 import { z } from 'zod';
 
 import { metadataField, type Metadata } from '~/utils/metadata';
@@ -106,7 +108,7 @@ export const resolveWorkingDocumentStart = async ({
   lastExportedParagraphId: string | null;
 }): Promise<{
   start: WorkingDocumentStart | null;
-  lastExported: { number: string; atEnd: boolean } | null;
+  lastExported: { number: string; sectionTitle: string | null; atEnd: boolean } | null;
 }> => {
   const firstOf = async (sectionIndex: number): Promise<WorkingDocumentStart | null> => {
     const section = sections[sectionIndex];
@@ -124,14 +126,17 @@ export const resolveWorkingDocumentStart = async ({
   // Parked since the export (order < 0): no longer in reading order.
   if (position < 0) return { start: await firstOf(0), lastExported: null };
 
-  const number = `${section.order}.${position + 1}`;
+  const exported = { number: String(position + 1), sectionTitle: section.title };
   const next =
     position + 1 < siblings.length
       ? { sectionId: section.id, position: position + 1, paragraphId: siblings[position + 1].id }
       : await firstOf(sectionIndex + 1);
   return next
-    ? { start: next, lastExported: { number, atEnd: false } }
-    : { start: { sectionId: section.id, position, paragraphId: last.id }, lastExported: { number, atEnd: true } };
+    ? { start: next, lastExported: { ...exported, atEnd: false } }
+    : {
+        start: { sectionId: section.id, position, paragraphId: last.id },
+        lastExported: { ...exported, atEnd: true },
+      };
 };
 
 // ─── Cards ───────────────────────────────────────────────────────────────────
@@ -162,7 +167,7 @@ export const readWorkingDocumentCards = async ({
 
   return paragraphs.map((paragraph, i) => ({
     id: paragraph.id,
-    number: `${section.order}.${i + 1}`,
+    number: String(i + 1),
     passageKey: paragraph.passageKey,
     texts: Object.fromEntries(
       Object.entries(textsOf(paragraph)).map(([key, text]) => [key, text?.slice(0, EXCERPT_LENGTH) ?? null]),
@@ -198,7 +203,7 @@ export const readPassagesForWorkingDocument = async ({
   let position = 0;
   paragraphs.forEach((p, i) => {
     position = i > 0 && paragraphs[i - 1].sectionId === p.sectionId ? position + 1 : 1;
-    numbers.set(p.id, `${sectionById.get(p.sectionId)?.order}.${position}`);
+    numbers.set(p.id, String(position));
   });
 
   const startIndex = paragraphs.findIndex((p) => p.id === startParagraphId);
@@ -270,10 +275,11 @@ export const defaultWorkingDocumentFormat = (project: { references: ReferenceDoc
     })),
   ],
   showPages: true,
+  showNumbers: true,
 });
 
-// Fits a saved format to the project as it is now: the page setting carries
-// over, saved blocks keep their order and look; references removed since are dropped, references added since
+// Fits a saved format to the project as it is now: the page and number
+// settings carry over, saved blocks keep their order and look; references removed since are dropped, references added since
 // are appended with their defaults. Anything unusable falls back to defaults.
 export const reconcileWorkingDocumentFormat = (
   saved: WorkingDocumentFormat | undefined,
@@ -288,6 +294,7 @@ export const reconcileWorkingDocumentFormat = (
   return {
     blocks: [...kept, ...defaults.blocks.filter((b) => !keptKeys.has(b.key))],
     showPages: saved.showPages ?? defaults.showPages,
+    showNumbers: saved.showNumbers ?? defaults.showNumbers,
   };
 };
 

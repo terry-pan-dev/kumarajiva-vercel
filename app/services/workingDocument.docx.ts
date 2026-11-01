@@ -63,13 +63,14 @@ const blockParagraph = (
 const blank = () => new Paragraph({ text: '' });
 
 // A heading (in both languages) whenever the passages cross into a new
-// section, the paragraph number in small grey above each passage, then its
+// section, the paragraph number in small grey above each passage (unless
+// switched off), then its
 // texts in block order with a blank line between them, and two blank lines to
 // separate passages. Texts a passage doesn't have yet are left out.
 const passageParagraphs = (
   passages: WorkingDocumentPassage[],
   blocks: WorkingDocumentBlock[],
-  showPages: boolean,
+  { showPages, showNumbers }: { showPages: boolean; showNumbers: boolean },
 ): Paragraph[] => {
   const paragraphs: Paragraph[] = [];
   let currentSectionId: string | null = null;
@@ -82,7 +83,9 @@ const passageParagraphs = (
     }
     currentSectionId = passage.sectionId;
 
-    paragraphs.push(new Paragraph({ children: [new TextRun({ text: passage.number, color: '808080', size: 16 })] }));
+    if (showNumbers) {
+      paragraphs.push(new Paragraph({ children: [new TextRun({ text: passage.number, color: '808080', size: 16 })] }));
+    }
     const texts = blocks.flatMap((block) => {
       const text = passage.texts[block.key]?.trim();
       return text ? [blockParagraph(block, text, passage.pages?.[block.key], showPages)] : [];
@@ -96,8 +99,14 @@ const passageParagraphs = (
 export const buildWorkingDocument = (
   passages: WorkingDocumentPassage[],
   blocks: WorkingDocumentBlock[],
-  // showPages: print page numbers after the labels (default on).
-  meta: { titles: (string | null | undefined)[]; subtitle?: string | null; showPages?: boolean },
+  // showPages: print page numbers after the labels; showNumbers: print each
+  // paragraph's number above it (both default on).
+  meta: {
+    titles: (string | null | undefined)[];
+    subtitle?: string | null;
+    showPages?: boolean;
+    showNumbers?: boolean;
+  },
 ): Document =>
   new Document({
     sections: [
@@ -106,18 +115,29 @@ export const buildWorkingDocument = (
           bilingualParagraph(meta.titles, { heading: HeadingLevel.HEADING_1, center: true }),
           ...(meta.subtitle ? [new Paragraph({ alignment: AlignmentType.CENTER, text: meta.subtitle })] : []),
           blank(),
-          ...passageParagraphs(passages, blocks, meta.showPages !== false),
+          ...passageParagraphs(passages, blocks, {
+            showPages: meta.showPages !== false,
+            showNumbers: meta.showNumbers !== false,
+          }),
         ],
       },
     ],
   });
 
-// e.g. "Team A 5.3–6.2.docx"; characters that are unsafe in file names are
-// dropped.
+// Paragraph numbers only count within a section, so the range names its
+// sections: e.g. "Team A 序品第一 3–20.docx", or "Team A 序品第一 30–方便品第二 4.docx"
+// across sections. Characters that are unsafe in file names are dropped.
 export const buildWorkingDocumentFilename = (projectName: string, passages: WorkingDocumentPassage[]): string => {
-  const first = passages[0]?.number;
-  const last = passages[passages.length - 1]?.number;
-  const range = first && last ? (first === last ? ` ${first}` : ` ${first}–${last}`) : '';
+  const first = passages[0];
+  const last = passages[passages.length - 1];
+  const at = (p: WorkingDocumentPassage) => (p.sectionTitle ? `${p.sectionTitle} ${p.number}` : p.number);
+  const range = !first
+    ? ''
+    : first === last
+      ? ` ${at(first)}`
+      : first.sectionId === last.sectionId
+        ? ` ${at(first)}–${last.number}`
+        : ` ${at(first)}–${at(last)}`;
   const name = `${projectName || 'translation'}${range}`.replace(/[\\/:*?"<>|]/g, '').trim();
   return `${name}.docx`;
 };
