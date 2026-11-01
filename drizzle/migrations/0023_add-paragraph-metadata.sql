@@ -1,0 +1,1 @@
+ALTER TABLE "paragraphs_new" ADD COLUMN "metadata" json;
