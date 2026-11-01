@@ -37,6 +37,19 @@ export interface ExcelTranslationRow {
   // Reference cells keyed by column header — the header is the reference
   // document's key (see reference importing in file.server.ts).
   references: { sutraName?: string; content?: string }[];
+  // Paragraph metadata cells from `<document key>.<field>` columns, one entry
+  // per such column, INCLUDING empty cells: an empty value clears that field on
+  // import, while a field with no column is left alone. Optional so rows built
+  // elsewhere (exports, tests) need not carry it.
+  metadata?: ParagraphMetadataCell[];
+}
+
+export interface ParagraphMetadataCell {
+  // The document key the column belongs to, as given in ImportColumnKeys.
+  documentKey: string;
+  // Everything after `<document key>.`, lowercased — any string, dots included.
+  field: string;
+  value: string;
 }
 
 const COLUMN_HEADERS_ORIGIN = 'Origin';
@@ -53,34 +66,91 @@ const COLUMN_HEADERS_TARGET = 'Translation';
 export interface ImportColumnKeys {
   originKey: string | null;
   targetKey: string | null;
+  // The project's reference document keys. Only needed to recognise their
+  // metadata columns (`<reference key>.page`); reference content columns are
+  // still taken from whatever headers are left over.
+  referenceKeys?: string[];
 }
 
 const PASSAGE_KEY_HEADERS = new Set(['passage_key', 'passagekey', 'passage key']);
 
 const normaliseHeader = (header: string): string => header.trim().toLowerCase();
 
+// A paragraph metadata column: `<document key>.<field>`. The key is matched
+// case-insensitively against the known document keys, longest first, so keys
+// and field names may both contain dots (`T09.a.page` with keys `T09` and
+// `T09.a` is field `page` of `T09.a`). Field names are lowercased, so `Page`
+// and `page` are the same field. Undefined when no key prefixes the header or
+// nothing follows the dot.
+export function matchMetadataHeader(
+  header: string,
+  documentKeys: string[],
+): { documentKey: string; field: string } | undefined {
+  const normalised = normaliseHeader(header);
+  const documentKey = [...documentKeys]
+    .sort((a, b) => b.length - a.length)
+    .find((key) => normalised.startsWith(`${normaliseHeader(key)}.`));
+  if (!documentKey) return undefined;
+  const field = normaliseHeader(normalised.slice(normaliseHeader(documentKey).length + 1));
+  return field ? { documentKey, field } : undefined;
+}
+
 // Classify a file's headers against the document keys. Origin/target are matched
 // by key (case-insensitive) when their key is known; the reserved passage_key
-// header is pulled out; every remaining non-empty header is a reference column
-// (its text is the reference document key).
-function classifyHeaders(headers: string[], keys: ImportColumnKeys) {
+// header is pulled out; `<document key>.<field>` headers are metadata columns;
+// every remaining non-empty header is a reference column (its text is the
+// reference document key). An exact key match wins over a metadata match, so a
+// reference keyed `T09.page` still reads as content.
+export function classifyHeaders(headers: string[], keys: ImportColumnKeys) {
   const originKey = keys.originKey ? normaliseHeader(keys.originKey) : null;
   const targetKey = keys.targetKey ? normaliseHeader(keys.targetKey) : null;
+  const documentKeys = [keys.originKey, keys.targetKey, ...(keys.referenceKeys ?? [])].filter(
+    (k): k is string => !!k?.trim(),
+  );
+  const isDocumentKey = (h: string) => documentKeys.some((k) => normaliseHeader(k) === normaliseHeader(h));
 
   const originHeader = originKey ? headers.find((h) => normaliseHeader(h) === originKey) : undefined;
   const targetHeader = targetKey ? headers.find((h) => normaliseHeader(h) === targetKey) : undefined;
   const passageHeader = headers.find((h) => PASSAGE_KEY_HEADERS.has(normaliseHeader(h)));
+  const metadataHeaders = headers.flatMap((header) => {
+    if (header === passageHeader || isDocumentKey(header)) return [];
+    const match = matchMetadataHeader(header, documentKeys);
+    return match ? [{ header, ...match }] : [];
+  });
   const refHeaders = headers.filter(
-    (h) => h.trim() !== '' && h !== originHeader && h !== targetHeader && h !== passageHeader,
+    (h) =>
+      h.trim() !== '' &&
+      h !== originHeader &&
+      h !== targetHeader &&
+      h !== passageHeader &&
+      !metadataHeaders.some((m) => m.header === h),
   );
 
-  return { originHeader, targetHeader, passageHeader, refHeaders };
+  return { originHeader, targetHeader, passageHeader, metadataHeaders, refHeaders };
 }
 
-// A row carries no data when every document cell is empty and no passage key is
-// given — such rows are dropped so blank spacer lines don't create paragraphs.
+// A row carries no data when every document cell is empty, every metadata cell
+// is empty and no passage key is given — such rows are dropped so blank spacer
+// lines don't create paragraphs.
 function isEmptyRow(row: ExcelTranslationRow): boolean {
-  return !row.origin && !row.target && !row.passageKey && row.references.length === 0;
+  return (
+    !row.origin && !row.target && !row.passageKey && row.references.length === 0 && !row.metadata?.some((m) => m.value)
+  );
+}
+
+// Applies a row's metadata cells to a paragraph's stored metadata: a value sets
+// its field, an empty value removes it, fields without a cell are kept. Null
+// when nothing is left, so the column stays NULL rather than `{}`.
+export function mergeParagraphMetadata(
+  existing: Record<string, string> | null | undefined,
+  cells: Pick<ParagraphMetadataCell, 'field' | 'value'>[],
+): Record<string, string> | null {
+  const merged: Record<string, string> = { ...existing };
+  for (const { field, value } of cells) {
+    if (value) merged[field] = value;
+    else delete merged[field];
+  }
+  return Object.keys(merged).length > 0 ? merged : null;
 }
 
 // =============================================================================
@@ -177,7 +247,10 @@ export async function parseCSV(fileContent: string, keys: ImportColumnKeys): Pro
       complete: (results: Papa.ParseResult<Record<string, string>>): void => {
         try {
           const headers = results.meta.fields ?? [];
-          const { originHeader, targetHeader, passageHeader, refHeaders } = classifyHeaders(headers, keys);
+          const { originHeader, targetHeader, passageHeader, metadataHeaders, refHeaders } = classifyHeaders(
+            headers,
+            keys,
+          );
 
           const rows: ExcelTranslationRow[] = results.data
             .map((raw): ExcelTranslationRow => {
@@ -189,7 +262,13 @@ export async function parseCSV(fileContent: string, keys: ImportColumnKeys): Pro
                 .map((h) => ({ sutraName: h, content: raw[h]?.trim() || '' }))
                 .filter((r) => r.content);
 
-              return { origin, target: target || null, passageKey, references };
+              const metadata = metadataHeaders.map(({ header, documentKey, field }) => ({
+                documentKey,
+                field,
+                value: raw[header]?.trim() ?? '',
+              }));
+
+              return { origin, target: target || null, passageKey, references, metadata };
             })
             .filter((row) => !isEmptyRow(row));
 
@@ -225,7 +304,7 @@ export async function parseXLSX(fileBuffer: ArrayBuffer, keys: ImportColumnKeys)
   });
 
   const headers = headersByCol.map((h) => h.header);
-  const { originHeader, targetHeader, passageHeader, refHeaders } = classifyHeaders(headers, keys);
+  const { originHeader, targetHeader, passageHeader, metadataHeaders, refHeaders } = classifyHeaders(headers, keys);
 
   const colOf = (header: string | undefined) =>
     header === undefined ? undefined : headersByCol.find((h) => h.header === header)?.col;
@@ -233,6 +312,11 @@ export async function parseXLSX(fileBuffer: ArrayBuffer, keys: ImportColumnKeys)
   const targetCol = colOf(targetHeader);
   const passageCol = colOf(passageHeader);
   const refCols = refHeaders.map((header) => ({ col: colOf(header)!, sutraName: header }));
+  const metadataCols = metadataHeaders.map(({ header, documentKey, field }) => ({
+    col: colOf(header)!,
+    documentKey,
+    field,
+  }));
 
   const rows: ExcelTranslationRow[] = [];
 
@@ -247,7 +331,13 @@ export async function parseXLSX(fileBuffer: ArrayBuffer, keys: ImportColumnKeys)
       .map(({ col, sutraName }) => ({ sutraName, content: getCellText(row.getCell(col).value).trim() }))
       .filter((r) => r.content);
 
-    const parsed: ExcelTranslationRow = { origin, target: target || null, passageKey, references };
+    const metadata = metadataCols.map(({ col, documentKey, field }) => ({
+      documentKey,
+      field,
+      value: getCellText(row.getCell(col).value).trim(),
+    }));
+
+    const parsed: ExcelTranslationRow = { origin, target: target || null, passageKey, references, metadata };
     if (!isEmptyRow(parsed)) rows.push(parsed);
   });
 

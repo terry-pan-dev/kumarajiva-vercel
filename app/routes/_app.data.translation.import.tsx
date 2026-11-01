@@ -134,12 +134,19 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Columns are identified by each document's key. Both keys are optional — the
     // file may carry any subset of documents — so we pass whatever keys exist and
-    // let the parser match the columns that are present.
-    const [originDocument, targetDocument] = await Promise.all([
+    // let the parser match the columns that are present. Reference keys let it
+    // recognise their `<key>.<field>` metadata columns.
+    const [originDocument, targetDocument, project] = await Promise.all([
       getDocument(originDocumentId),
       getDocument(targetDocumentId),
+      getProjectBySourceDocumentId(originDocumentId),
     ]);
-    const keys = { originKey: originDocument?.key ?? null, targetKey: targetDocument?.key ?? null };
+    const references = project ? await getProjectReferences(project.id) : [];
+    const keys = {
+      originKey: originDocument?.key ?? null,
+      targetKey: targetDocument?.key ?? null,
+      referenceKeys: references.map((r) => r.document?.key).filter((k): k is string => !!k),
+    };
 
     try {
       const fileName = file.name.toLowerCase();

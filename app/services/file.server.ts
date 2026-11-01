@@ -28,11 +28,13 @@ import { getDb } from '~/lib/db.server';
 import { PREVIEW_LIMIT } from '~/utils/constants';
 
 import {
+  mergeParagraphMetadata,
   type ExcelTranslationRow,
   type ExistingDataPreview,
   type ImportOptions,
   type ImportOptionsNew,
   type ImportResult,
+  type ParagraphMetadataCell,
 } from './file.service';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
 import { DbProjectReferences, DbProjects } from './project.crud';
@@ -373,15 +375,22 @@ const normaliseKey = (key: string): string => key.trim().toLowerCase();
 // One document involved in an import: where its column data goes and how to read
 // that column from a row. `sectionId` is null when the document's counterpart
 // section doesn't exist yet. `write` is true when the file actually carries
-// content for this document (a document with no column, or an all-empty column,
-// is left untouched).
+// content or metadata columns for this document (a document with neither, or
+// only an all-empty content column, is left untouched).
 type InvolvedDocument = {
   label: string;
   documentId: string;
   sectionId: string | null;
   getValue: (row: ExcelTranslationRow) => string | null;
+  getMetadata: (row: ExcelTranslationRow) => ParagraphMetadataCell[];
   write: boolean;
 };
+
+// A row's metadata cells for one document (none when it has no key).
+const metadataCellsFor =
+  (documentKey: string | null | undefined) =>
+  (row: ExcelTranslationRow): ParagraphMetadataCell[] =>
+    documentKey ? (row.metadata ?? []).filter((m) => normaliseKey(m.documentKey) === normaliseKey(documentKey)) : [];
 
 /**
  * Import a spreadsheet into the new data model, where every column is a document
@@ -437,6 +446,10 @@ export async function replaceSectionData(
     const sectionOrder = originSection.order;
 
     const has = (getValue: (row: ExcelTranslationRow) => string | null) => rows.some((r) => getValue(r)?.trim());
+    // Whether the file has any `<key>.<field>` column for a document — even an
+    // all-empty one, since empty metadata cells clear their field.
+    const hasMetadataColumns = (documentKey: string | null | undefined) =>
+      rows.some((row) => metadataCellsFor(documentKey)(row).length > 0);
 
     // ── Assemble the documents involved in this import ───────────────────────
     const involved: InvolvedDocument[] = [];
@@ -448,7 +461,8 @@ export async function replaceSectionData(
       documentId: originDocumentId,
       sectionId: originSectionId,
       getValue: (row) => row.origin || null,
-      write: has((r) => r.origin || null),
+      getMetadata: metadataCellsFor(originDocument.key),
+      write: has((r) => r.origin || null) || hasMetadataColumns(originDocument.key),
     });
 
     // Translation — its section must exist and be named when the file carries
@@ -457,22 +471,42 @@ export async function replaceSectionData(
       ? await findTargetSection({ sourceSection: { order: sectionOrder }, targetDocumentId })
       : null;
     const wantsTarget = has((r) => r.target);
-    if (wantsTarget && (!targetSection || !targetSection.title?.trim())) {
+    const targetSectionNamed = !!targetSection?.title?.trim();
+    if (wantsTarget && !targetSectionNamed) {
       return { success: false, message: r('translationSectionMissing') };
+    }
+    // Translation metadata alone doesn't fail the import — its columns are
+    // skipped like a reference whose section isn't set up.
+    const wantsTargetMetadata = hasMetadataColumns(targetDocument?.key);
+    if (wantsTargetMetadata && !targetSectionNamed) {
+      skippedColumns.push(r('skippedNoSection', { column: targetDocument?.key }));
     }
     involved.push({
       label: r('translationLabel'),
       documentId: targetDocumentId,
       sectionId: targetSection?.id ?? null,
       getValue: (row) => row.target,
-      write: wantsTarget && !!targetSection,
+      getMetadata: metadataCellsFor(targetDocument?.key),
+      write: (wantsTarget || wantsTargetMetadata) && targetSectionNamed,
     });
 
     // Reference documents — every non-origin/translation column, headed by a
-    // reference document's key. Resolve each to the project's reference document
-    // and its counterpart section; unresolved columns are reported, not imported.
+    // reference document's key, plus any reference that only has metadata
+    // columns. Resolve each to the project's reference document and its
+    // counterpart section; unresolved columns are reported, not imported.
+    const mainKeys = new Set(
+      [originDocument.key, targetDocument?.key].filter((k): k is string => !!k).map(normaliseKey),
+    );
     const fileReferenceKeys = [
-      ...new Set(rows.flatMap((r) => r.references.map((ref) => ref.sutraName).filter((k): k is string => !!k))),
+      ...new Map(
+        rows
+          .flatMap((r) => [
+            ...r.references.map((ref) => ref.sutraName),
+            ...(r.metadata ?? []).map((m) => m.documentKey),
+          ])
+          .filter((k): k is string => !!k && !mainKeys.has(normaliseKey(k)))
+          .map((k) => [normaliseKey(k), k] as const),
+      ).values(),
     ];
     const project = await DbProjects.findBySourceDocumentId(originDocumentId);
     const projectReferences = project ? await DbProjectReferences.findByProjectId(project.id) : [];
@@ -500,7 +534,10 @@ export async function replaceSectionData(
         label: columnKey,
         documentId: ref.documentId,
         sectionId: refSection.id,
-        getValue: (row) => row.references.find((r) => r.sutraName === columnKey)?.content ?? null,
+        getValue: (row) =>
+          row.references.find((r) => r.sutraName && normaliseKey(r.sutraName) === normaliseKey(columnKey))?.content ??
+          null,
+        getMetadata: metadataCellsFor(columnKey),
         write: true,
       });
     }
@@ -520,7 +557,7 @@ export async function replaceSectionData(
     // whether or not it is being written (existing data anchors the row keys).
     const anchorSectionIds = [...new Set(involved.map((d) => d.sectionId).filter((s): s is string => !!s))];
 
-    const { counts, algoliaUpdates, algoliaInserts } = await db.transaction(async (tx) => {
+    const { counts, algoliaUpdates, algoliaInserts, metadataSkipped } = await db.transaction(async (tx) => {
       const existingBySection = new Map<string, ReadParagraphNew[]>();
       for (const sid of anchorSectionIds) {
         existingBySection.set(
@@ -590,6 +627,9 @@ export async function replaceSectionData(
       // else by an unkeyed row at the same position) or inserted. Existing
       // paragraphs the file doesn't mention are left untouched — nothing is
       // removed — so a file can carry only the rows that need changing.
+      // Metadata cells are merged into the matched paragraph's metadata; a row
+      // with metadata but no content updates an existing paragraph only, since
+      // metadata can't create one (those rows are counted and reported).
       const reconcile = (doc: InvolvedDocument, existing: ReadParagraphNew[]) => {
         const byKey = new Map(existing.filter((p) => p.passageKey).map((p) => [p.passageKey as string, p]));
         const byOrder = new Map(existing.map((p) => [p.order, p]));
@@ -597,14 +637,17 @@ export async function replaceSectionData(
         const inserts: CreateParagraphNew[] = [];
         const aUpdates: { searchId: string; data: object }[] = [];
         const aInserts: CreateParagraphNew[] = [];
+        let metadataWithoutParagraph = 0;
 
         for (let idx = 0; idx < rows.length; idx++) {
           const key = rowKeys[idx];
           const order = rowOrders[idx];
           const value = doc.getValue(rows[idx]);
+          const hasContent = value != null && value.trim() !== '';
+          const metadataCells = doc.getMetadata(rows[idx]);
 
-          // No content for this document on this row — nothing to upsert.
-          if (value == null || value.trim() === '') continue;
+          // Neither content nor metadata for this document on this row.
+          if (!hasContent && metadataCells.length === 0) continue;
 
           let match = byKey.get(key);
           if (!match) {
@@ -615,10 +658,18 @@ export async function replaceSectionData(
           }
 
           if (match) {
-            const data: Partial<CreateParagraphNew> = { content: value, order, passageKey: key, updatedBy: userId };
+            // Metadata isn't indexed for search, so only content changes go to Algolia.
+            const contentData: Partial<CreateParagraphNew> = hasContent
+              ? { content: value, order, passageKey: key, updatedBy: userId }
+              : {};
+            const data: Partial<CreateParagraphNew> = {
+              ...contentData,
+              ...(metadataCells.length > 0 && { metadata: mergeParagraphMetadata(match.metadata, metadataCells) }),
+              updatedBy: userId,
+            };
             updates.push({ id: match.id, data });
-            if (match.searchId) aUpdates.push({ searchId: match.searchId, data });
-          } else {
+            if (hasContent && match.searchId) aUpdates.push({ searchId: match.searchId, data: contentData });
+          } else if (hasContent) {
             const newRow: CreateParagraphNew = {
               id: uuidv4(),
               documentId: doc.documentId,
@@ -630,12 +681,15 @@ export async function replaceSectionData(
               createdBy: userId,
               updatedBy: userId,
             };
-            inserts.push(newRow);
+            const metadata = mergeParagraphMetadata(null, metadataCells);
+            inserts.push(metadata ? { ...newRow, metadata } : newRow);
             aInserts.push(newRow);
+          } else if (metadataCells.some((m) => m.value)) {
+            metadataWithoutParagraph++;
           }
         }
 
-        return { updates, inserts, aUpdates, aInserts };
+        return { updates, inserts, aUpdates, aInserts, metadataWithoutParagraph };
       };
 
       const results = writeDocs.map((doc) => reconcile(doc, existingBySection.get(doc.sectionId as string) ?? []));
@@ -644,6 +698,9 @@ export async function replaceSectionData(
       const insertRows = results.flatMap((r) => r.inserts);
       const algoliaUpdates = results.flatMap((r) => r.aUpdates);
       const algoliaInserts = results.flatMap((r) => r.aInserts);
+      const metadataSkipped = writeDocs
+        .map((doc, i) => ({ label: doc.label, count: results[i].metadataWithoutParagraph }))
+        .filter((d) => d.count > 0);
 
       // ── 3. Bulk-execute all collected operations ──────────────────────────
       await Promise.all(
@@ -657,6 +714,7 @@ export async function replaceSectionData(
         counts: { updatedCount: updateOps.length, insertedCount: insertRows.length },
         algoliaUpdates,
         algoliaInserts,
+        metadataSkipped,
       };
     });
 
@@ -685,7 +743,8 @@ export async function replaceSectionData(
       inserted: counts.insertedCount,
       message:
         r('success', { updated: counts.updatedCount, inserted: counts.insertedCount, documents: writtenLabels }) +
-        (skippedColumns.length > 0 ? r('skippedSuffix', { columns: joinColumns(skippedColumns) }) : ''),
+        (skippedColumns.length > 0 ? r('skippedSuffix', { columns: joinColumns(skippedColumns) }) : '') +
+        metadataSkipped.map(({ label, count }) => r('metadataWithoutParagraph', { count, document: label })).join(''),
       ...(searchErrors.length > 0 && { errors: searchErrors }),
     };
   } catch (error) {

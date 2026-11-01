@@ -6,7 +6,10 @@ import {
   buildColumns,
   buildExportFilename,
   buildExportWorkbook,
+  classifyHeaders,
   extractReferenceSources,
+  matchMetadataHeader,
+  mergeParagraphMetadata,
   parseCSV,
   parseXLSX,
   translationRowToExcelRow,
@@ -445,5 +448,138 @@ describe('parseXLSX', () => {
     const rows = await parseXLSX(buf, KEYS);
     expect(rows).toHaveLength(1);
     expect(rows[0].origin).toBe('foo');
+  });
+});
+
+// ─── Paragraph metadata columns (`<document key>.<field>`) ──────────────────
+
+// Origin T262, translation EN, and the reference BDK.
+const META_KEYS = { originKey: 'T262', targetKey: 'EN', referenceKeys: ['BDK'] };
+
+describe('matchMetadataHeader', () => {
+  it('splits a header into its document key and field', () => {
+    expect(matchMetadataHeader('BDK.page', ['T262', 'BDK'])).toEqual({ documentKey: 'BDK', field: 'page' });
+  });
+
+  it('matches the key case-insensitively and returns the key as given', () => {
+    expect(matchMetadataHeader('bdk.page', ['BDK'])).toEqual({ documentKey: 'BDK', field: 'page' });
+  });
+
+  it('lowercases the field name', () => {
+    expect(matchMetadataHeader('Cleary.Page', ['cleary'])).toEqual({ documentKey: 'cleary', field: 'page' });
+    expect(matchMetadataHeader('T262.CBETA.Line', ['T262'])).toEqual({ documentKey: 'T262', field: 'cbeta.line' });
+  });
+
+  it('keeps dots in the field name', () => {
+    expect(matchMetadataHeader('T262.cbeta.line', ['T262'])).toEqual({ documentKey: 'T262', field: 'cbeta.line' });
+  });
+
+  it('prefers the longest key when keys share a prefix', () => {
+    expect(matchMetadataHeader('T09.a.page', ['T09', 'T09.a'])).toEqual({ documentKey: 'T09.a', field: 'page' });
+    expect(matchMetadataHeader('T09.b.page', ['T09', 'T09.a'])).toEqual({ documentKey: 'T09', field: 'b.page' });
+  });
+
+  it('does not match a key without the dot, an unknown key, or an empty field', () => {
+    expect(matchMetadataHeader('BDKpage', ['BDK'])).toBeUndefined();
+    expect(matchMetadataHeader('XYZ.page', ['BDK'])).toBeUndefined();
+    expect(matchMetadataHeader('BDK.', ['BDK'])).toBeUndefined();
+  });
+});
+
+describe('classifyHeaders with metadata columns', () => {
+  it('separates content, metadata, passage key and reference columns', () => {
+    const result = classifyHeaders(['T262', 'EN', 'BDK', 'BDK.page', 'T262.page', 'passage_key', 'Other'], META_KEYS);
+    expect(result.originHeader).toBe('T262');
+    expect(result.targetHeader).toBe('EN');
+    expect(result.passageHeader).toBe('passage_key');
+    expect(result.metadataHeaders).toEqual([
+      { header: 'BDK.page', documentKey: 'BDK', field: 'page' },
+      { header: 'T262.page', documentKey: 'T262', field: 'page' },
+    ]);
+    expect(result.refHeaders).toEqual(['BDK', 'Other']);
+  });
+
+  it('treats a header that is itself a document key as content, not metadata', () => {
+    const result = classifyHeaders(['T262', 'T262.a'], { ...META_KEYS, referenceKeys: ['T262.a'] });
+    expect(result.metadataHeaders).toEqual([]);
+    expect(result.refHeaders).toEqual(['T262.a']);
+  });
+
+  it('without reference keys, a reference metadata header falls back to a reference column', () => {
+    const result = classifyHeaders(['BDK.page'], { originKey: 'T262', targetKey: 'EN' });
+    expect(result.metadataHeaders).toEqual([]);
+    expect(result.refHeaders).toEqual(['BDK.page']);
+  });
+});
+
+describe('mergeParagraphMetadata', () => {
+  it('sets fields from filled cells', () => {
+    expect(mergeParagraphMetadata(null, [{ field: 'page', value: '14' }])).toEqual({ page: '14' });
+  });
+
+  it('overwrites a field and keeps fields without a cell', () => {
+    expect(mergeParagraphMetadata({ page: '1', 'cbeta.line': 'x' }, [{ field: 'page', value: '2' }])).toEqual({
+      page: '2',
+      'cbeta.line': 'x',
+    });
+  });
+
+  it('removes a field for an empty cell', () => {
+    expect(mergeParagraphMetadata({ page: '1', other: 'y' }, [{ field: 'page', value: '' }])).toEqual({ other: 'y' });
+  });
+
+  it('returns null when nothing is left', () => {
+    expect(mergeParagraphMetadata({ page: '1' }, [{ field: 'page', value: '' }])).toBeNull();
+    expect(mergeParagraphMetadata(undefined, [])).toBeNull();
+  });
+});
+
+describe('parseCSV metadata columns', () => {
+  it('reads metadata cells per row, including empty ones', async () => {
+    const csv = `T262,BDK,BDK.page,passage_key\n如是我聞,Thus have I heard,14,k.1\n爾時,At that time,,k.2`;
+    const rows = await parseCSV(csv, META_KEYS);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].metadata).toEqual([{ documentKey: 'BDK', field: 'page', value: '14' }]);
+    expect(rows[1].metadata).toEqual([{ documentKey: 'BDK', field: 'page', value: '' }]);
+    expect(rows[0].references).toEqual([{ sutraName: 'BDK', content: 'Thus have I heard' }]);
+  });
+
+  it('keeps a row that only has a page number', async () => {
+    const rows = await parseCSV(`BDK.page\n14`, META_KEYS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ origin: '', target: null, references: [] });
+    expect(rows[0].metadata).toEqual([{ documentKey: 'BDK', field: 'page', value: '14' }]);
+  });
+
+  it('drops a row whose only cell is an empty page', async () => {
+    const rows = await parseCSV(`T262,BDK.page\nfoo,1\n,`, META_KEYS);
+    expect(rows).toHaveLength(1);
+  });
+
+  it('gives every row an empty metadata list when there are no metadata columns', async () => {
+    const rows = await parseCSV(`T262\nfoo`, META_KEYS);
+    expect(rows[0].metadata).toEqual([]);
+  });
+});
+
+describe('parseXLSX metadata columns', () => {
+  it('reads metadata cells, numbers as text', async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Sheet1');
+    ws.addRow(['T262', 'T262.page', 'BDK.cbeta.line']);
+    ws.addRow(['如是我聞', 1, 'T09n0262_p0001c01']);
+    ws.addRow(['爾時', '1c', null]);
+    const buf = (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+
+    const rows = await parseXLSX(buf, META_KEYS);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].metadata).toEqual([
+      { documentKey: 'T262', field: 'page', value: '1' },
+      { documentKey: 'BDK', field: 'cbeta.line', value: 'T09n0262_p0001c01' },
+    ]);
+    expect(rows[1].metadata).toEqual([
+      { documentKey: 'T262', field: 'page', value: '1c' },
+      { documentKey: 'BDK', field: 'cbeta.line', value: '' },
+    ]);
   });
 });

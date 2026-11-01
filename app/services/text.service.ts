@@ -468,6 +468,8 @@ export interface IParagraphNewDebugRow {
   passageKey: string | null;
   searchId: string | null;
   content: string;
+  // e.g. { page: '14' }; null when the paragraph has none.
+  metadata: Record<string, string> | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -480,6 +482,7 @@ const toDebugRow = (paragraph: ReadParagraphNew): IParagraphNewDebugRow => ({
   passageKey: paragraph.passageKey,
   searchId: paragraph.searchId,
   content: paragraph.content,
+  metadata: paragraph.metadata,
   createdAt: paragraph.createdAt.toISOString(),
   updatedAt: paragraph.updatedAt.toISOString(),
 });
