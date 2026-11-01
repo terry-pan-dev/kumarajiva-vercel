@@ -27,9 +27,18 @@ describe('defaultWorkingDocumentFormat', () => {
       ['reference:ref-b', 'Commentary', 'Times New Roman'],
     ]);
   });
+
+  it('shows page numbers', () => {
+    expect(defaults.showPages).toBe(true);
+  });
 });
 
 describe('reconcileWorkingDocumentFormat', () => {
+  it('keeps a saved page setting, and turns pages on for formats saved before the setting existed', () => {
+    expect(reconcileWorkingDocumentFormat({ ...defaults, showPages: false }, defaults).showPages).toBe(false);
+    expect(reconcileWorkingDocumentFormat({ blocks: defaults.blocks }, defaults).showPages).toBe(true);
+  });
+
   it('uses the defaults when nothing is saved', () => {
     expect(reconcileWorkingDocumentFormat(undefined, defaults)).toEqual(defaults);
   });

@@ -40,6 +40,14 @@ const textsOf = (paragraph: IParagraphNew): Record<string, string | null> => ({
   ...Object.fromEntries(paragraph.references.map((r) => [`reference:${r.documentId}`, r.content])),
 });
 
+// Each text's page number in its printed source, keyed like textsOf; null when
+// that paragraph has none.
+const pagesOf = (paragraph: IParagraphNew): Record<string, string | null> => ({
+  source: paragraph.metadata?.page ?? null,
+  target: paragraph.targetMetadata?.page ?? null,
+  ...Object.fromEntries(paragraph.references.map((r) => [`reference:${r.documentId}`, r.metadata?.page ?? null])),
+});
+
 // ─── Sections ────────────────────────────────────────────────────────────────
 
 export interface WorkingDocumentSection {
@@ -133,6 +141,7 @@ export interface WorkingDocumentCard {
   number: string;
   passageKey: string | null;
   texts: Record<string, string | null>;
+  pages: Record<string, string | null>;
 }
 
 const EXCERPT_LENGTH = 120;
@@ -158,6 +167,7 @@ export const readWorkingDocumentCards = async ({
     texts: Object.fromEntries(
       Object.entries(textsOf(paragraph)).map(([key, text]) => [key, text?.slice(0, EXCERPT_LENGTH) ?? null]),
     ),
+    pages: pagesOf(paragraph),
   }));
 };
 
@@ -210,13 +220,15 @@ export const readPassagesForWorkingDocument = async ({
 
   return range.map((paragraph) => {
     const section = sectionById.get(paragraph.sectionId);
+    const full = paired.get(paragraph.id) ?? paragraph;
     return {
       paragraphId: paragraph.id,
       number: numbers.get(paragraph.id)!,
       sectionId: paragraph.sectionId,
       sectionTitle: section?.title ?? null,
       targetSectionTitle: section ? (targetTitles.get(section.order) ?? null) : null,
-      texts: textsOf(paired.get(paragraph.id) ?? paragraph),
+      texts: textsOf(full),
+      pages: pagesOf(full),
     };
   });
 };
@@ -232,8 +244,22 @@ const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 // (or title).
 export const defaultWorkingDocumentFormat = (project: { references: ReferenceDocument[] }): WorkingDocumentFormat => ({
   blocks: [
-    { key: 'source', label: 'Source', font: 'Noto Serif TC', color: '#000000', bold: false, italic: false },
-    { key: 'target', label: 'Translation', font: 'Times New Roman', color: '#1d4ed8', bold: false, italic: false },
+    {
+      key: 'source',
+      label: 'Source',
+      font: 'Noto Serif TC',
+      color: '#000000',
+      bold: false,
+      italic: false,
+    },
+    {
+      key: 'target',
+      label: 'Translation',
+      font: 'Times New Roman',
+      color: '#1d4ed8',
+      bold: false,
+      italic: false,
+    },
     ...project.references.map((ref, i) => ({
       key: `reference:${ref.documentId}`,
       label: capitalise(ref.document.key ?? ref.document.title),
@@ -243,10 +269,11 @@ export const defaultWorkingDocumentFormat = (project: { references: ReferenceDoc
       italic: false,
     })),
   ],
+  showPages: true,
 });
 
-// Fits a saved format to the project as it is now: saved blocks keep their
-// order and look; references removed since are dropped, references added since
+// Fits a saved format to the project as it is now: the page setting carries
+// over, saved blocks keep their order and look; references removed since are dropped, references added since
 // are appended with their defaults. Anything unusable falls back to defaults.
 export const reconcileWorkingDocumentFormat = (
   saved: WorkingDocumentFormat | undefined,
@@ -258,7 +285,10 @@ export const reconcileWorkingDocumentFormat = (
     (block, i, all) => available.has(block.key) && all.findIndex((b) => b.key === block.key) === i,
   );
   const keptKeys = new Set(kept.map((b) => b.key));
-  return { blocks: [...kept, ...defaults.blocks.filter((b) => !keptKeys.has(b.key))] };
+  return {
+    blocks: [...kept, ...defaults.blocks.filter((b) => !keptKeys.has(b.key))],
+    showPages: saved.showPages ?? defaults.showPages,
+  };
 };
 
 // ─── Saved in the project ────────────────────────────────────────────────────

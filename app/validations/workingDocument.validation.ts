@@ -28,7 +28,26 @@ export const workingDocumentBlockSchema = z.object({
   italic: z.boolean(),
 });
 
-export const workingDocumentFormatSchema = z.object({ blocks: z.array(workingDocumentBlockSchema) });
+export const workingDocumentFormatSchema = z.object({
+  blocks: z.array(workingDocumentBlockSchema),
+  // Print each text's page number after its label, when it has one. Optional
+  // so formats saved before it existed still load; missing means on.
+  showPages: z.boolean().optional(),
+});
 
 export type WorkingDocumentBlock = z.infer<typeof workingDocumentBlockSchema>;
 export type WorkingDocumentFormat = z.infer<typeof workingDocumentFormatSchema>;
+
+// What goes before a block's text: "Cleary (p. 201): ", "Cleary: ", or
+// "(p. 201) " when the label is blank — or nothing at all. Shared by the .docx
+// and the on-screen preview so they match.
+export const workingDocumentBlockPrefix = (
+  label: string,
+  page: string | null | undefined,
+  showPages: boolean | undefined,
+): string => {
+  const pageText = showPages !== false && page?.trim() ? `(p. ${page.trim()})` : '';
+  if (label && pageText) return `${label} ${pageText}: `;
+  if (label) return `${label}: `;
+  return pageText ? `${pageText} ` : '';
+};

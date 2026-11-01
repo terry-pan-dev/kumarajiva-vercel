@@ -41,8 +41,11 @@ const row = (id: string, documentId: string, passageKey: string | null, content:
 
 // Paragraphs of each document, by passage key.
 const documents: Record<string, ReturnType<typeof row>[]> = {
-  target: [row('t1', 'target', 'k1', 'Thus I have heard'), row('t2', 'target', 'k2', 'At one time')],
-  refA: [row('a1', 'refA', 'k1', 'Thus have I heard')],
+  target: [
+    row('t1', 'target', 'k1', 'Thus I have heard', { metadata: { page: '3' } }),
+    row('t2', 'target', 'k2', 'At one time'),
+  ],
+  refA: [row('a1', 'refA', 'k1', 'Thus have I heard', { metadata: { page: '201' } })],
   refB: [row('b2', 'refB', 'k2', 'Once')],
 };
 
@@ -76,11 +79,23 @@ describe('readParagraphsBySectionId', () => {
       references,
     });
 
-    expect(first).toMatchObject({ origin: '如是我聞', target: 'Thus I have heard', targetId: 't1' });
+    expect(first).toMatchObject({
+      origin: '如是我聞',
+      target: 'Thus I have heard',
+      targetId: 't1',
+      targetMetadata: { page: '3' },
+    });
     expect(first.references).toEqual([
-      { documentId: 'refA', key: 'btts', title: 'BTTS rendering', content: 'Thus have I heard' },
-      { documentId: 'refB', key: null, title: 'Commentary', content: null },
+      {
+        documentId: 'refA',
+        key: 'btts',
+        title: 'BTTS rendering',
+        content: 'Thus have I heard',
+        metadata: { page: '201' },
+      },
+      { documentId: 'refB', key: null, title: 'Commentary', content: null, metadata: null },
     ]);
+    expect(second.targetMetadata).toBeNull();
     expect(second.references.map((r) => r.content)).toEqual([null, 'Once']);
     // Without a passage key nothing can be paired.
     expect(unkeyed).toMatchObject({ target: null });
