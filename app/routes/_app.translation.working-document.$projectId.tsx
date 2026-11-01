@@ -28,7 +28,7 @@ import {
   type ParagraphPosition,
   type ParagraphRange,
 } from '~/components/translation/workingDocumentRange';
-import { Button, Input, Label } from '~/components/ui';
+import { Button, Input, Label, Switch } from '~/components/ui';
 import { getProjectWithReferences } from '~/services/project.service';
 import { getDocument } from '~/services/text.service';
 import {
@@ -308,16 +308,17 @@ export default function WorkingDocumentPage() {
   const [start, setStart] = useState<(ParagraphPosition & { paragraphId: string }) | null>(defaultStart);
   const [count, setCount] = useState(String(DEFAULT_COUNT));
   const [blocks, setBlocks] = useState<WorkingDocumentBlock[]>(savedFormat.blocks);
+  const [showPages, setShowPages] = useState(savedFormat.showPages !== false);
   // Loaded sections' cards, for the preview of the start paragraph.
   const [cardsBySection, setCardsBySection] = useState<Record<string, WorkingDocumentCard[]>>({});
 
   // Autosave: a short pause after the last change, so a drag or typing a label
   // saves once.
   const saveFetcher = useFetcher<typeof action>();
-  const lastSaved = useRef(JSON.stringify({ blocks: savedFormat.blocks }));
+  const lastSaved = useRef(JSON.stringify({ blocks: savedFormat.blocks, showPages: savedFormat.showPages !== false }));
   const [pendingSave, setPendingSave] = useState(false);
   useEffect(() => {
-    const format = JSON.stringify({ blocks });
+    const format = JSON.stringify({ blocks, showPages });
     if (format === lastSaved.current) return setPendingSave(false);
     setPendingSave(true);
     const timer = setTimeout(() => {
@@ -327,7 +328,7 @@ export default function WorkingDocumentPage() {
     }, AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks]);
+  }, [blocks, showPages]);
   const saveStatus =
     pendingSave || saveFetcher.state !== 'idle'
       ? 'Saving…'
@@ -359,7 +360,7 @@ export default function WorkingDocumentPage() {
       ? `/resources/working-document/${project.id}?${new URLSearchParams({
           start: start.paragraphId,
           count,
-          format: JSON.stringify({ blocks }),
+          format: JSON.stringify({ blocks, showPages }),
         })}`
       : undefined;
 
@@ -464,11 +465,23 @@ export default function WorkingDocumentPage() {
           <p className="text-muted-foreground text-xs">
             Drag to set the order of the texts in each paragraph. Changes are saved for this project.
           </p>
+          <div className="flex items-center gap-2">
+            <Switch checked={showPages} onCheckedChange={setShowPages} id="working-document-show-pages" />
+            <Label className="font-normal" htmlFor="working-document-show-pages">
+              Show page numbers
+            </Label>
+          </div>
           <WorkingDocumentFormatEditor names={names} blocks={blocks} onChange={setBlocks} />
           {startCard && (
             <div className="grid gap-1.5">
               <Label>Preview</Label>
-              <WorkingDocumentPreview blocks={blocks} texts={startCard.texts} number={startCard.number} />
+              <WorkingDocumentPreview
+                blocks={blocks}
+                showPages={showPages}
+                texts={startCard.texts}
+                pages={startCard.pages}
+                number={startCard.number}
+              />
             </div>
           )}
         </section>

@@ -219,12 +219,14 @@ export interface ReferenceDocument {
 }
 
 // One reference document's text for a paragraph, paired by passage_key.
-// `content` is null when that document has no paragraph for the passage yet.
+// `content` is null when that document has no paragraph for the passage yet;
+// `metadata` is that paragraph's metadata (e.g. { page: '14' }), if any.
 export interface ParagraphReference {
   documentId: string;
   key: string | null;
   title: string;
   content: string | null;
+  metadata: Record<string, string> | null;
 }
 
 // Same consumer-facing shape as the legacy IParagraph so readers can swap over.
@@ -237,6 +239,9 @@ export interface IParagraphNew {
   origin: string;
   target: string | null;
   targetId?: string;
+  // Metadata (e.g. { page: '14' }) of the source paragraph and of its translation.
+  metadata: Record<string, string> | null;
+  targetMetadata: Record<string, string> | null;
   // One entry per reference document asked for, in the order given.
   references: ParagraphReference[];
   histories: ReadHistory[];
@@ -253,6 +258,7 @@ const toIParagraph = (
   origin: paragraph.content,
   target: target?.content ?? null,
   targetId: target?.id,
+  targetMetadata: target?.metadata ?? null,
   references,
   // Comments and history still hang off the legacy paragraphs table; they move
   // over in a later migration step.
@@ -290,6 +296,7 @@ const pairParagraphs = async (
         key: reference.document.key,
         title: reference.document.title,
         content: paired(referenceByPassageKey[i])?.content ?? null,
+        metadata: paired(referenceByPassageKey[i])?.metadata ?? null,
       })),
     );
   });
@@ -468,6 +475,8 @@ export interface IParagraphNewDebugRow {
   passageKey: string | null;
   searchId: string | null;
   content: string;
+  // e.g. { page: '14' }; null when the paragraph has none.
+  metadata: Record<string, string> | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -480,6 +489,7 @@ const toDebugRow = (paragraph: ReadParagraphNew): IParagraphNewDebugRow => ({
   passageKey: paragraph.passageKey,
   searchId: paragraph.searchId,
   content: paragraph.content,
+  metadata: paragraph.metadata,
   createdAt: paragraph.createdAt.toISOString(),
   updatedAt: paragraph.updatedAt.toISOString(),
 });

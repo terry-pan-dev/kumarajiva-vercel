@@ -173,6 +173,7 @@
         "references": "References:",
         "noKeyYet": " — no key set yet; set one in Works & Documents",
         "passageKey": "<code>passage_key</code> — optional; the shared identity for a row across every document",
+        "metadata": "<code>{{example}}</code> — optional; the page in that document's printed source. Any column named <strong>document key</strong> + <code>.field</code> is stored as paragraph metadata.",
         "csvHeading": "CSV example",
         "xlsxNote": "An XLSX file works the same way — put the document keys in the first (header) row.",
         "matchingHeading": "How rows are matched",
@@ -181,6 +182,7 @@
         "matchingUpsert": "The import is a pure upsert: matching rows are updated, new rows inserted, and <strong>existing rows not in the file are left unchanged</strong> — nothing is deleted. So only the rows that need changing need to be included.",
         "matchingEmptyCells": "Empty cells are skipped; a column that is entirely empty (or absent) leaves that document untouched.",
         "matchingEmptyRows": "Fully-empty rows are ignored.",
+        "matchingMetadata": "Metadata columns work differently: a filled cell sets the field, an <strong>empty cell clears it</strong>, and a field with no column is left alone. A row with metadata but no text updates the paragraph already there.",
         "setupHeading": "Setup notes",
         "setupSection": "Each document's section (matched to this section by order) must already exist and be named.",
         "setupSkipped": "Reference columns whose key isn't a reference on this project, or whose section isn't set up, are skipped and reported after import."
@@ -207,7 +209,9 @@
         "failed": "Failed to replace data: {{error}}",
         "searchSyncFailed": "Search sync failed: {{error}}",
         "conflictNewKey": "Row {{row}}: passage_key \"{{key}}\" is new, but position {{position}} already holds a paragraph keyed \"{{existingKey}}\". Reconcile the passage keys / row order in the database (via Data Management / the inspector) so the file agrees with existing data, then re-import.",
-        "conflictDisagree": "Row {{row}} (position {{position}}): existing documents disagree on the passage key here ({{keys}}). Reconcile them in the database so each position has one key, then re-import."
+        "conflictDisagree": "Row {{row}} (position {{position}}): existing documents disagree on the passage key here ({{keys}}). Reconcile them in the database so each position has one key, then re-import.",
+        "metadataWithoutParagraph_one": " {{document}}: {{count}} row had metadata but no paragraph to attach it to, so it was skipped.",
+        "metadataWithoutParagraph_other": " {{document}}: {{count}} rows had metadata but no paragraph to attach it to, so they were skipped."
       }
     }
   },
@@ -286,7 +290,8 @@
       "paragraphDeleted": "Deleted paragraph and its search-index entry.",
       "sectionDeleted_one": "Deleted section and {{count}} paragraph with its search-index entry.",
       "sectionDeleted_other": "Deleted section and {{count}} paragraphs with their search-index entries.",
-      "deleteSectionFailed": "Failed to delete section."
+      "deleteSectionFailed": "Failed to delete section.",
+      "page": "p. {{page}}"
     }
   },
   "rawData": {

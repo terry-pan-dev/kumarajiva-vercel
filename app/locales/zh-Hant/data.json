@@ -170,6 +170,7 @@
         "references": "參考文本：",
         "noKeyYet": " — 尚未設定鍵值；請至「典籍與文本」設定",
         "passageKey": "<code>passage_key</code> — 選填；各文本間同一資料列的共同識別碼",
+        "metadata": "<code>{{example}}</code> — 選填；該文本印刷版本中的頁碼。任何以<strong>文本鍵值</strong>加上 <code>.欄位</code> 命名的欄位，都會存為段落的後設資料。",
         "csvHeading": "CSV 範例",
         "xlsxNote": "XLSX 檔案的用法相同 — 將文本鍵值放在第一列（標題列）。",
         "matchingHeading": "資料列如何配對",
@@ -178,6 +179,7 @@
         "matchingUpsert": "匯入只做新增或更新：配對到的資料列會被更新、新的資料列會被新增，而<strong>檔案中未包含的既有資料列維持不變</strong> — 不會刪除任何資料。因此只需包含需要修改的資料列。",
         "matchingEmptyCells": "空白儲存格會被略過；整欄空白（或不存在）時，該文本不受影響。",
         "matchingEmptyRows": "完全空白的資料列會被忽略。",
+        "matchingMetadata": "後設資料欄位的規則不同：有值的儲存格會設定該欄位，<strong>空白儲存格會清除該欄位</strong>，沒有對應欄位的則維持不變。只有後設資料而沒有文字的資料列，會更新已存在的段落。",
         "setupHeading": "設定須知",
         "setupSection": "每份文本的對應章節（依順序與此章節配對）必須已存在並已命名。",
         "setupSkipped": "若參考欄位的鍵值不是此專案的參考文本，或其章節尚未設定，該欄會被略過，並於匯入後回報。"
@@ -204,7 +206,8 @@
         "failed": "取代資料失敗：{{error}}",
         "searchSyncFailed": "搜尋索引同步失敗：{{error}}",
         "conflictNewKey": "第 {{row}} 列：段落鍵「{{key}}」是新的，但位置 {{position}} 已有段落鍵為「{{existingKey}}」的段落。請先在資料庫中（透過資料管理／檢查工具）調整段落鍵或列序，使檔案與既有資料一致，再重新匯入。",
-        "conflictDisagree": "第 {{row}} 列（位置 {{position}}）：既有文本在此位置的段落鍵不一致（{{keys}}）。請先在資料庫中調整，使每個位置只有一個段落鍵，再重新匯入。"
+        "conflictDisagree": "第 {{row}} 列（位置 {{position}}）：既有文本在此位置的段落鍵不一致（{{keys}}）。請先在資料庫中調整，使每個位置只有一個段落鍵，再重新匯入。",
+        "metadataWithoutParagraph_other": "{{document}}：有 {{count}} 列含有後設資料，但沒有可附加的段落，已略過。"
       }
     }
   },
@@ -277,7 +280,8 @@
       "notAuthorisedToDelete": "您沒有權限刪除資料。",
       "paragraphDeleted": "已刪除段落及其搜尋索引。",
       "sectionDeleted_other": "已刪除章節及 {{count}} 個段落，以及其搜尋索引。",
-      "deleteSectionFailed": "刪除章節失敗。"
+      "deleteSectionFailed": "刪除章節失敗。",
+      "page": "第 {{page}} 頁"
     }
   },
   "rawData": {

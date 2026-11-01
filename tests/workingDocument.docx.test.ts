@@ -7,7 +7,11 @@ import {
   buildWorkingDocumentFilename,
   type WorkingDocumentPassage,
 } from '~/services/workingDocument.docx';
-import { type WorkingDocumentFormat } from '~/validations/workingDocument.validation';
+import {
+  type WorkingDocumentFormat,
+  workingDocumentBlockPrefix,
+  workingDocumentFormatSchema,
+} from '~/validations/workingDocument.validation';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -41,6 +45,7 @@ const documentXml = async (passages: WorkingDocumentPassage[], format: WorkingDo
   const doc = buildWorkingDocument(passages, format.blocks, {
     titles: ['妙法蓮華經', 'The Lotus Sutra'],
     subtitle: 'Translation group working document',
+    showPages: format.showPages,
   });
   const entry = CFB.find(CFB.read(await Packer.toBuffer(doc), { type: 'buffer' }), '/word/document.xml');
   return Buffer.from(entry!.content as Uint8Array).toString('utf8');
@@ -90,6 +95,65 @@ describe('buildWorkingDocument', () => {
 
     expect(xml.split('Chapter 1').length - 1).toBe(1);
     expect(inOrder(xml, ['序品第一', 'Chapter 1', '1.2', '方便品第二', 'Chapter 2', '2.1'])).toBe(true);
+  });
+});
+
+describe('page numbers', () => {
+  const withPages = passage({ pages: { source: '0026c01', target: null, 'reference:ref-a': '201' } });
+
+  it('prints each text’s page after its label', async () => {
+    const xml = await documentXml([withPages]);
+
+    expect(inOrder(xml, ['Source (p. 0026c01): ', '如是我聞', 'Translation: ', 'Btts (p. 201): ', 'Thus have I'])).toBe(
+      true,
+    );
+  });
+
+  it('leaves every page out when page numbers are switched off', async () => {
+    const xml = await documentXml([withPages], { ...defaults, showPages: false });
+
+    expect(inOrder(xml, ['Source: ', '如是我聞', 'Btts: ', 'Thus have I'])).toBe(true);
+    expect(xml).not.toContain('(p.');
+  });
+
+  it('prints the page alone when the label is blank', async () => {
+    const [source, ...rest] = defaults.blocks;
+    const xml = await documentXml([withPages], { blocks: [{ ...source, label: '' }, ...rest] });
+
+    expect(inOrder(xml, ['(p. 0026c01) ', '如是我聞'])).toBe(true);
+  });
+
+  it('writes plain labels for passages without pages', async () => {
+    const xml = await documentXml([passage()]);
+    expect(xml).not.toContain('(p.');
+  });
+});
+
+describe('workingDocumentBlockPrefix', () => {
+  it('combines label and page', () => {
+    expect(workingDocumentBlockPrefix('Cleary', '201', true)).toBe('Cleary (p. 201): ');
+  });
+
+  it('shows the page when the setting is unset, as in formats saved before it existed', () => {
+    expect(workingDocumentBlockPrefix('Cleary', '201', undefined)).toBe('Cleary (p. 201): ');
+  });
+
+  it('drops the page when switched off, missing or blank', () => {
+    expect(workingDocumentBlockPrefix('Cleary', '201', false)).toBe('Cleary: ');
+    expect(workingDocumentBlockPrefix('Cleary', null, true)).toBe('Cleary: ');
+    expect(workingDocumentBlockPrefix('Cleary', '  ', true)).toBe('Cleary: ');
+  });
+
+  it('is the page alone, or nothing, without a label', () => {
+    expect(workingDocumentBlockPrefix('', '201', true)).toBe('(p. 201) ');
+    expect(workingDocumentBlockPrefix('', null, true)).toBe('');
+  });
+});
+
+describe('workingDocumentFormatSchema', () => {
+  it('still accepts a saved format from before the page switch', () => {
+    const saved = { blocks: [{ key: 'source', label: 'Source', font: 'Noto Serif TC', color: '#000000', ...plain }] };
+    expect(workingDocumentFormatSchema.safeParse(saved).success).toBe(true);
   });
 });
 

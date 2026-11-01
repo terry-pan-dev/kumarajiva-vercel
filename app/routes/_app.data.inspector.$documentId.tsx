@@ -170,6 +170,11 @@ function ParagraphCell({
         <span className={row.passageKey ? 'text-muted-foreground' : 'font-semibold text-red-600'}>
           {row.passageKey ?? t('inspector.document.noPassageKey')}
         </span>
+        {Object.entries(row.metadata ?? {}).map(([field, value]) => (
+          <span key={field} className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-medium">
+            {field === 'page' ? t('inspector.document.page', { page: value }) : `${field}: ${value}`}
+          </span>
+        ))}
         <span className={MONO}>{row.id}</span>
         <CopyButton value={row.id} />
         {isParked(row) && <Badge variant="destructive">{t('inspector.document.parked')}</Badge>}

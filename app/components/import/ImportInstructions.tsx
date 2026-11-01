@@ -76,6 +76,14 @@ export function ImportInstructions({ originKey, targetKey, referenceKeys }: Prop
             <li>
               <Trans t={t} components={richText} i18nKey="projects.import.instructions.passageKey" />
             </li>
+            <li>
+              <Trans
+                t={t}
+                components={richText}
+                i18nKey="projects.import.instructions.metadata"
+                values={{ example: `${firstRef ?? origin}.page` }}
+              />
+            </li>
           </ul>
         </div>
 
@@ -101,6 +109,9 @@ export function ImportInstructions({ originKey, targetKey, referenceKeys }: Prop
             </li>
             <li>{t('projects.import.instructions.matchingEmptyCells')}</li>
             <li>{t('projects.import.instructions.matchingEmptyRows')}</li>
+            <li>
+              <Trans t={t} components={richText} i18nKey="projects.import.instructions.matchingMetadata" />
+            </li>
           </ul>
         </div>
 

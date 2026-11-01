@@ -2,7 +2,11 @@ import { Reorder, useDragControls } from 'framer-motion';
 import { GripVertical } from 'lucide-react';
 
 import { Button, Input } from '~/components/ui';
-import { WORKING_DOCUMENT_FONTS, type WorkingDocumentBlock } from '~/validations/workingDocument.validation';
+import {
+  WORKING_DOCUMENT_FONTS,
+  workingDocumentBlockPrefix,
+  type WorkingDocumentBlock,
+} from '~/validations/workingDocument.validation';
 
 // Close-enough fonts for the on-screen preview, where the document fonts may
 // not be installed.
@@ -131,30 +135,37 @@ export function WorkingDocumentPreview({
   number,
   blocks,
   texts,
+  pages,
+  showPages,
 }: {
   number: string;
   blocks: WorkingDocumentBlock[];
   texts: Record<string, string | null>;
+  pages: Record<string, string | null>;
+  showPages: boolean;
 }) {
   const present = blocks.filter((block) => texts[block.key]?.trim());
   return (
     <div className="rounded-md border bg-white p-3 text-sm text-black">
       <div className="text-xs text-gray-500">{number}</div>
-      {present.map((block, i) => (
-        <p
-          key={block.key}
-          className={`line-clamp-3 ${i > 0 ? 'mt-3' : ''}`}
-          style={{
-            color: block.color,
-            fontFamily: PREVIEW_FONT_STACKS[block.font],
-            fontWeight: block.bold ? 700 : 400,
-            fontStyle: block.italic ? 'italic' : 'normal',
-          }}
-        >
-          {block.label && <span className="font-bold">{block.label}: </span>}
-          {texts[block.key]}
-        </p>
-      ))}
+      {present.map((block, i) => {
+        const prefix = workingDocumentBlockPrefix(block.label, pages[block.key], showPages);
+        return (
+          <p
+            key={block.key}
+            className={`line-clamp-3 ${i > 0 ? 'mt-3' : ''}`}
+            style={{
+              color: block.color,
+              fontFamily: PREVIEW_FONT_STACKS[block.font],
+              fontWeight: block.bold ? 700 : 400,
+              fontStyle: block.italic ? 'italic' : 'normal',
+            }}
+          >
+            {prefix && <span className="font-bold">{prefix}</span>}
+            {texts[block.key]}
+          </p>
+        );
+      })}
     </div>
   );
 }

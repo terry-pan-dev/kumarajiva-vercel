@@ -5,11 +5,12 @@
 // from the project's format (validations/workingDocument.validation.ts).
 import { AlignmentType, Document, HeadingLevel, Paragraph, TextRun } from 'docx';
 
-import type { WorkingDocumentBlock } from '~/validations/workingDocument.validation';
+import { workingDocumentBlockPrefix, type WorkingDocumentBlock } from '~/validations/workingDocument.validation';
 
 // One source paragraph with its aligned texts, keyed by block key. A null text
-// means that document has no paragraph for this passage yet. `number` is
-// "<section>.<paragraph>", e.g. "5.3".
+// means that document has no paragraph for this passage yet. `pages` holds
+// each text's page number in its printed source, keyed the same way (optional;
+// none means no pages). `number` is "<section>.<paragraph>", e.g. "5.3".
 export interface WorkingDocumentPassage {
   paragraphId: string;
   number: string;
@@ -17,6 +18,7 @@ export interface WorkingDocumentPassage {
   sectionTitle: string | null;
   targetSectionTitle: string | null;
   texts: Record<string, string | null>;
+  pages?: Record<string, string | null>;
 }
 
 const docxColor = (hex: string) => hex.replace('#', '');
@@ -39,11 +41,18 @@ const bilingualParagraph = (
   });
 
 // Paragraph text may carry line breaks; docx needs them as explicit breaks.
-const blockParagraph = (block: WorkingDocumentBlock, text: string) => {
+// The label (with the page, when shown) leads in bold.
+const blockParagraph = (
+  block: WorkingDocumentBlock,
+  text: string,
+  page: string | null | undefined,
+  showPages: boolean,
+) => {
   const style = { color: docxColor(block.color), font: docxFont(block.font), italics: block.italic };
+  const prefix = workingDocumentBlockPrefix(block.label, page, showPages);
   return new Paragraph({
     children: [
-      ...(block.label ? [new TextRun({ text: `${block.label}: `, ...style, bold: true })] : []),
+      ...(prefix ? [new TextRun({ text: prefix, ...style, bold: true })] : []),
       ...text
         .split('\n')
         .map((line, i) => new TextRun({ text: line, break: i > 0 ? 1 : 0, ...style, bold: block.bold })),
@@ -57,7 +66,11 @@ const blank = () => new Paragraph({ text: '' });
 // section, the paragraph number in small grey above each passage, then its
 // texts in block order with a blank line between them, and two blank lines to
 // separate passages. Texts a passage doesn't have yet are left out.
-const passageParagraphs = (passages: WorkingDocumentPassage[], blocks: WorkingDocumentBlock[]): Paragraph[] => {
+const passageParagraphs = (
+  passages: WorkingDocumentPassage[],
+  blocks: WorkingDocumentBlock[],
+  showPages: boolean,
+): Paragraph[] => {
   const paragraphs: Paragraph[] = [];
   let currentSectionId: string | null = null;
 
@@ -72,7 +85,7 @@ const passageParagraphs = (passages: WorkingDocumentPassage[], blocks: WorkingDo
     paragraphs.push(new Paragraph({ children: [new TextRun({ text: passage.number, color: '808080', size: 16 })] }));
     const texts = blocks.flatMap((block) => {
       const text = passage.texts[block.key]?.trim();
-      return text ? [blockParagraph(block, text)] : [];
+      return text ? [blockParagraph(block, text, passage.pages?.[block.key], showPages)] : [];
     });
     texts.forEach((text, i) => paragraphs.push(...(i > 0 ? [blank()] : []), text));
     paragraphs.push(blank(), blank());
@@ -83,7 +96,8 @@ const passageParagraphs = (passages: WorkingDocumentPassage[], blocks: WorkingDo
 export const buildWorkingDocument = (
   passages: WorkingDocumentPassage[],
   blocks: WorkingDocumentBlock[],
-  meta: { titles: (string | null | undefined)[]; subtitle?: string | null },
+  // showPages: print page numbers after the labels (default on).
+  meta: { titles: (string | null | undefined)[]; subtitle?: string | null; showPages?: boolean },
 ): Document =>
   new Document({
     sections: [
@@ -92,7 +106,7 @@ export const buildWorkingDocument = (
           bilingualParagraph(meta.titles, { heading: HeadingLevel.HEADING_1, center: true }),
           ...(meta.subtitle ? [new Paragraph({ alignment: AlignmentType.CENTER, text: meta.subtitle })] : []),
           blank(),
-          ...passageParagraphs(passages, blocks),
+          ...passageParagraphs(passages, blocks, meta.showPages !== false),
         ],
       },
     ],

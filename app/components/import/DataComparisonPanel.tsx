@@ -95,6 +95,9 @@ export function DataComparisonPanel({ existing, fileRows, formValues, isSubmitti
                     origin={row.origin}
                     target={row.target}
                     references={row.references}
+                    metadata={row.metadata
+                      ?.filter((m) => m.value)
+                      .map((m) => ({ column: `${m.documentKey}.${m.field}`, value: m.value }))}
                   />
                 ))}
                 {fileRows.length > PREVIEW_LIMIT && (

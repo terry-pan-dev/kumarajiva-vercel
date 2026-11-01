@@ -7,10 +7,13 @@ type Props = {
   origin: string;
   target?: string | null;
   references?: Reference[];
+  // Metadata cells as `<document key>.<field>` → value, shown so a mistyped
+  // column header is visible before importing.
+  metadata?: { column: string; value: string }[];
   variant?: 'existing' | 'incoming';
 };
 
-export function ParagraphPreviewCard({ order, origin, target, references, variant = 'existing' }: Props) {
+export function ParagraphPreviewCard({ order, origin, target, references, metadata, variant = 'existing' }: Props) {
   const isIncoming = variant === 'incoming';
   const { t } = useTranslation('data');
   const cardClass = isIncoming ? 'rounded-lg border border-secondary bg-secondary/20 p-3' : 'rounded-lg border p-3';
@@ -39,6 +42,15 @@ export function ParagraphPreviewCard({ order, origin, target, references, varian
           {references.map((ref, idx) => (
             <p key={ref.id ?? idx} className="text-muted-foreground text-xs">
               <span className="text-muted-foreground font-medium">{ref.sutraName}:</span> {ref.content}
+            </p>
+          ))}
+        </div>
+      )}
+      {!!metadata?.length && (
+        <div className={dividerClass}>
+          {metadata.map(({ column, value }) => (
+            <p key={column} className="text-muted-foreground text-xs">
+              <span className="font-mono font-medium">{column}:</span> {value}
             </p>
           ))}
         </div>
