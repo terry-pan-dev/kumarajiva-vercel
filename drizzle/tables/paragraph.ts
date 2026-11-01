@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { type AnyPgColumn, timestamp, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { type AnyPgColumn, timestamp, integer, json, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
 import { documentsTable } from './document';
@@ -37,6 +37,11 @@ export const paragraphsTableNew = pgTable('paragraphs_new', {
     .notNull(),
   content: text('content').notNull(),
   searchId: text('search_id').default(sql`NULL`),
+  // Facts about this paragraph in its document, e.g. { page: '14' } for the
+  // page in a printed source. Flat: field names are any string (dots included,
+  // e.g. 'cbeta.line') and map one-to-one to `<document key>.<field>` import
+  // columns.
+  metadata: json('metadata').$type<Record<string, string>>(),
   ...auditAtFields,
   ...auditByFields,
 });
