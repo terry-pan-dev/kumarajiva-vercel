@@ -27,7 +27,7 @@ const defaults: WorkingDocumentFormat = {
 
 const passage = (overrides: Partial<WorkingDocumentPassage> = {}): WorkingDocumentPassage => ({
   paragraphId: 'p-1',
-  number: '1.1',
+  number: '1',
   sectionId: 's1',
   sectionTitle: '序品第一',
   targetSectionTitle: 'Chapter 1',
@@ -46,6 +46,7 @@ const documentXml = async (passages: WorkingDocumentPassage[], format: WorkingDo
     titles: ['妙法蓮華經', 'The Lotus Sutra'],
     subtitle: 'Translation group working document',
     showPages: format.showPages,
+    showNumbers: format.showNumbers,
   });
   const entry = CFB.find(CFB.read(await Packer.toBuffer(doc), { type: 'buffer' }), '/word/document.xml');
   return Buffer.from(entry!.content as Uint8Array).toString('utf8');
@@ -88,13 +89,33 @@ describe('buildWorkingDocument', () => {
 
   it('heads each new section with its title in both languages', async () => {
     const xml = await documentXml([
-      passage(),
-      passage({ number: '1.2' }),
-      passage({ number: '2.1', sectionId: 's2', sectionTitle: '方便品第二', targetSectionTitle: 'Chapter 2' }),
+      passage({ number: '5' }),
+      passage({ number: '6', texts: { source: '一時佛住' } }),
+      passage({
+        sectionId: 's2',
+        sectionTitle: '方便品第二',
+        targetSectionTitle: 'Chapter 2',
+        texts: { source: '爾時世尊' },
+      }),
     ]);
 
     expect(xml.split('Chapter 1').length - 1).toBe(1);
-    expect(inOrder(xml, ['序品第一', 'Chapter 1', '1.2', '方便品第二', 'Chapter 2', '2.1'])).toBe(true);
+    expect(
+      inOrder(xml, ['序品第一', 'Chapter 1', '>6<', '一時佛住', '方便品第二', 'Chapter 2', '>1<', '爾時世尊']),
+    ).toBe(true);
+  });
+});
+
+describe('paragraph numbers', () => {
+  it('prints each passage’s number above its texts', async () => {
+    expect(inOrder(await documentXml([passage({ number: '7' })]), ['>7<', 'Source: '])).toBe(true);
+  });
+
+  it('leaves the numbers out when switched off', async () => {
+    const xml = await documentXml([passage({ number: '7' })], { ...defaults, showNumbers: false });
+
+    expect(xml).not.toContain('>7<');
+    expect(xml).toContain('Source: ');
   });
 });
 
@@ -151,15 +172,33 @@ describe('workingDocumentBlockPrefix', () => {
 });
 
 describe('workingDocumentFormatSchema', () => {
-  it('still accepts a saved format from before the page switch', () => {
+  it('still accepts a saved format from before the page and number switches', () => {
     const saved = { blocks: [{ key: 'source', label: 'Source', font: 'Noto Serif TC', color: '#000000', ...plain }] };
     expect(workingDocumentFormatSchema.safeParse(saved).success).toBe(true);
   });
 });
 
 describe('buildWorkingDocumentFilename', () => {
-  it('names the file after the project and paragraph range', () => {
-    expect(buildWorkingDocumentFilename('Team A', [passage(), passage({ number: '1.9' })])).toBe('Team A 1.1–1.9.docx');
-    expect(buildWorkingDocumentFilename('A/B', [passage()])).toBe('AB 1.1.docx');
+  it('names the file after the project and the paragraph range with its section', () => {
+    expect(buildWorkingDocumentFilename('Team A', [passage(), passage({ number: '9' })])).toBe(
+      'Team A 序品第一 1–9.docx',
+    );
+    expect(buildWorkingDocumentFilename('A/B', [passage()])).toBe('AB 序品第一 1.docx');
+  });
+
+  it('names both sections when the range crosses into another', () => {
+    const next = passage({ number: '4', sectionId: 's2', sectionTitle: '方便品第二' });
+    expect(buildWorkingDocumentFilename('Team A', [passage({ number: '30' }), next])).toBe(
+      'Team A 序品第一 30–方便品第二 4.docx',
+    );
+  });
+
+  it('uses the bare numbers for untitled sections', () => {
+    expect(
+      buildWorkingDocumentFilename('Team A', [
+        passage({ sectionTitle: null }),
+        passage({ number: '9', sectionTitle: null }),
+      ]),
+    ).toBe('Team A 1–9.docx');
   });
 });

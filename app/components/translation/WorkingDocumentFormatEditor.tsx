@@ -138,7 +138,8 @@ export function WorkingDocumentPreview({
   pages,
   showPages,
 }: {
-  number: string;
+  // null when paragraph numbers are switched off.
+  number: string | null;
   blocks: WorkingDocumentBlock[];
   texts: Record<string, string | null>;
   pages: Record<string, string | null>;
@@ -147,7 +148,7 @@ export function WorkingDocumentPreview({
   const present = blocks.filter((block) => texts[block.key]?.trim());
   return (
     <div className="rounded-md border bg-white p-3 text-sm text-black">
-      <div className="text-xs text-gray-500">{number}</div>
+      {number && <div className="text-xs text-gray-500">{number}</div>}
       {present.map((block, i) => {
         const prefix = workingDocumentBlockPrefix(block.label, pages[block.key], showPages);
         return (

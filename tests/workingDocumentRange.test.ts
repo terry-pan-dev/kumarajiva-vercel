@@ -63,7 +63,11 @@ describe('inRange and overlapWithSection', () => {
 });
 
 describe('paragraphNumber', () => {
-  it('uses the section order and a 1-based position', () => {
-    expect(paragraphNumber(sections, { sectionId: 'c', position: 2 })).toBe('5.3');
+  it('is the 1-based position in the section, without the section order', () => {
+    expect(paragraphNumber(sections, { sectionId: 'c', position: 2 })).toBe('3');
+  });
+
+  it('is blank for an unknown section', () => {
+    expect(paragraphNumber(sections, { sectionId: 'missing', position: 2 })).toBe('');
   });
 });

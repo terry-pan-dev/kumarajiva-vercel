@@ -33,6 +33,9 @@ export const workingDocumentFormatSchema = z.object({
   // Print each text's page number after its label, when it has one. Optional
   // so formats saved before it existed still load; missing means on.
   showPages: z.boolean().optional(),
+  // Print each paragraph's number above it. Optional for the same reason;
+  // missing means on.
+  showNumbers: z.boolean().optional(),
 });
 
 export type WorkingDocumentBlock = z.infer<typeof workingDocumentBlockSchema>;

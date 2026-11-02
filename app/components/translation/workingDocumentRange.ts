@@ -2,7 +2,7 @@
 // section paragraph counts alone — so the working document page can show the
 // range (and which sections it touches) without loading every section's text.
 // Positions are 0-based within a section; paragraph numbers shown to people are
-// "<section order>.<position + 1>".
+// position + 1, without the section.
 
 export interface RangeSection {
   id: string;
@@ -82,5 +82,5 @@ export const overlapWithSection = (sections: RangeSection[], range: ParagraphRan
 
 export const paragraphNumber = (sections: RangeSection[], paragraph: ParagraphPosition) => {
   const section = sections.find((s) => s.id === paragraph.sectionId);
-  return section ? `${section.order}.${paragraph.position + 1}` : '';
+  return section ? String(paragraph.position + 1) : '';
 };

@@ -28,8 +28,9 @@ describe('defaultWorkingDocumentFormat', () => {
     ]);
   });
 
-  it('shows page numbers', () => {
+  it('shows page and paragraph numbers', () => {
     expect(defaults.showPages).toBe(true);
+    expect(defaults.showNumbers).toBe(true);
   });
 });
 
@@ -37,6 +38,13 @@ describe('reconcileWorkingDocumentFormat', () => {
   it('keeps a saved page setting, and turns pages on for formats saved before the setting existed', () => {
     expect(reconcileWorkingDocumentFormat({ ...defaults, showPages: false }, defaults).showPages).toBe(false);
     expect(reconcileWorkingDocumentFormat({ blocks: defaults.blocks }, defaults).showPages).toBe(true);
+  });
+
+  it('keeps a saved paragraph number setting, and turns numbers on for formats saved before it existed', () => {
+    expect(reconcileWorkingDocumentFormat({ ...defaults, showNumbers: false }, defaults).showNumbers).toBe(false);
+    expect(reconcileWorkingDocumentFormat({ blocks: defaults.blocks, showPages: false }, defaults).showNumbers).toBe(
+      true,
+    );
   });
 
   it('uses the defaults when nothing is saved', () => {

@@ -251,7 +251,7 @@ function SectionPanel({
           className={`text-muted-foreground shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`}
         />
         <span className="font-medium">
-          {section.order} · {section.title || 'Untitled section'}
+          {section.title || 'Untitled section'}
           {section.targetTitle && <span className="text-muted-foreground font-normal"> / {section.targetTitle}</span>}
         </span>
         <span className="text-muted-foreground text-xs">{section.paragraphCount} paragraphs</span>
@@ -309,16 +309,23 @@ export default function WorkingDocumentPage() {
   const [count, setCount] = useState(String(DEFAULT_COUNT));
   const [blocks, setBlocks] = useState<WorkingDocumentBlock[]>(savedFormat.blocks);
   const [showPages, setShowPages] = useState(savedFormat.showPages !== false);
+  const [showNumbers, setShowNumbers] = useState(savedFormat.showNumbers !== false);
   // Loaded sections' cards, for the preview of the start paragraph.
   const [cardsBySection, setCardsBySection] = useState<Record<string, WorkingDocumentCard[]>>({});
 
   // Autosave: a short pause after the last change, so a drag or typing a label
   // saves once.
   const saveFetcher = useFetcher<typeof action>();
-  const lastSaved = useRef(JSON.stringify({ blocks: savedFormat.blocks, showPages: savedFormat.showPages !== false }));
+  const lastSaved = useRef(
+    JSON.stringify({
+      blocks: savedFormat.blocks,
+      showPages: savedFormat.showPages !== false,
+      showNumbers: savedFormat.showNumbers !== false,
+    }),
+  );
   const [pendingSave, setPendingSave] = useState(false);
   useEffect(() => {
-    const format = JSON.stringify({ blocks, showPages });
+    const format = JSON.stringify({ blocks, showPages, showNumbers });
     if (format === lastSaved.current) return setPendingSave(false);
     setPendingSave(true);
     const timer = setTimeout(() => {
@@ -328,7 +335,7 @@ export default function WorkingDocumentPage() {
     }, AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, showPages]);
+  }, [blocks, showPages, showNumbers]);
   const saveStatus =
     pendingSave || saveFetcher.state !== 'idle'
       ? 'Saving…'
@@ -351,6 +358,9 @@ export default function WorkingDocumentPage() {
     return `${paragraphNumber(sections, position)}${section?.title ? ` (${section.title})` : ''}`;
   };
 
+  const lastExportedAt =
+    lastExported && `${lastExported.number}${lastExported.sectionTitle ? ` (${lastExported.sectionTitle})` : ''}`;
+
   const startCard = start ? cardsBySection[start.sectionId]?.[start.position] : undefined;
 
   // The download carries the format on screen, so the file matches it even
@@ -360,7 +370,7 @@ export default function WorkingDocumentPage() {
       ? `/resources/working-document/${project.id}?${new URLSearchParams({
           start: start.paragraphId,
           count,
-          format: JSON.stringify({ blocks, showPages }),
+          format: JSON.stringify({ blocks, showPages, showNumbers }),
         })}`
       : undefined;
 
@@ -415,8 +425,8 @@ export default function WorkingDocumentPage() {
             {lastExported && (
               <p className="text-muted-foreground text-xs">
                 {lastExported.atEnd
-                  ? `The last export ended at ${lastExported.number}, the end of the text so far.`
-                  : `Continues from the last export, which ended at ${lastExported.number}.`}
+                  ? `The last export ended at ${lastExportedAt}, the end of the text so far.`
+                  : `Continues from the last export, which ended at ${lastExportedAt}.`}
               </p>
             )}
           </div>
@@ -471,6 +481,12 @@ export default function WorkingDocumentPage() {
               Show page numbers
             </Label>
           </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={showNumbers} onCheckedChange={setShowNumbers} id="working-document-show-numbers" />
+            <Label className="font-normal" htmlFor="working-document-show-numbers">
+              Show paragraph numbers
+            </Label>
+          </div>
           <WorkingDocumentFormatEditor names={names} blocks={blocks} onChange={setBlocks} />
           {startCard && (
             <div className="grid gap-1.5">
@@ -480,7 +496,7 @@ export default function WorkingDocumentPage() {
                 showPages={showPages}
                 texts={startCard.texts}
                 pages={startCard.pages}
-                number={startCard.number}
+                number={showNumbers ? startCard.number : null}
               />
             </div>
           )}
