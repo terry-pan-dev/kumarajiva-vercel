@@ -4,6 +4,8 @@ import {
   getSectionParagraphCounts,
   readParagraphsByDocumentId,
   readParagraphsBySectionId,
+  reorderProjectSections,
+  sectionOrderMoves,
   type ReferenceDocument,
 } from '~/services/text.service';
 
@@ -15,6 +17,11 @@ const mocks = vi.hoisted(() => ({
   findByDocumentIdAndPassageKeys: vi.fn(),
   countBySectionForDocument: vi.fn(),
 }));
+const sectionMocks = vi.hoisted(() => ({ findByDocumentId: vi.fn(), updateOrders: vi.fn() }));
+const projectMocks = vi.hoisted(() => ({
+  DbProjects: { findByIds: vi.fn(), findByDocumentId: vi.fn() },
+  DbProjectReferences: { findByProjectId: vi.fn() },
+}));
 
 vi.mock('~/lib/db.server', () => ({ getDb: () => ({}) }));
 vi.mock('~/services/search.server', () => ({}));
@@ -22,9 +29,10 @@ vi.mock('~/services/text.crud', () => ({
   DbParagraphsNew: mocks,
   DbContributors: {},
   DbDocuments: {},
-  DbSections: {},
+  DbSections: sectionMocks,
   DbWorks: {},
 }));
+vi.mock('~/services/project.crud', () => projectMocks);
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -154,6 +162,126 @@ describe('getSectionParagraphCounts', () => {
         ['a', 3],
         ['b', 5],
       ]),
+    );
+  });
+});
+
+// ─── Section order ───────────────────────────────────────────────────────────
+
+const sections = (documentId: string, orders: number[]) =>
+  orders.map((order) => ({ id: `${documentId}-${order}`, documentId, order, title: `${documentId} ${order}` }));
+
+describe('sectionOrderMoves', () => {
+  const source = sections('src', [1, 2, 3, 4]);
+
+  it('maps the old order of each moved section to its new one', () => {
+    expect(sectionOrderMoves(source, ['src-1', 'src-4', 'src-2', 'src-3'])).toEqual(
+      new Map([
+        [4, 2],
+        [2, 3],
+        [3, 4],
+      ]),
+    );
+  });
+
+  it('moves nothing when the order is unchanged', () => {
+    expect(sectionOrderMoves(source, ['src-1', 'src-2', 'src-3', 'src-4']).size).toBe(0);
+  });
+
+  it('reuses the order numbers the sections already have, gaps included', () => {
+    const gapped = sections('src', [1, 5, 9]);
+    expect(sectionOrderMoves(gapped, ['src-9', 'src-1', 'src-5'])).toEqual(
+      new Map([
+        [9, 1],
+        [1, 5],
+        [5, 9],
+      ]),
+    );
+  });
+
+  it('refuses a list that no longer matches the sections', () => {
+    expect(() => sectionOrderMoves(source, ['src-1', 'src-2', 'src-3'])).toThrow(/Reload the page/);
+    expect(() => sectionOrderMoves(source, ['src-1', 'src-2', 'src-3', 'other'])).toThrow(/Reload the page/);
+    expect(() => sectionOrderMoves(source, ['src-1', 'src-1', 'src-2', 'src-3'])).toThrow(/Reload the page/);
+  });
+});
+
+describe('reorderProjectSections', () => {
+  const user = { id: 'u1' } as Parameters<typeof reorderProjectSections>[1];
+  const byDocument: Record<string, ReturnType<typeof sections>> = {
+    src: sections('src', [1, 2, 3]),
+    tgt: sections('tgt', [1, 2, 3, 4]),
+    refA: sections('refA', [1, 3]),
+    tgt2: sections('tgt2', [1, 2]),
+  };
+  const p1 = { id: 'p1', sourceDocumentId: 'src', targetDocumentId: 'tgt' };
+
+  beforeEach(() => {
+    projectMocks.DbProjects.findByIds.mockImplementation(async (ids: string[]) => (ids[0] === 'p1' ? [p1] : []));
+    // findByDocumentId also returns projects whose *target* is the document.
+    projectMocks.DbProjects.findByDocumentId.mockResolvedValue([
+      p1,
+      { id: 'other', sourceDocumentId: 'elsewhere', targetDocumentId: 'src' },
+    ]);
+    projectMocks.DbProjectReferences.findByProjectId.mockImplementation(async (id: string) =>
+      id === 'p1' ? [{ documentId: 'refA' }] : [],
+    );
+    sectionMocks.findByDocumentId.mockImplementation(async (documentId: string) => byDocument[documentId] ?? []);
+  });
+
+  it('moves the translation and reference counterparts with the source sections, in one update', async () => {
+    // Section 3 moves to the front.
+    await reorderProjectSections({ projectId: 'p1', sectionIds: ['src-3', 'src-1', 'src-2'] }, user);
+
+    expect(sectionMocks.updateOrders).toHaveBeenCalledTimes(1);
+    const [updates, updatedBy] = sectionMocks.updateOrders.mock.calls[0];
+    expect(updatedBy).toBe('u1');
+    expect(Object.fromEntries(updates.map((u: { id: string; order: number }) => [u.id, u.order]))).toEqual({
+      'src-3': 1,
+      'src-1': 2,
+      'src-2': 3,
+      'tgt-3': 1,
+      'tgt-1': 2,
+      'tgt-2': 3,
+      'refA-3': 1,
+      'refA-1': 2,
+    });
+  });
+
+  it('also moves the sections of other projects on the same source document', async () => {
+    projectMocks.DbProjects.findByDocumentId.mockResolvedValue([
+      p1,
+      { id: 'p2', sourceDocumentId: 'src', targetDocumentId: 'tgt2' },
+    ]);
+    await reorderProjectSections({ projectId: 'p1', sectionIds: ['src-2', 'src-1', 'src-3'] }, user);
+
+    const updates = sectionMocks.updateOrders.mock.calls[0][0];
+    expect(updates).toEqual(
+      expect.arrayContaining([
+        { id: 'tgt2-2', order: 1 },
+        { id: 'tgt2-1', order: 2 },
+      ]),
+    );
+  });
+
+  it('leaves sections without a source counterpart where they are', async () => {
+    await reorderProjectSections({ projectId: 'p1', sectionIds: ['src-3', 'src-1', 'src-2'] }, user);
+
+    const ids = sectionMocks.updateOrders.mock.calls[0][0].map((u: { id: string }) => u.id);
+    expect(ids).not.toContain('tgt-4');
+  });
+
+  it('changes nothing when the page’s list is out of date', async () => {
+    await expect(reorderProjectSections({ projectId: 'p1', sectionIds: ['src-3', 'src-1'] }, user)).rejects.toThrow(
+      /Reload the page/,
+    );
+    expect(sectionMocks.updateOrders).not.toHaveBeenCalled();
+  });
+
+  it('fails for an unknown project', async () => {
+    projectMocks.DbProjects.findByIds.mockResolvedValue([]);
+    await expect(reorderProjectSections({ projectId: 'nope', sectionIds: [] }, user)).rejects.toThrow(
+      'Project not found',
     );
   });
 });

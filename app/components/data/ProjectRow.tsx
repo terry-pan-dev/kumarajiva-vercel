@@ -138,7 +138,7 @@ export function ProjectRow({
   onEditSectionToggle,
   onEditSectionClose,
 }: Props) {
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<{ success: boolean; error?: string }>();
   const { t } = useTranslation('data');
   const [isOpen, setIsOpen] = useState(false);
   const [sections, setSections] = useState(project.sourceDocument.sections);
@@ -150,8 +150,12 @@ export function ProjectRow({
   }, [project.sourceDocument.sections]);
 
   const handleDragEnd = () => {
-    const reordered = sectionsRef.current.map((s, i) => ({ id: s.id, order: i + 1 }));
-    fetcher.submit({ intent: 'reorder-sections', sections: JSON.stringify(reordered) }, { method: 'post' });
+    // The server moves the translation and reference sections along with these.
+    const sectionIds = sectionsRef.current.map((s) => s.id);
+    fetcher.submit(
+      { intent: 'reorder-sections', projectId: project.id, sectionIds: JSON.stringify(sectionIds) },
+      { method: 'post' },
+    );
   };
 
   const projectForForm: ProjectForForm = {
@@ -285,6 +289,9 @@ export function ProjectRow({
               <div className="text-muted-foreground p-4 text-center text-sm">{t('projects.row.noSections')}</div>
             )}
           </Reorder.Group>
+          {fetcher.data?.error && (
+            <p className="text-destructive border-border border-t px-4 py-2 text-xs">{fetcher.data.error}</p>
+          )}
 
           {isAddingSection && (
             <div className="border-border border-t p-4">

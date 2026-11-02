@@ -167,6 +167,16 @@ export const DbSections = {
   deleteById: async (id: string) => {
     return db.delete(sectionsTable).where(eq(sectionsTable.id, id));
   },
+
+  // Sets several sections' orders together: all of them or none.
+  updateOrders: async (updates: Array<{ id: string; order: number }>, updatedBy: string) => {
+    if (!updates.length) return;
+    await db.transaction(async (tx) => {
+      for (const { id, order } of updates) {
+        await tx.update(sectionsTable).set({ order, updatedBy }).where(eq(sectionsTable.id, id));
+      }
+    });
+  },
 };
 
 // Mirrors the legacy DbParagraphs (crud.server.ts) against paragraphs_new while
