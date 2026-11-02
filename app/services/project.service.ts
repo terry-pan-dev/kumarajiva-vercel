@@ -41,7 +41,10 @@ export type SectionContext = {
   passageKeyPrefix: string;
   origin: { document: SectionContextDocument; section: SectionContextSection };
   target: { document: SectionContextDocument; section: SectionContextSection | null };
-  references: { document: SectionContextDocument; section: SectionContextSection | null }[];
+  references: {
+    document: SectionContextDocument & { contributors: string[] };
+    section: SectionContextSection | null;
+  }[];
 };
 
 export type SectionContextProject = NonNullable<Awaited<ReturnType<typeof DbProjects.findForSectionContext>>>;
@@ -77,7 +80,8 @@ export function selectSectionContext(project: SectionContextProject, sectionId: 
       section: counterpart(project.targetDocument.sections),
     },
     references: project.references.map((ref) => ({
-      document: toContextDocument(ref.document),
+      // Contributor names tell references apart better than their titles do.
+      document: { ...toContextDocument(ref.document), contributors: ref.document.contributors.map((c) => c.name) },
       section: counterpart(ref.document.sections),
     })),
   };
@@ -94,7 +98,11 @@ export async function resolveSectionContext(projectId: string, sectionId: string
 export const contextReferences = (context: SectionContext) =>
   context.references.map((r) => ({
     documentId: r.document.id,
-    document: { key: r.document.key, title: r.document.title },
+    document: {
+      key: r.document.key,
+      title: r.document.title,
+      contributors: r.document.contributors.map((name) => ({ name })),
+    },
   }));
 
 export const createProject = async (

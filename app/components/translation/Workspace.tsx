@@ -15,13 +15,17 @@ import { useTranslation } from '~/lib/hooks/useTranslation';
 import { type IParagraphNew } from '~/services/text.service';
 
 import { OpenAIStreamCard } from './OpenAIStreamCard';
+import { References } from './References';
 
 // Only the fields the workspace uses — loader data is JSON-serialised, so the
 // Date-typed relation arrays (empty until they migrate) are not part of it.
-export type WorkspaceParagraph = Pick<IParagraphNew, 'id' | 'origin' | 'target' | 'sectionId' | 'targetId'>;
+export type WorkspaceParagraph = Pick<
+  IParagraphNew,
+  'id' | 'origin' | 'target' | 'sectionId' | 'targetId' | 'references'
+>;
 
 export const Workspace = ({ paragraph }: { paragraph: WorkspaceParagraph }) => {
-  const { id, origin, target, sectionId, targetId } = paragraph;
+  const { id, origin, target, sectionId, targetId, references } = paragraph;
 
   const { translation, pasteTranslation, disabledEdit, cleanTranslation } = useTranslation({ originId: id, target });
 
@@ -150,6 +154,7 @@ export const Workspace = ({ paragraph }: { paragraph: WorkspaceParagraph }) => {
           </div>
         </Form>
       </motion.div>
+      <References references={references} pasteTranslation={pasteTranslation} />
       <ContextMenuWrapper>
         <OpenAIStreamCard
           originId={id}

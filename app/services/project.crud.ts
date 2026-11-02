@@ -98,7 +98,7 @@ export const DbProjects = {
         sourceDocument: { with: { sections: true } },
         targetDocument: { with: { sections: true } },
         references: {
-          with: { document: { with: { sections: true } } },
+          with: { document: { with: { sections: true, contributors: true } } },
           orderBy: (references, { asc }) => [asc(references.order)],
         },
       },

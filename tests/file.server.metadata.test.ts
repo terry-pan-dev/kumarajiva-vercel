@@ -109,7 +109,7 @@ beforeEach(() => {
     passageKeyPrefix: 'T262',
     origin: { document: doc('d-origin', 'T262'), section: { ...section('s-origin'), title: '序品' } },
     target: { document: doc('d-target', 'EN'), section: section('s-target') },
-    references: [{ document: doc('d-bdk', 'BDK'), section: section('s-bdk') }],
+    references: [{ document: { ...doc('d-bdk', 'BDK'), contributors: [] }, section: section('s-bdk') }],
   };
   mocks.existingBySection.clear();
   mocks.existingBySection.set('s-origin', [

@@ -59,7 +59,7 @@ const documents: Record<string, ReturnType<typeof row>[]> = {
 };
 
 const references: ReferenceDocument[] = [
-  { documentId: 'refA', document: { key: 'btts', title: 'BTTS rendering' } },
+  { documentId: 'refA', document: { key: 'btts', title: 'BTTS rendering', contributors: [{ name: 'BTTS' }] } },
   { documentId: 'refB', document: { key: null, title: 'Commentary' } },
 ];
 
@@ -99,10 +99,12 @@ describe('readParagraphsBySectionId', () => {
         documentId: 'refA',
         key: 'btts',
         title: 'BTTS rendering',
+        contributors: ['BTTS'],
         content: 'Thus have I heard',
         metadata: { page: '201' },
       },
-      { documentId: 'refB', key: null, title: 'Commentary', content: null, metadata: null },
+      // Contributors are optional on the input; none loaded means none shown.
+      { documentId: 'refB', key: null, title: 'Commentary', contributors: [], content: null, metadata: null },
     ]);
     expect(second.targetMetadata).toBeNull();
     expect(second.references.map((r) => r.content)).toEqual([null, 'Once']);

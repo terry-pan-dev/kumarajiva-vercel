@@ -1,11 +1,11 @@
 // Translation workspace, backed by the refactored data model (work / document /
 // section / paragraphs_new): origin paragraphs come from the source document's
 // section, translations live in the project's target document and are paired
-// by passage_key instead of parent_id.
+// by passage_key instead of parent_id. The project's reference documents are
+// paired the same way.
 //
-// Comments, references and history still hang off the legacy tables (viewable
-// via the legacy /data/paragraphs debug page) and return here once they
-// migrate.
+// Comments and history still hang off the legacy tables (viewable via the
+// legacy /data/paragraphs debug page) and return here once they migrate.
 import { useAbility } from '@casl/react';
 import { useActionData, useLoaderData, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
@@ -23,7 +23,7 @@ import { Workspace } from '~/components/translation/Workspace';
 import { Label, RadioGroup, RadioGroupItem, ResizableHandle, ScrollArea } from '~/components/ui';
 import { useScreenSize } from '~/lib/hooks/useScreenSizeHook';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import { resolveSectionContext } from '~/services/project.service';
+import { contextReferences, resolveSectionContext } from '~/services/project.service';
 import {
   insertParagraph,
   readParagraphsBySectionId,
@@ -54,10 +54,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Error('Section not found');
   }
 
-  // Translations live in the project's target document, paired by passage_key.
+  // Translations live in the project's target document and reference texts in
+  // the project's reference documents, all paired by passage_key.
   const paragraphs = await readParagraphsBySectionId({
     sectionId: context.origin.section.id,
     targetDocumentId: context.target.document.id,
+    references: contextReferences(context),
   });
 
   const sectionInfo = { documentTitle: context.origin.document.title, sectionTitle: context.origin.section.title };
