@@ -12,30 +12,26 @@ import {
   sectionExportColumns,
   sectionExportDocuments,
 } from '~/services/file.service';
-import { getProjectBySourceDocumentId, getProjectReferences } from '~/services/project.service';
-import { getDocument, getSection, readParagraphsBySectionId } from '~/services/text.service';
+import { contextReferences, resolveSectionContext } from '~/services/project.service';
+import { readParagraphsBySectionId } from '~/services/text.service';
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const { sectionId } = params;
-  if (!sectionId) throw new Response('Section ID required', { status: 400 });
+  const { projectId, sectionId } = params;
+  if (!projectId || !sectionId) throw new Response('Project and section IDs required', { status: 400 });
 
   const user = await assertAuthUser(request);
   if (!user) throw new Response('Unauthorized', { status: 401 });
 
-  const section = await getSection(sectionId);
-  if (!section) throw new Response('Section not found', { status: 404 });
+  // The URL names the project: a source document can belong to several.
+  const context = await resolveSectionContext(projectId, sectionId);
+  if (!context) throw new Response('Section not found', { status: 404 });
 
   // Translations live in the project's target document; references are the
   // project's reference documents. Both pair by passage_key.
-  const project = await getProjectBySourceDocumentId(section.documentId);
-  const [references, originDocument, targetDocument] = await Promise.all([
-    project ? getProjectReferences(project.id) : Promise.resolve([]),
-    getDocument(section.documentId),
-    project ? getDocument(project.targetDocumentId) : Promise.resolve(undefined),
-  ]);
+  const references = contextReferences(context);
   const paragraphs = await readParagraphsBySectionId({
-    sectionId,
-    targetDocumentId: project?.targetDocumentId ?? undefined,
+    sectionId: context.origin.section.id,
+    targetDocumentId: context.target.document.id,
     references,
   });
 
@@ -44,8 +40,8 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   }
 
   const documents = sectionExportDocuments({
-    originKey: originDocument?.key ?? null,
-    targetKey: targetDocument?.key ?? null,
+    originKey: context.origin.document.key,
+    targetKey: context.target.document.key,
     references,
   });
   const workbook = await buildExportWorkbook(paragraphs, sectionExportColumns(paragraphs, documents));

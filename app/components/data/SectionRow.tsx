@@ -13,6 +13,7 @@ type Section = {
 
 type Props = {
   section: Section;
+  projectId: string;
   documentId: string;
   targetDocumentId: string;
   // The counterpart section in the target document (matched by order), when it
@@ -33,6 +34,7 @@ type Props = {
 
 export function SectionRow({
   section,
+  projectId,
   documentId,
   targetDocumentId,
   targetSection,
@@ -83,8 +85,8 @@ export function SectionRow({
           <a
             target="_blank"
             rel="noreferrer"
+            href={`/data/translation/import/${projectId}/${section.id}`}
             className="bg-accent text-accent-foreground hover:bg-accent/80 flex items-center gap-2 rounded px-3 py-1.5 text-xs font-medium"
-            href={`/data/translation/import?originDocumentId=${documentId}&originSectionId=${section.id}&targetDocumentId=${targetDocumentId}`}
           >
             <Upload size={14} />
             {t('projects.section.importReplace')}
@@ -93,7 +95,7 @@ export function SectionRow({
             <a
               target="_blank"
               rel="noreferrer"
-              href={`/resources/export/${section.id}`}
+              href={`/resources/export/${projectId}/${section.id}`}
               className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2 rounded px-3 py-1.5 text-xs font-medium"
             >
               <Download size={14} />

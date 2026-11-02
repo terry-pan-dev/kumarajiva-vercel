@@ -27,25 +27,19 @@ import { LocalizedError, localizeError, translateKey } from '~/i18n/errors';
 import { getDb } from '~/lib/db.server';
 import { PREVIEW_LIMIT } from '~/utils/constants';
 
+import type { SectionContext } from './project.service';
+
 import {
   mergeParagraphMetadata,
   type ExcelTranslationRow,
   type ExistingDataPreview,
   type ImportOptions,
-  type ImportOptionsNew,
   type ImportResult,
   type ParagraphMetadataCell,
 } from './file.service';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
-import { DbProjectReferences, DbProjects } from './project.crud';
 import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
-import {
-  findTargetSection,
-  getDocument,
-  getSection,
-  readParagraphsBySectionId,
-  type ReferenceDocument,
-} from './text.service';
+import { readParagraphsBySectionId, type ReferenceDocument } from './text.service';
 
 export const db = getDb();
 
@@ -423,28 +417,18 @@ const metadataCellsFor =
  */
 export async function replaceSectionData(
   rows: ExcelTranslationRow[],
-  options: ImportOptionsNew,
+  context: SectionContext,
+  userId: string,
   // Renders the result messages; the import route passes the request's locale.
   t: AppTFunction = translator('en'),
 ): Promise<ImportResult> {
-  const { originDocumentId, originSectionId, targetDocumentId, userId } = options;
+  const { origin, target, passageKeyPrefix } = context;
+  const sectionOrder = origin.section.order;
   const r = (key: string, values?: Record<string, unknown>) =>
     translateKey(t, `data:projects.import.result.${key}`, values);
   const joinColumns = (columns: string[]) => columns.join(t('separators.semicolon'));
 
   try {
-    const [originDocument, originSection, targetDocument] = await Promise.all([
-      getDocument(originDocumentId),
-      getSection(originSectionId),
-      getDocument(targetDocumentId),
-    ]);
-    if (!originDocument || !originSection) {
-      return { success: false, message: r('originNotFound') };
-    }
-
-    const passageKeyPrefix = originDocument.work?.passageKeyPrefix ?? originDocument.workId;
-    const sectionOrder = originSection.order;
-
     const has = (getValue: (row: ExcelTranslationRow) => string | null) => rows.some((r) => getValue(r)?.trim());
     // Whether the file has any `<key>.<field>` column for a document — even an
     // all-empty one, since empty metadata cells clear their field.
@@ -458,18 +442,16 @@ export async function replaceSectionData(
     // Origin.
     involved.push({
       label: r('originLabel'),
-      documentId: originDocumentId,
-      sectionId: originSectionId,
+      documentId: origin.document.id,
+      sectionId: origin.section.id,
       getValue: (row) => row.origin || null,
-      getMetadata: metadataCellsFor(originDocument.key),
-      write: has((r) => r.origin || null) || hasMetadataColumns(originDocument.key),
+      getMetadata: metadataCellsFor(origin.document.key),
+      write: has((r) => r.origin || null) || hasMetadataColumns(origin.document.key),
     });
 
     // Translation — its section must exist and be named when the file carries
     // translation content; otherwise it's simply not written.
-    const targetSection = targetDocument
-      ? await findTargetSection({ sourceSection: { order: sectionOrder }, targetDocumentId })
-      : null;
+    const targetSection = target.section;
     const wantsTarget = has((r) => r.target);
     const targetSectionNamed = !!targetSection?.title?.trim();
     if (wantsTarget && !targetSectionNamed) {
@@ -477,16 +459,16 @@ export async function replaceSectionData(
     }
     // Translation metadata alone doesn't fail the import — its columns are
     // skipped like a reference whose section isn't set up.
-    const wantsTargetMetadata = hasMetadataColumns(targetDocument?.key);
+    const wantsTargetMetadata = hasMetadataColumns(target.document.key);
     if (wantsTargetMetadata && !targetSectionNamed) {
-      skippedColumns.push(r('skippedNoSection', { column: targetDocument?.key }));
+      skippedColumns.push(r('skippedNoSection', { column: target.document.key }));
     }
     involved.push({
       label: r('translationLabel'),
-      documentId: targetDocumentId,
+      documentId: target.document.id,
       sectionId: targetSection?.id ?? null,
       getValue: (row) => row.target,
-      getMetadata: metadataCellsFor(targetDocument?.key),
+      getMetadata: metadataCellsFor(target.document.key),
       write: (wantsTarget || wantsTargetMetadata) && targetSectionNamed,
     });
 
@@ -495,7 +477,7 @@ export async function replaceSectionData(
     // columns. Resolve each to the project's reference document and its
     // counterpart section; unresolved columns are reported, not imported.
     const mainKeys = new Set(
-      [originDocument.key, targetDocument?.key].filter((k): k is string => !!k).map(normaliseKey),
+      [origin.document.key, target.document.key].filter((k): k is string => !!k).map(normaliseKey),
     );
     const fileReferenceKeys = [
       ...new Map(
@@ -508,11 +490,9 @@ export async function replaceSectionData(
           .map((k) => [normaliseKey(k), k] as const),
       ).values(),
     ];
-    const project = await DbProjects.findBySourceDocumentId(originDocumentId);
-    const projectReferences = project ? await DbProjectReferences.findByProjectId(project.id) : [];
     const referenceByKey = new Map(
-      projectReferences
-        .filter((ref) => ref.document?.key)
+      context.references
+        .filter((ref) => ref.document.key)
         .map((ref) => [normaliseKey(ref.document.key as string), ref] as const),
     );
 
@@ -522,17 +502,14 @@ export async function replaceSectionData(
         skippedColumns.push(r('skippedNotReference', { column: columnKey }));
         continue;
       }
-      const refSection = await findTargetSection({
-        sourceSection: { order: sectionOrder },
-        targetDocumentId: ref.documentId,
-      });
+      const refSection = ref.section;
       if (!refSection || !refSection.title?.trim()) {
         skippedColumns.push(r('skippedNoSection', { column: columnKey }));
         continue;
       }
       involved.push({
         label: columnKey,
-        documentId: ref.documentId,
+        documentId: ref.document.id,
         sectionId: refSection.id,
         getValue: (row) =>
           row.references.find((r) => r.sutraName && normaliseKey(r.sutraName) === normaliseKey(columnKey))?.content ??

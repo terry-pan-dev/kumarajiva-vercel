@@ -23,9 +23,8 @@ import { Workspace } from '~/components/translation/Workspace';
 import { Label, RadioGroup, RadioGroupItem, ResizableHandle, ScrollArea } from '~/components/ui';
 import { useScreenSize } from '~/lib/hooks/useScreenSizeHook';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import { getProjectBySourceDocumentId } from '~/services/project.service';
+import { resolveSectionContext } from '~/services/project.service';
 import {
-  getSection,
   insertParagraph,
   readParagraphsBySectionId,
   resolveTranslationTarget,
@@ -47,26 +46,27 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   if (!user) {
     return redirect('/login');
   }
-  const { sectionId } = params;
-  const section = await getSection(sectionId as string);
-  if (!section) {
+  // The URL names the project: a source document can belong to several, and
+  // the project decides which target document the translations come from.
+  const { projectId, sectionId } = params;
+  const context = projectId && sectionId ? await resolveSectionContext(projectId, sectionId) : null;
+  if (!context) {
     throw new Error('Section not found');
   }
 
   // Translations live in the project's target document, paired by passage_key.
-  const project = await getProjectBySourceDocumentId(section.documentId);
   const paragraphs = await readParagraphsBySectionId({
-    sectionId: sectionId as string,
-    targetDocumentId: project?.targetDocumentId ?? undefined,
+    sectionId: context.origin.section.id,
+    targetDocumentId: context.target.document.id,
   });
 
-  const sectionInfo = { documentTitle: section.document?.title ?? '', sectionTitle: section.title ?? null };
+  const sectionInfo = { documentTitle: context.origin.document.title, sectionTitle: context.origin.section.title };
 
   return json({ success: true, paragraphs: paragraphs ?? [], sectionInfo });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const { sectionId } = params;
+  const { projectId, sectionId } = params;
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
@@ -126,18 +126,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
   try {
     const result = validatePayloadOrThrow({ schema: paragraphActionSchema, formData });
     if (result.kind === 'insert') {
-      // Resolve where the translation goes: the project's target document, in
-      // the section matching this source section's order. Both must already
-      // exist — sections are never created implicitly.
-      const target = await resolveTranslationTarget(sectionId as string);
+      // Resolve where the translation goes: the URL's project's target
+      // document, in the section matching this source section's order. It must
+      // already exist — sections are never created implicitly.
+      const target = await resolveTranslationTarget(projectId as string, sectionId as string);
       if (!target.ok) {
         if (target.reason === 'section-not-found') {
           throw new Error('Section not found');
         }
         const message =
-          target.reason === 'no-project'
-            ? 'No translation project is set up for this document.'
-            : 'The translation section has not been created yet. Create and name it in Data Management → Translation Projects first.';
+          'The translation section has not been created yet. Create and name it in Data Management → Translation Projects first.';
         return json({ success: false, errors: [{ message }] }, { status: 400 });
       }
 

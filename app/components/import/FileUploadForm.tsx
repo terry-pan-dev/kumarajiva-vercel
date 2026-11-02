@@ -10,9 +10,6 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 
 type Props = {
-  originDocumentId: string;
-  originSectionId: string;
-  targetDocumentId: string;
   isSubmitting: boolean;
   navigationIntent: string | null;
   fileName: string;
@@ -22,9 +19,6 @@ type Props = {
 };
 
 export function FileUploadForm({
-  originDocumentId,
-  originSectionId,
-  targetDocumentId,
   isSubmitting,
   navigationIntent,
   fileName,
@@ -36,9 +30,6 @@ export function FileUploadForm({
   return (
     <Form method="post" className="space-y-4" encType="multipart/form-data">
       <input type="hidden" name="intent" value="preview" />
-      <input type="hidden" name="originDocumentId" value={originDocumentId} />
-      <input type="hidden" name="originSectionId" value={originSectionId} />
-      <input type="hidden" name="targetDocumentId" value={targetDocumentId} />
 
       <div className="space-y-2">
         <Label htmlFor="file" className="text-primary text-lg">

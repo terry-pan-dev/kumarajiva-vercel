@@ -80,7 +80,7 @@ function SectionTitle({ title, targetTitle }: { title: string | null; targetTitl
   );
 }
 
-function SectionRow({ section, depth }: { section: SectionNode; depth: number }) {
+function SectionRow({ projectId, section, depth }: { projectId: string; section: SectionNode; depth: number }) {
   const [isOpen, setIsOpen] = useState(true);
   const hasChildren = section.children.length > 0;
 
@@ -100,14 +100,17 @@ function SectionRow({ section, depth }: { section: SectionNode; depth: number })
             <SectionTitle title={section.title} targetTitle={section.targetTitle} />
           </span>
         </div>
-        {isOpen && section.children.map((child) => <SectionRow key={child.id} section={child} depth={depth + 1} />)}
+        {isOpen &&
+          section.children.map((child) => (
+            <SectionRow key={child.id} section={child} depth={depth + 1} projectId={projectId} />
+          ))}
       </>
     );
   }
 
   return (
     <Link
-      to={`/translation/${section.id}`}
+      to={`/translation/${projectId}/${section.id}`}
       style={{ paddingLeft: `${depth * 20 + 16}px` }}
       className="hover:bg-muted/50 flex items-center justify-between py-3 pr-4 transition"
     >
@@ -196,7 +199,9 @@ export default function TranslationIndex() {
               {isOpen && (
                 <div className="divide-border border-border divide-y border-t">
                   {visibleSections.length > 0 ? (
-                    visibleSections.map((section) => <SectionRow depth={0} key={section.id} section={section} />)
+                    visibleSections.map((section) => (
+                      <SectionRow depth={0} key={section.id} section={section} projectId={project.id} />
+                    ))
                   ) : (
                     <div className="text-muted-foreground p-4 text-center text-sm">
                       {sourceSections.length === 0

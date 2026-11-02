@@ -86,29 +86,29 @@ export const DbProjects = {
     });
   },
 
+  // Everything a section page needs, in one query: the project's work (for
+  // generated passage keys) and each of its documents — source, target and
+  // references — with all their sections, so counterparts can be matched by
+  // order in memory (see selectSectionContext).
+  findForSectionContext: async (id: string) => {
+    return db.query.projectsTable.findFirst({
+      where: eq(projectsTable.id, id),
+      with: {
+        work: true,
+        sourceDocument: { with: { sections: true } },
+        targetDocument: { with: { sections: true } },
+        references: {
+          with: { document: { with: { sections: true } } },
+          orderBy: (references, { asc }) => [asc(references.order)],
+        },
+      },
+    });
+  },
+
   findByIds: async (ids: string[]) => {
     if (!ids.length) return [];
     return db.query.projectsTable.findMany({
       where: inArray(projectsTable.id, ids),
-    });
-  },
-
-  // The translation pages resolve a source section's counterpart by looking up
-  // the project that translates its document; target sections are matched by
-  // order within the target document.
-  findBySourceDocumentId: async (sourceDocumentId: string) => {
-    return db.query.projectsTable.findFirst({
-      where: eq(projectsTable.sourceDocumentId, sourceDocumentId),
-      with: {
-        sourceDocument: true,
-        targetDocument: {
-          with: {
-            sections: {
-              orderBy: (sections, { asc }) => [asc(sections.order)],
-            },
-          },
-        },
-      },
     });
   },
 
