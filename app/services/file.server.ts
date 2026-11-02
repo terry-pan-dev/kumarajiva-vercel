@@ -19,13 +19,15 @@ import 'dotenv/config';
 import { eq, inArray } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { CreateParagraphNew, ReadDocument, ReadParagraphNew, ReadSection } from '~/drizzle/schema';
+import type { CreateParagraphNew, ReadParagraphNew } from '~/drizzle/schema';
 
 import { paragraphsTable, paragraphsTableNew, referencesTable } from '~/drizzle/schema';
 import { translator, type AppTFunction } from '~/i18n/config';
 import { LocalizedError, localizeError, translateKey } from '~/i18n/errors';
 import { getDb } from '~/lib/db.server';
 import { PREVIEW_LIMIT } from '~/utils/constants';
+
+import type { SectionContext } from './project.service';
 
 import {
   mergeParagraphMetadata,
@@ -36,7 +38,6 @@ import {
   type ParagraphMetadataCell,
 } from './file.service';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
-import { DbProjects } from './project.crud';
 import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
 import { readParagraphsBySectionId, type ReferenceDocument } from './text.service';
 
@@ -385,64 +386,6 @@ const metadataCellsFor =
   (row: ExcelTranslationRow): ParagraphMetadataCell[] =>
     documentKey ? (row.metadata ?? []).filter((m) => normaliseKey(m.documentKey) === normaliseKey(documentKey)) : [];
 
-// ─── Import context ──────────────────────────────────────────────────────────
-// Where a section import reads from and writes to, resolved on the server from
-// the project and the origin section — never from client-supplied document ids.
-// A project's documents are paired section-by-section by order; a counterpart
-// section is null when that document has no section at the origin's order yet.
-
-type ImportDocument = Pick<ReadDocument, 'id' | 'key' | 'title' | 'language'>;
-type ImportSection = Pick<ReadSection, 'id' | 'title' | 'order'>;
-
-export type ImportContext = {
-  projectId: string;
-  passageKeyPrefix: string;
-  origin: { document: ImportDocument; section: ImportSection };
-  target: { document: ImportDocument; section: ImportSection | null };
-  references: { document: ImportDocument; section: ImportSection | null }[];
-};
-
-export type ImportProject = NonNullable<Awaited<ReturnType<typeof DbProjects.findForImport>>>;
-
-const toImportDocument = ({ id, key, title, language }: ReadDocument): ImportDocument => ({ id, key, title, language });
-const toImportSection = ({ id, title, order }: ReadSection): ImportSection => ({ id, title, order });
-
-/**
- * Pure: pick the origin section out of the project's source document and match
- * every other document's counterpart by order. Null when the section isn't in
- * this project's source document.
- */
-export function selectImportContext(project: ImportProject, sectionId: string): ImportContext | null {
-  const originSection = project.sourceDocument.sections.find((s) => s.id === sectionId);
-  if (!originSection) return null;
-
-  const counterpart = (sections: ReadSection[]) => {
-    const section = sections.find((s) => s.order === originSection.order);
-    return section ? toImportSection(section) : null;
-  };
-
-  return {
-    projectId: project.id,
-    passageKeyPrefix: project.work?.passageKeyPrefix ?? project.workId,
-    origin: { document: toImportDocument(project.sourceDocument), section: toImportSection(originSection) },
-    target: {
-      document: toImportDocument(project.targetDocument),
-      section: counterpart(project.targetDocument.sections),
-    },
-    references: project.references.map((ref) => ({
-      document: toImportDocument(ref.document),
-      section: counterpart(ref.document.sections),
-    })),
-  };
-}
-
-// One query for the whole context; null when the project or section is unknown
-// or the section belongs to another document.
-export async function resolveImportContext(projectId: string, sectionId: string): Promise<ImportContext | null> {
-  const project = await DbProjects.findForImport(projectId);
-  return project ? selectImportContext(project, sectionId) : null;
-}
-
 /**
  * Import a spreadsheet into the new data model, where every column is a document
  * (origin, translation, and reference documents are all documents now). Columns
@@ -474,7 +417,7 @@ export async function resolveImportContext(projectId: string, sectionId: string)
  */
 export async function replaceSectionData(
   rows: ExcelTranslationRow[],
-  context: ImportContext,
+  context: SectionContext,
   userId: string,
   // Renders the result messages; the import route passes the request's locale.
   t: AppTFunction = translator('en'),

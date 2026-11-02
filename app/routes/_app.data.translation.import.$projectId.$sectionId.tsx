@@ -12,13 +12,9 @@ import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { localizeError } from '~/i18n/errors';
 import { getFixedT } from '~/i18n/locale.server';
-import {
-  getExistingDataPreviewForSection,
-  replaceSectionData,
-  resolveImportContext,
-  type ImportContext,
-} from '~/services/file.server';
+import { getExistingDataPreviewForSection, replaceSectionData } from '~/services/file.server';
 import { parseCSV, parseXLSX, type ExcelTranslationRow, type ImportResult } from '~/services/file.service';
+import { contextReferences, resolveSectionContext, type SectionContext } from '~/services/project.service';
 
 import { assertAuthUser } from '../auth.server';
 import { defineAbilityFor } from '../authorisation';
@@ -37,19 +33,12 @@ type ActionResponse =
 //
 // The URL names the project and the origin section; everything else — the
 // project's documents and each one's counterpart section — is resolved on the
-// server in one query (resolveImportContext). The loader and both action
+// server in one query (resolveSectionContext). The loader and both action
 // intents resolve it afresh, so nothing about where data goes comes from the
 // client.
 
-// A reference document as the existing-data preview expects it.
-const previewReferences = (context: ImportContext) =>
-  context.references.map((r) => ({
-    documentId: r.document.id,
-    document: { key: r.document.key, title: r.document.title },
-  }));
-
 // Column keys the parser should recognise.
-const columnKeys = (context: ImportContext) => ({
+const columnKeys = (context: SectionContext) => ({
   originKey: context.origin.document.key,
   targetKey: context.target.document.key,
   referenceKeys: context.references.map((r) => r.document.key).filter((k): k is string => !!k),
@@ -63,7 +52,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 
   const { projectId, sectionId } = params;
-  const context = projectId && sectionId ? await resolveImportContext(projectId, sectionId) : null;
+  const context = projectId && sectionId ? await resolveSectionContext(projectId, sectionId) : null;
   if (!context) {
     console.error('[import loader] project or section not found', { projectId, sectionId });
     return redirect('/data');
@@ -73,7 +62,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const existing = await getExistingDataPreviewForSection(
     origin.section.id,
     target.document.id,
-    previewReferences(context),
+    contextReferences(context),
   );
 
   return json({
@@ -102,7 +91,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   const { projectId, sectionId } = params;
-  const context = projectId && sectionId ? await resolveImportContext(projectId, sectionId) : null;
+  const context = projectId && sectionId ? await resolveSectionContext(projectId, sectionId) : null;
   if (!context) {
     return json<ActionResponse>(
       { intent: 'error', result: { success: false, message: t('data:projects.import.result.originNotFound') } },

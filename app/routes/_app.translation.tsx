@@ -12,8 +12,8 @@ import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
 import { useDownloadDocx } from '~/lib/hooks';
 import { readUsers } from '~/services';
-import { getProjectBySourceDocumentId } from '~/services/project.service';
-import { getSection, readParagraphsBySectionId, type IParagraphNew } from '~/services/text.service';
+import { resolveSectionContext } from '~/services/project.service';
+import { readParagraphsBySectionId, type IParagraphNew } from '~/services/text.service';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Translation' }];
@@ -36,21 +36,21 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   if (!user) {
     return redirect('/login');
   }
+  // The download is submitted from the editor page, which posts its own
+  // project and section ids — this layout route has no params of its own.
   const formData = await request.formData();
+  const projectId = formData.get('projectId');
   const sectionId = formData.get('sectionId');
   let paragraphs: IParagraphNew[] = [];
   let sectionInfo: { documentTitle: string; sectionTitle: string | null } | undefined = undefined;
-  if (sectionId) {
-    const section = await getSection(sectionId as string);
-    if (section) {
-      // Translations are paired from the project's target document by passage_key.
-      const project = await getProjectBySourceDocumentId(section.documentId);
-      paragraphs = await readParagraphsBySectionId({
-        sectionId: sectionId as string,
-        targetDocumentId: project?.targetDocumentId ?? undefined,
-      });
-      sectionInfo = { documentTitle: section.document?.title ?? '', sectionTitle: section.title ?? null };
-    }
+  const context = projectId && sectionId ? await resolveSectionContext(projectId as string, sectionId as string) : null;
+  if (context) {
+    // Translations are paired from the project's target document by passage_key.
+    paragraphs = await readParagraphsBySectionId({
+      sectionId: context.origin.section.id,
+      targetDocumentId: context.target.document.id,
+    });
+    sectionInfo = { documentTitle: context.origin.document.title, sectionTitle: context.origin.section.title };
   }
   return json({
     paragraphs,
@@ -75,6 +75,7 @@ export default function TranslationLayout() {
   const handleDownload = async () => {
     fetcher.submit(
       {
+        projectId: params.projectId || '',
         sectionId: params.sectionId || '',
       },
       {

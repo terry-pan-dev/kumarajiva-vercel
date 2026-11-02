@@ -2,10 +2,10 @@ import type * as DrizzleOrm from 'drizzle-orm';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ImportContext, ImportProject } from '~/services/file.server';
 import type { ExcelTranslationRow } from '~/services/file.service';
+import type { SectionContext } from '~/services/project.service';
 
-import { replaceSectionData as replaceSectionDataWith, selectImportContext } from '~/services/file.server';
+import { replaceSectionData as replaceSectionDataWith } from '~/services/file.server';
 
 // Paragraph metadata (`<document key>.<field>` columns) through the section
 // import: merged into matched paragraphs, set on inserts, and never creating a
@@ -77,14 +77,13 @@ vi.mock('~/services/search.server', () => ({
   saveParagraphsToAlgolia: mocks.saveParagraphsToAlgolia,
   updateParagraphsToAlgolia: mocks.updateParagraphsToAlgolia,
 }));
-vi.mock('~/services/project.crud', () => ({ DbProjects: { findForImport: vi.fn() } }));
 vi.mock('~/services/text.service', () => ({ readParagraphsBySectionId: vi.fn() }));
 
 const doc = (id: string, key: string) => ({ id, key, title: key, language: 'chinese' as const });
 const section = (id: string) => ({ id, title: 'Chapter 1', order: 1 });
 
 // Rebuilt per test so a test can unname a counterpart section.
-let context: ImportContext;
+let context: SectionContext;
 
 const replaceSectionData = (rows: ExcelTranslationRow[]) => replaceSectionDataWith(rows, context, 'user');
 
@@ -208,46 +207,5 @@ describe('replaceSectionData — paragraph metadata', () => {
     expect(result.success).toBe(true);
     expect(result.message).toContain('Skipped column(s): "EN"');
     expect(updateOf('o1')).toMatchObject({ content: '如是我聞' });
-  });
-});
-
-describe('selectImportContext', () => {
-  // Only the fields selectImportContext reads; the rest of each row is irrelevant here.
-  const sec = (id: string, order: number, title: string | null = `Section ${order}`) => ({ id, order, title });
-  const project = {
-    id: 'project',
-    workId: 'w',
-    work: { passageKeyPrefix: 'T279' },
-    sourceDocument: { ...doc('d-origin', 'T279'), sections: [sec('s-o1', 1), sec('s-o2', 2)] },
-    targetDocument: { ...doc('d-target', 'EN'), sections: [sec('s-t1', 1)] },
-    references: [{ document: { ...doc('d-bdk', 'BDK'), sections: [sec('s-b2', 2), sec('s-b1', 1)] } }],
-  } as unknown as ImportProject;
-
-  it("matches every counterpart section by the origin section's order", () => {
-    const context = selectImportContext(project, 's-o1');
-
-    expect(context).toMatchObject({
-      projectId: 'project',
-      passageKeyPrefix: 'T279',
-      origin: { document: { id: 'd-origin' }, section: { id: 's-o1', order: 1 } },
-      target: { document: { id: 'd-target' }, section: { id: 's-t1', title: 'Section 1' } },
-      references: [{ document: { id: 'd-bdk', key: 'BDK' }, section: { id: 's-b1' } }],
-    });
-  });
-
-  it('a counterpart that does not exist yet is null, not an error', () => {
-    const context = selectImportContext(project, 's-o2');
-    expect(context?.target.section).toBeNull();
-    expect(context?.references[0].section).toMatchObject({ id: 's-b2' });
-  });
-
-  it("a section outside the project's source document resolves to nothing", () => {
-    expect(selectImportContext(project, 's-t1')).toBeNull();
-    expect(selectImportContext(project, 'unknown')).toBeNull();
-  });
-
-  it('falls back to the work id when the work has no passage key prefix', () => {
-    const noPrefix = { ...project, work: { passageKeyPrefix: null } } as unknown as ImportProject;
-    expect(selectImportContext(noPrefix, 's-o1')?.passageKeyPrefix).toBe('w');
   });
 });

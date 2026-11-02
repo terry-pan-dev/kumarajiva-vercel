@@ -14,6 +14,7 @@ import type { ReadUser } from '~/drizzle/tables';
 import { LocalizedError } from '~/i18n/errors';
 
 import { DbProjectReferences, DbProjects } from './project.crud';
+import { resolveSectionContext } from './project.service';
 import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
 import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
 
@@ -423,48 +424,25 @@ export const createParagraphs = async (
   return DbParagraphsNew.createMany(paragraphs.map((p) => ({ ...p, createdBy: user.id, updatedBy: user.id })));
 };
 
-// A source section's counterpart in the target document, matched by order —
-// the same convention the index pages use to show source/target titles side by
-// side. Returns null when it has not been created yet: imports and the
-// translation workspace require the counterpart to be created and named in
-// Data Management first, and never create sections implicitly.
-export const findTargetSection = async ({
-  sourceSection,
-  targetDocumentId,
-}: {
-  sourceSection: { order: number };
-  targetDocumentId: string;
-}) => {
-  const sections = await DbSections.findByDocumentId(targetDocumentId);
-  return sections.find((s) => s.order === sourceSection.order) ?? null;
-};
-
 // Where a translation for the given source section should be written: the
-// project's target document, in the counterpart section matched by order. Both
-// the project and the counterpart section must already exist — sections are set
-// up and named in Data Management and never created implicitly. The caller maps
-// each failure reason to a user-facing message.
+// project's target document, in the counterpart section matched by order. The
+// project comes from the caller (the editor's URL) because a source document can
+// belong to several projects. The counterpart section must already exist —
+// sections are set up and named in Data Management and never created
+// implicitly. The caller maps each failure reason to a user-facing message.
 export type TranslationTarget =
   | { ok: true; targetDocumentId: string; targetSectionId: string }
-  | { ok: false; reason: 'section-not-found' | 'no-project' | 'no-target-section' };
+  | { ok: false; reason: 'section-not-found' | 'no-target-section' };
 
-export const resolveTranslationTarget = async (sectionId: string): Promise<TranslationTarget> => {
-  const section = await getSection(sectionId);
-  if (!section) {
+export const resolveTranslationTarget = async (projectId: string, sectionId: string): Promise<TranslationTarget> => {
+  const context = await resolveSectionContext(projectId, sectionId);
+  if (!context) {
     return { ok: false, reason: 'section-not-found' };
   }
-  const project = await DbProjects.findBySourceDocumentId(section.documentId);
-  if (!project?.targetDocumentId) {
-    return { ok: false, reason: 'no-project' };
-  }
-  const targetSection = await findTargetSection({
-    sourceSection: { order: section.order },
-    targetDocumentId: project.targetDocumentId,
-  });
-  if (!targetSection) {
+  if (!context.target.section) {
     return { ok: false, reason: 'no-target-section' };
   }
-  return { ok: true, targetDocumentId: project.targetDocumentId, targetSectionId: targetSection.id };
+  return { ok: true, targetDocumentId: context.target.document.id, targetSectionId: context.target.section.id };
 };
 
 export interface IParagraphNewDebugRow {

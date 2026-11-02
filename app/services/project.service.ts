@@ -1,4 +1,4 @@
-import type { CreateProject } from '~/drizzle/schema';
+import type { CreateProject, ReadDocument, ReadSection } from '~/drizzle/schema';
 import type { ReadUser } from '~/drizzle/tables';
 
 import { LocalizedError } from '~/i18n/errors';
@@ -24,9 +24,78 @@ export const getProjectWithReferences = async (id: string) => {
   return project ? { ...project, references } : undefined;
 };
 
-export const getProjectBySourceDocumentId = async (sourceDocumentId: string) => {
-  return DbProjects.findBySourceDocumentId(sourceDocumentId);
+// ─── Section context ─────────────────────────────────────────────────────────
+// Everything about one source section within one project: its documents and
+// each document's counterpart section. A source document can belong to several
+// projects, so pages that work on a section (import, export, the translation
+// editor) take the project from their URL and resolve this on the server —
+// never from client-supplied document ids. A project's documents are paired
+// section-by-section by order; a counterpart section is null when that document
+// has no section at the origin's order yet.
+
+type SectionContextDocument = Pick<ReadDocument, 'id' | 'key' | 'title' | 'language'>;
+type SectionContextSection = Pick<ReadSection, 'id' | 'title' | 'order'>;
+
+export type SectionContext = {
+  projectId: string;
+  passageKeyPrefix: string;
+  origin: { document: SectionContextDocument; section: SectionContextSection };
+  target: { document: SectionContextDocument; section: SectionContextSection | null };
+  references: { document: SectionContextDocument; section: SectionContextSection | null }[];
 };
+
+export type SectionContextProject = NonNullable<Awaited<ReturnType<typeof DbProjects.findForSectionContext>>>;
+
+const toContextDocument = ({ id, key, title, language }: ReadDocument): SectionContextDocument => ({
+  id,
+  key,
+  title,
+  language,
+});
+const toContextSection = ({ id, title, order }: ReadSection): SectionContextSection => ({ id, title, order });
+
+/**
+ * Pure: pick the origin section out of the project's source document and match
+ * every other document's counterpart by order. Null when the section isn't in
+ * this project's source document.
+ */
+export function selectSectionContext(project: SectionContextProject, sectionId: string): SectionContext | null {
+  const originSection = project.sourceDocument.sections.find((s) => s.id === sectionId);
+  if (!originSection) return null;
+
+  const counterpart = (sections: ReadSection[]) => {
+    const section = sections.find((s) => s.order === originSection.order);
+    return section ? toContextSection(section) : null;
+  };
+
+  return {
+    projectId: project.id,
+    passageKeyPrefix: project.work?.passageKeyPrefix ?? project.workId,
+    origin: { document: toContextDocument(project.sourceDocument), section: toContextSection(originSection) },
+    target: {
+      document: toContextDocument(project.targetDocument),
+      section: counterpart(project.targetDocument.sections),
+    },
+    references: project.references.map((ref) => ({
+      document: toContextDocument(ref.document),
+      section: counterpart(ref.document.sections),
+    })),
+  };
+}
+
+// One query for the whole context; null when the project or section is unknown
+// or the section belongs to another document.
+export async function resolveSectionContext(projectId: string, sectionId: string): Promise<SectionContext | null> {
+  const project = await DbProjects.findForSectionContext(projectId);
+  return project ? selectSectionContext(project, sectionId) : null;
+}
+
+// The context's reference documents in the shape the paragraph readers take.
+export const contextReferences = (context: SectionContext) =>
+  context.references.map((r) => ({
+    documentId: r.document.id,
+    document: { key: r.document.key, title: r.document.title },
+  }));
 
 export const createProject = async (
   project: Omit<CreateProject, 'createdBy' | 'updatedBy' | 'workId'>,

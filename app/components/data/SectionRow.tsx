@@ -95,7 +95,7 @@ export function SectionRow({
             <a
               target="_blank"
               rel="noreferrer"
-              href={`/resources/export/${section.id}`}
+              href={`/resources/export/${projectId}/${section.id}`}
               className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2 rounded px-3 py-1.5 text-xs font-medium"
             >
               <Download size={14} />

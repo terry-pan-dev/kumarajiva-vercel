@@ -86,11 +86,11 @@ export const DbProjects = {
     });
   },
 
-  // Everything the section importer needs, in one query: the project's work (for
+  // Everything a section page needs, in one query: the project's work (for
   // generated passage keys) and each of its documents — source, target and
   // references — with all their sections, so counterparts can be matched by
-  // order in memory (see selectImportContext).
-  findForImport: async (id: string) => {
+  // order in memory (see selectSectionContext).
+  findForSectionContext: async (id: string) => {
     return db.query.projectsTable.findFirst({
       where: eq(projectsTable.id, id),
       with: {
@@ -109,25 +109,6 @@ export const DbProjects = {
     if (!ids.length) return [];
     return db.query.projectsTable.findMany({
       where: inArray(projectsTable.id, ids),
-    });
-  },
-
-  // The translation pages resolve a source section's counterpart by looking up
-  // the project that translates its document; target sections are matched by
-  // order within the target document.
-  findBySourceDocumentId: async (sourceDocumentId: string) => {
-    return db.query.projectsTable.findFirst({
-      where: eq(projectsTable.sourceDocumentId, sourceDocumentId),
-      with: {
-        sourceDocument: true,
-        targetDocument: {
-          with: {
-            sections: {
-              orderBy: (sections, { asc }) => [asc(sections.order)],
-            },
-          },
-        },
-      },
     });
   },
 
