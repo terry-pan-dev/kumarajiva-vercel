@@ -199,8 +199,59 @@ export const getContributorsByDocument = async (documentId: string) => {
   return DbContributors.findByDocumentId(documentId);
 };
 
-export const reorderSections = async (updates: Array<{ id: string; order: number }>, user: ReadUser) => {
-  return Promise.all(updates.map(({ id, order }) => DbSections.updateById(id, { order, updatedBy: user.id })));
+// Where each section order moves when a document's sections are put in a new
+// order: old order → new order, for the orders that change. The sections take
+// over the order numbers they already had, in their new sequence, so numbers
+// with no source section behind them (a translation section on its own, say)
+// are never taken. `orderedIds` must list exactly the given sections, else the
+// page was out of date and nothing should move.
+export const sectionOrderMoves = (
+  sections: Array<{ id: string; order: number }>,
+  orderedIds: string[],
+): Map<number, number> => {
+  const byId = new Map(sections.map((s) => [s.id, s]));
+  if (orderedIds.length !== sections.length || new Set(orderedIds).size !== sections.length) {
+    throw new LocalizedError('data:errors.sectionsChanged');
+  }
+  const slots = sections.map((s) => s.order).sort((a, b) => a - b);
+  const moves = new Map<number, number>();
+  orderedIds.forEach((id, i) => {
+    const section = byId.get(id);
+    if (!section) throw new LocalizedError('data:errors.sectionsChanged');
+    if (section.order !== slots[i]) moves.set(section.order, slots[i]);
+  });
+  return moves;
+};
+
+// Puts a project's source sections in a new order, taking each one's
+// counterparts in the translation and reference documents along: sections are
+// paired across documents by order, so moving the source alone would pair it
+// with another section's translation. A source document can belong to several
+// projects; all of their translations and references move with it.
+export const reorderProjectSections = async (
+  { projectId, sectionIds }: { projectId: string; sectionIds: string[] },
+  user: ReadUser,
+) => {
+  const [project] = await DbProjects.findByIds([projectId]);
+  if (!project) throw new LocalizedError('data:errors.projectNotFound');
+
+  const sharing = (await DbProjects.findByDocumentId(project.sourceDocumentId)).filter(
+    (p) => p.sourceDocumentId === project.sourceDocumentId,
+  );
+  const references = (await Promise.all(sharing.map((p) => DbProjectReferences.findByProjectId(p.id)))).flat();
+  const documentIds = [
+    project.sourceDocumentId,
+    ...sharing.map((p) => p.targetDocumentId),
+    ...references.map((r) => r.documentId),
+  ].filter((id, i, all) => all.indexOf(id) === i);
+  const [source, ...counterparts] = await Promise.all(documentIds.map((id) => DbSections.findByDocumentId(id)));
+
+  const moves = sectionOrderMoves(source, sectionIds);
+  const updates = [source, ...counterparts].flatMap((sections) =>
+    sections.flatMap((s) => (moves.has(s.order) ? [{ id: s.id, order: moves.get(s.order)! }] : [])),
+  );
+  await DbSections.updateOrders(updates, user.id);
+  return { projectId, moved: updates.length };
 };
 
 // ─── Paragraphs (paragraphs_new) ─────────────────────────────────────────────

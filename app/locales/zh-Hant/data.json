@@ -307,6 +307,7 @@
     "sectionNotFound": "找不到該章節",
     "sectionHasChildren": "此章節有子章節。請先刪除或移動子章節，再刪除此章節。",
     "projectNotFound": "找不到該專案",
+    "sectionsChanged": "此頁面載入後章節已有變動。請重新載入頁面後再試。",
     "noWorksheets": "活頁簿中沒有工作表。"
   }
 }

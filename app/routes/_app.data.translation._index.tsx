@@ -28,7 +28,7 @@ import {
   getSectionIdsWithParagraphs,
   getSectionsByDocument,
   getWorks,
-  reorderSections,
+  reorderProjectSections,
   updateSection,
 } from '~/services/text.service';
 import { LANG_VALUES } from '~/utils/constants';
@@ -213,11 +213,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   // ── Sections: reorder ──
+  // Moves the project's source sections and their translation and reference
+  // counterparts together, so the pairing by order holds.
   if (intent === 'reorder-sections') {
-    const sectionsJson = formData.get('sections') as string;
-    const sections = JSON.parse(sectionsJson) as Array<{ id: string; order: number }>;
-    await reorderSections(sections, user);
-    return json({ success: true });
+    const projectId = formData.get('projectId') as string;
+    const sectionIds = JSON.parse(formData.get('sectionIds') as string) as string[];
+    try {
+      await reorderProjectSections({ projectId, sectionIds }, user);
+      return json({ success: true });
+    } catch (error) {
+      return json({ success: false, error: localizeError(error, t) }, { status: 400 });
+    }
   }
 
   return json({ success: false, error: t('errors.unknownIntent') }, { status: 400 });

@@ -325,6 +325,7 @@
     "sectionNotFound": "Section not found",
     "sectionHasChildren": "This section has child sections. Delete or reassign them before deleting it.",
     "projectNotFound": "Project not found",
+    "sectionsChanged": "The sections have changed since this page was loaded. Reload the page and try again.",
     "noWorksheets": "The workbook has no worksheets."
   }
 }
