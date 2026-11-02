@@ -26,8 +26,8 @@ import {
   createSection,
   getSection,
   getSectionIdsWithParagraphs,
-  getSectionsByDocument,
   getWorks,
+  nextSectionOrder,
   reorderProjectSections,
   updateSection,
 } from '~/services/text.service';
@@ -54,8 +54,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const originTitle = formData.get('originTitle') as string;
     const translationTitle = (formData.get('translationTitle') as string) || '';
 
-    const existingSections = await getSectionsByDocument(documentId);
-    const nextOrder = existingSections.length + 1;
+    // Reference documents are aligned the same way — a section per reference at
+    // the SAME order, created only for references given a title.
+    const refDocumentIds = formData.getAll('referenceSectionDocumentId') as string[];
+    const refTitles = formData.getAll('referenceSectionTitle') as string[];
+
+    const nextOrder = await nextSectionOrder(
+      documentId,
+      [targetDocumentId, ...refDocumentIds].filter(Boolean) as string[],
+    );
 
     await createSection({ documentId, title: originTitle, order: nextOrder }, user);
 
@@ -72,10 +79,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       );
     }
 
-    // Reference documents are aligned the same way — a section per reference at
-    // the SAME order, created only for references given a title.
-    const refDocumentIds = formData.getAll('referenceSectionDocumentId') as string[];
-    const refTitles = formData.getAll('referenceSectionTitle') as string[];
     for (let i = 0; i < refDocumentIds.length; i++) {
       const title = (refTitles[i] ?? '').trim();
       if (refDocumentIds[i] && title) {

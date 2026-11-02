@@ -223,6 +223,31 @@ export const sectionOrderMoves = (
   return moves;
 };
 
+// A source document and every document paired with it by section order: the
+// translation and references of each project the source belongs to. Source
+// first.
+const pairedDocumentIds = async (sourceDocumentId: string) => {
+  const projects = (await DbProjects.findByDocumentId(sourceDocumentId)).filter(
+    (p) => p.sourceDocumentId === sourceDocumentId,
+  );
+  const references = (await Promise.all(projects.map((p) => DbProjectReferences.findByProjectId(p.id)))).flat();
+  return [sourceDocumentId, ...projects.map((p) => p.targetDocumentId), ...references.map((r) => r.documentId)].filter(
+    (id, i, all) => all.indexOf(id) === i,
+  );
+};
+
+// The order for a new section in a source document: one past the highest in
+// use by it or any document paired with it, so the new section can't share
+// its order with an existing one, nor pair with a translation or reference
+// section that has no source section. (Counting sections instead repeats an
+// order after a deletion.) `extraDocumentIds` are other documents the new
+// section's counterparts go into.
+export const nextSectionOrder = async (sourceDocumentId: string, extraDocumentIds: string[] = []) => {
+  const documentIds = [...new Set([...(await pairedDocumentIds(sourceDocumentId)), ...extraDocumentIds])];
+  const sections = (await Promise.all(documentIds.map((id) => DbSections.findByDocumentId(id)))).flat();
+  return Math.max(0, ...sections.map((s) => s.order)) + 1;
+};
+
 // Puts a project's source sections in a new order, taking each one's
 // counterparts in the translation and reference documents along: sections are
 // paired across documents by order, so moving the source alone would pair it
@@ -235,15 +260,7 @@ export const reorderProjectSections = async (
   const [project] = await DbProjects.findByIds([projectId]);
   if (!project) throw new LocalizedError('data:errors.projectNotFound');
 
-  const sharing = (await DbProjects.findByDocumentId(project.sourceDocumentId)).filter(
-    (p) => p.sourceDocumentId === project.sourceDocumentId,
-  );
-  const references = (await Promise.all(sharing.map((p) => DbProjectReferences.findByProjectId(p.id)))).flat();
-  const documentIds = [
-    project.sourceDocumentId,
-    ...sharing.map((p) => p.targetDocumentId),
-    ...references.map((r) => r.documentId),
-  ].filter((id, i, all) => all.indexOf(id) === i);
+  const documentIds = await pairedDocumentIds(project.sourceDocumentId);
   const [source, ...counterparts] = await Promise.all(documentIds.map((id) => DbSections.findByDocumentId(id)));
 
   const moves = sectionOrderMoves(source, sectionIds);

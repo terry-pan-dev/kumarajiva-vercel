@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getSectionParagraphCounts,
   readParagraphsByDocumentId,
+  nextSectionOrder,
   readParagraphsBySectionId,
   reorderProjectSections,
   sectionOrderMoves,
@@ -283,5 +284,51 @@ describe('reorderProjectSections', () => {
     await expect(reorderProjectSections({ projectId: 'nope', sectionIds: [] }, user)).rejects.toThrow(
       'Project not found',
     );
+  });
+});
+
+describe('nextSectionOrder', () => {
+  const byDocument: Record<string, ReturnType<typeof sections>> = {
+    // Section 2 was deleted: two sections, but order 3 is taken.
+    src: sections('src', [1, 3]),
+    tgt: sections('tgt', [1, 3]),
+    // A reference section with no source section yet.
+    refA: sections('refA', [1, 3, 5]),
+    tgt2: sections('tgt2', [1, 4]),
+    newRef: sections('newRef', [7]),
+  };
+
+  beforeEach(() => {
+    projectMocks.DbProjects.findByDocumentId.mockResolvedValue([
+      { id: 'p1', sourceDocumentId: 'src', targetDocumentId: 'tgt' },
+      { id: 'other', sourceDocumentId: 'elsewhere', targetDocumentId: 'src' },
+    ]);
+    projectMocks.DbProjectReferences.findByProjectId.mockImplementation(async (id: string) =>
+      id === 'p1' ? [{ documentId: 'refA' }] : [],
+    );
+    sectionMocks.findByDocumentId.mockImplementation(async (documentId: string) => byDocument[documentId] ?? []);
+  });
+
+  it('goes past the highest order of the source and its paired documents, not the section count', async () => {
+    expect(await nextSectionOrder('src')).toBe(6);
+  });
+
+  it('ignores projects where the document is the translation, not the source', async () => {
+    await nextSectionOrder('src');
+    expect(sectionMocks.findByDocumentId).not.toHaveBeenCalledWith('elsewhere');
+  });
+
+  it('includes other projects on the same source, and the documents the new section goes into', async () => {
+    projectMocks.DbProjects.findByDocumentId.mockResolvedValue([
+      { id: 'p1', sourceDocumentId: 'src', targetDocumentId: 'tgt' },
+      { id: 'p2', sourceDocumentId: 'src', targetDocumentId: 'tgt2' },
+    ]);
+    expect(await nextSectionOrder('src')).toBe(6);
+    expect(await nextSectionOrder('src', ['newRef'])).toBe(8);
+  });
+
+  it('is 1 for a document without sections', async () => {
+    projectMocks.DbProjects.findByDocumentId.mockResolvedValue([]);
+    expect(await nextSectionOrder('empty')).toBe(1);
   });
 });
