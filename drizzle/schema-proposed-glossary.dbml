@@ -1,0 +1,67 @@
+// Glossary after the refactor: translations move out of the `glossaries.translations`
+// JSON array into `glossary_translations`, one row per translation.
+// Plan, decisions and step order: docs/plans/glossary-refactor.md.
+// Before the refactor: glossary-current.dbml.
+//
+// `glossary_translations` exists since migration 0025 (PR 1). `glossaries` is unchanged
+// until PR 7, which drops `translations` and `subscribers` (marked below).
+//
+// The glossary is deliberately independent of works, documents, sections and paragraphs:
+// citations (source name, volume, passages) are free text.
+
+// One row per Chinese term. Unchanged: `id` is also the Algolia objectID and the key of
+// localStorage bookmarks, so it must not change.
+Table glossaries {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  glossary text [not null, note: 'the Chinese term']
+  phonetic text [note: 'pinyin of the term']
+  subscribers integer [default: 0, note: 'unused (subscriptions live in localStorage); dropped in PR 7']
+  author text [note: 'term-level author; kept for now, often differs from the translation authors']
+  cbeta_frequency text
+  translations json [default: '[]', note: 'replaced by glossary_translations; no longer read after PR 4, dropped in PR 7']
+  discussion text
+  search_id text [default: null]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+  deleted_at timestamp [note: 'soft delete = the glossary trash; covers the term and its translations']
+  created_by text [not null]
+  updated_by text [not null]
+
+  indexes {
+    (glossary) [unique, name: 'unique_glossary_idx']
+  }
+}
+
+// One row per translation of a term (one element of today's JSON array).
+// No unique constraint: identity is decided in code (translationKey() in
+// glossary.merge.ts), because the data already holds legitimate near-duplicates.
+Table glossary_translations {
+  id uuid [pk, not null, default: `gen_random_uuid()`, note: 'stable id: lets an edit or a re-import update this row']
+  glossary_id uuid [not null, ref: > glossaries.id, note: 'ON DELETE CASCADE: purging a term from the trash removes its translations']
+  position integer [not null, note: 'display order within the term (the JSON array order)']
+  language lang [not null, default: 'english', note: 'any lang except chinese']
+  term text [not null, note: 'the rendering (JSON glossary)']
+  source_name text [not null, default: '佛教常用詞', note: 'JSON sutraName; 佛教常用詞 = no source']
+  volume text [not null, default: '-', note: 'the scroll (卷) number']
+  source_text text [note: 'cited Chinese passage (JSON originSutraText)']
+  target_text text [note: 'its translation (JSON targetSutraText)']
+  author text
+  rationale text [note: 'new: why this rendering was chosen']
+  metadata json [note: 'rare per-translation fields: partOfSpeech, phonetic of the rendering']
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+  deleted_at timestamp [note: 'unused: trashing is a soft delete on the term']
+  created_by text [not null]
+  updated_by text [not null]
+
+  indexes {
+    (glossary_id) [name: 'glossary_translations_glossary_id_idx']
+  }
+}
+
+Enum lang {
+  chinese
+  english
+  sanskrit
+  indonesian
+}

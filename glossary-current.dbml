@@ -1,0 +1,20 @@
+Table "glossaries" {
+  "id" uuid [primary key, not null, default: `gen_random_uuid()`]
+  "glossary" text [not null]
+  "phonetic" text
+  "subscribers" integer [default: 0]
+  "author" text
+  "cbeta_frequency" text
+  "translations" json [default: '[]']
+  "discussion" text
+  "search_id" text [default: null]
+  "created_at" timestamp [not null, default: `now()`]
+  "updated_at" timestamp [not null, default: `now()`]
+  "deleted_at" timestamp
+  "created_by" text [not null]
+  "updated_by" text [not null]
+
+  indexes {
+    ("glossary") [unique, name: 'unique_glossary_idx']
+  }
+}

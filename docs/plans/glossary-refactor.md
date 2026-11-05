@@ -32,11 +32,11 @@ translation, so that:
    17,357 translations are distinct (term, rendering) pairs, so the middle level would add
    joins for almost no gain.
 4. **Keep the schema small.** Rare fields go in a `metadata json` column instead of their
-   own columns. The speculative columns in the earlier draft
-   (`drizzle/schema-proposed-glossary.dbml`: sense, term_type, attestation_type,
-   passage_ref, cbeta_ref, work/document/section/paragraph FKs, …) are **out**.
-   That draft and `glossary-current.dbml` are the user's untracked files; this document
-   supersedes them, but don't delete them.
+   own columns. The speculative columns of an earlier draft (sense, term_type,
+   attestation_type, passage_ref, cbeta_ref, work/document/section/paragraph FKs, …) are
+   **out**. Since 2026-11-05, `drizzle/schema-proposed-glossary.dbml` describes the schema
+   actually being built (it replaced that draft), and `glossary-current.dbml` the schema
+   before the refactor.
 
 ## Working rules for whoever picks this up
 
