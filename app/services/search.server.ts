@@ -1,15 +1,11 @@
 import type { SearchQuery } from '@algolia/client-search';
 
-import { and, inArray, isNull } from 'drizzle-orm';
 import 'dotenv/config';
 
-import type { ReadGlossary } from '~/drizzle/schema';
-
 import { type SearchResultListProps } from '~/components/SideBarMenu';
-import { glossariesTable } from '~/drizzle/schema';
-import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
+import { GlossaryStore } from './glossary.store';
 import {
   buildIndexRecords,
   type IndexableParagraph,
@@ -23,8 +19,6 @@ import { assembleParagraphSearchResults, type ParagraphSearchResult } from './pa
 import { DbParagraphsNew } from './text.crud';
 
 export type { ParagraphSearchResult } from './paragraph.search';
-
-const dbClient = getDb();
 
 // Headroom for glossary queries: index records can outnumber entries, so ask for more hits
 // than needed and collapse duplicates afterwards.
@@ -93,16 +87,8 @@ export const searchAlgolia = async ({
           // earlier imports. Collapsing on the uuid keeps it a single result; without this the
           // same entry renders as two identical cards that both edit the same row.
           const ids = [...new Set(result.hits.map((hit) => hit.id))].slice(0, numberOfHits);
-          const glossaries = await dbClient
-            .select()
-            .from(glossariesTable)
-            .where(and(inArray(glossariesTable.id, ids), isNull(glossariesTable.deletedAt)))
-            .limit(numberOfHits);
-          // reorder the results based on the ids and filter out undefined values
-          const reorderedResults = ids
-            .map((id) => glossaries?.find((g) => g.id === id))
-            .filter((result): result is ReadGlossary => result !== undefined); // Type guard to ensure result is ReadGlossary
-          searchResults.push(...reorderedResults?.map((g) => ({ ...g, type: 'Glossary' as const })));
+          const glossaries = await GlossaryStore.findByIdsInOrder(ids);
+          searchResults.push(...glossaries.map((g) => ({ ...g, type: 'Glossary' as const })));
         }
       }
     }

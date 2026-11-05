@@ -24,7 +24,7 @@ import {
   TooltipProvider,
 } from '~/components/ui';
 import { Divider } from '~/components/ui/divider';
-import { type ReadGlossary } from '~/drizzle/tables';
+import { type GlossaryEntry } from '~/services/glossary.types';
 import { DEFAULT_TARGET_LANG } from '~/utils/constants';
 import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
 import { glossaryEditFormSchema, glossaryInsertFormSchema } from '~/validations/glossary.validation';
@@ -33,7 +33,7 @@ import { FormInput, FormModal, FormSelect, FormTextarea, HiddenInput } from './F
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
-  glossaries: ReadGlossary[];
+  glossaries: GlossaryEntry[];
   // ShowEdit is useful when in the screen that people not allowed to edit glossary
   showEdit?: boolean;
 }
@@ -96,7 +96,7 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
 GlossaryList.displayName = 'GlossaryList';
 
 interface GlossaryItemProps {
-  glossary: ReadGlossary;
+  glossary: GlossaryEntry;
 }
 
 export function GlossaryItem({ glossary }: GlossaryItemProps) {
@@ -119,7 +119,7 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
   );
 }
 
-export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadGlossary; showEdit?: boolean }) => {
+export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: GlossaryEntry; showEdit?: boolean }) => {
   const [subscribedGlossaries, setSubscribedGlossaries] = useLocalStorage<string[]>('subscribedGlossaries', []);
   const fetcher = useFetcher<{ success: boolean }>();
 

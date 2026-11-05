@@ -27,9 +27,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '~/components/ui';
-import { type ReadGlossary } from '~/drizzle/schema';
 import favicon from '~/images/favicon-32x32.png';
 import { cn } from '~/lib/utils';
+import { type GlossaryEntry } from '~/services/glossary.types';
 import { type ParagraphSearchResult } from '~/services/paragraph.search';
 import { type UserRole } from '~/utils/constants';
 
@@ -530,16 +530,16 @@ const InputWithRightSegments = ({ onFilterClick, isLoading, setValue, value, ...
 export interface SearchResultListProps {
   setSelectedIndex: (index: [number, 'Glossary' | 'Paragraph' | null]) => void;
   selectedIndex: [number, 'Glossary' | 'Paragraph' | null];
-  results: ((ReadGlossary & { type: 'Glossary' }) | (ParagraphSearchResult & { type: 'Paragraph' }))[];
+  results: ((GlossaryEntry & { type: 'Glossary' }) | (ParagraphSearchResult & { type: 'Paragraph' }))[];
 }
 const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchResultListProps) => {
   const selectedResult = useMemo(() => {
     console.log({ selectedIndex, results });
     if (results.length > 0) {
       if (selectedIndex[1]) {
-        return results[selectedIndex[0]] as ParagraphSearchResult | ReadGlossary;
+        return results[selectedIndex[0]] as ParagraphSearchResult | GlossaryEntry;
       } else {
-        return results[0] as ParagraphSearchResult | ReadGlossary;
+        return results[0] as ParagraphSearchResult | GlossaryEntry;
       }
     }
     return [];
@@ -552,7 +552,7 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
           <ClientOnly fallback={<div>Loading...</div>}>
             {() =>
               match(selectedIndex[1])
-                .with('Glossary', () => <GlossaryDetail glossary={selectedResult as ReadGlossary} />)
+                .with('Glossary', () => <GlossaryDetail glossary={selectedResult as GlossaryEntry} />)
                 .with('Paragraph', () => <ParagraphDetail paragraph={selectedResult as ParagraphSearchResult} />)
                 .otherwise(() =>
                   match(results[0])
