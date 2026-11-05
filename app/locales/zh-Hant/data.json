@@ -7,7 +7,8 @@
       "translation": "翻譯",
       "documentInspector": "文本檢查",
       "paragraphs": "段落",
-      "documents": "典籍與文本"
+      "documents": "典籍與文本",
+      "searchIndex": "搜尋索引"
     }
   },
   "documents": {
@@ -213,31 +214,53 @@
   },
   "paragraphs": {
     "index": {
-      "description": "選擇一個章節，以檢視其原始段落資料（順序、編號、UUID 及內容），用於排查損壞的資料。",
+      "description": "選擇一個章節，以檢視其原始段落資料（順序、段落鍵、UUID 及內容），並與譯文並列，用於排查損壞的資料。",
       "noProjects": "目前沒有任何專案。",
       "noProjectsHint": "請先在資料管理中建立專案。",
       "noSections": "此專案尚無章節。"
     },
     "section": {
       "back": "返回章節列表",
-      "sectionId": "卷 {{id}}",
-      "filterPlaceholder": "篩選資料列（內容、UUID、順序…）",
-      "originColumn": "原文",
+      "sectionId": "章節 {{id}}",
+      "sourceCount_other": "{{count}} 個原文段落",
+      "targetCount_other": "{{count}} 個譯文段落",
+      "filterPlaceholder": "篩選資料列（內容、UUID、順序、段落鍵…）",
+      "sourceColumn": "原文",
       "translationColumn": "譯文",
-      "relatedCounts": "引{{references}} 評{{comments}} 歷{{history}}",
-      "relatedCountsTooltip": "{{references}} 筆引用 · {{comments}} 則評論 · {{history}} 筆歷史紀錄",
-      "deleteOriginTooltip": "刪除此段落及其譯文",
-      "deleteTranslationTooltip": "刪除此譯文",
-      "orphan": "孤立譯文 — 找不到原文段落",
+      "noTargetSection": "{{title}} 在此順序尚無章節，因此本章節尚未翻譯。",
+      "orphan": "孤立譯文 — 沒有原文段落使用此段落鍵",
       "notTranslated": "— 尚未翻譯 —",
+      "multipleTranslations_other": "此段落有 {{count}} 個譯文",
       "noParagraphs": "此章節尚無段落。",
-      "deleteDescription": "此操作將永久刪除該段落，以及其引用、評論、歷史紀錄和搜尋索引；且無法復原。",
-      "deleteOriginNote": "這是原文段落，其譯文也會一併刪除。",
+      "problems": {
+        "parked": "已擱置",
+        "noPassageKey": "無段落鍵",
+        "duplicatePassageKey": "段落鍵重複",
+        "duplicateContent": "內容重複"
+      },
+      "deleteTooltip": "刪除此段落",
+      "deleteDescription": "此操作將永久刪除該段落及其搜尋索引；另一文件中（依段落鍵配對）的對應段落不會被刪除。此操作無法復原。",
+      "deleteSourceNote": "這是原文段落。其譯文會保留，並在此顯示為孤立譯文。",
       "deleteTranslationNote": "這是譯文段落。",
-      "deleteRelated": "相關資料：{{references}} 筆引用、{{comments}} 則評論、{{history}} 筆歷史紀錄。",
-      "deletedWithChild": "已刪除段落及其譯文（共 {{count}} 筆）。",
-      "deleted": "已刪除段落及其相關資料。",
-      "notAuthorisedToDelete": "您沒有權限刪除段落。"
+      "deleted": "已刪除段落。",
+      "notInSection": "該段落不在此章節中。",
+      "notAuthorisedToDelete": "您沒有權限刪除段落。",
+      "add": {
+        "title": "新增段落",
+        "description": "在此章節最後一列之後新增一個原文段落，並可同時新增其譯文。兩者會使用同一個新的段落鍵，與匯入時在該位置所產生的段落鍵相同。",
+        "position": "將新增於順序 {{order}}，段落鍵為 {{key}}。",
+        "sourceLabel": "原文",
+        "translationLabel": "譯文（選填）",
+        "noTargetSectionHint": "{{title}} 在此順序尚無章節，因此只能新增原文。",
+        "submit": "新增段落",
+        "added_other": "已於順序 {{order}}（{{key}}）新增 {{count}} 個段落。",
+        "searchSyncFailed": " 段落已儲存，但尚無法搜尋：{{error}}。請重建搜尋索引以修正。",
+        "sourceRequired": "請輸入原文。",
+        "noTargetSection": "{{title}} 在此順序尚無章節，因此無法新增譯文。請先在資料管理 → 翻譯專案中建立該章節。",
+        "keyTaken": "段落鍵 {{key}} 已在其中一個文件中使用。請先修正現有的資料列（見文本檢查）。",
+        "failed": "新增段落失敗。",
+        "notAuthorised": "您沒有權限新增段落。"
+      }
     }
   },
   "inspector": {
@@ -294,6 +317,52 @@
     "deleteFailed": "刪除段落失敗。",
     "unknownAction": "未知的操作。",
     "sectionCount_other": "{{count}} 個章節"
+  },
+  "searchIndex": {
+    "warning": {
+      "title": "非例行作業",
+      "routine": "日常的編輯、匯入與刪除會自動保持段落搜尋索引的更新，一般很少需要使用此頁。",
+      "when": "只有在索引與資料庫不一致時才需要重建：",
+      "whenOutside": "在應用程式以外進行大量變更之後——例如植入資料、手寫 SQL、還原備份；",
+      "whenSyncFailed": "匯入時回報搜尋同步失敗之後；",
+      "whenCodeChanged": "程式碼修改了搜尋記錄的內容或下列設定之後。",
+      "editing": "新索引會一次性取代舊索引，因此搜尋不會中斷，也不會出現建到一半的索引。但重建期間儲存的段落可能會遺漏：請在無人編輯時執行，或事後再執行一次。",
+      "script": "也可以在終端機執行相同的重建："
+    },
+    "report": {
+      "title": "段落索引",
+      "description": "目前重建將會進行的變更。尚未寫入任何資料；每次載入此頁時都會重新讀取數據。這裡只比較數量與設定，不比較記錄內容，因此即使相符，索引仍可能含有過時的記錄——修改記錄格式之後，仍應重建。",
+      "inStep": "數量與設定相符",
+      "drifted": "不一致——建議重建",
+      "rows": "資料庫中的段落",
+      "recordsBefore": "索引目前的記錄",
+      "recordsAfter": "重建後的記錄",
+      "withoutSearchId_other": "{{count}} 個段落沒有 search_id，無法被搜尋",
+      "duplicateSearchId_other": "{{count}} 個段落與其他段落共用 search_id；只有第一個會被索引",
+      "andMore_other": "…還有 {{count}} 個"
+    },
+    "settings": {
+      "title": "搜尋設定",
+      "description": "索引的搜尋方式。這些設定定義在程式碼中，每次重建都會套用，因此在 Algolia 後台所做的修改會被覆蓋。如需修改，請更改",
+      "setting": "設定",
+      "configured": "程式設定值",
+      "live": "目前值",
+      "unset": "未設定（Algolia 預設）",
+      "differs": "下次重建時套用",
+      "help": {
+        "searchableAttributes": "只搜尋段落文字，不搜尋 ID。",
+        "typoTolerance": "只有在沒有更精確的結果時，才會顯示含錯字的結果。可讓英文結果更精確；拼錯的查詢找到的結果會較少。",
+        "advancedSyntax": "\"引號內的詞組\" 必須整句相符；-詞 會排除含有該詞的結果。"
+      }
+    },
+    "rebuild": "重建索引",
+    "rebuilding": "重建中…",
+    "confirm": {
+      "title": "要重建段落搜尋索引嗎？",
+      "description_other": "{{index}} 索引將由資料庫建立的 {{count}} 筆記錄取代，並套用上述設定。執行期間搜尋不會中斷。"
+    },
+    "rebuilt_other": "已重建索引：{{count}} 筆記錄，變更了 {{settings}} 項設定。",
+    "rebuildFailed": "重建失敗；舊索引仍在使用中。{{error}}"
   },
   "errors": {
     "workNotFound": "找不到該典籍",

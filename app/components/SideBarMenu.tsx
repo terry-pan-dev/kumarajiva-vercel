@@ -30,7 +30,7 @@ import {
 import { type ReadGlossary } from '~/drizzle/schema';
 import favicon from '~/images/favicon-32x32.png';
 import { cn } from '~/lib/utils';
-import { type ParagraphSearchResult } from '~/services/search.server';
+import { type ParagraphSearchResult } from '~/services/paragraph.search';
 import { type UserRole } from '~/utils/constants';
 
 import { GlossaryDetail, GlossaryItem } from './GlossaryList';
@@ -282,6 +282,20 @@ export function SideBarMenu({
                           Document Inspector
                         </NavLink>
                       )}
+                      {canInspectTranslation && (
+                        <NavLink
+                          to="/data/search-index"
+                          className={({ isActive }) =>
+                            cn(
+                              'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
+                              'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                              isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                            )
+                          }
+                        >
+                          Search Index
+                        </NavLink>
+                      )}
                     </>
                   )}
                 </div>
@@ -516,16 +530,16 @@ const InputWithRightSegments = ({ onFilterClick, isLoading, setValue, value, ...
 export interface SearchResultListProps {
   setSelectedIndex: (index: [number, 'Glossary' | 'Paragraph' | null]) => void;
   selectedIndex: [number, 'Glossary' | 'Paragraph' | null];
-  results: ((ReadGlossary & { type: 'Glossary' }) | (ParagraphSearchResult[number] & { type: 'Paragraph' }))[];
+  results: ((ReadGlossary & { type: 'Glossary' }) | (ParagraphSearchResult & { type: 'Paragraph' }))[];
 }
 const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchResultListProps) => {
   const selectedResult = useMemo(() => {
     console.log({ selectedIndex, results });
     if (results.length > 0) {
       if (selectedIndex[1]) {
-        return results[selectedIndex[0]] as ParagraphSearchResult[number] | ReadGlossary;
+        return results[selectedIndex[0]] as ParagraphSearchResult | ReadGlossary;
       } else {
-        return results[0] as ParagraphSearchResult[number] | ReadGlossary;
+        return results[0] as ParagraphSearchResult | ReadGlossary;
       }
     }
     return [];
@@ -539,9 +553,7 @@ const SearchResultList = ({ results, setSelectedIndex, selectedIndex }: SearchRe
             {() =>
               match(selectedIndex[1])
                 .with('Glossary', () => <GlossaryDetail glossary={selectedResult as ReadGlossary} />)
-                .with('Paragraph', () => (
-                  <ParagraphDetail paragraph={selectedResult as ParagraphSearchResult[number]} />
-                ))
+                .with('Paragraph', () => <ParagraphDetail paragraph={selectedResult as ParagraphSearchResult} />)
                 .otherwise(() =>
                   match(results[0])
                     .with({ type: 'Glossary' }, (glossary) => <GlossaryDetail glossary={glossary} />)

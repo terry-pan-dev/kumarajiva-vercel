@@ -25,6 +25,7 @@ import { Badge } from '~/components/ui';
 import { useToast } from '~/hooks/use-toast';
 import { localizeError } from '~/i18n/errors';
 import { getFixedT } from '~/i18n/locale.server';
+import { contentCounts, firstByPassageKey, isParked, unmatchedRows } from '~/services/paragraph.pairing';
 import {
   deleteParagraph,
   deleteSectionWithParagraphs,
@@ -135,9 +136,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 // A row is anomalous when it is parked (negative order), lacks the passage key
 // that pairs it with its counterpart, or duplicates content within its document.
-function isParked(row: IParagraphNewDebugRow) {
-  return row.order < 0;
-}
+// isParked and the pairing helpers are shared with the Paragraphs page.
 
 const MONO = 'font-mono text-xs';
 
@@ -219,11 +218,7 @@ export default function DocumentInspector() {
   }, [actionData, toast, t]);
 
   // Content duplicated within the same document — the primary corruption signal.
-  const duplicateContent = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const row of [...rows, ...compareRows]) counts.set(row.content, (counts.get(row.content) ?? 0) + 1);
-    return counts;
-  }, [rows, compareRows]);
+  const duplicateContent = useMemo(() => contentCounts([...rows, ...compareRows]), [rows, compareRows]);
 
   const rowsBySection = useMemo(() => {
     const map = new Map<string, IParagraphNewDebugRow[]>();
@@ -237,15 +232,13 @@ export default function DocumentInspector() {
 
   // Compare mode: counterpart rows by passage_key, plus the leftovers that
   // match nothing on the origin side.
-  const { compareByPassageKey, orphanCompareRows } = useMemo(() => {
-    const byKey = new Map<string, IParagraphNewDebugRow>();
-    for (const row of compareRows) {
-      if (row.passageKey && !byKey.has(row.passageKey)) byKey.set(row.passageKey, row);
-    }
-    const originKeys = new Set(rows.map((r) => r.passageKey).filter(Boolean));
-    const orphans = compareRows.filter((r) => !r.passageKey || !originKeys.has(r.passageKey));
-    return { compareByPassageKey: byKey, orphanCompareRows: orphans };
-  }, [rows, compareRows]);
+  const { compareByPassageKey, orphanCompareRows } = useMemo(
+    () => ({
+      compareByPassageKey: firstByPassageKey(compareRows),
+      orphanCompareRows: unmatchedRows(rows, compareRows),
+    }),
+    [rows, compareRows],
+  );
 
   const anomalyCount = useMemo(
     () =>

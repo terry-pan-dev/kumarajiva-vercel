@@ -12,7 +12,8 @@ import type {
 import type { Lang } from '~/utils/constants';
 
 import { DbComments, DbHistory, DbParagraphs, DbReferences } from './crud.server';
-import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
+
+// Legacy paragraphs are not written to the search index, which holds paragraphs_new rows only.
 
 export interface IParagraph {
   id: string;
@@ -89,20 +90,10 @@ export const updateParagraph = async ({
     throw new Error('Paragraph not found');
   }
 
-  const paragraphData = {
-    content: newContent,
-    updatedBy: updatedBy,
-  };
-
   const result = await DbParagraphs.updateById(existingParagraph.id, {
     content: newContent,
     updatedBy,
   });
-
-  if (existingParagraph.searchId) {
-    console.log('updating algolia', existingParagraph.searchId);
-    await updateParagraphToAlgolia(existingParagraph.searchId, paragraphData);
-  }
 
   return result;
 };
@@ -131,7 +122,6 @@ export const insertParagraph = async ({
   };
 
   const result = await DbParagraphs.create(newParagraphData);
-  await saveParagraphToAlgolia(newParagraphData);
 
   return result;
 };
@@ -184,7 +174,7 @@ export interface DeleteParagraphResult {
 
 // Cleanly removes a paragraph and everything that hangs off it: its translation
 // child (when an origin is removed), plus the references, comments, history
-// rows, and Algolia search entries for every deleted paragraph. Used by the
+// rows for every deleted paragraph. Used by the
 // paragraph debug page to clear corrupt data without leaving orphans behind.
 export const deleteParagraphCleanly = async ({ id }: { id: string }): Promise<DeleteParagraphResult> => {
   const paragraph = await DbParagraphs.findByIdWithChildren(id);
@@ -195,7 +185,6 @@ export const deleteParagraphCleanly = async ({ id }: { id: string }): Promise<De
   const child = paragraph.children ?? null;
   const childIds = child ? [child.id] : [];
   const allIds = [id, ...childIds];
-  const searchIds = [paragraph.searchId, child?.searchId ?? null];
 
   // Remove dependent rows before the paragraphs they reference.
   await DbReferences.deleteByParagraphIds(allIds);
@@ -207,9 +196,6 @@ export const deleteParagraphCleanly = async ({ id }: { id: string }): Promise<De
     await DbParagraphs.deleteByIds(childIds);
   }
   await DbParagraphs.deleteById(id);
-
-  // Drop the search-index entries last; the DB is the source of truth.
-  await deleteParagraphsFromAlgolia(searchIds);
 
   return { deletedParagraphIds: allIds, deletedChild: childIds.length > 0 };
 };

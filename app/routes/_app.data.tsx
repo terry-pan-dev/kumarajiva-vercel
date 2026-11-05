@@ -21,7 +21,8 @@ type Subtitle =
   | 'translation'
   | 'documentInspector'
   | 'paragraphs'
-  | 'documents';
+  | 'documents'
+  | 'searchIndex';
 
 function getDataSubtitle(pathname: string): Subtitle | null {
   if (pathname.includes('/glossary/inspector')) return 'glossaryInspector';
@@ -30,6 +31,7 @@ function getDataSubtitle(pathname: string): Subtitle | null {
   if (pathname.includes('/inspector')) return 'documentInspector';
   if (pathname.includes('/paragraphs')) return 'paragraphs';
   if (pathname.includes('/documents')) return 'documents';
+  if (pathname.includes('/search-index')) return 'searchIndex';
   return null;
 }
 

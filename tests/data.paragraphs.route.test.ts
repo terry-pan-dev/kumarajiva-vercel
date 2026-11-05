@@ -1,0 +1,177 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { action, loader } from '~/routes/_app.data.paragraphs.$projectId.$sectionId';
+
+// The Paragraphs data page's server side: who may see and delete, which rows it loads, and that
+// a delete can only reach rows the page shows. Services are mocked; permissions are the real
+// role table (manager: Maintain, admin: Administrate, leader: neither on TranslationData).
+const mocks = vi.hoisted(() => ({
+  assertAuthUser: vi.fn(),
+  resolveSectionContext: vi.fn(),
+  readParagraphsForDebugBySectionId: vi.fn(),
+  getParagraph: vi.fn(),
+  deleteParagraph: vi.fn(),
+  appendPassage: vi.fn(),
+}));
+
+vi.mock('~/auth.server', () => ({ assertAuthUser: mocks.assertAuthUser }));
+vi.mock('~/services/project.service', () => ({ resolveSectionContext: mocks.resolveSectionContext }));
+vi.mock('~/services/text.service', () => ({
+  readParagraphsForDebugBySectionId: mocks.readParagraphsForDebugBySectionId,
+  getParagraph: mocks.getParagraph,
+  deleteParagraph: mocks.deleteParagraph,
+  appendPassage: mocks.appendPassage,
+}));
+
+const doc = (id: string, language: 'chinese' | 'english') => ({ id, key: id, title: `Doc ${id}`, language });
+const section = (id: string) => ({ id, title: `Section ${id}`, order: 1 });
+
+const contextWith = (targetSection: ReturnType<typeof section> | null) => ({
+  projectId: 'p1',
+  passageKeyPrefix: 't0279',
+  origin: { document: doc('d-src', 'chinese'), section: section('s-src') },
+  target: { document: doc('d-tgt', 'english'), section: targetSection },
+  references: [],
+});
+
+const params = { projectId: 'p1', sectionId: 's-src' };
+const get = () => new Request('http://localhost/data/paragraphs/p1/s-src');
+const post = (fields: Record<string, string>) =>
+  new Request('http://localhost/data/paragraphs/p1/s-src', { method: 'POST', body: new URLSearchParams(fields) });
+
+const runLoader = () => loader({ request: get(), params, context: {} });
+const runAction = (fields: Record<string, string>) => action({ request: post(fields), params, context: {} });
+
+// What a loader/action returned or threw, as { status, body }.
+async function outcome(run: () => Promise<Response>) {
+  let response: Response;
+  try {
+    response = await run();
+  } catch (thrown) {
+    if (!(thrown instanceof Response)) throw thrown;
+    response = thrown;
+  }
+  const text = await response.text();
+  let body: unknown = text;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    // not JSON (a redirect or plain-text error)
+  }
+  return { status: response.status, location: response.headers.get('Location'), body };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role: 'admin' });
+  mocks.resolveSectionContext.mockResolvedValue(contextWith(section('s-tgt')));
+  mocks.readParagraphsForDebugBySectionId.mockImplementation(async (sectionId: string) => [
+    { id: `${sectionId}-row`, sectionId },
+  ]);
+});
+
+// ─── Loader ──────────────────────────────────────────────────────────────────
+
+describe('loader', () => {
+  it('sends a role without Maintain on TranslationData back to /data', async () => {
+    mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role: 'leader' });
+    expect(await outcome(runLoader)).toMatchObject({ status: 302, location: '/data' });
+    expect(mocks.resolveSectionContext).not.toHaveBeenCalled();
+  });
+
+  it('resolves the section within the project named in the URL', async () => {
+    await runLoader();
+    expect(mocks.resolveSectionContext).toHaveBeenCalledWith('p1', 's-src');
+  });
+
+  it('loads the source section and its translation section', async () => {
+    const { status, body } = await outcome(runLoader);
+    expect(status).toBe(200);
+    expect(mocks.readParagraphsForDebugBySectionId.mock.calls).toEqual([['s-src'], ['s-tgt']]);
+    expect(body).toMatchObject({
+      projectId: 'p1',
+      sourceRows: [{ id: 's-src-row' }],
+      targetRows: [{ id: 's-tgt-row' }],
+      source: { section: { id: 's-src' } },
+      target: { document: { id: 'd-tgt' }, section: { id: 's-tgt' } },
+    });
+  });
+
+  it('answers 404 for a section that is not in the project', async () => {
+    mocks.resolveSectionContext.mockResolvedValue(null);
+    expect(await outcome(runLoader)).toMatchObject({ status: 404 });
+    expect(mocks.readParagraphsForDebugBySectionId).not.toHaveBeenCalled();
+  });
+
+  it('offers deletion to Administrate only', async () => {
+    expect((await outcome(runLoader)).body).toMatchObject({ canDelete: true });
+    mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role: 'manager' });
+    expect((await outcome(runLoader)).body).toMatchObject({ canDelete: false });
+  });
+});
+
+// ─── Action ──────────────────────────────────────────────────────────────────
+
+describe('action — delete-paragraph', () => {
+  const remove = (paragraphId: string) => runAction({ intent: 'delete-paragraph', paragraphId });
+
+  it('refuses a role without Administrate, before touching anything', async () => {
+    mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role: 'manager' });
+    expect(await outcome(() => remove('x'))).toMatchObject({ status: 403, body: { success: false } });
+    expect(mocks.getParagraph).not.toHaveBeenCalled();
+    expect(mocks.deleteParagraph).not.toHaveBeenCalled();
+  });
+
+  it('deletes a paragraph of the source section', async () => {
+    mocks.getParagraph.mockResolvedValue({ id: 'para', sectionId: 's-src' });
+    expect(await outcome(() => remove('para'))).toMatchObject({ status: 200, body: { success: true } });
+    expect(mocks.deleteParagraph).toHaveBeenCalledWith({ id: 'para' });
+  });
+
+  it('deletes a paragraph of the translation section', async () => {
+    mocks.getParagraph.mockResolvedValue({ id: 'para', sectionId: 's-tgt' });
+    await remove('para');
+    expect(mocks.deleteParagraph).toHaveBeenCalledWith({ id: 'para' });
+  });
+
+  // A crafted form must not reach rows the page doesn't show.
+  it('refuses a paragraph from any other section', async () => {
+    mocks.getParagraph.mockResolvedValue({ id: 'para', sectionId: 'elsewhere' });
+    expect(await outcome(() => remove('para'))).toMatchObject({ status: 404, body: { success: false } });
+    expect(mocks.deleteParagraph).not.toHaveBeenCalled();
+  });
+
+  it('refuses when the section is not in the project', async () => {
+    mocks.resolveSectionContext.mockResolvedValue(null);
+    mocks.getParagraph.mockResolvedValue({ id: 'para', sectionId: 's-src' });
+    await remove('para');
+    expect(mocks.deleteParagraph).not.toHaveBeenCalled();
+  });
+});
+
+describe('action — add-passage', () => {
+  const add = () => runAction({ intent: 'add-passage', source: '如是我聞', translation: 'Thus I have heard' });
+
+  beforeEach(() => {
+    mocks.appendPassage.mockResolvedValue({ order: 4, passageKey: 'k.4', created: 2, searchError: null });
+  });
+
+  // Adding needs Maintain (like the import), deleting needs Administrate: a manager can add.
+  it('lets a role with Maintain add, into the section resolved from the URL', async () => {
+    mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role: 'manager' });
+    expect(await outcome(add)).toMatchObject({ status: 200, body: { success: true } });
+    expect(mocks.appendPassage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({ projectId: 'p1' }),
+        source: '如是我聞',
+        userId: 'u1',
+      }),
+    );
+  });
+
+  it('refuses a role without Maintain, before touching anything', async () => {
+    mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role: 'leader' });
+    expect(await outcome(add)).toMatchObject({ status: 403 });
+    expect(mocks.appendPassage).not.toHaveBeenCalled();
+  });
+});

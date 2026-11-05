@@ -61,8 +61,7 @@ const mocks = vi.hoisted(() => {
     updates,
     inserts,
     db: { transaction: vi.fn((fn: (t: typeof tx) => unknown) => fn(tx)) },
-    saveParagraphsToAlgolia: vi.fn(async (_: Record<string, unknown>[]) => undefined),
-    updateParagraphsToAlgolia: vi.fn(async (_: { searchId: string; data: Record<string, unknown> }[]) => undefined),
+    indexParagraphs: vi.fn(async (_: Record<string, unknown>[]) => undefined),
   };
 });
 
@@ -74,8 +73,8 @@ vi.mock('drizzle-orm', async (importOriginal) => ({
 vi.mock('~/lib/db.server', () => ({ getDb: () => mocks.db }));
 vi.mock('~/services/paragraph.service', () => ({ readParagraphsByRollIdForLanguage: vi.fn() }));
 vi.mock('~/services/search.server', () => ({
-  saveParagraphsToAlgolia: mocks.saveParagraphsToAlgolia,
-  updateParagraphsToAlgolia: mocks.updateParagraphsToAlgolia,
+  indexParagraphs: mocks.indexParagraphs,
+  // The legacy roll import's; never reached by the section import under test.
 }));
 vi.mock('~/services/text.service', () => ({ readParagraphsBySectionId: vi.fn() }));
 
@@ -174,7 +173,10 @@ describe('replaceSectionData — paragraph metadata', () => {
 
     expect(mocks.inserts).toHaveLength(1);
     expect(mocks.inserts[0]).toMatchObject({ sectionId: 's-bdk', passageKey: 'k.2', metadata: { page: '15' } });
-    const indexed = mocks.saveParagraphsToAlgolia.mock.calls[0][0];
+    const indexed = mocks.indexParagraphs.mock.calls[0][0];
+    expect(indexed).toHaveLength(1);
+    expect(indexed[0]).toMatchObject({ sectionId: 's-bdk', passageKey: 'k.2', content: 'At that time' });
+    expect(indexed[0].searchId).toEqual(expect.any(String));
     expect(indexed[0]).not.toHaveProperty('metadata');
   });
 
@@ -182,15 +184,16 @@ describe('replaceSectionData — paragraph metadata', () => {
     await replaceSectionData([row({ passageKey: 'k.1', origin: '如是我聞', metadata: [page('T262', '1c')] })]);
 
     expect(updateOf('o1')).toMatchObject({ content: '如是我聞', metadata: { page: '1c' } });
-    const indexed = mocks.updateParagraphsToAlgolia.mock.calls[0][0];
+    // The whole stored row with the change applied, so the record is saved complete and keeps
+    // the stored search_id it is addressed by.
+    const indexed = mocks.indexParagraphs.mock.calls[0][0];
     expect(indexed).toHaveLength(1);
-    expect(indexed[0].data).toMatchObject({ content: '如是我聞' });
-    expect(indexed[0].data).not.toHaveProperty('metadata');
+    expect(indexed[0]).toMatchObject({ id: 'o1', searchId: 'so1', content: '如是我聞', passageKey: 'k.1', order: 1 });
   });
 
   it('a page-only update sends nothing to search', async () => {
     await replaceSectionData([row({ passageKey: 'k.1', metadata: [page('BDK', '14')] })]);
-    expect(mocks.updateParagraphsToAlgolia).toHaveBeenCalledWith([]);
+    expect(mocks.indexParagraphs).toHaveBeenCalledWith([]);
   });
 
   it('aligns page-only rows by position when there is no passage_key column', async () => {

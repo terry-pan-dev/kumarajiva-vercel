@@ -37,8 +37,9 @@ import {
   type ImportResult,
   type ParagraphMetadataCell,
 } from './file.service';
+import { type IndexableParagraph } from './paragraph.record';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
-import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
+import { indexParagraphs } from './search.server';
 import { readParagraphsBySectionId, type ReferenceDocument } from './text.service';
 
 export const db = getDb();
@@ -101,6 +102,8 @@ export function buildImportData(rows: ExcelTranslationRow[], options: ImportOpti
  *   - Extra existing paragraphs beyond imported count → "park" by negating number/order
  *
  * References for each updated/inserted origin paragraph are replaced wholesale.
+ * Legacy tables are not written to the search index, which holds paragraphs_new
+ * rows only.
  * Parked paragraphs (and their children) are excluded from all reads via the
  * `number >= 0` filter applied in crud.server.ts.
  */
@@ -109,7 +112,7 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
   const { originParagraphs, targetParagraphs, referencesToInsert } = buildImportData(rows, options);
 
   try {
-    const { counts, algoliaUpdates, algoliaInserts } = await db.transaction(async (tx) => {
+    const counts = await db.transaction(async (tx) => {
       // ── 1. Load existing origin paragraphs (non-parked) sorted by position ─
       const existingOrigins = await tx.query.paragraphsTable.findMany({
         where: (p, { eq, and, gte, isNull }) =>
@@ -135,8 +138,6 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
       const newRefRows: any[] = [];
       const refDeleteIds: string[] = [];
       const refInserts: any[] = [];
-      const algoliaUpdates: { searchId: string; data: object }[] = [];
-      const algoliaInserts: any[] = [];
 
       // ── 2. Classify rows into update vs insert buckets ────────────────────
       for (let idx = 0; idx < rows.length; idx++) {
@@ -154,9 +155,6 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
             updatedBy: userId,
           };
           originUpdateOps.push({ id: existing.id, data: paragraphData });
-          if (existing.searchId) {
-            algoliaUpdates.push({ searchId: existing.searchId, data: paragraphData });
-          }
 
           const child = existing.children;
           if (row.target) {
@@ -169,9 +167,6 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
                 updatedBy: userId,
               };
               childUpdateOps.push({ id: child.id, data: paragraphData });
-              if (child.searchId) {
-                algoliaUpdates.push({ searchId: child.searchId, data: paragraphData });
-              }
             } else {
               const newParagraphData = {
                 id: uuidv4(),
@@ -186,7 +181,6 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
                 updatedBy: userId,
               };
               childInsertRows.push(newParagraphData);
-              algoliaInserts.push(newParagraphData);
             }
           }
 
@@ -210,13 +204,11 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
           // Collect new rows — bulk-inserted after the loop.
           const newOrigin = { ...originParagraphs[idx], searchId: uuidv4() };
           newOriginRows.push(newOrigin);
-          algoliaInserts.push(newOrigin);
 
           const builtTarget = targetParagraphs.find((t) => t.parentId === originParagraphs[idx].id);
           if (builtTarget) {
             const newTarget = { ...builtTarget, searchId: uuidv4() };
             newTargetRows.push(newTarget);
-            algoliaInserts.push(newTarget);
           }
 
           newRefRows.push(...referencesToInsert.filter((r) => r.paragraphId === originParagraphs[idx].id));
@@ -277,30 +269,14 @@ export async function replaceRollData(rows: ExcelTranslationRow[], options: Impo
         }),
       );
 
-      return { counts: { updatedCount, insertedCount, parkedCount: extras.length }, algoliaUpdates, algoliaInserts };
+      return { updatedCount, insertedCount, parkedCount: extras.length };
     });
-
-    // ── 4. Sync to Algolia after the transaction commits ──────────────────
-    // Uses allSettled so search failures never roll back committed DB data.
-    const algoliaResults = await Promise.allSettled([
-      updateParagraphsToAlgolia(algoliaUpdates),
-      saveParagraphsToAlgolia(algoliaInserts),
-    ]);
-
-    const searchErrors = algoliaResults
-      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-      .map((r) => `Search sync failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
-
-    if (searchErrors.length > 0) {
-      console.error('Algolia sync errors after import:', searchErrors);
-    }
 
     return {
       success: true,
       inserted: counts.insertedCount,
       deleted: counts.parkedCount,
       message: `Updated ${counts.updatedCount} paragraph(s), inserted ${counts.insertedCount} new, parked ${counts.parkedCount} extra.`,
-      ...(searchErrors.length > 0 && { errors: searchErrors }),
     };
   } catch (error) {
     console.error('replaceRollData error:', error);
@@ -534,7 +510,7 @@ export async function replaceSectionData(
     // whether or not it is being written (existing data anchors the row keys).
     const anchorSectionIds = [...new Set(involved.map((d) => d.sectionId).filter((s): s is string => !!s))];
 
-    const { counts, algoliaUpdates, algoliaInserts, metadataSkipped } = await db.transaction(async (tx) => {
+    const { counts, toIndex, metadataSkipped } = await db.transaction(async (tx) => {
       const existingBySection = new Map<string, ReadParagraphNew[]>();
       for (const sid of anchorSectionIds) {
         existingBySection.set(
@@ -612,8 +588,9 @@ export async function replaceSectionData(
         const byOrder = new Map(existing.map((p) => [p.order, p]));
         const updates: { id: string; data: Partial<CreateParagraphNew> }[] = [];
         const inserts: CreateParagraphNew[] = [];
-        const aUpdates: { searchId: string; data: object }[] = [];
-        const aInserts: CreateParagraphNew[] = [];
+        // Search records are saved whole (see indexParagraphs), so updated rows
+        // carry the stored row with the file's changes applied.
+        const toIndex: IndexableParagraph[] = [];
         let metadataWithoutParagraph = 0;
 
         for (let idx = 0; idx < rows.length; idx++) {
@@ -645,9 +622,9 @@ export async function replaceSectionData(
               updatedBy: userId,
             };
             updates.push({ id: match.id, data });
-            if (hasContent && match.searchId) aUpdates.push({ searchId: match.searchId, data: contentData });
+            if (hasContent) toIndex.push({ ...match, ...contentData });
           } else if (hasContent) {
-            const newRow: CreateParagraphNew = {
+            const newRow = {
               id: uuidv4(),
               documentId: doc.documentId,
               sectionId: doc.sectionId as string,
@@ -657,24 +634,23 @@ export async function replaceSectionData(
               searchId: uuidv4(),
               createdBy: userId,
               updatedBy: userId,
-            };
+            } satisfies CreateParagraphNew;
             const metadata = mergeParagraphMetadata(null, metadataCells);
             inserts.push(metadata ? { ...newRow, metadata } : newRow);
-            aInserts.push(newRow);
+            toIndex.push(newRow);
           } else if (metadataCells.some((m) => m.value)) {
             metadataWithoutParagraph++;
           }
         }
 
-        return { updates, inserts, aUpdates, aInserts, metadataWithoutParagraph };
+        return { updates, inserts, toIndex, metadataWithoutParagraph };
       };
 
       const results = writeDocs.map((doc) => reconcile(doc, existingBySection.get(doc.sectionId as string) ?? []));
 
       const updateOps = results.flatMap((r) => r.updates);
       const insertRows = results.flatMap((r) => r.inserts);
-      const algoliaUpdates = results.flatMap((r) => r.aUpdates);
-      const algoliaInserts = results.flatMap((r) => r.aInserts);
+      const toIndex = results.flatMap((r) => r.toIndex);
       const metadataSkipped = writeDocs
         .map((doc, i) => ({ label: doc.label, count: results[i].metadataWithoutParagraph }))
         .filter((d) => d.count > 0);
@@ -689,28 +665,18 @@ export async function replaceSectionData(
 
       return {
         counts: { updatedCount: updateOps.length, insertedCount: insertRows.length },
-        algoliaUpdates,
-        algoliaInserts,
+        toIndex,
         metadataSkipped,
       };
     });
 
     // ── 4. Sync to Algolia after the transaction commits ─────────────────
-    // Uses allSettled so search failures never roll back committed DB data.
-    const algoliaResults = await Promise.allSettled([
-      updateParagraphsToAlgolia(algoliaUpdates),
-      saveParagraphsToAlgolia(algoliaInserts),
-    ]);
-
-    const searchErrors = algoliaResults
-      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-      .map((result) =>
-        r('searchSyncFailed', {
-          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
-        }),
-      );
-
-    if (searchErrors.length > 0) {
+    // A search failure is reported, never thrown: the committed DB data stands.
+    const searchErrors: string[] = [];
+    try {
+      await indexParagraphs(toIndex);
+    } catch (error) {
+      searchErrors.push(r('searchSyncFailed', { error: error instanceof Error ? error.message : String(error) }));
       console.error('Algolia sync errors after import:', searchErrors);
     }
 
