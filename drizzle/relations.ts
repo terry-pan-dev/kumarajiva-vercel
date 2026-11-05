@@ -3,6 +3,7 @@ import { relations } from 'drizzle-orm';
 import { commentsTable } from './tables/comment';
 import { contributorsTable } from './tables/contributor';
 import { documentsTable } from './tables/document';
+import { glossariesTable, glossaryTranslationsTable } from './tables/glossary';
 import { paragraphsTable, paragraphsTableNew, paragraphsHistoryTable } from './tables/paragraph';
 import { projectsTable } from './tables/project';
 import { projectReferencesTable } from './tables/projectReference';
@@ -191,5 +192,16 @@ export const projectReferencesTableRelations = relations(projectReferencesTable,
   document: one(documentsTable, {
     fields: [projectReferencesTable.documentId],
     references: [documentsTable.id],
+  }),
+}));
+
+export const glossariesTableRelations = relations(glossariesTable, ({ many }) => ({
+  translations: many(glossaryTranslationsTable),
+}));
+
+export const glossaryTranslationsTableRelations = relations(glossaryTranslationsTable, ({ one }) => ({
+  glossary: one(glossariesTable, {
+    fields: [glossaryTranslationsTable.glossaryId],
+    references: [glossariesTable.id],
   }),
 }));
