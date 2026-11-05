@@ -284,7 +284,9 @@ export const reorderProjectSections = async (
 // the shape project reference reads return, so callers pass them on as-is.
 export interface ReferenceDocument {
   documentId: string;
-  document: { key: string | null; title: string };
+  // contributors is optional: only readers that show who wrote a reference
+  // need to load them.
+  document: { key: string | null; title: string; contributors?: { name: string }[] };
 }
 
 // One reference document's text for a paragraph, paired by passage_key.
@@ -294,6 +296,8 @@ export interface ParagraphReference {
   documentId: string;
   key: string | null;
   title: string;
+  // Names of the document's contributors (e.g. its translator), if loaded.
+  contributors: string[];
   content: string | null;
   metadata: Record<string, string> | null;
 }
@@ -364,6 +368,7 @@ const pairParagraphs = async (
         documentId: reference.documentId,
         key: reference.document.key,
         title: reference.document.title,
+        contributors: reference.document.contributors?.map((c) => c.name) ?? [],
         content: paired(referenceByPassageKey[i])?.content ?? null,
         metadata: paired(referenceByPassageKey[i])?.metadata ?? null,
       })),

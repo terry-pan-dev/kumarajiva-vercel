@@ -27,7 +27,15 @@ const project = {
   work: { passageKeyPrefix: 'T279' },
   sourceDocument: { ...doc('d-origin', 'T279'), sections: [sec('s-o1', 1), sec('s-o2', 2)] },
   targetDocument: { ...doc('d-target', 'EN'), sections: [sec('s-t1', 1)] },
-  references: [{ document: { ...doc('d-bdk', 'BDK'), sections: [sec('s-b2', 2), sec('s-b1', 1)] } }],
+  references: [
+    {
+      document: {
+        ...doc('d-bdk', 'BDK'),
+        sections: [sec('s-b2', 2), sec('s-b1', 1)],
+        contributors: [{ name: 'Thomas Cleary', role: 'translator' }],
+      },
+    },
+  ],
 } as unknown as SectionContextProject;
 
 beforeEach(() => {
@@ -44,7 +52,7 @@ describe('selectSectionContext', () => {
       passageKeyPrefix: 'T279',
       origin: { document: { id: 'd-origin' }, section: { id: 's-o1', order: 1 } },
       target: { document: { id: 'd-target' }, section: { id: 's-t1', title: 'Section 1' } },
-      references: [{ document: { id: 'd-bdk', key: 'BDK' }, section: { id: 's-b1' } }],
+      references: [{ document: { id: 'd-bdk', key: 'BDK', contributors: ['Thomas Cleary'] }, section: { id: 's-b1' } }],
     });
   });
 
