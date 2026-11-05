@@ -1,4 +1,4 @@
-import { and, count, eq, gte, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, gt, gte, inArray } from 'drizzle-orm';
 
 import type {
   CreateContributor,
@@ -200,28 +200,77 @@ export const DbParagraphsNew = {
     });
   },
 
-  // Legacy findByIdsWithChildrenAndRelations analog: pulls the location context
-  // (section → document → work, plus contributors) used to label search hits.
-  findByIdsWithRelations: async (ids: string[], limit?: number) => {
+  // Search hits with their location (section → document → work), used to label
+  // and resolve paragraph search results. Parked rows are left out, as in every
+  // reader view.
+  findByIdsWithRelations: async (ids: string[]) => {
     if (!ids.length) return [];
     return db.query.paragraphsTableNew.findMany({
-      where: inArray(paragraphsTableNew.id, ids),
-      limit: limit,
+      where: and(inArray(paragraphsTableNew.id, ids), gte(paragraphsTableNew.order, 0)),
       with: {
         section: {
-          columns: { title: true },
+          columns: { id: true, title: true, order: true },
         },
         document: {
-          columns: { title: true, language: true },
+          columns: { id: true, title: true, language: true, key: true, workId: true },
           with: {
             work: {
               columns: { title: true },
             },
-            contributors: true,
           },
         },
       },
     });
+  },
+
+  // Every non-parked paragraph carrying one of these passage keys in a document
+  // of one of these works — the candidates for aligning search hits with their
+  // counterparts in the work's other documents. Passage keys are only meaningful
+  // within a work, so the caller matches on (work, key), not the key alone.
+  findAlignedCandidates: async (workIds: string[], passageKeys: string[]) => {
+    if (!workIds.length || !passageKeys.length) return [];
+    return db
+      .select({
+        id: paragraphsTableNew.id,
+        content: paragraphsTableNew.content,
+        passageKey: paragraphsTableNew.passageKey,
+        order: paragraphsTableNew.order,
+        document: {
+          id: documentsTable.id,
+          title: documentsTable.title,
+          language: documentsTable.language,
+          key: documentsTable.key,
+          workId: documentsTable.workId,
+        },
+      })
+      .from(paragraphsTableNew)
+      .innerJoin(documentsTable, eq(paragraphsTableNew.documentId, documentsTable.id))
+      .where(
+        and(
+          inArray(documentsTable.workId, workIds),
+          inArray(paragraphsTableNew.passageKey, passageKeys),
+          gte(paragraphsTableNew.order, 0),
+        ),
+      );
+  },
+
+  // One page of every paragraph (parked rows included), keyset-paged by id, with
+  // just the columns the search index holds — for rebuilding the index.
+  findPageForIndex: async (afterId: string | null, limit: number) => {
+    return db
+      .select({
+        id: paragraphsTableNew.id,
+        searchId: paragraphsTableNew.searchId,
+        content: paragraphsTableNew.content,
+        documentId: paragraphsTableNew.documentId,
+        sectionId: paragraphsTableNew.sectionId,
+        passageKey: paragraphsTableNew.passageKey,
+        order: paragraphsTableNew.order,
+      })
+      .from(paragraphsTableNew)
+      .where(afterId ? gt(paragraphsTableNew.id, afterId) : undefined)
+      .orderBy(asc(paragraphsTableNew.id))
+      .limit(limit);
   },
 
   // Reader views hide "parked" rows (order < 0) — the analog of the legacy

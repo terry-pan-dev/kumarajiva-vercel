@@ -15,7 +15,7 @@ import { LocalizedError } from '~/i18n/errors';
 
 import { DbProjectReferences, DbProjects } from './project.crud';
 import { resolveSectionContext } from './project.service';
-import { deleteParagraphsFromAlgolia, saveParagraphToAlgolia, updateParagraphToAlgolia } from './search.server';
+import { deleteParagraphsFromAlgolia, indexParagraphs } from './search.server';
 import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
 
 export const getWorks = async () => {
@@ -426,7 +426,9 @@ export const getSectionIdsWithParagraphs = async (sectionIds: string[]) => {
   return DbParagraphsNew.findSectionIdsWithParagraphs(sectionIds);
 };
 
-// Legacy updateParagraph analog — same signature, same Algolia sync.
+// Legacy updateParagraph analog — same signature. The search record is saved
+// whole from the updated row (see indexParagraphs), which also repairs a record
+// that had gone missing.
 export const updateParagraph = async ({
   id,
   newContent,
@@ -447,10 +449,7 @@ export const updateParagraph = async ({
   };
 
   const result = await DbParagraphsNew.updateById(existingParagraph.id, paragraphData);
-
-  if (existingParagraph.searchId) {
-    await updateParagraphToAlgolia(existingParagraph.searchId, paragraphData);
-  }
+  await indexParagraphs([{ ...existingParagraph, ...paragraphData }]);
 
   return result;
 };
@@ -474,7 +473,7 @@ export const insertParagraph = async ({
     throw new Error('Paragraph not found');
   }
 
-  const newParagraphData: CreateParagraphNew = {
+  const newParagraphData = {
     id: uuidv4(),
     ...newParagraph,
     documentId,
@@ -482,10 +481,10 @@ export const insertParagraph = async ({
     order: sourceParagraph.order,
     passageKey: sourceParagraph.passageKey,
     searchId: uuidv4(),
-  };
+  } satisfies CreateParagraphNew;
 
   const result = await DbParagraphsNew.create(newParagraphData);
-  await saveParagraphToAlgolia(newParagraphData);
+  await indexParagraphs([newParagraphData]);
 
   return result;
 };

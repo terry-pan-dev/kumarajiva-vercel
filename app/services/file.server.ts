@@ -37,8 +37,9 @@ import {
   type ImportResult,
   type ParagraphMetadataCell,
 } from './file.service';
+import { type IndexableParagraph } from './paragraph.record';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
-import { saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
+import { indexParagraphs, saveParagraphsToAlgolia, updateParagraphsToAlgolia } from './search.server';
 import { readParagraphsBySectionId, type ReferenceDocument } from './text.service';
 
 export const db = getDb();
@@ -612,8 +613,10 @@ export async function replaceSectionData(
         const byOrder = new Map(existing.map((p) => [p.order, p]));
         const updates: { id: string; data: Partial<CreateParagraphNew> }[] = [];
         const inserts: CreateParagraphNew[] = [];
-        const aUpdates: { searchId: string; data: object }[] = [];
-        const aInserts: CreateParagraphNew[] = [];
+        // Search records are saved whole (see indexParagraphs), so updated rows
+        // carry the stored row with the file's changes applied.
+        const aUpdates: IndexableParagraph[] = [];
+        const aInserts: IndexableParagraph[] = [];
         let metadataWithoutParagraph = 0;
 
         for (let idx = 0; idx < rows.length; idx++) {
@@ -645,9 +648,9 @@ export async function replaceSectionData(
               updatedBy: userId,
             };
             updates.push({ id: match.id, data });
-            if (hasContent && match.searchId) aUpdates.push({ searchId: match.searchId, data: contentData });
+            if (hasContent) aUpdates.push({ ...match, ...contentData });
           } else if (hasContent) {
-            const newRow: CreateParagraphNew = {
+            const newRow = {
               id: uuidv4(),
               documentId: doc.documentId,
               sectionId: doc.sectionId as string,
@@ -657,7 +660,7 @@ export async function replaceSectionData(
               searchId: uuidv4(),
               createdBy: userId,
               updatedBy: userId,
-            };
+            } satisfies CreateParagraphNew;
             const metadata = mergeParagraphMetadata(null, metadataCells);
             inserts.push(metadata ? { ...newRow, metadata } : newRow);
             aInserts.push(newRow);
@@ -697,10 +700,7 @@ export async function replaceSectionData(
 
     // ── 4. Sync to Algolia after the transaction commits ─────────────────
     // Uses allSettled so search failures never roll back committed DB data.
-    const algoliaResults = await Promise.allSettled([
-      updateParagraphsToAlgolia(algoliaUpdates),
-      saveParagraphsToAlgolia(algoliaInserts),
-    ]);
+    const algoliaResults = await Promise.allSettled([indexParagraphs([...algoliaUpdates, ...algoliaInserts])]);
 
     const searchErrors = algoliaResults
       .filter((r): r is PromiseRejectedResult => r.status === 'rejected')

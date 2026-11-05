@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   getSectionParagraphCounts,
+  insertParagraph,
   readParagraphsByDocumentId,
   nextSectionOrder,
   readParagraphsBySectionId,
   reorderProjectSections,
   sectionOrderMoves,
   type ReferenceDocument,
+  updateParagraph,
 } from '~/services/text.service';
 
 // The paragraph queries are mocked; what's under test is how the service pairs
@@ -17,7 +19,11 @@ const mocks = vi.hoisted(() => ({
   findByDocumentId: vi.fn(),
   findByDocumentIdAndPassageKeys: vi.fn(),
   countBySectionForDocument: vi.fn(),
+  findById: vi.fn(),
+  updateById: vi.fn(),
+  create: vi.fn(),
 }));
+const searchMocks = vi.hoisted(() => ({ indexParagraphs: vi.fn(), deleteParagraphsFromAlgolia: vi.fn() }));
 const sectionMocks = vi.hoisted(() => ({ findByDocumentId: vi.fn(), updateOrders: vi.fn() }));
 const projectMocks = vi.hoisted(() => ({
   DbProjects: { findByIds: vi.fn(), findByDocumentId: vi.fn() },
@@ -25,7 +31,7 @@ const projectMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('~/lib/db.server', () => ({ getDb: () => ({}) }));
-vi.mock('~/services/search.server', () => ({}));
+vi.mock('~/services/search.server', () => searchMocks);
 vi.mock('~/services/text.crud', () => ({
   DbParagraphsNew: mocks,
   DbContributors: {},
@@ -332,5 +338,89 @@ describe('nextSectionOrder', () => {
   it('is 1 for a document without sections', async () => {
     projectMocks.DbProjects.findByDocumentId.mockResolvedValue([]);
     expect(await nextSectionOrder('empty')).toBe(1);
+  });
+});
+
+// ─── Editor writes → search index ────────────────────────────────────────────
+// The editor saves the whole search record of the row it writes, built from the stored row with
+// the change applied, so the record also comes back if it had gone missing.
+
+describe('updateParagraph', () => {
+  const stored = row('t1', 'target', 'k1', 'Thus I have heard', { searchId: 'st1', order: 4, metadata: { page: '3' } });
+
+  beforeEach(() => {
+    mocks.findById.mockResolvedValue(stored);
+  });
+
+  it('writes the new content and who changed it', async () => {
+    await updateParagraph({ id: 't1', newContent: 'Thus have I heard', updatedBy: 'u2' });
+    expect(mocks.updateById).toHaveBeenCalledWith('t1', { content: 'Thus have I heard', updatedBy: 'u2' });
+  });
+
+  it('indexes the stored row with the new content, keeping its search_id, key and order', async () => {
+    await updateParagraph({ id: 't1', newContent: 'Thus have I heard', updatedBy: 'u2' });
+    expect(searchMocks.indexParagraphs).toHaveBeenCalledTimes(1);
+    expect(searchMocks.indexParagraphs.mock.calls[0][0]).toEqual([
+      expect.objectContaining({
+        id: 't1',
+        searchId: 'st1',
+        content: 'Thus have I heard',
+        passageKey: 'k1',
+        order: 4,
+        documentId: 'target',
+        sectionId: 's1',
+      }),
+    ]);
+  });
+
+  it('indexes only after the database write succeeds', async () => {
+    mocks.updateById.mockRejectedValueOnce(new Error('db down'));
+    await expect(updateParagraph({ id: 't1', newContent: 'x', updatedBy: 'u2' })).rejects.toThrow('db down');
+    expect(searchMocks.indexParagraphs).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unknown paragraph without writing anything', async () => {
+    mocks.findById.mockResolvedValue(undefined);
+    await expect(updateParagraph({ id: 'nope', newContent: 'x', updatedBy: 'u2' })).rejects.toThrow();
+    expect(mocks.updateById).not.toHaveBeenCalled();
+    expect(searchMocks.indexParagraphs).not.toHaveBeenCalled();
+  });
+});
+
+describe('insertParagraph', () => {
+  const source = row('s7', 'source', 'k7', '一時', { order: 7 });
+
+  beforeEach(() => {
+    mocks.findById.mockResolvedValue(source);
+  });
+
+  const insert = () =>
+    insertParagraph({
+      sourceId: 's7',
+      documentId: 'target',
+      sectionId: 'ts1',
+      newParagraph: { content: 'At one time', createdBy: 'u1', updatedBy: 'u1' },
+    });
+
+  it("creates the translation at the source's order and passage key, in the target section", async () => {
+    await insert();
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: 'target',
+        sectionId: 'ts1',
+        order: 7,
+        passageKey: 'k7',
+        content: 'At one time',
+      }),
+    );
+  });
+
+  it("indexes exactly the row it created, under that row's new ids", async () => {
+    await insert();
+    const created = mocks.create.mock.calls[0][0];
+    expect(created.id).toEqual(expect.any(String));
+    expect(created.searchId).toEqual(expect.any(String));
+    expect(created.searchId).not.toBe(created.id);
+    expect(searchMocks.indexParagraphs).toHaveBeenCalledWith([created]);
   });
 });

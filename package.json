@@ -28,6 +28,8 @@
     "glossary:fixtures": "dotenv -e .env -- tsx functional/seed-glossary-fixtures.ts",
     "read-glossary": "tsx scripts/read-glossary.ts",
     "read-paragraph": "tsx scripts/read-paragraph.ts",
+    "search:rebuild": "dotenv -e .env -- tsx scripts/search-rebuild.ts",
+    "search:rebuild:prod": "dotenv -e .env.prod -- tsx scripts/search-rebuild.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
