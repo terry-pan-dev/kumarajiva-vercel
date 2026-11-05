@@ -1,6 +1,6 @@
 # Glossary refactor: translations out of the JSON blob
 
-Status: **PR 1, 2, 3a merged; PR 3b written** (`glossary.store.ts` replaces `glossary.crud.ts`). Written 2026-11-04, updated 2026-11-05.
+Status: **PR 1, 2, 3a, 3b merged; PR 3c written** (writes through `GlossaryStore`, `glossary.diff.ts`). Written 2026-11-04, updated 2026-11-05.
 `glossary_translations` (`drizzle/tables/glossary.ts`, migration `0025`) exists on dev,
 empty; not yet on prod (applied by the PR 1 merge). Data script 08 is written; dev dry run:
 13,920 terms, 17,357 rows, 1 duplicate (癡), no issues. Not applied anywhere, and by the
@@ -175,9 +175,17 @@ Every manual apply (dev or prod) needs the user's yes.
      (`deleteGlossariesByUserId` stays: the e2e teardown uses it.)
    - **3b: reads.** `glossary.store.ts` owns every read (crud `find*`, glossary page, trash,
      re-index pages, inspector reads and its JSON text search) and returns `GlossaryEntry`.
-   - **3c: writes.** The store owns create-with-translations, replace (edit, revive) and
-     append (insert, import). Pure functions PR 4 needs, with tests: edit-form diff by id
-     and import matching (id first, then `translationKey()`).
+   - **3c: writes.** The store owns every write of translations: `create`, `update` and
+     `revive` take the term's columns and the translations apart; `updateTerm` writes term
+     columns only. `update` takes the **whole list** the term should end up with (edit sends
+     the form's list, insert the stored list plus the new one, import the merge), so there is
+     no separate append: in PR 4 the store diffs that list against the stored rows by id
+     (`diffTranslations` in `glossary.diff.ts`, pure, tested, not wired until PR 4). The diff
+     compares content only, so an edit no longer re-stamps translations it didn't change.
+     Import matching by id moved to 6b, where the file first carries `TranslationUUID`.
+     Also fixed: the insert form put the term's uuid into the new translation as `id`. Dev
+     has none; **prod may** — 08 treats `id` as an unknown field and refuses, so check the
+     prod dry run before PR 4 and decide then (drop it in 08, or clean it first).
    - Test on dev per merge: glossary export and inspector counts identical before and
      after; read-only pass of the app; for 3c, writes on ZZTEST fixtures only (with approval).
 4. **PR 4: the switch.** The module reads and writes the table; multi-row writes in

@@ -9,10 +9,13 @@ import { type GlossaryTranslation } from '~/services/glossary.types';
 const db = vi.hoisted(() => {
   const state = { rows: [] as unknown[] };
   const chain: Record<string, unknown> = {};
-  for (const method of ['from', 'where', 'orderBy', 'limit', 'offset']) chain[method] = vi.fn(() => chain);
+  for (const method of ['from', 'where', 'orderBy', 'limit', 'offset', 'values', 'set', 'returning'])
+    chain[method] = vi.fn(() => chain);
   chain.then = (resolve: (rows: unknown[]) => unknown) => resolve(state.rows);
   const client = {
     select: vi.fn(() => chain),
+    insert: vi.fn(() => chain),
+    update: vi.fn(() => chain),
     query: {
       glossariesTable: {
         findFirst: vi.fn(async () => state.rows[0]),
@@ -20,7 +23,7 @@ const db = vi.hoisted(() => {
       },
     },
   };
-  return { state, client };
+  return { state, client, chain: chain as Record<'values' | 'set', ReturnType<typeof vi.fn>> };
 });
 
 vi.mock('~/lib/db.server', () => ({ getDb: () => db.client }));
@@ -121,5 +124,48 @@ describe('GlossaryStore reads', () => {
   it('findForInspection asks nothing for a blank query', async () => {
     expect(await GlossaryStore.findForInspection('   ', 10)).toEqual([]);
     expect(db.client.select).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Writes take the translations apart from the term ────────────────────────
+
+describe('GlossaryStore writes', () => {
+  const term = { glossary: '佛', createdBy: 'user-1', updatedBy: 'user-1' };
+  const list = [translation('Buddha')];
+
+  it('create writes the term with its translations and returns an entry', async () => {
+    db.state.rows = [row('n', null)];
+    const created = await GlossaryStore.create(term, list);
+    expect(db.chain.values).toHaveBeenCalledWith({ ...term, translations: list });
+    expect(created.translations).toEqual([]);
+  });
+
+  it('update writes the term columns and the whole list', async () => {
+    db.state.rows = [row('a')];
+    const updated = await GlossaryStore.update('a', { phonetic: 'fó' }, list);
+    expect(db.chain.set).toHaveBeenCalledWith({ phonetic: 'fó', translations: list });
+    expect(updated?.id).toBe('a');
+  });
+
+  it('update returns undefined when no row has the id', async () => {
+    expect(await GlossaryStore.update('missing', {}, list)).toBeUndefined();
+  });
+
+  it('revive takes the row out of the trash, unindexed, with the new list', async () => {
+    db.state.rows = [row('t')];
+    await GlossaryStore.revive('t', { glossary: '佛' }, list);
+    expect(db.chain.set).toHaveBeenCalledWith({ glossary: '佛', translations: list, deletedAt: null, searchId: null });
+  });
+
+  it('revive returns undefined when the row is not in the trash', async () => {
+    expect(await GlossaryStore.revive('live', {}, list)).toBeUndefined();
+  });
+
+  it('updateTerm returns the term without translations', async () => {
+    db.state.rows = [row('a')];
+    const updated = await GlossaryStore.updateTerm('a', { searchId: 'a' });
+    expect(db.chain.set).toHaveBeenCalledWith({ searchId: 'a' });
+    expect(updated).not.toHaveProperty('translations');
+    expect(updated?.id).toBe('a');
   });
 });

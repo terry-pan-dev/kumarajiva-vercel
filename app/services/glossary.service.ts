@@ -2,15 +2,15 @@ import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import OpenAI from 'openai';
 import 'dotenv/config';
 
-import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlossary } from '~/drizzle/tables';
+import { glossariesTable, type UpdateGlossary } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
 import { mergeTranslations } from './glossary.merge';
 import { groupRows, type GlossaryImportRow } from './glossary.parse';
 import { glossaryIndexRecord, searchablePhonetic } from './glossary.record';
-import { GlossaryStore } from './glossary.store';
-import { type GlossaryEntry, type GlossaryTerm } from './glossary.types';
+import { GlossaryStore, type GlossaryTermInput, type GlossaryTermUpdate } from './glossary.store';
+import { type GlossaryEntry, type GlossaryTerm, type GlossaryTranslation } from './glossary.types';
 
 // Re-exported so callers of importGlossaries can reach the row type from one place.
 // The parsers themselves live in glossary.parse.ts because they run in the browser.
@@ -73,7 +73,8 @@ export const generateEmbedding = async <T extends string | string[]>(text: T): P
   return embeddings.data.map((embedding) => embedding.embedding) as ReturnType<T>;
 };
 
-export const updateGlossarySubscribers = async (glossary: UpdateGlossary) => {
+// Term columns only: translations are written through GlossaryStore.
+export const updateGlossarySubscribers = async (glossary: Pick<UpdateGlossary, 'id' | 'subscribers'>) => {
   if (!glossary.id) {
     throw new Error('Glossary id is required');
   }
@@ -103,20 +104,19 @@ export const updateGlossaryTranslations = async ({
   author: string | null;
   cbetaFrequency: string | null;
   discussion: string | null;
-  translations: UpdateGlossary['translations'];
+  translations?: GlossaryTranslation[];
   updatedBy: string | null;
   isNewInsert?: boolean;
-}) => {
+}): Promise<GlossaryEntry | undefined> => {
   const glossary = await GlossaryStore.findById(id);
   if (!glossary) {
     throw new Error('Glossary not found');
   }
   const { searchId } = glossary;
 
-  let newTranslations = [...(translations ?? [])];
-  if (isNewInsert) {
-    newTranslations = [...(glossary.translations ?? []), ...(translations ?? [])];
-  }
+  // The store takes the whole list, so an insert sends the stored translations with the new
+  // one after them.
+  const newTranslations = isNewInsert ? [...glossary.translations, ...translations] : [...translations];
   const translationsToSearch = newTranslations?.map((translation) => ({
     glossary: translation.glossary,
     language: translation.language,
@@ -137,8 +137,7 @@ export const updateGlossaryTranslations = async ({
     });
   }
 
-  const toUpdate = {
-    translations: newTranslations,
+  const toUpdate: GlossaryTermUpdate = {
     phonetic: phonetic ?? undefined,
     author: author ?? undefined,
     cbetaFrequency: cbetaFrequency ?? undefined,
@@ -146,30 +145,34 @@ export const updateGlossaryTranslations = async ({
     discussion: discussion ?? undefined,
   };
 
-  return GlossaryStore.updateById(id, toUpdate);
-};
-
-export const createGlossary = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
-  return GlossaryStore.create(glossary);
+  return GlossaryStore.update(id, toUpdate, newTranslations);
 };
 
 // Creates the entry, then indexes it. Indexing first meant a failed insert left a record no row
 // claimed — an orphan, which a later import turns into a duplicate as soon as that uuid is
 // reused. Writing the row first makes the worst case an entry missing from search, which the
 // inspector reports as not-indexed and any re-index repairs.
-export const createGlossaryAndIndexInAlgolia = async (glossary: Omit<CreateGlossary, 'searchId'>) => {
-  const [row] = await GlossaryStore.create(glossary);
+export const createGlossaryAndIndexInAlgolia = async (
+  term: Omit<GlossaryTermInput, 'searchId'>,
+  translations: GlossaryTranslation[],
+): Promise<GlossaryEntry[]> => {
+  const entry = await GlossaryStore.create(term, translations);
+  return [await indexEntry(entry, 'Failed to index new glossary entry')];
+};
 
+// Writes the entry's search record and points search_id at it. If indexing fails the entry is
+// returned as it is: saved and correct, just not findable by search yet. Reported rather than
+// thrown so one indexing failure doesn't abort a whole import; the inspector reports the entry
+// as not-indexed and any re-index repairs it.
+const indexEntry = async (entry: GlossaryEntry, failure: string): Promise<GlossaryEntry> => {
   try {
-    await algoliaClient.saveObject({ indexName: 'glossaries', body: glossaryIndexRecord(row) });
+    await algoliaClient.saveObject({ indexName: 'glossaries', body: glossaryIndexRecord(entry) });
   } catch (error) {
-    // The entry is saved and correct — it just cannot be found by search yet. Reported rather
-    // than thrown so one indexing failure doesn't abort a whole import.
-    console.error('Failed to index new glossary entry', row.id, error);
-    return [row];
+    console.error(failure, entry.id, error);
+    return entry;
   }
-
-  return GlossaryStore.updateById(row.id, { searchId: row.id });
+  const term = await GlossaryStore.updateTerm(entry.id, { searchId: entry.id });
+  return { ...entry, ...term };
 };
 
 export const searchGlossaries = async (tokens: string[]) => {
@@ -279,8 +282,7 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
     const results = await Promise.allSettled(
       batch.map(async (group) => {
         const first = group.rows[0];
-        // Typed as the stored shape so it merges with existing.translations without widening.
-        const translations: NonNullable<UpdateGlossary['translations']> = group.rows
+        const translations: GlossaryTranslation[] = group.rows
           .filter((r) => r.englishTerm)
           .map((r) => ({
             glossary: r.englishTerm,
@@ -301,15 +303,18 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
         if (existing?.deletedAt) {
           // Imported as if new, the way it would have been before deletes went to the trash:
           // the file's contents replace the trashed ones rather than merging with them.
-          await reviveTrashedGlossary(existing.id, {
-            glossary: group.key,
-            phonetic: first.phonetic || null,
-            cbetaFrequency: first.cbetaFrequency || null,
-            author: first.author || null,
-            discussion: null,
+          await reviveTrashedGlossary(
+            existing.id,
+            {
+              glossary: group.key,
+              phonetic: first.phonetic || null,
+              cbetaFrequency: first.cbetaFrequency || null,
+              author: first.author || null,
+              discussion: null,
+              updatedBy: userId,
+            },
             translations,
-            updatedBy: userId,
-          });
+          );
           return 'created' as const;
         } else if (existing) {
           await updateGlossaryTranslations({
@@ -318,23 +323,25 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
             author: first.author || null,
             cbetaFrequency: first.cbetaFrequency || null,
             discussion: existing.discussion ?? null,
-            // Translations are one JSON column: send the merge, not just the file's rows,
-            // or every translation the file omits would be dropped.
+            // The store takes the whole list: send the merge, not just the file's rows, or
+            // every translation the file omits would be dropped.
             translations: mergeTranslations(existing.translations, translations),
             updatedBy: userId,
           });
           return 'updated' as const;
         } else {
-          await createGlossaryAndIndexInAlgolia({
-            ...(group.uuid ? { id: group.uuid } : {}),
-            glossary: group.key,
-            phonetic: first.phonetic || null,
-            cbetaFrequency: first.cbetaFrequency || null,
-            author: first.author || null,
+          await createGlossaryAndIndexInAlgolia(
+            {
+              ...(group.uuid ? { id: group.uuid } : {}),
+              glossary: group.key,
+              phonetic: first.phonetic || null,
+              cbetaFrequency: first.cbetaFrequency || null,
+              author: first.author || null,
+              createdBy: userId,
+              updatedBy: userId,
+            },
             translations,
-            createdBy: userId,
-            updatedBy: userId,
-          });
+          );
           return 'created' as const;
         }
       }),
@@ -430,7 +437,7 @@ export const trashGlossaryById = async (
   // pointing at a row the reads now skip. deleteObjects ignores objectIDs that are not there.
   await algoliaClient.deleteObjects({ indexName: 'glossaries', objectIDs });
   // search_id is cleared because nothing is indexed any more; a restore writes it again.
-  await GlossaryStore.updateById(id, { deletedAt: new Date(), searchId: null, updatedBy: userId });
+  await GlossaryStore.updateTerm(id, { deletedAt: new Date(), searchId: null, updatedBy: userId });
   return { term: glossary.glossary, deletedRecords: objectIDs.length };
 };
 
@@ -501,27 +508,13 @@ export const purgeTrashedGlossaries = async (ids: string[]): Promise<TrashResult
 // so inserting it again would fail. Nothing of the trashed contents survives.
 export const reviveTrashedGlossary = async (
   id: string,
-  data: Pick<
-    CreateGlossary,
-    'glossary' | 'phonetic' | 'author' | 'cbetaFrequency' | 'discussion' | 'translations' | 'updatedBy'
-  > &
-    Partial<Pick<CreateGlossary, 'subscribers'>>,
-): Promise<ReadGlossary[]> => {
-  const [row] = await dbClient
-    .update(glossariesTable)
-    .set({ ...data, deletedAt: null, searchId: null })
-    .where(and(eq(glossariesTable.id, id), isNotNull(glossariesTable.deletedAt)))
-    .returning();
-  if (!row) throw new Error('Glossary is no longer in the trash');
-
-  try {
-    await algoliaClient.saveObject({ indexName: 'glossaries', body: glossaryIndexRecord(row) });
-  } catch (error) {
-    // Same trade as createGlossaryAndIndexInAlgolia: live but unsearchable, which re-indexing repairs.
-    console.error('Failed to index revived glossary entry', row.id, error);
-    return [row];
-  }
-  return GlossaryStore.updateById(row.id, { searchId: row.id });
+  term: Pick<GlossaryTermUpdate, 'glossary' | 'phonetic' | 'author' | 'cbetaFrequency' | 'discussion' | 'updatedBy'> &
+    Partial<Pick<GlossaryTermUpdate, 'subscribers'>>,
+  translations: GlossaryTranslation[],
+): Promise<GlossaryEntry[]> => {
+  const entry = await GlossaryStore.revive(id, term, translations);
+  if (!entry) throw new Error('Glossary is no longer in the trash');
+  return [await indexEntry(entry, 'Failed to index revived glossary entry')];
 };
 
 // ─── Re-indexing ─────────────────────────────────────────────────────────────
