@@ -1,7 +1,7 @@
 import { boolean, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { auditAtFields, auditByFields } from '../audit';
-import { langEnum, roleEnum } from './enums';
+import { roleEnum } from './enums';
 import { teamsTable } from './team';
 
 export const usersTable = pgTable('users', {
@@ -13,8 +13,6 @@ export const usersTable = pgTable('users', {
   teamId: uuid('team_id')
     .references(() => teamsTable.id)
     .notNull(),
-  originLang: langEnum('origin_lang').notNull(),
-  targetLang: langEnum('target_lang').notNull(),
   firstLogin: boolean('first_login').notNull().default(true),
   avatar: text('avatar'),
   linkValidUntil: timestamp('link_valid_until'),

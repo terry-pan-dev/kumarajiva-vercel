@@ -32,8 +32,6 @@ const sessionUser = {
   id: 'u1',
   email: 'ananda@example.org',
   role: 'editor',
-  originLang: 'chinese',
-  targetLang: 'english',
   avatar: 'old.png',
   password: 'hash',
 };
@@ -51,8 +49,10 @@ describe('assertAuthUser', () => {
     expect(mocks.destroySession).not.toHaveBeenCalled();
   });
 
-  it('keeps the session when only the stored languages differ', async () => {
-    mocks.readUserByEmail.mockResolvedValue({ ...sessionUser, originLang: 'sanskrit', targetLang: 'indonesian' });
+  // Sessions issued before users.origin_lang / target_lang were dropped still carry them.
+  it('keeps a session issued while users still had languages', async () => {
+    mocks.isAuthenticated.mockResolvedValue({ ...sessionUser, originLang: 'sanskrit', targetLang: 'indonesian' });
+    mocks.readUserByEmail.mockResolvedValue(sessionUser);
     expect(await assertAuthUser(request)).toMatchObject({ id: 'u1' });
     expect(mocks.destroySession).not.toHaveBeenCalled();
   });
