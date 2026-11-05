@@ -10,7 +10,10 @@
 // Trashed rows (deleted_at set) are outside that model: they are meant to have no record, and
 // every read skips them. They are counted but not checked, and they claim no record — a record
 // still carrying a trashed uuid is an orphan as far as search is concerned.
-import { type ReadGlossary } from '~/drizzle/tables';
+import { type GlossaryTerm, type WithTranslations } from './glossary.types';
+
+// A row as the inspector checks it: every term column, plus its translations.
+export type InspectedRow = WithTranslations<GlossaryTerm>;
 
 // Cap on entries returned with their full column dump, so one badly broken import can't
 // produce a response too large to render. The counts in `stats` always cover everything.
@@ -79,7 +82,7 @@ export const REMOVABLE_RECORD_CLASSES: RemovableRecordClass[] = [
 ];
 
 export type InspectedEntry = {
-  row: ReadGlossary;
+  row: InspectedRow;
   issues: GlossaryIssue[];
   // Every index record carrying this row's uuid — more than one is what makes the entry
   // appear repeatedly in search results.
@@ -166,7 +169,7 @@ export function analyseGlossary({
   indexRecords,
   indexError = null,
 }: {
-  rows: ReadGlossary[];
+  rows: InspectedRow[];
   indexRecords: IndexRecord[] | null;
   indexError?: string | null;
 }): GlossaryInspection {

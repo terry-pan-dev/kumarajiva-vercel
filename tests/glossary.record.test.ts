@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { type ReadGlossary } from '~/drizzle/tables';
 import { glossaryIndexRecord, searchablePhonetic } from '~/services/glossary.record';
+import { type GlossaryTranslation } from '~/services/glossary.types';
 
-type StoredTranslation = NonNullable<ReadGlossary['translations']>[number];
+type StoredTranslation = GlossaryTranslation;
 
 function makeTranslation(overrides: Partial<StoredTranslation> & { glossary: string }): StoredTranslation {
   return {

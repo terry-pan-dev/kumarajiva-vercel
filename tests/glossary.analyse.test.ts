@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { type ReadGlossary } from '~/drizzle/tables';
 import { analyseGlossary, type GlossaryIssueCode, type IndexRecord } from '~/services/glossary.analyse';
+import { type GlossaryTranslation } from '~/services/glossary.types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-type StoredTranslation = NonNullable<ReadGlossary['translations']>[number];
+type StoredTranslation = GlossaryTranslation;
 
 function makeTranslation(overrides: Partial<StoredTranslation> & { glossary: string }): StoredTranslation {
   return {

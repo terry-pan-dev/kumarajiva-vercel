@@ -64,16 +64,6 @@ export const getGlossariesByGivenGlossaries = async (glossaries: string[]): Prom
   return DbGlossaries.findByTerms(glossaries);
 };
 
-export const readSutraNames = async () => {
-  const result = await dbClient
-    .select({ translations: glossariesTable.translations })
-    .from(glossariesTable)
-    .where(notTrashed);
-
-  const sutraNames = result.map((r) => r.translations?.filter((t) => t.sutraName).map((t) => t.sutraName));
-  return Array.from(new Set(sutraNames.flat()));
-};
-
 export const readGlossariesByIds = async (ids: string[]) => {
   return DbGlossaries.findByIds(ids);
 };

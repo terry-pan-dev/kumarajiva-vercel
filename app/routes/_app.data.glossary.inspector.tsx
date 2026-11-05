@@ -47,6 +47,7 @@ import { type ReadGlossary } from '~/drizzle/tables';
 import { useToast } from '~/hooks/use-toast';
 import { LocalizedError, localizeError, translateKey } from '~/i18n/errors';
 import {
+  type InspectedRow,
   type EntryIndexRecord,
   type GlossaryIssue,
   type InspectedEntry,
@@ -55,6 +56,7 @@ import {
 } from '~/services/glossary.analyse';
 import { findGlossaryRowsForInspection, inspectGlossary, type RecordDeletionResult } from '~/services/glossary.inspect';
 import { readTrashedGlossaries } from '~/services/glossary.service';
+import { type GlossaryTerm } from '~/services/glossary.types';
 import { readUsers } from '~/services/user.service';
 
 import type { JobPayloads, JobResponse } from './_app.data.glossary.inspector-jobs';
@@ -193,7 +195,7 @@ const SUBTLE = 'text-muted-foreground';
 // Every column of the glossaries table except translations, which gets its own table below.
 // Listed explicitly, in table order, so a new column shows up as a missing key rather than
 // silently going unseen.
-const COLUMNS: { key: keyof ReadGlossary; label: string }[] = [
+const COLUMNS: { key: keyof GlossaryTerm; label: string }[] = [
   { key: 'id', label: 'id' },
   { key: 'glossary', label: 'glossary' },
   { key: 'phonetic', label: 'phonetic' },
@@ -248,7 +250,7 @@ function IssueList({ issues }: { issues: GlossaryIssue[] }) {
   );
 }
 
-function ColumnTable({ row }: { row: ReadGlossary }) {
+function ColumnTable({ row }: { row: InspectedRow }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-xs">
@@ -274,7 +276,7 @@ function ColumnTable({ row }: { row: ReadGlossary }) {
 
 // All fields of every stored translation. The keys come from the data rather than a fixed
 // list: the JSON column has no schema, so an unexpected key is itself worth seeing.
-function TranslationsTable({ row }: { row: ReadGlossary }) {
+function TranslationsTable({ row }: { row: InspectedRow }) {
   const { t } = useTranslation('glossary');
   const translations = row.translations ?? [];
   if (translations.length === 0) {
@@ -497,7 +499,7 @@ function EntryCard({ entry, canCleanUp }: { entry: InspectedEntry; canCleanUp: b
   );
 }
 
-function LookupCard({ row }: { row: ReadGlossary }) {
+function LookupCard({ row }: { row: InspectedRow }) {
   const { t } = useTranslation('glossary');
   return (
     <Card>
@@ -992,7 +994,7 @@ export default function GlossaryInspector() {
                 {t('inspector.lookup.matches', { count: lookupRows.length, query })}
               </p>
               {lookupRows.map((row) => (
-                <LookupCard key={row.id} row={row as unknown as ReadGlossary} />
+                <LookupCard key={row.id} row={row as unknown as InspectedRow} />
               ))}
             </div>
           )}

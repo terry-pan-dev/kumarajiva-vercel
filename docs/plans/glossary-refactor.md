@@ -1,6 +1,6 @@
 # Glossary refactor: translations out of the JSON blob
 
-Status: **PR 1 and PR 2 written.** Written 2026-11-04, updated 2026-11-05.
+Status: **PR 1, PR 2 merged; PR 3a written.** Written 2026-11-04, updated 2026-11-05.
 `glossary_translations` (`drizzle/tables/glossary.ts`, migration `0025`) exists on dev,
 empty; not yet on prod (applied by the PR 1 merge). Data script 08 is written; dev dry run:
 13,920 terms, 17,357 rows, 1 duplicate (癡), no issues. Not applied anywhere, and by the
@@ -166,11 +166,20 @@ Every manual apply (dev or prod) needs the user's yes.
      `updatedAt`/`updatedBy`; `partOfSpeech`/`phonetic` into `metadata` only if non-empty.
    - After merge: dry run on dev and prod (read-only). A dev `--apply` goes stale as the JSON
      keeps being edited, so apply on dev right before PR 4 (or add a dev-only `--replace`).
-3. **PR 3: refactor, no behaviour change, still on JSON.** One module (e.g.
-   `glossary.translations.ts`) owns every translation read and write and returns the target
-   read shape (today's field names plus optional `id`, `rationale`). All consumers in the
-   code map go through it. Add the pure functions PR 4 needs, with tests: edit-form diff by
-   id (update/insert/delete) and import matching (id first, then `translationKey()`).
+3. **PR 3: refactor, no behaviour change, still on JSON**, as three merges. The frontend
+   keeps today's shape (plus optional `id`, `rationale`); only PR 6 and PR 8 change it.
+   - **3a: types and dead code.** `app/services/glossary.types.ts`: `GlossaryTranslation`
+     (spelled out, not derived from the JSON column), `GlossaryTerm`, `GlossaryEntry`,
+     `WithTranslations<T>`. Pure modules (record, export, analyse) and test fixtures use
+     them. Removed unused `upsertManyById`, `upsertManyByTerm`, `readSutraNames`.
+     (`deleteGlossariesByUserId` stays: the e2e teardown uses it.)
+   - **3b: reads.** `glossary.store.ts` owns every read (crud `find*`, glossary page, trash,
+     re-index pages, inspector reads and its JSON text search) and returns `GlossaryEntry`.
+   - **3c: writes.** The store owns create-with-translations, replace (edit, revive) and
+     append (insert, import). Pure functions PR 4 needs, with tests: edit-form diff by id
+     and import matching (id first, then `translationKey()`).
+   - Test on dev per merge: glossary export and inspector counts identical before and
+     after; read-only pass of the app; for 3c, writes on ZZTEST fixtures only (with approval).
 4. **PR 4: the switch.** The module reads and writes the table; multi-row writes in
    transactions; edits diff by id; deletes check Maintain. Seeds and fixtures. Release:
    prod export → `08 --apply` on prod → merge/deploy immediately, while nobody edits. The old

@@ -4,7 +4,7 @@
 //
 // Kept free of the database and Algolia, the same split as glossary.analyse.ts and
 // glossary.merge.ts, so the shape can be unit-tested on plain fixtures.
-import { type ReadGlossary } from '~/drizzle/tables';
+import { type GlossaryTerm, type WithTranslations } from './glossary.types';
 
 // Phonetics are indexed with their diacritics stripped, so a search for "dharma" also matches
 // one stored as "dhárma". NFD splits each accented character into its base letter plus a
@@ -25,7 +25,7 @@ export const searchablePhonetic = (phonetic: string | null | undefined): string 
 //
 // Only the fields search needs are carried. The sutra citations on a translation are
 // deliberately left out: they are shown from the row once a hit resolves back to it.
-export const glossaryIndexRecord = (row: Pick<ReadGlossary, 'id' | 'glossary' | 'phonetic' | 'translations'>) => ({
+export const glossaryIndexRecord = (row: WithTranslations<Pick<GlossaryTerm, 'id' | 'glossary' | 'phonetic'>>) => ({
   objectID: row.id,
   id: row.id,
   phonetic: searchablePhonetic(row.phonetic),
