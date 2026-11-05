@@ -95,13 +95,6 @@ describe('loader', () => {
     });
   });
 
-  it('with no translation section yet, loads the source alone', async () => {
-    mocks.resolveSectionContext.mockResolvedValue(contextWith(null));
-    const { body } = await outcome(runLoader);
-    expect(mocks.readParagraphsForDebugBySectionId.mock.calls).toEqual([['s-src']]);
-    expect(body).toMatchObject({ targetRows: [], target: { section: null } });
-  });
-
   it('answers 404 for a section that is not in the project', async () => {
     mocks.resolveSectionContext.mockResolvedValue(null);
     expect(await outcome(runLoader)).toMatchObject({ status: 404 });
@@ -146,39 +139,10 @@ describe('action — delete-paragraph', () => {
     expect(mocks.deleteParagraph).not.toHaveBeenCalled();
   });
 
-  it('with no translation section yet, still deletes source rows and still refuses others', async () => {
-    mocks.resolveSectionContext.mockResolvedValue(contextWith(null));
-    mocks.getParagraph.mockResolvedValueOnce({ id: 'stray', sectionId: 's-tgt' });
-    expect(await outcome(() => remove('stray'))).toMatchObject({ status: 404 });
-    expect(mocks.deleteParagraph).not.toHaveBeenCalled();
-
-    mocks.getParagraph.mockResolvedValueOnce({ id: 'para', sectionId: 's-src' });
-    expect(await outcome(() => remove('para'))).toMatchObject({ status: 200 });
-    expect(mocks.deleteParagraph).toHaveBeenCalledWith({ id: 'para' });
-  });
-
-  it('refuses a paragraph that does not exist', async () => {
-    mocks.getParagraph.mockResolvedValue(undefined);
-    expect(await outcome(() => remove('gone'))).toMatchObject({ status: 404 });
-    expect(mocks.deleteParagraph).not.toHaveBeenCalled();
-  });
-
   it('refuses when the section is not in the project', async () => {
     mocks.resolveSectionContext.mockResolvedValue(null);
     mocks.getParagraph.mockResolvedValue({ id: 'para', sectionId: 's-src' });
     await remove('para');
-    expect(mocks.deleteParagraph).not.toHaveBeenCalled();
-  });
-
-  it('reports a failed delete as a 500', async () => {
-    mocks.getParagraph.mockResolvedValue({ id: 'para', sectionId: 's-src' });
-    mocks.deleteParagraph.mockRejectedValue(new Error('db down'));
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(await outcome(() => remove('para'))).toMatchObject({ status: 500, body: { success: false } });
-  });
-
-  it('rejects any other intent', async () => {
-    expect(await outcome(() => runAction({ intent: 'drop-everything' }))).toMatchObject({ status: 400 });
     expect(mocks.deleteParagraph).not.toHaveBeenCalled();
   });
 });

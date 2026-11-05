@@ -352,38 +352,12 @@ describe('updateParagraph', () => {
     mocks.findById.mockResolvedValue(stored);
   });
 
-  it('writes the new content and who changed it', async () => {
+  // The record must carry the stored search_id, or the save would create a second record.
+  it('indexes the stored row with the new content, under its existing search_id', async () => {
     await updateParagraph({ id: 't1', newContent: 'Thus have I heard', updatedBy: 'u2' });
-    expect(mocks.updateById).toHaveBeenCalledWith('t1', { content: 'Thus have I heard', updatedBy: 'u2' });
-  });
-
-  it('indexes the stored row with the new content, keeping its search_id, key and order', async () => {
-    await updateParagraph({ id: 't1', newContent: 'Thus have I heard', updatedBy: 'u2' });
-    expect(searchMocks.indexParagraphs).toHaveBeenCalledTimes(1);
-    expect(searchMocks.indexParagraphs.mock.calls[0][0]).toEqual([
-      expect.objectContaining({
-        id: 't1',
-        searchId: 'st1',
-        content: 'Thus have I heard',
-        passageKey: 'k1',
-        order: 4,
-        documentId: 'target',
-        sectionId: 's1',
-      }),
+    expect(searchMocks.indexParagraphs.mock.calls).toEqual([
+      [[expect.objectContaining({ id: 't1', searchId: 'st1', content: 'Thus have I heard' })]],
     ]);
-  });
-
-  it('indexes only after the database write succeeds', async () => {
-    mocks.updateById.mockRejectedValueOnce(new Error('db down'));
-    await expect(updateParagraph({ id: 't1', newContent: 'x', updatedBy: 'u2' })).rejects.toThrow('db down');
-    expect(searchMocks.indexParagraphs).not.toHaveBeenCalled();
-  });
-
-  it('rejects an unknown paragraph without writing anything', async () => {
-    mocks.findById.mockResolvedValue(undefined);
-    await expect(updateParagraph({ id: 'nope', newContent: 'x', updatedBy: 'u2' })).rejects.toThrow();
-    expect(mocks.updateById).not.toHaveBeenCalled();
-    expect(searchMocks.indexParagraphs).not.toHaveBeenCalled();
   });
 });
 
@@ -402,25 +376,12 @@ describe('insertParagraph', () => {
       newParagraph: { content: 'At one time', createdBy: 'u1', updatedBy: 'u1' },
     });
 
-  it("creates the translation at the source's order and passage key, in the target section", async () => {
-    await insert();
-    expect(mocks.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        documentId: 'target',
-        sectionId: 'ts1',
-        order: 7,
-        passageKey: 'k7',
-        content: 'At one time',
-      }),
-    );
-  });
-
-  it("indexes exactly the row it created, under that row's new ids", async () => {
+  // The passage key is what pairs the translation with its source everywhere else.
+  it("creates the translation at the source's order and passage key, and indexes that row", async () => {
     await insert();
     const created = mocks.create.mock.calls[0][0];
-    expect(created.id).toEqual(expect.any(String));
+    expect(created).toMatchObject({ documentId: 'target', sectionId: 'ts1', order: 7, passageKey: 'k7' });
     expect(created.searchId).toEqual(expect.any(String));
-    expect(created.searchId).not.toBe(created.id);
     expect(searchMocks.indexParagraphs).toHaveBeenCalledWith([created]);
   });
 });

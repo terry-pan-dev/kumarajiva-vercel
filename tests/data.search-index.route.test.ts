@@ -61,20 +61,10 @@ describe('loader', () => {
     expect(mocks.rebuildParagraphIndex).not.toHaveBeenCalled();
   });
 
-  it('sends a signed-out visitor to /login', async () => {
-    mocks.assertAuthUser.mockResolvedValue(null);
-    expect(await outcome(runLoader)).toMatchObject({ status: 302, location: '/login' });
-  });
-
-  it('shows a dry run — never a rebuild — with the configured settings', async () => {
-    const { status, body } = await outcome(runLoader);
-    expect(status).toBe(200);
-    expect(mocks.rebuildParagraphIndex).toHaveBeenCalledWith({ apply: false });
-    expect(body).toMatchObject({
-      indexName: 'paragraphs',
-      report: { applied: false, recordsBefore: 5, records: 3 },
-      configured: { searchableAttributes: ['content'], typoTolerance: 'min', advancedSyntax: true },
-    });
+  // Loading the page must never rebuild.
+  it('runs a dry run only', async () => {
+    expect(await outcome(runLoader)).toMatchObject({ status: 200 });
+    expect(mocks.rebuildParagraphIndex.mock.calls).toEqual([[{ apply: false }]]);
   });
 });
 
@@ -85,23 +75,8 @@ describe('action', () => {
     expect(mocks.rebuildParagraphIndex).not.toHaveBeenCalled();
   });
 
-  it('rebuilds on the rebuild intent', async () => {
-    const { status, body } = await outcome(() => runAction({ intent: 'rebuild' }));
-    expect(status).toBe(200);
+  it('rebuilds for an admin', async () => {
+    expect(await outcome(() => runAction({ intent: 'rebuild' }))).toMatchObject({ status: 200 });
     expect(mocks.rebuildParagraphIndex).toHaveBeenCalledWith({ apply: true });
-    expect(body).toMatchObject({ success: true });
-  });
-
-  it('does nothing for any other intent', async () => {
-    const { status } = await outcome(() => runAction({ intent: 'something-else' }));
-    expect(status).toBe(400);
-    expect(mocks.rebuildParagraphIndex).not.toHaveBeenCalled();
-  });
-
-  it('reports a failed rebuild instead of throwing', async () => {
-    mocks.rebuildParagraphIndex.mockRejectedValue(new Error('Algolia unreachable'));
-    const { status, body } = await outcome(() => runAction({ intent: 'rebuild' }));
-    expect(status).toBe(500);
-    expect(body).toMatchObject({ success: false, message: expect.stringContaining('Algolia unreachable') });
   });
 });

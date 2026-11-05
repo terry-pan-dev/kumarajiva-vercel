@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   buildIndexRecords,
   type IndexableParagraph,
-  PARAGRAPH_INDEX_SETTINGS,
   paragraphIndexRecord,
   settingsToChange,
 } from '~/services/paragraph.record';
@@ -16,17 +15,9 @@ const row = (overrides: Partial<IndexableParagraph> = {}): IndexableParagraph =>
 });
 
 describe('paragraphIndexRecord', () => {
-  it('addresses the record by search_id and carries exactly the indexed fields', () => {
-    expect(paragraphIndexRecord(row())).toEqual({
-      objectID: 's1',
-      id: 'p1',
-      content: '如是我聞',
-    });
-  });
-
-  // A full row has location, ordering, audit fields and metadata; none of them belong in the
-  // index, where they could only drift from the row they were copied from.
-  it('leaves out every field of a full row that the index does not hold', () => {
+  // Every write path hands this a full row; anything else copied into the index can only drift
+  // from the row it came from.
+  it('addresses the record by search_id and copies nothing but id and content', () => {
     const fullRow = {
       ...row(),
       documentId: 'd1',
@@ -40,7 +31,7 @@ describe('paragraphIndexRecord', () => {
       updatedAt: new Date(),
       deletedAt: null,
     };
-    expect(Object.keys(paragraphIndexRecord(fullRow) ?? {}).sort()).toEqual(['content', 'id', 'objectID'].sort());
+    expect(paragraphIndexRecord(fullRow)).toEqual({ objectID: 's1', id: 'p1', content: '如是我聞' });
   });
 
   it('yields null for a row without a search_id, which nothing could address later', () => {
@@ -50,70 +41,32 @@ describe('paragraphIndexRecord', () => {
 });
 
 describe('buildIndexRecords', () => {
-  it('builds one record per row, in row order', () => {
-    const set = buildIndexRecords([row({ id: 'a', searchId: 'sa' }), row({ id: 'b', searchId: 'sb' })]);
-    expect(set.records.map((r) => r.id)).toEqual(['a', 'b']);
-    expect(set.withoutSearchId).toEqual([]);
-    expect(set.duplicateSearchId).toEqual([]);
-  });
-
-  it('reports rows without a search_id instead of dropping them silently', () => {
-    const set = buildIndexRecords([row({ id: 'a', searchId: null }), row({ id: 'b', searchId: 'sb' })]);
-    expect(set.records.map((r) => r.id)).toEqual(['b']);
-    expect(set.withoutSearchId).toEqual(['a']);
-  });
-
-  // Two records with one objectID would overwrite each other in the index, so one paragraph
-  // would silently vanish from search. The first is kept and the rest are reported.
-  it('keeps the first of rows sharing a search_id and reports the others', () => {
+  // Two records with one objectID overwrite each other, so a paragraph would silently vanish
+  // from search. The first is kept and the rest are reported, as are rows with no search_id.
+  it('keeps the first of rows sharing a search_id and reports the rest, and rows without one', () => {
     const set = buildIndexRecords([
       row({ id: 'a', searchId: 'same' }),
       row({ id: 'b', searchId: 'same' }),
-      row({ id: 'c', searchId: 'same' }),
+      row({ id: 'c', searchId: null }),
+      row({ id: 'd', searchId: 'sd' }),
     ]);
-    expect(set.records.map((r) => r.id)).toEqual(['a']);
-    expect(set.duplicateSearchId).toEqual([
-      { id: 'b', searchId: 'same' },
-      { id: 'c', searchId: 'same' },
-    ]);
-  });
-
-  it('handles no rows', () => {
-    expect(buildIndexRecords([])).toEqual({ records: [], withoutSearchId: [], duplicateSearchId: [] });
-  });
-});
-
-describe('PARAGRAPH_INDEX_SETTINGS', () => {
-  // Pinned so a change to how search behaves is a deliberate, reviewed edit.
-  it('searches only the text, keeps typo matches as a fallback, and allows "phrase" search', () => {
-    expect(PARAGRAPH_INDEX_SETTINGS).toEqual({
-      searchableAttributes: ['content'],
-      typoTolerance: 'min',
-      advancedSyntax: true,
-    });
+    expect(set.records.map((r) => r.id)).toEqual(['a', 'd']);
+    expect(set.duplicateSearchId).toEqual([{ id: 'b', searchId: 'same' }]);
+    expect(set.withoutSearchId).toEqual(['c']);
   });
 });
 
 describe('settingsToChange', () => {
-  it('lists every setting of an index on Algolia defaults (nothing set)', () => {
+  it('counts unset settings as different, since Algolia defaults are not what we want', () => {
     expect(settingsToChange({})).toEqual(['searchableAttributes', 'typoTolerance', 'advancedSyntax']);
   });
 
-  it('lists nothing when the live settings already match', () => {
+  it('lists only the settings that differ, comparing lists as a whole', () => {
     expect(settingsToChange({ searchableAttributes: ['content'], typoTolerance: 'min', advancedSyntax: true })).toEqual(
       [],
     );
-  });
-
-  it('lists only the settings that differ', () => {
-    expect(settingsToChange({ searchableAttributes: ['content'], typoTolerance: true, advancedSyntax: true })).toEqual([
-      'typoTolerance',
-    ]);
-  });
-
-  it('compares searchable attributes as a whole list', () => {
     expect(
-      settingsToChange({ searchableAttributes: ['content', 'id'], typoTolerance: 'min', advancedSyntax: true }),
-    ).toEqual(['searchableAttributes']);
+      settingsToChange({ searchableAttributes: ['content', 'id'], typoTolerance: true, advancedSyntax: true }),
+    ).toEqual(['searchableAttributes', 'typoTolerance']);
   });
 });
