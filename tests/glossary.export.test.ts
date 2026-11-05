@@ -9,10 +9,11 @@ import {
   glossariesToXLSX,
   parseExportFormat,
 } from '~/services/glossary.export';
+import { type GlossaryTranslation } from '~/services/glossary.types';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-type Translation = NonNullable<ReadGlossary['translations']>[number];
+type Translation = GlossaryTranslation;
 
 function makeTranslation(overrides: Partial<Translation> & { glossary: string }): Translation {
   return {

@@ -1,4 +1,9 @@
-import { type ReadGlossary } from '~/drizzle/tables';
+import { type GlossaryTerm, type WithTranslations } from './glossary.types';
+
+// What an export needs of an entry.
+export type ExportableGlossary = WithTranslations<
+  Pick<GlossaryTerm, 'id' | 'glossary' | 'cbetaFrequency' | 'phonetic'>
+>;
 
 // Column order and names must match what the import parser reads (see XLSX_COLUMNS /
 // parseGlossaryCSV in glossary.parse.ts), so a downloaded file round-trips back through import.
@@ -22,7 +27,7 @@ export type GlossaryExportFormat = 'csv' | 'xlsx';
 // Flattens each entry to one row per translation. An entry with no translations contributes no
 // rows — matching the original CSV export, and the fact that a term without an EnglishTerm has
 // nothing to export.
-export function glossariesToExportRows(glossaries: ReadGlossary[]): GlossaryExportRow[] {
+export function glossariesToExportRows(glossaries: ExportableGlossary[]): GlossaryExportRow[] {
   return glossaries.flatMap((glossary) =>
     (glossary.translations ?? []).map((t) => ({
       UUID: glossary.id ?? '',
@@ -47,7 +52,7 @@ function escapeCSVValue(value: string): string {
   return shouldQuote ? `"${escaped}"` : escaped;
 }
 
-export function glossariesToCSV(glossaries: ReadGlossary[]): string {
+export function glossariesToCSV(glossaries: ExportableGlossary[]): string {
   const rows = glossariesToExportRows(glossaries);
   // Headers come from the fixed column list rather than the first row, so an empty glossary
   // still produces a valid, importable header line.
@@ -62,7 +67,7 @@ export function glossariesToCSV(glossaries: ReadGlossary[]): string {
 
 // Builds an .xlsx workbook as bytes. SheetJS is dynamically imported so this module carries no
 // static dependency on it — only the download loaders that call this pull it in, on the server.
-export async function glossariesToXLSX(glossaries: ReadGlossary[]): Promise<Uint8Array> {
+export async function glossariesToXLSX(glossaries: ExportableGlossary[]): Promise<Uint8Array> {
   const { utils, write } = await import('xlsx');
 
   const rows = glossariesToExportRows(glossaries);
@@ -99,7 +104,7 @@ export function parseExportFormat(value: string | null | undefined): GlossaryExp
 
 // Shared Response so both download routes agree on content type, filename and body per format.
 export async function glossaryDownloadResponse(
-  glossaries: ReadGlossary[],
+  glossaries: ExportableGlossary[],
   format: GlossaryExportFormat,
 ): Promise<Response> {
   const body = format === 'csv' ? glossariesToCSV(glossaries) : await glossariesToXLSX(glossaries);

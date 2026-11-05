@@ -23,10 +23,11 @@
  */
 import { type CreateGlossary, type ReadGlossary } from '~/drizzle/tables';
 import { glossaryIndexRecord } from '~/services/glossary.record';
+import { type GlossaryTranslation } from '~/services/glossary.types';
 
 export const FIXTURE_PREFIX = 'ZZTEST';
 
-type Translation = NonNullable<ReadGlossary['translations']>[number];
+type Translation = GlossaryTranslation;
 
 // A record exactly as it is written to the index. Deliberately not built through
 // glossaryIndexRecord for the broken ones: half the fixtures exist because a record does *not*
