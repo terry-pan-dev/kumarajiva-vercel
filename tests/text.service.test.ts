@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  appendPassage,
   getSectionParagraphCounts,
   insertParagraph,
   readParagraphsByDocumentId,
@@ -22,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
   updateById: vi.fn(),
   create: vi.fn(),
+  createMany: vi.fn(),
+  findAllBySectionIdForDebug: vi.fn(),
 }));
 const searchMocks = vi.hoisted(() => ({ indexParagraphs: vi.fn(), deleteParagraphsFromAlgolia: vi.fn() }));
 const sectionMocks = vi.hoisted(() => ({ findByDocumentId: vi.fn(), updateOrders: vi.fn() }));
@@ -383,5 +386,96 @@ describe('insertParagraph', () => {
     expect(created).toMatchObject({ documentId: 'target', sectionId: 'ts1', order: 7, passageKey: 'k7' });
     expect(created.searchId).toEqual(expect.any(String));
     expect(searchMocks.indexParagraphs).toHaveBeenCalledWith([created]);
+  });
+});
+
+// ─── appendPassage ───────────────────────────────────────────────────────────
+
+describe('appendPassage', () => {
+  const context = {
+    projectId: 'p1',
+    passageKeyPrefix: 't0279',
+    origin: {
+      document: { id: 'src', key: 'chinese', title: 'Chinese', language: 'chinese' as const },
+      section: { id: 'ss', title: '卷一', order: 3 },
+    },
+    target: {
+      document: { id: 'tgt', key: 'english', title: 'English', language: 'english' as const },
+      section: { id: 'ts', title: 'Roll 1', order: 3 } as { id: string; title: string; order: number } | null,
+    },
+    references: [],
+  };
+  const noTarget = { ...context, target: { ...context.target, section: null } };
+
+  beforeEach(() => {
+    // Source rows up to order 2 (plus a parked one); the translation side runs one further.
+    mocks.findAllBySectionIdForDebug.mockImplementation(async (sectionId: string) =>
+      sectionId === 'ss'
+        ? [
+            row('s1', 'src', 't0279.3.1', 'a'),
+            row('s2', 'src', 't0279.3.2', 'b', { order: 2 }),
+            row('sp', 'src', null, 'x', { order: -9 }),
+          ]
+        : [row('t3', 'tgt', 'x.extra', 'c', { order: 3 })],
+    );
+    mocks.findByDocumentIdAndPassageKeys.mockResolvedValue([]);
+  });
+
+  // The key pairs the two rows everywhere else, and the order must come after both sides so
+  // nothing is renumbered.
+  it('adds source and translation after the last row of either side, under one new key, and indexes both', async () => {
+    const result = await appendPassage({
+      context,
+      source: ' 如是我聞 ',
+      translation: 'Thus I have heard',
+      userId: 'u1',
+    });
+    const created = mocks.createMany.mock.calls[0][0];
+    expect(created).toEqual([
+      expect.objectContaining({
+        documentId: 'src',
+        sectionId: 'ss',
+        order: 4,
+        passageKey: 't0279.3.4',
+        content: '如是我聞',
+      }),
+      expect.objectContaining({
+        documentId: 'tgt',
+        sectionId: 'ts',
+        order: 4,
+        passageKey: 't0279.3.4',
+        content: 'Thus I have heard',
+      }),
+    ]);
+    expect(searchMocks.indexParagraphs).toHaveBeenCalledWith(created);
+    expect(result).toMatchObject({ order: 4, passageKey: 't0279.3.4', created: 2, searchError: null });
+  });
+
+  it('adds the source alone when no translation is given, even without a translation section', async () => {
+    await appendPassage({ context: noTarget, source: '如是我聞', translation: '  ', userId: 'u1' });
+    expect(mocks.createMany.mock.calls[0][0]).toHaveLength(1);
+  });
+
+  it('refuses, without writing, a translation with no section to go in, or an empty source', async () => {
+    await expect(appendPassage({ context: noTarget, source: 'a', translation: 'b', userId: 'u1' })).rejects.toThrow();
+    await expect(appendPassage({ context, source: '   ', userId: 'u1' })).rejects.toThrow();
+    expect(mocks.createMany).not.toHaveBeenCalled();
+  });
+
+  it('refuses a key already used elsewhere in either document, without writing', async () => {
+    mocks.findByDocumentIdAndPassageKeys.mockImplementation(async (documentId: string) =>
+      documentId === 'tgt' ? [row('elsewhere', 'tgt', 't0279.3.4', 'z')] : [],
+    );
+    await expect(appendPassage({ context, source: 'a', userId: 'u1' })).rejects.toThrow('t0279.3.4');
+    expect(mocks.createMany).not.toHaveBeenCalled();
+  });
+
+  // The rows are saved by then; throwing would invite a retry that adds the passage twice.
+  it('reports a search failure instead of throwing', async () => {
+    searchMocks.indexParagraphs.mockRejectedValueOnce(new Error('Algolia down'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await appendPassage({ context, source: 'a', userId: 'u1' });
+    expect(mocks.createMany).toHaveBeenCalled();
+    expect(result.searchError).toBe('Algolia down');
   });
 });

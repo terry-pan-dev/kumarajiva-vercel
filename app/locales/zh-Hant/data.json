@@ -244,7 +244,23 @@
       "deleteTranslationNote": "這是譯文段落。",
       "deleted": "已刪除段落。",
       "notInSection": "該段落不在此章節中。",
-      "notAuthorisedToDelete": "您沒有權限刪除段落。"
+      "notAuthorisedToDelete": "您沒有權限刪除段落。",
+      "add": {
+        "title": "新增段落",
+        "description": "在此章節最後一列之後新增一個原文段落，並可同時新增其譯文。兩者會使用同一個新的段落鍵，與匯入時在該位置所產生的段落鍵相同。",
+        "position": "將新增於順序 {{order}}，段落鍵為 {{key}}。",
+        "sourceLabel": "原文",
+        "translationLabel": "譯文（選填）",
+        "noTargetSectionHint": "{{title}} 在此順序尚無章節，因此只能新增原文。",
+        "submit": "新增段落",
+        "added_other": "已於順序 {{order}}（{{key}}）新增 {{count}} 個段落。",
+        "searchSyncFailed": " 段落已儲存，但尚無法搜尋：{{error}}。請重建搜尋索引以修正。",
+        "sourceRequired": "請輸入原文。",
+        "noTargetSection": "{{title}} 在此順序尚無章節，因此無法新增譯文。請先在資料管理 → 翻譯專案中建立該章節。",
+        "keyTaken": "段落鍵 {{key}} 已在其中一個文件中使用。請先修正現有的資料列（見文本檢查）。",
+        "failed": "新增段落失敗。",
+        "notAuthorised": "您沒有權限新增段落。"
+      }
     }
   },
   "inspector": {

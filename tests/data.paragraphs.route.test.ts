@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   readParagraphsForDebugBySectionId: vi.fn(),
   getParagraph: vi.fn(),
   deleteParagraph: vi.fn(),
+  appendPassage: vi.fn(),
 }));
 
 vi.mock('~/auth.server', () => ({ assertAuthUser: mocks.assertAuthUser }));
@@ -19,6 +20,7 @@ vi.mock('~/services/text.service', () => ({
   readParagraphsForDebugBySectionId: mocks.readParagraphsForDebugBySectionId,
   getParagraph: mocks.getParagraph,
   deleteParagraph: mocks.deleteParagraph,
+  appendPassage: mocks.appendPassage,
 }));
 
 const doc = (id: string, language: 'chinese' | 'english') => ({ id, key: id, title: `Doc ${id}`, language });
@@ -144,5 +146,32 @@ describe('action — delete-paragraph', () => {
     mocks.getParagraph.mockResolvedValue({ id: 'para', sectionId: 's-src' });
     await remove('para');
     expect(mocks.deleteParagraph).not.toHaveBeenCalled();
+  });
+});
+
+describe('action — add-passage', () => {
+  const add = () => runAction({ intent: 'add-passage', source: '如是我聞', translation: 'Thus I have heard' });
+
+  beforeEach(() => {
+    mocks.appendPassage.mockResolvedValue({ order: 4, passageKey: 'k.4', created: 2, searchError: null });
+  });
+
+  // Adding needs Maintain (like the import), deleting needs Administrate: a manager can add.
+  it('lets a role with Maintain add, into the section resolved from the URL', async () => {
+    mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role: 'manager' });
+    expect(await outcome(add)).toMatchObject({ status: 200, body: { success: true } });
+    expect(mocks.appendPassage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({ projectId: 'p1' }),
+        source: '如是我聞',
+        userId: 'u1',
+      }),
+    );
+  });
+
+  it('refuses a role without Maintain, before touching anything', async () => {
+    mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role: 'leader' });
+    expect(await outcome(add)).toMatchObject({ status: 403 });
+    expect(mocks.appendPassage).not.toHaveBeenCalled();
   });
 });

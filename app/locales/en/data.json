@@ -251,7 +251,24 @@
       "deleteTranslationNote": "This is a translation paragraph.",
       "deleted": "Deleted paragraph.",
       "notInSection": "That paragraph is not in this section.",
-      "notAuthorisedToDelete": "You are not authorised to delete paragraphs."
+      "notAuthorisedToDelete": "You are not authorised to delete paragraphs.",
+      "add": {
+        "title": "Add a passage",
+        "description": "Appends a source paragraph, and optionally its translation, after the last row of this section. Both get the same new passage key, the one an import would give a row at that position.",
+        "position": "Will be added at order {{order}} with passage key {{key}}.",
+        "sourceLabel": "Source",
+        "translationLabel": "Translation (optional)",
+        "noTargetSectionHint": "{{title}} has no section at this order yet, so only the source can be added.",
+        "submit": "Add passage",
+        "added_one": "Added {{count}} paragraph at order {{order}} ({{key}}).",
+        "added_other": "Added {{count}} paragraphs at order {{order}} ({{key}}).",
+        "searchSyncFailed": " They are saved but not yet searchable: {{error}}. Rebuild the search index to fix this.",
+        "sourceRequired": "Enter the source text.",
+        "noTargetSection": "{{title}} has no section at this order yet, so a translation cannot be added. Create it in Data Management → Translation Projects first.",
+        "keyTaken": "The passage key {{key}} is already used in one of these documents. Fix the existing rows first (see the Document Inspector).",
+        "failed": "Failed to add the passage.",
+        "notAuthorised": "You are not authorised to add paragraphs."
+      }
     }
   },
   "inspector": {

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   contentCounts,
   duplicatePassageKeys,
+  nextPassage,
   pairByPassageKey,
   type PairableRow,
   rowProblems,
@@ -81,5 +82,16 @@ describe('rowProblems', () => {
       ['no-passage-key'],
       [],
     ]);
+  });
+});
+
+describe('nextPassage', () => {
+  // After the last row of either side, so nothing is renumbered; parked rows don't count.
+  it('goes after the highest order on either side, keyed as the import keys that position', () => {
+    expect(nextPassage([row('a', 2, 'k'), row('b', 5, 'k'), row('p', -9, null)], 't0279', 3)).toEqual({
+      order: 6,
+      passageKey: 't0279.3.6',
+    });
+    expect(nextPassage([], 't0279', 3)).toEqual({ order: 1, passageKey: 't0279.3.1' });
   });
 });

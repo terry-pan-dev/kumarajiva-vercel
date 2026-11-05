@@ -13,8 +13,9 @@ import type { ReadUser } from '~/drizzle/tables';
 
 import { LocalizedError } from '~/i18n/errors';
 
+import { nextPassage } from './paragraph.pairing';
 import { DbProjectReferences, DbProjects } from './project.crud';
-import { resolveSectionContext } from './project.service';
+import { resolveSectionContext, type SectionContext } from './project.service';
 import { deleteParagraphsFromAlgolia, indexParagraphs } from './search.server';
 import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
 
@@ -582,6 +583,81 @@ export const deleteSectionWithParagraphs = async ({ id }: { id: string }) => {
   await deleteParagraphsFromAlgolia(paragraphs.map((p) => p.searchId));
 
   return { deletedParagraphCount: paragraphs.length };
+};
+
+// Appends one passage to a project's section: a source paragraph and, optionally, its
+// translation, paired by a new passage key. Both go after every existing row, so nothing is
+// renumbered, and the key is the one the import would give a row at that position. The rows are
+// inserted together, then indexed; a search failure is reported, not thrown, because the rows
+// are already saved and a retry would add the passage twice.
+export const appendPassage = async ({
+  context,
+  source,
+  translation,
+  userId,
+}: {
+  context: SectionContext;
+  source: string;
+  translation?: string | null;
+  userId: string;
+}) => {
+  const sourceText = source.trim();
+  const translationText = translation?.trim() || null;
+  if (!sourceText) {
+    throw new LocalizedError('data:paragraphs.section.add.sourceRequired');
+  }
+  const { origin, target } = context;
+  if (translationText && !target.section) {
+    throw new LocalizedError('data:paragraphs.section.add.noTargetSection', { title: target.document.title });
+  }
+
+  // Parked rows included: a key a parked row holds would pair again if it were unparked.
+  const [sourceRows, targetRows] = await Promise.all([
+    DbParagraphsNew.findAllBySectionIdForDebug(origin.section.id),
+    target.section ? DbParagraphsNew.findAllBySectionIdForDebug(target.section.id) : Promise.resolve([]),
+  ]);
+  const { order, passageKey } = nextPassage(
+    [...sourceRows, ...targetRows],
+    context.passageKeyPrefix,
+    origin.section.order,
+  );
+
+  // A key pairs paragraphs across a whole document, so it must be free in both documents.
+  const elsewhere = await Promise.all(
+    [origin.document.id, target.document.id].map((id) =>
+      DbParagraphsNew.findByDocumentIdAndPassageKeys(id, [passageKey]),
+    ),
+  );
+  if ([...sourceRows, ...targetRows].some((r) => r.passageKey === passageKey) || elsewhere.some((r) => r.length)) {
+    throw new LocalizedError('data:paragraphs.section.add.keyTaken', { key: passageKey });
+  }
+
+  const row = (documentId: string, sectionId: string, content: string) =>
+    ({
+      id: uuidv4(),
+      documentId,
+      sectionId,
+      order,
+      passageKey,
+      content,
+      searchId: uuidv4(),
+      createdBy: userId,
+      updatedBy: userId,
+    }) satisfies CreateParagraphNew;
+  const rows = [row(origin.document.id, origin.section.id, sourceText)];
+  if (translationText && target.section) rows.push(row(target.document.id, target.section.id, translationText));
+
+  await DbParagraphsNew.createMany(rows);
+
+  let searchError: string | null = null;
+  try {
+    await indexParagraphs(rows);
+  } catch (error) {
+    searchError = error instanceof Error ? error.message : String(error);
+    console.error('Search sync failed after adding a passage:', error);
+  }
+
+  return { order, passageKey, created: rows.length, searchError };
 };
 
 // Legacy deleteParagraphCleanly analog. No parent/child rows to cascade here;

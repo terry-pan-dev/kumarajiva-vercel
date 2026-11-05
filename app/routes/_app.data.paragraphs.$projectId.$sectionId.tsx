@@ -3,13 +3,15 @@
 // translation editor uses. Shows every row, including parked ones (negative
 // order) that reader views hide, and flags what looks wrong: parked rows,
 // missing or repeated passage keys, repeated content, orphan translations and
-// passages with more than one translation. Admins can delete single rows.
+// passages with more than one translation. Maintainers can append a passage
+// (source, plus its translation if the section exists); admins can delete
+// single rows.
 //
 // The project comes from the URL because a source document can belong to
 // several projects; the section is the source section, as in the editor's URL.
-import { Link, useActionData, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
+import { Form, Link, useActionData, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -20,18 +22,22 @@ import { defineAbilityFor } from '~/authorisation';
 import { CopyButton } from '~/components/data/CopyButton';
 import { DeleteConfirmDialog } from '~/components/data/DeleteConfirmDialog';
 import { ErrorInfo } from '~/components/ErrorInfo';
-import { Badge } from '~/components/ui';
+import { Badge, Button } from '~/components/ui';
+import { Textarea } from '~/components/ui/textarea';
 import { useToast } from '~/hooks/use-toast';
+import { LocalizedError, localizeError } from '~/i18n/errors';
 import { getFixedT } from '~/i18n/locale.server';
 import {
   contentCounts,
   duplicatePassageKeys,
+  nextPassage,
   pairByPassageKey,
   type RowProblem,
   rowProblems,
 } from '~/services/paragraph.pairing';
 import { resolveSectionContext } from '~/services/project.service';
 import {
+  appendPassage,
   deleteParagraph,
   getParagraph,
   type IParagraphNewDebugRow,
@@ -69,6 +75,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     projectId: context.projectId,
     source: context.origin,
     target: context.target,
+    passageKeyPrefix: context.passageKeyPrefix,
     sourceRows,
     targetRows,
     canDelete: defineAbilityFor(user).can('Administrate', 'TranslationData'),
@@ -81,31 +88,64 @@ export async function action({ params, request }: ActionFunctionArgs) {
     return redirect('/login');
   }
   const t = await getFixedT(request);
-  if (defineAbilityFor(user).cannot('Administrate', 'TranslationData')) {
-    return json({ success: false, message: t('data:paragraphs.section.notAuthorisedToDelete') }, { status: 403 });
+  const ability = defineAbilityFor(user);
+  const formData = Object.fromEntries(await request.formData());
+  const intent = formData['intent'];
+  const { projectId, sectionId } = params;
+
+  if (intent === 'add-passage') {
+    // The same permission as the import, which also creates paragraphs.
+    if (ability.cannot('Maintain', 'TranslationData')) {
+      return json({ success: false, intent, message: t('data:paragraphs.section.add.notAuthorised') }, { status: 403 });
+    }
+    const context = projectId && sectionId ? await resolveSectionContext(projectId, sectionId) : null;
+    if (!context) {
+      return json({ success: false, intent, message: t('data:errors.sectionNotFound') }, { status: 404 });
+    }
+    try {
+      const added = await appendPassage({
+        context,
+        source: String(formData['source'] ?? ''),
+        translation: String(formData['translation'] ?? ''),
+        userId: user.id,
+      });
+      const message =
+        t('data:paragraphs.section.add.added', { count: added.created, order: added.order, key: added.passageKey }) +
+        (added.searchError ? t('data:paragraphs.section.add.searchSyncFailed', { error: added.searchError }) : '');
+      return json({ success: true, intent, message });
+    } catch (error) {
+      if (!(error instanceof LocalizedError)) console.error('Error adding passage:', error);
+      const message =
+        error instanceof LocalizedError ? localizeError(error, t) : t('data:paragraphs.section.add.failed');
+      return json({ success: false, intent, message }, { status: error instanceof LocalizedError ? 400 : 500 });
+    }
   }
 
-  const formData = Object.fromEntries(await request.formData());
-  if (formData['intent'] !== 'delete-paragraph') {
-    return json({ success: false, message: t('data:rawData.unknownAction') }, { status: 400 });
+  if (intent !== 'delete-paragraph') {
+    return json({ success: false, intent, message: t('data:rawData.unknownAction') }, { status: 400 });
+  }
+  if (ability.cannot('Administrate', 'TranslationData')) {
+    return json(
+      { success: false, intent, message: t('data:paragraphs.section.notAuthorisedToDelete') },
+      { status: 403 },
+    );
   }
 
   // Only rows this page shows can be deleted from it: the paragraph must sit in
   // the project's source section or its translation section.
-  const { projectId, sectionId } = params;
   const context = projectId && sectionId ? await resolveSectionContext(projectId, sectionId) : null;
   const paragraph = await getParagraph(String(formData['paragraphId'] ?? ''));
   const sectionIds = [context?.origin.section.id, context?.target.section?.id].filter(Boolean);
   if (!context || !paragraph || !sectionIds.includes(paragraph.sectionId)) {
-    return json({ success: false, message: t('data:paragraphs.section.notInSection') }, { status: 404 });
+    return json({ success: false, intent, message: t('data:paragraphs.section.notInSection') }, { status: 404 });
   }
 
   try {
     await deleteParagraph({ id: paragraph.id });
-    return json({ success: true, message: t('data:paragraphs.section.deleted') });
+    return json({ success: true, intent, message: t('data:paragraphs.section.deleted') });
   } catch (error) {
     console.error('Error deleting paragraph:', error);
-    return json({ success: false, message: t('data:rawData.deleteFailed') }, { status: 500 });
+    return json({ success: false, intent, message: t('data:rawData.deleteFailed') }, { status: 500 });
   }
 }
 
@@ -173,15 +213,65 @@ function ParagraphCell({
   );
 }
 
+// Appends a passage after the section's last row. The position shown is what the server will
+// pick unless someone else adds a row first; the server works it out again and checks the key.
+function AddPassageForm({
+  next,
+  targetTitle,
+  hasTarget,
+  submitting,
+}: {
+  next: { order: number; passageKey: string };
+  targetTitle: string;
+  hasTarget: boolean;
+  submitting: boolean;
+}) {
+  const { t } = useTranslation('data');
+  return (
+    <Form method="post" className="border-border bg-background mt-2 space-y-2 rounded border p-3">
+      <input type="hidden" name="intent" value="add-passage" />
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-foreground text-sm font-semibold">{t('paragraphs.section.add.title')}</h3>
+        <span className="text-muted-foreground text-xs">
+          {t('paragraphs.section.add.position', { order: next.order, key: next.passageKey })}
+        </span>
+      </div>
+      <p className="text-muted-foreground text-xs">{t('paragraphs.section.add.description')}</p>
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <label className="space-y-1 text-xs font-medium">
+          <span>{t('paragraphs.section.add.sourceLabel')}</span>
+          <Textarea required rows={3} name="source" disabled={submitting} />
+        </label>
+        <label className="space-y-1 text-xs font-medium">
+          <span>{t('paragraphs.section.add.translationLabel')}</span>
+          <Textarea rows={3} name="translation" disabled={submitting || !hasTarget} />
+          {!hasTarget && (
+            <span className="text-muted-foreground block font-normal">
+              {t('paragraphs.section.add.noTargetSectionHint', { title: targetTitle })}
+            </span>
+          )}
+        </label>
+      </div>
+      <div className="flex justify-end">
+        <Button size="sm" type="submit" disabled={submitting}>
+          {submitting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
+          {t('paragraphs.section.add.submit')}
+        </Button>
+      </div>
+    </Form>
+  );
+}
+
 export default function ParagraphsSection() {
-  const { source, target, sourceRows, targetRows, canDelete } = useLoaderData<typeof loader>();
-  const actionData = useActionData<{ success: boolean; message: string }>();
+  const { source, target, passageKeyPrefix, sourceRows, targetRows, canDelete } = useLoaderData<typeof loader>();
+  const actionData = useActionData<{ success: boolean; intent?: string; message: string }>();
   const navigation = useNavigation();
   const { toast } = useToast();
   const { t } = useTranslation(['data', 'common']);
 
   const [filter, setFilter] = useState('');
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [addFormKey, setAddFormKey] = useState(0);
 
   useEffect(() => {
     if (!actionData) return;
@@ -191,8 +281,15 @@ export default function ParagraphsSection() {
       description: actionData.message,
       position: 'top-right',
     });
-    if (actionData.success) setPendingDelete(null);
+    if (actionData.success && actionData.intent === 'delete-paragraph') setPendingDelete(null);
+    // A fresh form after each passage added, so the next one starts empty.
+    if (actionData.success && actionData.intent === 'add-passage') setAddFormKey((key) => key + 1);
   }, [actionData, toast, t]);
+
+  const next = useMemo(
+    () => nextPassage([...sourceRows, ...targetRows], passageKeyPrefix, source.section.order),
+    [sourceRows, targetRows, passageKeyPrefix, source.section.order],
+  );
 
   // Each side is judged against its own document's rows: a repeated key or
   // content is only a problem within one document.
@@ -224,7 +321,8 @@ export default function ParagraphsSection() {
     return pairs.filter((p) => (p.source && match(p.source)) || p.targets.some(match));
   }, [pairs, filter]);
 
-  const isDeleting = navigation.state === 'submitting';
+  const submittingIntent = navigation.state === 'submitting' ? navigation.formData?.get('intent') : null;
+  const isDeleting = submittingIntent === 'delete-paragraph';
   const isEmpty = sourceRows.length === 0 && targetRows.length === 0;
 
   return (
@@ -356,6 +454,14 @@ export default function ParagraphsSection() {
           </tbody>
         </table>
       </div>
+
+      <AddPassageForm
+        next={next}
+        key={addFormKey}
+        hasTarget={target.section !== null}
+        targetTitle={target.document.title}
+        submitting={submittingIntent === 'add-passage'}
+      />
 
       <DeleteConfirmDialog
         submitting={isDeleting}

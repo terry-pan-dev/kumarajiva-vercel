@@ -46,6 +46,19 @@ export function unmatchedRows<T extends PairableRow>(rows: PairableRow[], others
   return others.filter((r) => !r.passageKey || !keys.has(r.passageKey));
 }
 
+// Where a passage appended to a section goes: after every row on either side (parked rows aside),
+// keyed the way the import keys a row that has no passage_key.
+export function nextPassage(
+  rows: Iterable<Pick<PairableRow, 'order'>>,
+  passageKeyPrefix: string,
+  sectionOrder: number,
+): { order: number; passageKey: string } {
+  let last = 0;
+  for (const row of rows) if (!isParked(row) && row.order > last) last = row.order;
+  const order = last + 1;
+  return { order, passageKey: `${passageKeyPrefix}.${sectionOrder}.${order}` };
+}
+
 export type ParagraphPair<T> = {
   // Stable React key.
   key: string;
