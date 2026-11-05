@@ -43,7 +43,6 @@ import { formatElapsed, IndeterminateBar, ProgressBar, useElapsedSeconds } from 
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { Badge, Button, Input } from '~/components/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
-import { type ReadGlossary } from '~/drizzle/tables';
 import { useToast } from '~/hooks/use-toast';
 import { LocalizedError, localizeError, translateKey } from '~/i18n/errors';
 import {
@@ -56,7 +55,7 @@ import {
 } from '~/services/glossary.analyse';
 import { findGlossaryRowsForInspection, inspectGlossary, type RecordDeletionResult } from '~/services/glossary.inspect';
 import { readTrashedGlossaries } from '~/services/glossary.service';
-import { type GlossaryTerm } from '~/services/glossary.types';
+import { type GlossaryEntry, type GlossaryTerm } from '~/services/glossary.types';
 import { readUsers } from '~/services/user.service';
 
 import type { JobPayloads, JobResponse } from './_app.data.glossary.inspector-jobs';
@@ -1223,7 +1222,7 @@ function OrphanRecordsCard({
 
 // ─── Trash ───────────────────────────────────────────────────────────────────
 
-type TrashedRow = ReadGlossary & { deletedByName: string | null };
+type TrashedRow = GlossaryEntry & { deletedByName: string | null };
 
 // How many entries go into one restore or purge request. A purge runs one search per entry to
 // find stray records, so this is smaller than the record-delete chunk.

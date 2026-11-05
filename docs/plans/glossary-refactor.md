@@ -1,6 +1,6 @@
 # Glossary refactor: translations out of the JSON blob
 
-Status: **PR 1, PR 2 merged; PR 3a written.** Written 2026-11-04, updated 2026-11-05.
+Status: **PR 1, 2, 3a merged; PR 3b written** (`glossary.store.ts` replaces `glossary.crud.ts`). Written 2026-11-04, updated 2026-11-05.
 `glossary_translations` (`drizzle/tables/glossary.ts`, migration `0025`) exists on dev,
 empty; not yet on prod (applied by the PR 1 merge). Data script 08 is written; dev dry run:
 13,920 terms, 17,357 rows, 1 duplicate (癡), no issues. Not applied anywhere, and by the

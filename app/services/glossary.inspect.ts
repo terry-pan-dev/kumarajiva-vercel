@@ -1,9 +1,9 @@
 // Data fetching for the glossary inspector: reads every glossary row and every record in the
 // Algolia index, then hands both to the checks in glossary.analyse.ts. Read-only — nothing
 // here writes to the database or the index.
-import { and, inArray, isNull, sql } from 'drizzle-orm';
+import { and, inArray, isNull } from 'drizzle-orm';
 
-import { glossariesTable, type ReadGlossary } from '~/drizzle/tables';
+import { glossariesTable } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
@@ -13,6 +13,8 @@ import {
   type IndexRecord,
   type RemovableRecordClass,
 } from './glossary.analyse';
+import { GlossaryStore } from './glossary.store';
+import { type GlossaryEntry } from './glossary.types';
 
 const dbClient = getDb();
 
@@ -36,7 +38,7 @@ async function readIndexRecords(): Promise<IndexRecord[]> {
 // Scanning the index means browsing every record — tens of thousands of them, tens of
 // seconds — so the caller opts in. Without it the row-level checks still run.
 export async function inspectGlossary({ checkIndex }: { checkIndex: boolean }): Promise<GlossaryInspection> {
-  const rows = await dbClient.select().from(glossariesTable).orderBy(glossariesTable.glossary);
+  const rows = await GlossaryStore.findAllIncludingTrash();
 
   if (!checkIndex) {
     return analyseGlossary({ rows, indexRecords: null });
@@ -57,27 +59,8 @@ export async function inspectGlossary({ checkIndex }: { checkIndex: boolean }): 
 
 // Lookup for the inspector's search box: an exact uuid or search_id, or any term or
 // translation containing the query. Returns whole rows — the inspector shows every column.
-export async function findGlossaryRowsForInspection(query: string, limit = 50): Promise<ReadGlossary[]> {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
-
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
-  if (isUuid) {
-    return dbClient
-      .select()
-      .from(glossariesTable)
-      .where(sql`${glossariesTable.id} = ${trimmed}::uuid`);
-  }
-
-  const pattern = `%${trimmed}%`;
-  return dbClient
-    .select()
-    .from(glossariesTable)
-    .where(
-      sql`${glossariesTable.glossary} ILIKE ${pattern} OR ${glossariesTable.searchId} = ${trimmed} OR ${glossariesTable.translations}::text ILIKE ${pattern}`,
-    )
-    .orderBy(glossariesTable.glossary)
-    .limit(limit);
+export async function findGlossaryRowsForInspection(query: string, limit = 50): Promise<GlossaryEntry[]> {
+  return GlossaryStore.findForInspection(query, limit);
 }
 
 // ─── Cleanup ─────────────────────────────────────────────────────────────────
@@ -91,6 +74,9 @@ export type RecordDeletionResult = {
 };
 
 export type SkipReason = 'not-in-index' | 'canonical' | 'last-record';
+
+// The only columns the cleanup needs of a row.
+const TERM_KEYS = { id: glossariesTable.id, glossary: glossariesTable.glossary, searchId: glossariesTable.searchId };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -132,12 +118,12 @@ export async function deleteIndexRecords(objectIDs: string[]): Promise<RecordDel
   const [claimedRows, rowsPointingAtRequested] = await Promise.all([
     claimedRowIds.length
       ? dbClient
-          .select()
+          .select(TERM_KEYS)
           .from(glossariesTable)
           .where(and(inArray(glossariesTable.id, claimedRowIds), isNull(glossariesTable.deletedAt)))
       : Promise.resolve([]),
     dbClient
-      .select()
+      .select(TERM_KEYS)
       .from(glossariesTable)
       .where(and(inArray(glossariesTable.searchId, requested), isNull(glossariesTable.deletedAt))),
   ]);

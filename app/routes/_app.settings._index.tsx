@@ -13,8 +13,8 @@ import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Slider } from '~/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import { type ReadGlossary } from '~/drizzle/schema';
 import { readGlossariesByIds, updateUser } from '~/services';
+import { type GlossaryEntry } from '~/services/glossary.types';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { searchParams } = new URL(request.url);
@@ -104,7 +104,7 @@ function AvatarEditPage() {
   };
 
   return (
-    <Card className="mx-auto w-full max-w-md text-foreground">
+    <Card className="text-foreground mx-auto w-full max-w-md">
       <CardHeader>
         <CardTitle className="text-lg">Edit Your Avatar</CardTitle>
       </CardHeader>
@@ -158,7 +158,7 @@ function AvatarEditPage() {
 function GlossaryComponent() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [subscribedGlossaries, _] = useLocalStorage<string[]>('subscribedGlossaries', []);
-  const fetcher = useFetcher<{ glossaries: ReadGlossary[]; success: boolean }>();
+  const fetcher = useFetcher<{ glossaries: GlossaryEntry[]; success: boolean }>();
 
   useEffect(() => {
     if (subscribedGlossaries.length) {
@@ -205,7 +205,7 @@ export function FontSizePreference() {
   }, [fontSize]);
 
   return (
-    <Card className="mx-auto w-full max-w-md bg-white text-foreground dark:bg-gray-950">
+    <Card className="text-foreground mx-auto w-full max-w-md bg-white dark:bg-gray-950">
       <CardHeader>
         <CardTitle className="text-lg">Font Size Preferences</CardTitle>
         <CardDescription>Adjust the font size to your liking</CardDescription>
@@ -214,7 +214,7 @@ export function FontSizePreference() {
         <div className="space-y-2">
           <label
             htmlFor="font-size-slider"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
             Font Size: {fontSize}px
           </label>

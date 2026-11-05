@@ -22,8 +22,8 @@ import { Divider } from '~/components/ui/divider';
 import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import { DbGlossaries } from '~/services/glossary.crud';
 import { createGlossaryAndIndexInAlgolia, reviveTrashedGlossary } from '~/services/glossary.service';
+import { GlossaryStore } from '~/services/glossary.store';
 import { readUsers } from '~/services/user.service';
 import { DEFAULT_TARGET_LANG } from '~/utils/constants';
 import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
@@ -54,7 +54,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = Object.fromEntries(await request.formData());
   const validatedData = validatePayloadOrThrow({ schema: glossaryFormSchema, formData });
   // The trash is checked too: a trashed row still holds the term under the unique index.
-  const [existing] = await DbGlossaries.findByTermsIncludingTrash([validatedData.glossaryChinese]);
+  const [existing] = await GlossaryStore.findByTermsIncludingTrash([validatedData.glossaryChinese]);
   if (existing && !existing.deletedAt) {
     return json(
       { errors: [{ glossaryChinese: 'This term already exists, please search glossary by this term first' }] },
