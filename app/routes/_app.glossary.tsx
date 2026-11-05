@@ -10,8 +10,6 @@ import { useFormContext } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { type z } from 'zod';
 
-import type { CreateGlossary } from '~/drizzle/schema';
-
 import { assertAuthUser } from '~/auth.server';
 import { Can } from '~/authorisation';
 import { FormInput, FormModal, FormSelect, FormTextarea } from '~/components/FormModal';
@@ -23,7 +21,8 @@ import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { createGlossaryAndIndexInAlgolia, reviveTrashedGlossary } from '~/services/glossary.service';
-import { GlossaryStore } from '~/services/glossary.store';
+import { GlossaryStore, type GlossaryTermInput } from '~/services/glossary.store';
+import { type GlossaryTranslation } from '~/services/glossary.types';
 import { readUsers } from '~/services/user.service';
 import { DEFAULT_TARGET_LANG } from '~/utils/constants';
 import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
@@ -61,7 +60,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       { status: 400 },
     );
   }
-  const glossary: CreateGlossary = {
+  const term = {
     id: uuidv4(),
     glossary: validatedData.glossaryChinese,
     phonetic: validatedData.phoneticChinese,
@@ -69,28 +68,28 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     author: user.username || '翻譯團隊',
     cbetaFrequency: validatedData.cbetaFrequencyChinese || '0',
     discussion: validatedData.discussionChinese || '',
-    translations: [
-      {
-        glossary: validatedData.glossary,
-        language: validatedData.language,
-        sutraName: validatedData.sutraName || '佛教常用詞',
-        volume: validatedData.volume || '-',
-        updatedBy: user.id,
-        updatedAt: new Date().toISOString(),
-        originSutraText: validatedData.sutraText || '',
-        targetSutraText: validatedData.sutraText || '',
-        author: validatedData.author || '',
-        partOfSpeech: validatedData.partOfSpeech || '',
-        phonetic: validatedData.phonetic || '',
-      },
-    ],
     createdBy: user.id,
     updatedBy: user.id,
-  };
+  } satisfies GlossaryTermInput;
+  const translations: GlossaryTranslation[] = [
+    {
+      glossary: validatedData.glossary,
+      language: validatedData.language,
+      sutraName: validatedData.sutraName || '佛教常用詞',
+      volume: validatedData.volume || '-',
+      updatedBy: user.id,
+      updatedAt: new Date().toISOString(),
+      originSutraText: validatedData.sutraText || '',
+      targetSutraText: validatedData.sutraText || '',
+      author: validatedData.author || '',
+      partOfSpeech: validatedData.partOfSpeech || '',
+      phonetic: validatedData.phonetic || '',
+    },
+  ];
   // A term in the trash is created afresh over the trashed row, which keeps its uuid.
   const newGlossary = existing
-    ? await reviveTrashedGlossary(existing.id, { ...glossary, subscribers: 0 })
-    : await createGlossaryAndIndexInAlgolia(glossary);
+    ? await reviveTrashedGlossary(existing.id, { ...term, subscribers: 0 }, translations)
+    : await createGlossaryAndIndexInAlgolia(term, translations);
   return json({ success: true, glossary: newGlossary });
 };
 

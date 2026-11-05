@@ -128,15 +128,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (ability.cannot('Maintain', 'Glossary')) {
       return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
     }
-    const data = validatePayloadOrThrow({ schema: glossaryInsertFormSchema, formData });
-    const newGlossary = {
+    // `id` is the term's: it says which term gets the translation and is not part of it.
+    const { id, ...data } = validatePayloadOrThrow({ schema: glossaryInsertFormSchema, formData });
+    const newTranslation = {
       ...data,
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
     };
     await updateGlossaryTranslations({
-      id: newGlossary.id,
-      translations: [newGlossary],
+      id,
+      translations: [newTranslation],
       isNewInsert: true,
       phonetic: null,
       author: null,

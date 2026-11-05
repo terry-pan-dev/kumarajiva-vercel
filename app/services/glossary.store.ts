@@ -1,6 +1,7 @@
 // The glossary's storage layer: the only module that knows how a term's translations are
-// stored. Every read of translations goes through here and returns GlossaryEntry
-// (glossary.types.ts), so the rest of the app never sees the storage shape.
+// stored. Every read and write of translations goes through here; reads return GlossaryEntry
+// (glossary.types.ts) and writes take the translations apart from the term's own columns, so
+// the rest of the app never sees the storage shape.
 //
 // Translations are still the `glossaries.translations` JSON column. When they move to the
 // `glossary_translations` table (docs/plans/glossary-refactor.md, PR 4), this module changes
@@ -10,7 +11,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { glossariesTable, type CreateGlossary, type ReadGlossary, type UpdateGlossary } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
 
-import { type GlossaryEntry } from './glossary.types';
+import { type GlossaryEntry, type GlossaryTerm, type GlossaryTranslation } from './glossary.types';
 
 const db = getDb();
 
@@ -33,6 +34,18 @@ export const inIdOrder = <T extends { id: string }>(ids: readonly string[], rows
 };
 
 const entries = (rows: ReadGlossary[]) => rows.map(toGlossaryEntry);
+
+// A stored row without its translations.
+const toGlossaryTerm = (row: ReadGlossary): GlossaryTerm => {
+  const { translations, ...term } = row;
+  void translations;
+  return term;
+};
+
+// The term's own columns, for writing. Translations are never among them: they are passed to
+// create, update and revive as a list of their own.
+export type GlossaryTermInput = Omit<CreateGlossary, 'translations'>;
+export type GlossaryTermUpdate = Omit<UpdateGlossary, 'id' | 'translations'>;
 
 export type GlossaryPage = {
   glossaries: GlossaryEntry[];
@@ -207,15 +220,57 @@ export const GlossaryStore = {
   // CREATE
   // --------------------------------------------------
 
-  create: async (glossary: CreateGlossary): Promise<ReadGlossary[]> => {
-    return db.insert(glossariesTable).values(glossary).returning();
+  // A new term with its translations, in order.
+  create: async (term: GlossaryTermInput, translations: GlossaryTranslation[]): Promise<GlossaryEntry> => {
+    const [row] = await db
+      .insert(glossariesTable)
+      .values({ ...term, translations })
+      .returning();
+    return toGlossaryEntry(row);
   },
 
   // --------------------------------------------------
   // UPDATE
   // --------------------------------------------------
 
-  updateById: async (id: string, data: UpdateGlossary): Promise<ReadGlossary[]> => {
-    return db.update(glossariesTable).set(data).where(eq(glossariesTable.id, id)).returning();
+  // Sets the term's columns and makes its translations exactly `translations`, in that order.
+  // The list is the whole of them: a translation carrying a stored id is that translation,
+  // edited; one without an id is new; a stored translation the list leaves out is removed.
+  // While translations are JSON this simply rewrites the column; once they are rows
+  // (docs/plans/glossary-refactor.md, PR 4) it writes the difference (diffTranslations in
+  // glossary.diff.ts). Undefined if no row has `id`.
+  update: async (
+    id: string,
+    term: GlossaryTermUpdate,
+    translations: GlossaryTranslation[],
+  ): Promise<GlossaryEntry | undefined> => {
+    const [row] = await db
+      .update(glossariesTable)
+      .set({ ...term, translations })
+      .where(eq(glossariesTable.id, id))
+      .returning();
+    return row && toGlossaryEntry(row);
+  },
+
+  // Takes a trashed term out of the trash with new contents, keeping its uuid: nothing of the
+  // trashed translations survives. Not indexed (search_id cleared) until the caller indexes it.
+  // Undefined if the row is not in the trash (any more).
+  revive: async (
+    id: string,
+    term: GlossaryTermUpdate,
+    translations: GlossaryTranslation[],
+  ): Promise<GlossaryEntry | undefined> => {
+    const [row] = await db
+      .update(glossariesTable)
+      .set({ ...term, translations, deletedAt: null, searchId: null })
+      .where(and(eq(glossariesTable.id, id), trashed))
+      .returning();
+    return row && toGlossaryEntry(row);
+  },
+
+  // The term's own columns only (search_id, the trash, …); its translations are left as they are.
+  updateTerm: async (id: string, data: GlossaryTermUpdate): Promise<GlossaryTerm | undefined> => {
+    const [row] = await db.update(glossariesTable).set(data).where(eq(glossariesTable.id, id)).returning();
+    return row && toGlossaryTerm(row);
   },
 };
