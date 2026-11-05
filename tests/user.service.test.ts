@@ -35,11 +35,9 @@ beforeEach(() => {
 });
 
 describe('createUser', () => {
-  // The columns are retired but still NOT NULL; until a schema change drops them, every insert
-  // must carry a value, and callers must not have to know about them.
-  it('fills the retired language columns, so the NOT NULL insert succeeds', async () => {
+  it('inserts the user as given, with no language columns', async () => {
     await createUser(newUser);
-    expect(db.inserted).toEqual([{ ...newUser, originLang: 'chinese', targetLang: 'english' }]);
+    expect(db.inserted).toEqual([newUser]);
   });
 });
 

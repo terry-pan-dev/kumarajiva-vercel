@@ -26,7 +26,8 @@ vi.mock('~/services/project.service', () => ({ resolveSectionContext: mocks.reso
 vi.mock('~/services/glossary.service', () => ({ searchGlossaries: vi.fn(async () => ({})) }));
 vi.mock('~/services/tokenizer.service', () => ({ tokenizer: vi.fn(async () => []) }));
 
-// A user whose stored (retired) pair would give the wrong answer if anything still read it.
+// A session issued before users.origin_lang / target_lang were dropped still carries the old pair;
+// it would give the wrong answer if anything still read it.
 const user = { id: 'u1', role: 'editor', originLang: 'sanskrit', targetLang: 'english' };
 
 const doc = (language: string) => ({ id: `d-${language}`, key: null, title: language, language });
@@ -107,7 +108,7 @@ describe('assistant', () => {
     );
   });
 
-  it("defaults to English, whatever the user's stored pair says", async () => {
+  it('defaults to English, whatever pair an old session still carries', async () => {
     const instructions = await ask({ message: '法' });
     expect(instructions).toContain('Language to answer and translate into: english');
     expect(instructions).not.toContain('sanskrit to');
