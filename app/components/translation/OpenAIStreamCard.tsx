@@ -1,3 +1,4 @@
+import { useParams } from '@remix-run/react';
 import { Copy } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -18,6 +19,9 @@ interface StreamCardProps {
 
 export const OpenAIStreamCard = React.memo(
   ({ text, title, originId, sectionId, disabled, pasteTranslation, interrupt }: StreamCardProps) => {
+    // The card lives in the translation editor (/translation/:projectId/:sectionId); the
+    // project decides the languages to translate between.
+    const { projectId } = useParams();
     const [translationResult, setTranslationResult] = useState<string>('');
     const [refresh, setRefresh] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -64,9 +68,8 @@ export const OpenAIStreamCard = React.memo(
             body: JSON.stringify({
               origin: text,
               originId,
-              // The endpoint's legacy body key; carries the section id in the
-              // new data model.
-              rollId: sectionId,
+              projectId,
+              sectionId,
             }),
             // Add signal to request
             signal: abortControllerRef.current.signal,
@@ -111,7 +114,7 @@ export const OpenAIStreamCard = React.memo(
       }
       setRefresh(false);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [text, refresh, cleanupStream, disabled]);
+    }, [text, refresh, cleanupStream, disabled, projectId, sectionId]);
 
     return (
       <>

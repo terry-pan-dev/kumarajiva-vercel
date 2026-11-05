@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { chineseRegex } from '~/lib/utils';
-import { LANG_VALUES } from '~/utils/constants';
+import { DEFAULT_TARGET_LANG, LANG_VALUES } from '~/utils/constants';
+import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
 
 export const glossaryFormSchema = z.object({
   glossaryChinese: z
@@ -21,6 +22,8 @@ export const glossaryFormSchema = z.object({
   glossary: z.string().min(1, {
     message: 'Glossary must be at least 1 characters.',
   }),
+  // The language of the translation term; the form offers English first.
+  language: z.enum(GLOSSARY_TRANSLATION_LANGUAGES).default(DEFAULT_TARGET_LANG),
   sutraText: z.string().optional(),
   sutraName: z.string().optional().default('佛教常用詞'),
   volume: z.string().optional(),
@@ -55,7 +58,7 @@ export const glossaryEditFormSchema = z.object({
 export const glossaryInsertFormSchema = z.object({
   id: z.string(),
   glossary: z.string(),
-  language: z.enum(LANG_VALUES),
+  language: z.enum(GLOSSARY_TRANSLATION_LANGUAGES).default(DEFAULT_TARGET_LANG),
   sutraName: z.string().transform((val) => (val.length > 0 ? val : '佛教常用詞')),
   volume: z.string().transform((val) => (val.length > 0 ? val : '-')),
   originSutraText: z.string().nullish(),

@@ -3,7 +3,7 @@ import { useFormContext } from 'react-hook-form';
 
 import { type ReadTeam } from '~/drizzle/tables';
 import { type ReadUser } from '~/drizzle/tables/user';
-import { LANG_VALUES, ROLE_VALUES } from '~/utils/constants';
+import { ROLE_VALUES } from '~/utils/constants';
 import { createTeamSchema } from '~/validations/team.validation';
 import { createUserSchema, resetPasswordSchema } from '~/validations/user.validation';
 
@@ -76,10 +76,10 @@ export default function AdminActionButtons({ users, teams }: { users: ReadUser[]
 
   return (
     <TooltipProvider>
-      <div className="fixed bottom-6 right-6">
+      <div className="fixed right-6 bottom-6">
         <div className="relative">
           {isExpanded && (
-            <div className="absolute bottom-16 right-0 flex flex-col-reverse items-center gap-3">
+            <div className="absolute right-0 bottom-16 flex flex-col-reverse items-center gap-3">
               {[
                 { modal: addTeamModal, tooltip: 'Add Team' },
                 { modal: addUserModal, tooltip: 'Add User' },
@@ -105,7 +105,7 @@ export default function AdminActionButtons({ users, teams }: { users: ReadUser[]
             aria-expanded={isExpanded}
             title={isExpanded ? 'Collapse actions' : 'Expand actions'}
             aria-label={isExpanded ? 'Collapse actions' : 'Expand actions'}
-            className="h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 w-12 rounded-full shadow-lg"
           >
             <Icons.Editing className={`h-5 w-5 transition-transform duration-300 ${isExpanded ? 'rotate-45' : ''}`} />
           </Button>
@@ -133,10 +133,6 @@ const AddUserForm = ({ teams }: { teams: ReadTeam[] }) => {
     label: role,
     value: role,
   }));
-  const languageOptions = LANG_VALUES.map((language) => ({
-    label: language,
-    value: language,
-  }));
 
   return (
     <div className="grid grid-cols-1 gap-1 lg:grid-cols-2 lg:gap-4">
@@ -144,20 +140,6 @@ const AddUserForm = ({ teams }: { teams: ReadTeam[] }) => {
       <FormInput required name="email" label="Email" description="The email of the user." />
       <FormSelect required label="Team" name="teamId" options={teamOptions} description="The team of the user." />
       <FormSelect required name="role" label="Role" options={rolesOptions} description="The role of the user." />
-      <FormSelect
-        required
-        name="originLang"
-        label="Source Language"
-        options={languageOptions}
-        description="The source language of the user."
-      />
-      <FormSelect
-        required
-        name="targetLang"
-        label="Target Language"
-        options={languageOptions}
-        description="The target language of the user."
-      />
       <FormInput required name="password" label="Password" description="The password of the user." />
     </div>
   );
@@ -184,7 +166,7 @@ const ResetPasswordForm = ({ users }: { users: ReadUser[] }) => {
       />
       {selectedUser && (
         <div className="rounded-md border p-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             <span className="font-semibold">Email:</span> {selectedUser.email}
           </p>
         </div>

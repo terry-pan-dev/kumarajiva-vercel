@@ -38,8 +38,16 @@ export const updateUser = async (user: UpdateUser) => {
   return dbClient.update(usersTable).set(user).where(eq(usersTable.id, user.id));
 };
 
-export const createUser = async (user: CreateUser) => {
-  return dbClient.insert(usersTable).values(user).returning();
+// users.origin_lang / target_lang are no longer read anywhere: a project's documents decide the
+// languages being translated. The columns are still NOT NULL until a schema change drops them,
+// so new users get a fixed placeholder here — the one place to delete when that change lands.
+const RETIRED_LANGUAGE_COLUMNS = { originLang: 'chinese', targetLang: 'english' } as const;
+
+export const createUser = async (user: Omit<CreateUser, 'originLang' | 'targetLang'>) => {
+  return dbClient
+    .insert(usersTable)
+    .values({ ...user, ...RETIRED_LANGUAGE_COLUMNS })
+    .returning();
 };
 
 export const resetUserPassword = async (userId: string, password: string) => {

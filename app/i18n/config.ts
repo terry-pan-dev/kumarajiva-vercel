@@ -7,8 +7,8 @@ import zhHantCommon from '~/locales/zh-Hant/common.json';
 import zhHantData from '~/locales/zh-Hant/data.json';
 import zhHantGlossary from '~/locales/zh-Hant/glossary.json';
 
-// UI language only. This is unrelated to a user's originLang/targetLang, which
-// describe the translation pair they work on, not the language they read the UI in.
+// UI language only. This is unrelated to the languages of the texts being
+// translated, which come from each project's documents.
 export const SUPPORTED_LOCALES = ['en', 'zh-Hant'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
