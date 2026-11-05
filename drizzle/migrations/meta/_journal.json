@@ -169,6 +169,13 @@
       "when": 1793894837939,
       "tag": "0024_drop-user-languages",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793901094152,
+      "tag": "0025_add-glossary-translations",
+      "breakpoints": true
     }
   ]
 }
