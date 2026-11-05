@@ -75,8 +75,6 @@ vi.mock('~/services/paragraph.service', () => ({ readParagraphsByRollIdForLangua
 vi.mock('~/services/search.server', () => ({
   indexParagraphs: mocks.indexParagraphs,
   // The legacy roll import's; never reached by the section import under test.
-  saveParagraphsToAlgolia: vi.fn(),
-  updateParagraphsToAlgolia: vi.fn(),
 }));
 vi.mock('~/services/text.service', () => ({ readParagraphsBySectionId: vi.fn() }));
 

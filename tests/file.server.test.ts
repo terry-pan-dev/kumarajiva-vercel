@@ -50,9 +50,9 @@ vi.mock('~/services/paragraph.service', () => ({
   readParagraphsByRollIdForLanguage: vi.fn().mockResolvedValue([]),
 }));
 
+// The legacy roll import writes nothing to search; only replaceSectionData uses this.
 vi.mock('~/services/search.server', () => ({
-  saveParagraphsToAlgolia: vi.fn().mockResolvedValue(undefined),
-  updateParagraphsToAlgolia: vi.fn().mockResolvedValue(undefined),
+  indexParagraphs: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────

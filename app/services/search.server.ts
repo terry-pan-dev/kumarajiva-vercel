@@ -3,7 +3,7 @@ import type { SearchQuery } from '@algolia/client-search';
 import { and, inArray, isNull } from 'drizzle-orm';
 import 'dotenv/config';
 
-import type { CreateParagraph, ReadGlossary } from '~/drizzle/schema';
+import type { ReadGlossary } from '~/drizzle/schema';
 
 import { type SearchResultListProps } from '~/components/SideBarMenu';
 import { glossariesTable } from '~/drizzle/schema';
@@ -30,14 +30,14 @@ const dbClient = getDb();
 // than needed and collapse duplicates afterwards.
 const GLOSSARY_HIT_OVERFETCH = 3;
 
-// Headroom for paragraph queries: a hit on a parked row is dropped when it resolves, so ask for
-// a few more than are shown.
+// Headroom for paragraph queries: a hit on a parked row or a stale record is dropped when it
+// resolves, so ask for a few more than are shown.
 const PARAGRAPH_HIT_OVERFETCH = 2;
 
 // Resolves paragraph hits to paragraphs_new rows and pairs each with the same passage in the
 // work's other documents. Hits that no longer resolve (stale records) are dropped.
 const queryParagraphs = async (hitIds: string[], limit: number): Promise<ParagraphSearchResult[]> => {
-  const rows = await DbParagraphsNew.findByIdsWithRelations([...new Set(hitIds)]);
+  const rows = await DbParagraphsNew.findByIdsWithRelations(hitIds);
   const workIds = [...new Set(rows.map((row) => row.document.workId))];
   const passageKeys = [...new Set(rows.map((row) => row.passageKey).filter((key): key is string => Boolean(key)))];
   const candidates = await DbParagraphsNew.findAlignedCandidates(workIds, passageKeys);
@@ -123,7 +123,7 @@ export const indexParagraphs = async (rows: IndexableParagraph[]): Promise<void>
   await algoliaClient.saveObjects({ indexName: PARAGRAPH_INDEX, objects });
 };
 
-// Removes the records of deleted paragraphs (new or legacy — both index by search_id).
+// Removes the records of deleted paragraphs.
 export const deleteParagraphsFromAlgolia = async (searchIds: (string | null | undefined)[]): Promise<void> => {
   const objectIDs = searchIds.filter((id): id is string => Boolean(id));
   if (!objectIDs.length) return;
@@ -144,6 +144,8 @@ export type ParagraphIndexRebuild = {
   recordsBefore: number;
   // Index settings that differ from PARAGRAPH_INDEX_SETTINGS (and are set, when applied).
   settingsChanged: ParagraphIndexSetting[];
+  // The live value of each configured setting before the rebuild; absent when unset.
+  liveSettings: Partial<Record<ParagraphIndexSetting, unknown>>;
 };
 
 // Rebuilds the paragraph index from paragraphs_new: afterwards it holds exactly one record per
@@ -176,9 +178,15 @@ export const rebuildParagraphIndex = async ({ apply }: { apply: boolean }): Prom
         })
       ).nbHits ?? 0)
     : 0;
-  const settingsChanged = settingsToChange(
-    indexExists ? await algoliaClient.getSettings({ indexName: PARAGRAPH_INDEX }) : {},
+  const live: Partial<Record<ParagraphIndexSetting, unknown>> = indexExists
+    ? await algoliaClient.getSettings({ indexName: PARAGRAPH_INDEX })
+    : {};
+  const liveSettings = Object.fromEntries(
+    (Object.keys(PARAGRAPH_INDEX_SETTINGS) as ParagraphIndexSetting[])
+      .filter((key) => live[key] !== undefined)
+      .map((key) => [key, live[key]]),
   );
+  const settingsChanged = settingsToChange(live);
 
   if (apply) {
     // Settings go first, on the live index: replaceAllObjects copies the live index's settings
@@ -209,42 +217,6 @@ export const rebuildParagraphIndex = async ({ apply }: { apply: boolean }): Prom
     duplicateSearchId,
     recordsBefore,
     settingsChanged,
+    liveSettings,
   };
-};
-
-// ─── Legacy paragraphs → index ───────────────────────────────────────────────
-// Used only by the legacy roll code paths, which are kept until the legacy tables go.
-
-export const updateParagraphToAlgolia = async (searchId: string, dataToUpdate: Partial<CreateParagraph>) => {
-  await algoliaClient.partialUpdateObject({
-    indexName: 'paragraphs',
-    objectID: searchId,
-    attributesToUpdate: dataToUpdate,
-  });
-};
-
-export const saveParagraphToAlgolia = async (paragraph: CreateParagraph): Promise<void> => {
-  const { id, ...rest } = paragraph;
-  await algoliaClient.saveObject({
-    indexName: 'paragraphs',
-    body: { ...rest, id: id, objectID: paragraph.searchId },
-  });
-};
-
-export const saveParagraphsToAlgolia = async (paragraphs: CreateParagraph[]): Promise<void> => {
-  if (!paragraphs.length) return;
-  await algoliaClient.saveObjects({
-    indexName: 'paragraphs',
-    objects: paragraphs.map(({ id, ...rest }) => ({ ...rest, id, objectID: rest.searchId })),
-  });
-};
-
-export const updateParagraphsToAlgolia = async (
-  updates: { searchId: string; data: Partial<CreateParagraph> }[],
-): Promise<void> => {
-  if (!updates.length) return;
-  await algoliaClient.partialUpdateObjects({
-    indexName: 'paragraphs',
-    objects: updates.map(({ searchId, data }) => ({ objectID: searchId, ...data })),
-  });
 };

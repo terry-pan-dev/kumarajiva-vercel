@@ -262,10 +262,6 @@ export const DbParagraphsNew = {
         id: paragraphsTableNew.id,
         searchId: paragraphsTableNew.searchId,
         content: paragraphsTableNew.content,
-        documentId: paragraphsTableNew.documentId,
-        sectionId: paragraphsTableNew.sectionId,
-        passageKey: paragraphsTableNew.passageKey,
-        order: paragraphsTableNew.order,
       })
       .from(paragraphsTableNew)
       .where(afterId ? gt(paragraphsTableNew.id, afterId) : undefined)

@@ -35,9 +35,6 @@ export type ParagraphSearchResult = ReadParagraphNew & {
   aligned: AlignedParagraph[];
 };
 
-// Parked rows (order < 0) are hidden from every reader view, so they are hidden from search too.
-const isParked = (row: { order: number }) => row.order < 0;
-
 const alignmentKey = (workId: string, passageKey: string) => `${workId}␟${passageKey}`;
 
 export function assembleParagraphSearchResults({
@@ -47,6 +44,8 @@ export function assembleParagraphSearchResults({
   limit,
 }: {
   hitIds: string[];
+  // Parked rows (order < 0) are hidden from search as from every reader view. The queries that
+  // read rows and candidates leave them out (see DbParagraphsNew), so they are not checked here.
   rows: HitRow[];
   candidates: AlignedCandidate[];
   limit: number;
@@ -55,7 +54,7 @@ export function assembleParagraphSearchResults({
 
   const candidatesByKey = new Map<string, AlignedCandidate[]>();
   for (const candidate of candidates) {
-    if (!candidate.passageKey || isParked(candidate)) continue;
+    if (!candidate.passageKey) continue;
     const key = alignmentKey(candidate.document.workId, candidate.passageKey);
     const list = candidatesByKey.get(key) ?? [];
     list.push(candidate);
@@ -66,13 +65,13 @@ export function assembleParagraphSearchResults({
   const seen = new Set<string>();
 
   // Algolia's order is the relevance order, so results follow the hits, not the rows. A hit
-  // that resolves to no row (a stale record) or to a parked row is skipped; an id the index
-  // holds twice is shown once.
+  // that resolves to no row (a stale record or a parked row) is skipped; an id the index holds
+  // twice is shown once.
   for (const id of hitIds) {
     if (results.length >= limit) break;
     if (seen.has(id)) continue;
     const row = rowById.get(id);
-    if (!row || isParked(row)) continue;
+    if (!row) continue;
     seen.add(id);
 
     const { section, document, ...paragraph } = row;

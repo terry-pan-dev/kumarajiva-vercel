@@ -9,17 +9,18 @@ import { type ReadParagraphNew } from '~/drizzle/tables';
 
 export const PARAGRAPH_INDEX = 'paragraphs';
 
-// Only what search needs. `content` is what is searched; the ids let a hit be resolved back to
-// its row, which is where everything shown in a result comes from. Audit fields and metadata
-// stay out: they are read from the row, and copying them here only lets the two disagree.
-const INDEXED_FIELDS = ['id', 'content', 'documentId', 'sectionId', 'passageKey', 'order'] as const;
+// Only what search needs. `content` is what is searched; `id` lets a hit be resolved back to
+// its row, which is where everything shown in a result comes from (location, alignment, audit
+// fields). Copying more here only lets the record and the row disagree. Add a field when search
+// starts using it (e.g. to filter by document), and rebuild.
+const INDEXED_FIELDS = ['id', 'content'] as const;
 
 type IndexedField = (typeof INDEXED_FIELDS)[number];
 
 // How the index searches its records — kept here with the record shape, and applied to the index
 // by every rebuild, so dev and prod cannot drift apart through dashboard edits.
 //   searchableAttributes: only the text is searched. Left unset, Algolia searches every
-//     attribute, so a query could match a uuid, a passage key or an order.
+//     attribute, so a query could match a uuid.
 //   typoTolerance 'min': results with typos only appear when nothing matches with fewer, so
 //     "Thus I have heard" no longer brings in "this … have … hard".
 //   advancedSyntax: a "quoted phrase" must match as a phrase, and -word excludes a word.
@@ -52,10 +53,6 @@ export function paragraphIndexRecord(row: IndexableParagraph): ParagraphIndexRec
     objectID: row.searchId,
     id: row.id,
     content: row.content,
-    documentId: row.documentId,
-    sectionId: row.sectionId,
-    passageKey: row.passageKey ?? null,
-    order: row.order,
   };
 }
 

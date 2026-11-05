@@ -30,15 +30,15 @@ const indexable = (id: string, overrides: Partial<IndexableParagraph> = {}): Ind
   id,
   searchId: `search-${id}`,
   content: `content of ${id}`,
-  documentId: 'd1',
-  sectionId: 's1',
-  passageKey: `k-${id}`,
-  order: 1,
   ...overrides,
 });
 
 const hitRow = (id: string, workId: string, passageKey: string | null) => ({
-  ...indexable(id, { passageKey }),
+  ...indexable(id),
+  documentId: 'd1',
+  sectionId: 's1',
+  passageKey,
+  order: 1,
   metadata: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -72,9 +72,9 @@ describe('searchAlgolia — paragraphs', () => {
     });
   });
 
-  it('resolves hits against paragraphs_new, each id once', async () => {
+  it('resolves hits against paragraphs_new (repeated hits are collapsed when results are assembled)', async () => {
     await searchAlgolia({ searchTerm: '如是', searchType: 'Paragraph' });
-    expect(paragraphs.findByIdsWithRelations).toHaveBeenCalledWith(['b', 'stale', 'a']);
+    expect(paragraphs.findByIdsWithRelations).toHaveBeenCalledWith(['b', 'stale', 'a', 'b']);
   });
 
   it('looks up counterparts by the works and passage keys of the resolved hits', async () => {
@@ -124,10 +124,6 @@ describe('indexParagraphs', () => {
           objectID: 'search-a',
           id: 'a',
           content: 'content of a',
-          documentId: 'd1',
-          sectionId: 's1',
-          passageKey: 'k-a',
-          order: 1,
         },
       ],
     });
@@ -155,8 +151,8 @@ describe('rebuildParagraphIndex', () => {
   beforeEach(() => {
     paragraphs.findPageForIndex.mockResolvedValueOnce(firstPage).mockResolvedValueOnce(secondPage);
     algolia.searchSingleIndex.mockResolvedValue({ nbHits: 21897 });
-    // Algolia defaults, except for one setting already as configured.
-    algolia.getSettings.mockResolvedValue({ advancedSyntax: true });
+    // Algolia defaults, except for one setting already as configured, plus one we do not manage.
+    algolia.getSettings.mockResolvedValue({ advancedSyntax: true, hitsPerPage: 20 });
     algolia.setSettings.mockResolvedValue({ taskID: 42 });
   });
 
@@ -185,6 +181,8 @@ describe('rebuildParagraphIndex', () => {
       duplicateSearchId: [{ id: 'q3', searchId: 'search-q1' }],
       recordsBefore: 21897,
       settingsChanged: ['searchableAttributes', 'typoTolerance'],
+      // Only the settings we manage, and only those that are set.
+      liveSettings: { advancedSyntax: true },
     });
     expect(algolia.setSettings).not.toHaveBeenCalled();
     expect(algolia.replaceAllObjects).not.toHaveBeenCalled();

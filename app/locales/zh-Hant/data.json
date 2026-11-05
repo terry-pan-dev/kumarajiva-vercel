@@ -7,7 +7,8 @@
       "translation": "翻譯",
       "documentInspector": "文本檢查",
       "paragraphs": "段落",
-      "documents": "典籍與文本"
+      "documents": "典籍與文本",
+      "searchIndex": "搜尋索引"
     }
   },
   "documents": {
@@ -300,6 +301,52 @@
     "deleteFailed": "刪除段落失敗。",
     "unknownAction": "未知的操作。",
     "sectionCount_other": "{{count}} 個章節"
+  },
+  "searchIndex": {
+    "warning": {
+      "title": "非例行作業",
+      "routine": "日常的編輯、匯入與刪除會自動保持段落搜尋索引的更新，一般很少需要使用此頁。",
+      "when": "只有在索引與資料庫不一致時才需要重建：",
+      "whenOutside": "在應用程式以外進行大量變更之後——例如植入資料、手寫 SQL、還原備份；",
+      "whenSyncFailed": "匯入時回報搜尋同步失敗之後；",
+      "whenCodeChanged": "程式碼修改了搜尋記錄的內容或下列設定之後。",
+      "editing": "新索引會一次性取代舊索引，因此搜尋不會中斷，也不會出現建到一半的索引。但重建期間儲存的段落可能會遺漏：請在無人編輯時執行，或事後再執行一次。",
+      "script": "也可以在終端機執行相同的重建："
+    },
+    "report": {
+      "title": "段落索引",
+      "description": "目前重建將會進行的變更。尚未寫入任何資料；每次載入此頁時都會重新讀取數據。這裡只比較數量與設定，不比較記錄內容，因此即使相符，索引仍可能含有過時的記錄——修改記錄格式之後，仍應重建。",
+      "inStep": "數量與設定相符",
+      "drifted": "不一致——建議重建",
+      "rows": "資料庫中的段落",
+      "recordsBefore": "索引目前的記錄",
+      "recordsAfter": "重建後的記錄",
+      "withoutSearchId_other": "{{count}} 個段落沒有 search_id，無法被搜尋",
+      "duplicateSearchId_other": "{{count}} 個段落與其他段落共用 search_id；只有第一個會被索引",
+      "andMore_other": "…還有 {{count}} 個"
+    },
+    "settings": {
+      "title": "搜尋設定",
+      "description": "索引的搜尋方式。這些設定定義在程式碼中，每次重建都會套用，因此在 Algolia 後台所做的修改會被覆蓋。如需修改，請更改",
+      "setting": "設定",
+      "configured": "程式設定值",
+      "live": "目前值",
+      "unset": "未設定（Algolia 預設）",
+      "differs": "下次重建時套用",
+      "help": {
+        "searchableAttributes": "只搜尋段落文字，不搜尋 ID。",
+        "typoTolerance": "只有在沒有更精確的結果時，才會顯示含錯字的結果。可讓英文結果更精確；拼錯的查詢找到的結果會較少。",
+        "advancedSyntax": "\"引號內的詞組\" 必須整句相符；-詞 會排除含有該詞的結果。"
+      }
+    },
+    "rebuild": "重建索引",
+    "rebuilding": "重建中…",
+    "confirm": {
+      "title": "要重建段落搜尋索引嗎？",
+      "description_other": "{{index}} 索引將由資料庫建立的 {{count}} 筆記錄取代，並套用上述設定。執行期間搜尋不會中斷。"
+    },
+    "rebuilt_other": "已重建索引：{{count}} 筆記錄，變更了 {{settings}} 項設定。",
+    "rebuildFailed": "重建失敗；舊索引仍在使用中。{{error}}"
   },
   "errors": {
     "workNotFound": "找不到該典籍",

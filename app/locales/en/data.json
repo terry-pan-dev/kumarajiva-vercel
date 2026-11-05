@@ -7,7 +7,8 @@
       "translation": "Translation",
       "documentInspector": "Document Inspector",
       "paragraphs": "Paragraphs",
-      "documents": "Works and Documents"
+      "documents": "Works and Documents",
+      "searchIndex": "Search Index"
     }
   },
   "documents": {
@@ -316,6 +317,57 @@
     "unknownAction": "Unknown action.",
     "sectionCount_one": "{{count}} section",
     "sectionCount_other": "{{count}} sections"
+  },
+  "searchIndex": {
+    "warning": {
+      "title": "Not a routine task",
+      "routine": "Everyday edits, imports and deletes keep the paragraph search index up to date on their own. You should rarely need this page.",
+      "when": "Rebuild only when the index has drifted from the database:",
+      "whenOutside": "after bulk changes made outside the app — seeding, hand-written SQL, restoring a backup;",
+      "whenSyncFailed": "after an import reported that the search sync failed;",
+      "whenCodeChanged": "after a code change to what a search record holds, or to the settings below.",
+      "editing": "The new index replaces the old one in a single swap, so search keeps working and never shows a half-built index. But a paragraph saved while the rebuild runs can be missed: run it when nobody is editing, or run it again afterwards.",
+      "script": "The same rebuild can be run from a terminal:"
+    },
+    "report": {
+      "title": "Paragraph index",
+      "description": "What a rebuild would do now. Nothing has been written; the figures are read fresh each time this page loads. Only counts and settings are compared, not the records' contents, so a matching index can still hold out-of-date records — after a change to the record shape, rebuild anyway.",
+      "inStep": "counts and settings match",
+      "drifted": "differs — rebuild recommended",
+      "rows": "Paragraphs in the database",
+      "recordsBefore": "Records in the index now",
+      "recordsAfter": "Records after a rebuild",
+      "withoutSearchId_one": "{{count}} paragraph has no search_id and cannot be searched",
+      "withoutSearchId_other": "{{count}} paragraphs have no search_id and cannot be searched",
+      "duplicateSearchId_one": "{{count}} paragraph shares a search_id with another; only the first is indexed",
+      "duplicateSearchId_other": "{{count}} paragraphs share a search_id with another; only the first is indexed",
+      "andMore_one": "…and {{count}} more",
+      "andMore_other": "…and {{count}} more"
+    },
+    "settings": {
+      "title": "Search settings",
+      "description": "How the index searches. These are defined in code and applied by every rebuild, so changes made in the Algolia dashboard are overwritten. To change one, change it in",
+      "setting": "Setting",
+      "configured": "Configured",
+      "live": "Live",
+      "unset": "unset (Algolia default)",
+      "differs": "applied by the next rebuild",
+      "help": {
+        "searchableAttributes": "Only the paragraph text is searched, never ids.",
+        "typoTolerance": "Results with typos appear only when nothing matches with fewer. Keeps English results precise; a misspelled query finds less.",
+        "advancedSyntax": "A \"quoted phrase\" must match as a phrase, and -word leaves out results containing that word."
+      }
+    },
+    "rebuild": "Rebuild index",
+    "rebuilding": "Rebuilding…",
+    "confirm": {
+      "title": "Rebuild the paragraph search index?",
+      "description_one": "The {{index}} index will be replaced by {{count}} record built from the database, and the settings above will be applied. Search keeps working while it runs.",
+      "description_other": "The {{index}} index will be replaced by {{count}} records built from the database, and the settings above will be applied. Search keeps working while it runs."
+    },
+    "rebuilt_one": "Rebuilt the index: {{count}} record, {{settings}} setting(s) changed.",
+    "rebuilt_other": "Rebuilt the index: {{count}} records, {{settings}} setting(s) changed.",
+    "rebuildFailed": "The rebuild failed; the old index is still in place. {{error}}"
   },
   "errors": {
     "workNotFound": "Work not found",

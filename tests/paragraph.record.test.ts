@@ -12,10 +12,6 @@ const row = (overrides: Partial<IndexableParagraph> = {}): IndexableParagraph =>
   id: 'p1',
   searchId: 's1',
   content: '如是我聞',
-  documentId: 'd1',
-  sectionId: 'sec1',
-  passageKey: 't0279.1.1',
-  order: 1,
   ...overrides,
 });
 
@@ -25,18 +21,18 @@ describe('paragraphIndexRecord', () => {
       objectID: 's1',
       id: 'p1',
       content: '如是我聞',
+    });
+  });
+
+  // A full row has location, ordering, audit fields and metadata; none of them belong in the
+  // index, where they could only drift from the row they were copied from.
+  it('leaves out every field of a full row that the index does not hold', () => {
+    const fullRow = {
+      ...row(),
       documentId: 'd1',
       sectionId: 'sec1',
       passageKey: 't0279.1.1',
       order: 1,
-    });
-  });
-
-  // A full row has audit fields and metadata; none of them belong in the index, where they
-  // could only drift from the row they were copied from.
-  it('leaves out every field of a full row that the index does not hold', () => {
-    const fullRow = {
-      ...row(),
       metadata: { page: '14' },
       createdBy: 'u1',
       updatedBy: 'u2',
@@ -44,23 +40,12 @@ describe('paragraphIndexRecord', () => {
       updatedAt: new Date(),
       deletedAt: null,
     };
-    expect(Object.keys(paragraphIndexRecord(fullRow) ?? {}).sort()).toEqual(
-      ['content', 'documentId', 'id', 'objectID', 'order', 'passageKey', 'sectionId'].sort(),
-    );
+    expect(Object.keys(paragraphIndexRecord(fullRow) ?? {}).sort()).toEqual(['content', 'id', 'objectID'].sort());
   });
 
   it('yields null for a row without a search_id, which nothing could address later', () => {
     expect(paragraphIndexRecord(row({ searchId: null }))).toBeNull();
     expect(paragraphIndexRecord(row({ searchId: '' }))).toBeNull();
-  });
-
-  it('stores a missing passage key as null, not undefined (undefined would drop the attribute)', () => {
-    const record = paragraphIndexRecord({ ...row(), passageKey: undefined as unknown as null });
-    expect(record).toHaveProperty('passageKey', null);
-  });
-
-  it('keeps a parked row (negative order) as it is — readers filter parked rows, not the index', () => {
-    expect(paragraphIndexRecord(row({ order: -3 }))).toMatchObject({ order: -3 });
   });
 });
 
