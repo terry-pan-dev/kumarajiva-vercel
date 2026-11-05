@@ -8,12 +8,13 @@ import { pinyin } from 'pinyin-pro';
 import { useCallback, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
+import { type z } from 'zod';
 
 import type { CreateGlossary } from '~/drizzle/schema';
 
 import { assertAuthUser } from '~/auth.server';
 import { Can } from '~/authorisation';
-import { FormInput, FormModal, FormTextarea } from '~/components/FormModal';
+import { FormInput, FormModal, FormSelect, FormTextarea } from '~/components/FormModal';
 import { Icons } from '~/components/icons';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Button } from '~/components/ui/button';
@@ -24,7 +25,11 @@ import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { DbGlossaries } from '~/services/glossary.crud';
 import { createGlossaryAndIndexInAlgolia, reviveTrashedGlossary } from '~/services/glossary.service';
 import { readUsers } from '~/services/user.service';
+import { DEFAULT_TARGET_LANG } from '~/utils/constants';
+import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
 import { glossaryFormSchema } from '~/validations/glossary.validation';
+
+const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
 export const config = {
   memory: 3009,
@@ -67,7 +72,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     translations: [
       {
         glossary: validatedData.glossary,
-        language: user.targetLang || 'english',
+        language: validatedData.language,
         sutraName: validatedData.sutraName || '佛教常用詞',
         volume: validatedData.volume || '-',
         updatedBy: user.id,
@@ -122,8 +127,10 @@ const GlossaryCreateModal = () => {
   return (
     <FormModal
       schema={glossaryFormSchema}
-      title="Create Glossary For Chinese And English"
+      title="Create Glossary Entry"
       trigger={<Button variant="default">Add New Entry</Button>}
+      // Only the language starts filled in; FormModal types defaultValues as a whole form.
+      defaultValues={{ language: DEFAULT_TARGET_LANG } as z.infer<typeof glossaryFormSchema>}
     >
       <GlossaryCreateForm />
     </FormModal>
@@ -131,12 +138,12 @@ const GlossaryCreateModal = () => {
 };
 
 const GlossaryCreateForm = () => {
-  const { user } = useLoaderData<typeof loader>();
   const [chineseAccordionOpen, setChineseAccordionOpen] = useState(false);
   const [targetLangAccordionOpen, setTargetLangAccordionOpen] = useState(false);
   const anyAccordionOpen = chineseAccordionOpen || targetLangAccordionOpen;
   const { watch, setValue } = useFormContext();
   const glossaryChinese = watch('glossaryChinese');
+  const languageName = capitalise(watch('language') ?? DEFAULT_TARGET_LANG);
   const phoneticChinese = watch('phoneticChinese');
   const handleGlossaryChineseOnBlur = useCallback(() => {
     if (glossaryChinese && !phoneticChinese) {
@@ -188,19 +195,23 @@ const GlossaryCreateForm = () => {
         </div>
       </div>
       <Divider className="my-4 lg:py-3">
-        <span className="text-md">{user?.targetLang?.toUpperCase()}</span>
+        <span className="text-md">{languageName.toUpperCase()}</span>
       </Divider>
       <div className="grid grid-cols-1 gap-4">
+        <FormSelect
+          required
+          name="language"
+          label="Translation Language"
+          description="The language of the translation term."
+          options={GLOSSARY_TRANSLATION_LANGUAGES.map((lang) => ({ value: lang, label: capitalise(lang) }))}
+        />
         <FormInput
           required
           name="glossary"
-          label="English Term"
-          description={`The ${user?.targetLang} glossary term.`}
+          label={`${languageName} Term`}
+          description={`The ${languageName} translation of the Chinese term.`}
         />
-        <CustomAccordion
-          onToggle={setTargetLangAccordionOpen}
-          title={`Optional Fields For ${user?.targetLang?.charAt(0).toUpperCase()}${user?.targetLang?.slice(1)}`}
-        >
+        <CustomAccordion onToggle={setTargetLangAccordionOpen} title={`Optional Fields For ${languageName}`}>
           <div className="grid grid-cols-2 gap-4">
             <FormInput name="phonetic" label="Phonetic" description="The phonetic of the glossary." />
             <FormInput

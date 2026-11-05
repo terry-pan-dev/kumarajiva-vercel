@@ -4,6 +4,7 @@ import { ChevronRight, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
+import { type z } from 'zod';
 
 import { Can } from '~/authorisation';
 import { DeleteEntityButton } from '~/components/data/DeleteEntityButton';
@@ -24,7 +25,8 @@ import {
 } from '~/components/ui';
 import { Divider } from '~/components/ui/divider';
 import { type ReadGlossary } from '~/drizzle/tables';
-import { LANG_VALUES } from '~/utils/constants';
+import { DEFAULT_TARGET_LANG } from '~/utils/constants';
+import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
 import { glossaryEditFormSchema, glossaryInsertFormSchema } from '~/validations/glossary.validation';
 
 import { FormInput, FormModal, FormSelect, FormTextarea, HiddenInput } from './FormModal';
@@ -273,6 +275,8 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: ReadG
                   title="Add New Translation"
                   fetcherKey="insert-glossary"
                   schema={glossaryInsertFormSchema}
+                  // Only the language starts filled in; FormModal types defaultValues as a whole form.
+                  defaultValues={{ language: DEFAULT_TARGET_LANG } as z.infer<typeof glossaryInsertFormSchema>}
                   trigger={
                     <Button size="icon" variant="ghost" aria-label="add-glossary">
                       <Icons.SquarePlus className="h-6 w-6 text-slate-800" />
@@ -461,7 +465,7 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
 };
 
 const GlossaryInsertForm = ({ id }: { id: string }) => {
-  const languageOptions = LANG_VALUES.filter((language) => language !== 'chinese').map((language) => ({
+  const languageOptions = GLOSSARY_TRANSLATION_LANGUAGES.map((language) => ({
     label: language,
     value: language,
   }));

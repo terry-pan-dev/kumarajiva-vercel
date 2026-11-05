@@ -188,3 +188,27 @@ describe('glossaryEditFormSchema', () => {
     expect(translation.phonetic).toBeUndefined();
   });
 });
+
+// ─── Translation language (no longer the user's target language) ────────────
+
+describe('glossary translation language', () => {
+  const entry = { glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma' };
+  const insert = { id: 'g1', glossary: 'Dharma', sutraName: '', volume: '', author: '' };
+
+  it('a new entry is in English unless another language is chosen', () => {
+    expect(glossaryFormSchema.parse(entry).language).toBe('english');
+    expect(glossaryFormSchema.parse({ ...entry, language: 'indonesian' }).language).toBe('indonesian');
+  });
+
+  it('a new translation of an existing entry defaults to English too', () => {
+    expect(glossaryInsertFormSchema.parse(insert).language).toBe('english');
+    expect(glossaryInsertFormSchema.parse({ ...insert, language: 'sanskrit' }).language).toBe('sanskrit');
+  });
+
+  // Entries are Chinese terms; a "translation" into Chinese is not one.
+  it('refuses Chinese and unknown languages for a translation', () => {
+    expect(glossaryFormSchema.safeParse({ ...entry, language: 'chinese' }).success).toBe(false);
+    expect(glossaryFormSchema.safeParse({ ...entry, language: 'french' }).success).toBe(false);
+    expect(glossaryInsertFormSchema.safeParse({ ...insert, language: 'chinese' }).success).toBe(false);
+  });
+});

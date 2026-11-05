@@ -79,11 +79,8 @@ export const assertAuthUser = async (request: LoaderFunctionArgs['request']) => 
   });
   const session = await getSession(request.headers.get('Cookie'));
   const latestUser = await readUserByEmail(prevUser?.email as string);
-  if (
-    !latestUser?.role.includes(prevUser?.role || '') ||
-    latestUser?.originLang !== prevUser?.originLang ||
-    latestUser?.targetLang !== prevUser?.targetLang
-  ) {
+  // A session survives only while its user still exists with the role it was issued for.
+  if (!prevUser || !latestUser?.role.includes(prevUser.role || '')) {
     await destroySession(session);
     return undefined;
   }

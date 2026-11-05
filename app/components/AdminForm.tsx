@@ -7,7 +7,7 @@ import { type ZodSchema } from 'zod';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui';
 import { type ReadTeam, type ReadUser } from '~/drizzle/tables';
 import { useToast } from '~/hooks/use-toast';
-import { LANG_VALUES, ROLE_VALUES } from '~/utils/constants';
+import { ROLE_VALUES } from '~/utils/constants';
 import { type UpdateUserSchema } from '~/validations/user.validation';
 
 import { Button } from './ui/button';
@@ -25,14 +25,11 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
     errors: Record<string, string>;
   }>();
   const roles = ROLE_VALUES;
-  const languages = LANG_VALUES;
   const form = useForm<UpdateUserSchema>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       id: user.id,
       teamId: teams.find((team) => team.id === user.teamId)?.id || '',
-      originLang: user.originLang || '',
-      targetLang: user.targetLang || '',
       role: user.role || '',
       email: user.email || '',
       username: user.username || '',
@@ -150,58 +147,6 @@ export const AdminForm = <T extends ZodSchema>({ teams, user, userSchema }: Admi
               )}
             />
             {form.formState.errors.role && <p className="text-sm text-red-500">{form.formState.errors.role.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <label htmlFor={`originLang`} className="text-sm font-medium">
-              Source Language:
-            </label>
-            <Controller
-              name="originLang"
-              control={form.control}
-              render={({ field }) => (
-                <Select defaultValue={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="originLang">
-                    <SelectValue placeholder="Select source language" {...form.register('originLang')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang} value={lang}>
-                        {lang.toUpperCase()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.originLang && (
-              <p className="text-sm text-red-500">{form.formState.errors.originLang.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <label htmlFor={`targetLang`} className="text-sm font-medium">
-              Target Language:
-            </label>
-            <Controller
-              name="targetLang"
-              control={form.control}
-              render={({ field }) => (
-                <Select defaultValue={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="targetLang">
-                    <SelectValue placeholder="Select target language" {...form.register('targetLang')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang} value={lang}>
-                        {lang.toUpperCase()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.targetLang && (
-              <p className="text-sm text-red-500">{form.formState.errors.targetLang.message}</p>
-            )}
           </div>
           <div />
           <div className="flex justify-end">

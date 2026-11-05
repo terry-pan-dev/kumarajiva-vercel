@@ -17,6 +17,8 @@ import { Textarea } from '~/components/ui/textarea';
 import { cn } from '~/lib/utils';
 import { searchGlossaries } from '~/services/glossary.service';
 import { tokenizer } from '~/services/tokenizer.service';
+import { DEFAULT_TARGET_LANG, LANG_VALUES, type Lang } from '~/utils/constants';
+import { targetLanguageOr } from '~/utils/lang';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -122,10 +124,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const body = await request.json();
   const message = body.message.trim().slice(0, 150);
-  const sourceLang = user.originLang;
-  const targetLang = user.targetLang;
+  // Chosen on the page (default English). The source language is whatever the message is in.
+  const targetLang = targetLanguageOr(body.targetLanguage);
 
-  console.log({ sourceLang, targetLang, message, userId: user.id });
+  console.log({ targetLang, message, userId: user.id });
 
   if (!message) {
     return json({ error: 'Empty message' }, { status: 400 });
@@ -147,7 +149,7 @@ You are a Buddhist text classification system. Analyze the user input and classi
 4. **nonsupport**: Unsupported languages (only supports: english, chinese, sanskrit, indonesian)
 5. **unknown**: Non-Buddhist content or unrelated queries
 
-User languages: ${sourceLang} to ${targetLang}
+Language to answer and translate into: ${targetLang}
 
 Classify this input and provide reasoning. Return a JSON object with 'category' and 'reasoning' fields.
 `;
@@ -175,7 +177,7 @@ Classify this input and provide reasoning. Return a JSON object with 'category' 
       let simpleResponse = '';
 
       if (category === 'nonsupport') {
-        simpleResponse = `Sorry, I only support translation between English, Chinese, Sanskrit, and Indonesian. Your current language pair (${sourceLang} to ${targetLang}) may not be supported.`;
+        simpleResponse = `Sorry, I only support translation between English, Chinese, Sanskrit, and Indonesian.`;
       } else if (category === 'unknown') {
         simpleResponse =
           'I specialize in Buddhist text translation and terminology. Please provide Buddhist sutras, texts, or terminology for translation or explanation.';
@@ -366,7 +368,7 @@ Format your response clearly and educationally.
 
 ### Term to explain: ${transformedText}
 
-Languages: ${sourceLang} to ${targetLang}
+Explain in: ${targetLang}
 ${toolResults}
 `;
     } else if (category === 'translation') {
@@ -474,7 +476,7 @@ ${toolResults}
       }
 
       instructions = `
-You are tasked with translating ancient ${sourceLang} Buddhist sutra text into ${targetLang}.
+You are tasked with translating ancient Buddhist sutra text, in the language it is given in, into ${targetLang}.
 Your goal is to create a translation that is not only accurate but also elegant and poetic in tone.
 
 Text to translate: ${transformedText}
@@ -594,6 +596,8 @@ export default function AssistantRoute() {
   const fetcher = useFetcher<typeof action>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
+  // The language answers and translations are given in; sent with each message.
+  const [targetLanguage, setTargetLanguage] = useState<Lang>(DEFAULT_TARGET_LANG);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
 
@@ -696,7 +700,7 @@ export default function AssistantRoute() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ message: messageToSend }),
+          body: JSON.stringify({ message: messageToSend, targetLanguage }),
           signal: abortController.signal,
         });
 
@@ -793,7 +797,7 @@ export default function AssistantRoute() {
         activeStreamReader.current = null;
       }
     },
-    [inputValue],
+    [inputValue, targetLanguage],
   );
 
   const isSubmitting = isStreaming;
@@ -818,7 +822,7 @@ export default function AssistantRoute() {
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                     </div>
                     {message.isStreaming && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="text-muted-foreground mt-2 flex items-center gap-2 text-sm">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         <span>Generating response...</span>
                       </div>
@@ -836,7 +840,7 @@ export default function AssistantRoute() {
                             <AccordionTrigger className="py-1 text-sm hover:no-underline">
                               Show Reasoning
                             </AccordionTrigger>
-                            <AccordionContent className="pb-0 pt-2 text-sm text-muted-foreground">
+                            <AccordionContent className="text-muted-foreground pt-2 pb-0 text-sm">
                               {message.content.reasoning}
                             </AccordionContent>
                           </AccordionItem>
@@ -858,7 +862,7 @@ export default function AssistantRoute() {
         ))}
         <div ref={messagesEndRef} />
       </div>
-      <div className="absolute bottom-2 left-4 right-4 rounded-2xl border bg-background p-2">
+      <div className="bg-background absolute right-4 bottom-2 left-4 rounded-2xl border p-2">
         <form onSubmit={handleSubmit} className="flex flex-col">
           <Textarea
             rows={2}
@@ -882,12 +886,28 @@ export default function AssistantRoute() {
             }}
           />
           <div className="mt-1 flex items-center justify-end gap-2 px-1">
-            <span className="text-xs text-muted-foreground">{inputValue.length} / 150</span>
+            <label className="text-muted-foreground mr-auto flex items-center gap-1 text-xs">
+              Translate into
+              <select
+                name="targetLanguage"
+                value={targetLanguage}
+                disabled={isSubmitting}
+                onChange={(e) => setTargetLanguage(e.target.value as Lang)}
+                className="bg-background text-foreground rounded border px-1 py-0.5 text-xs"
+              >
+                {LANG_VALUES.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang.charAt(0).toUpperCase() + lang.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="text-muted-foreground text-xs">{inputValue.length} / 150</span>
             <Button
               size="icon"
               type="submit"
               disabled={isSubmitting || !inputValue.trim()}
-              className="h-8 w-8 shrink-0 rounded-full bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 h-8 w-8 shrink-0 rounded-full"
             >
               <Send className="h-4 w-4" />
             </Button>

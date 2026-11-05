@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
 import { searchGlossaries } from '~/services/glossary.service';
+import { resolveSectionContext } from '~/services/project.service';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -32,17 +33,27 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   const body = await request.json();
-  const content = body.origin;
-  const sourceLang = user.originLang;
-  const targetLang = user.targetLang;
-  const originId = body.originId;
-  const rollId = body.rollId;
+  const content = typeof body.origin === 'string' ? body.origin : '';
+  const { originId, projectId, sectionId } = body;
   const trimmedContent = content.trim();
-  console.log({ sourceLang, targetLang, content, originId, rollId });
 
   if (!trimmedContent) {
     return;
   }
+
+  // The languages are the project's: its source document's and its translation document's.
+  // A section only belongs to a project through the project's documents, so the pair is
+  // resolved together, as the editor does.
+  const context =
+    typeof projectId === 'string' && typeof sectionId === 'string'
+      ? await resolveSectionContext(projectId, sectionId)
+      : null;
+  if (!context) {
+    return new Response('Could not find this section in its translation project.', { status: 404 });
+  }
+  const sourceLang = context.origin.document.language;
+  const targetLang = context.target.document.language;
+  console.log({ sourceLang, targetLang, content, originId, projectId, sectionId });
 
   const TokenizerSchema = z.object({
     tokens: z.array(z.string()),
