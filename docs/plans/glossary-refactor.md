@@ -1,9 +1,10 @@
 # Glossary refactor: translations out of the JSON blob
 
-Status: **PR 1 written, not applied.** Written 2026-11-04, updated 2026-11-05.
-`glossary_translations` is defined in `drizzle/tables/glossary.ts` (with relations) and
-`drizzle/migrations/0025_add-glossary-translations.sql` is generated. It has **not** been
-applied to dev or prod.
+Status: **PR 1 and PR 2 written.** Written 2026-11-04, updated 2026-11-05.
+`glossary_translations` (`drizzle/tables/glossary.ts`, migration `0025`) exists on dev,
+empty; not yet on prod (applied by the PR 1 merge). Data script 08 is written; dev dry run:
+13,920 terms, 17,357 rows, 1 duplicate (癡), no issues. Not applied anywhere, and by the
+user's decision it is **not run on dev or prod until PR 4** (dev when PR 4 work starts).
 
 ## Goal
 
@@ -145,18 +146,22 @@ Notes:
 
 ## Steps: stepwise merges into main
 
-Migrations run by hand (`db:migrate`), not on build. Every apply (schema or data, dev or
-prod) needs the user's yes. Merging to main deploys to prod.
+**Schema migrations run automatically on deploy:** `vercel.json` builds with
+`pnpm build && pnpm db:migrate`, so merging to main applies pending `drizzle/migrations/*.sql`
+to prod (and a preview deploy applies them to whatever database its env points at).
+**Data scripts (`db:migrate:data:*`) never run automatically**: someone runs them by hand.
+Every manual apply (dev or prod) needs the user's yes.
 
 1. **PR 1: schema, migration A (additive).** New table and relations, `0025`. Nothing reads
-   it, so it can be applied on dev and prod at any time.
+   it, so it is safe for the merge to apply it on prod.
 2. **PR 2: data script** `drizzle/migrations/data/08-glossary-translations.ts`, plus
    `db:migrate:data:08` and `:prod` scripts, following the `01`/`02`/`07` pattern:
    - unnest each live _and_ trashed term's JSON into rows (`position` = array index), as a
      pure function with unit tests;
    - copy faithfully, the exact duplicate included, and **report** duplicates;
    - dry run by default, `--apply` to write; refuse if the table already has rows;
-   - verify: total and per-term counts, plus a field-by-field sample;
+   - verify: Postgres's own element count, then every row read back and compared field by
+     field, inside the transaction (a mismatch rolls back);
    - `created_at`/`updated_at` and `created_by`/`updated_by` from the JSON's
      `updatedAt`/`updatedBy`; `partOfSpeech`/`phonetic` into `metadata` only if non-empty.
    - After merge: dry run on dev and prod (read-only). A dev `--apply` goes stale as the JSON
@@ -168,7 +173,9 @@ prod) needs the user's yes. Merging to main deploys to prod.
    id (update/insert/delete) and import matching (id first, then `translationKey()`).
 4. **PR 4: the switch.** The module reads and writes the table; multi-row writes in
    transactions; edits diff by id; deletes check Maintain. Seeds and fixtures. Release:
-   prod export → `08 --apply` on prod → merge/deploy immediately, while nobody edits.
+   prod export → `08 --apply` on prod → merge/deploy immediately, while nobody edits. The old
+   code keeps writing the JSON until the new build is live (a few minutes), so edits in that
+   window would be lost: freeze glossary editing from the copy until the deploy is live.
 5. **Verify on prod (no PR):** export again, must match the pre-switch export row for row;
    read-only pass of the app.
 6. **PR 6: features.** 6a Rationale in the create/edit/insert forms and display, with
