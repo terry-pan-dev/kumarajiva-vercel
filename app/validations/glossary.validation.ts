@@ -39,6 +39,10 @@ export const glossaryEditFormSchema = z.object({
   author: z.string().nullish(),
   cbetaFrequency: z.string().nullish(),
   discussion: z.string().nullish(),
+  // The ids of the translations the form was opened with, carried like each translation's id
+  // (default values, no input). A translation added by someone else while the form was open is
+  // not among them, so the save keeps it instead of reading its absence as a removal.
+  baseTranslationIds: z.array(z.string().uuid()).optional(),
   translations: z.array(
     z.object({
       // The stored translation this row edits. Carried from the form's default values (no

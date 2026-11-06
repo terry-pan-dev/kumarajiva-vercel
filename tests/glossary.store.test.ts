@@ -309,6 +309,12 @@ describe('GlossaryStore.update', () => {
     expect(db.state.calls[0]).toMatchObject({ op: 'update', table: 'glossaries', set: { phonetic: 'fó' } });
   });
 
+  // Drizzle refuses an empty SET; the insert form passes no term columns at all.
+  it('never sends an empty SET for the term, and stamps it as edited', async () => {
+    await GlossaryStore.update('a', { phonetic: undefined }, [translation('new')]);
+    expect(db.state.calls[0].set).toMatchObject({ updatedAt: expect.any(Date) });
+  });
+
   it('writes no translation when the list is the stored one', async () => {
     await GlossaryStore.update('a', {}, [asStored('t1', 'Buddha'), asStored('t2', 'Dharma'), asStored('t3', 'Sangha')]);
     expect(db.translationWrites()).toEqual([]);
@@ -332,6 +338,12 @@ describe('GlossaryStore.update', () => {
       op: 'insert',
       values: [expect.objectContaining({ glossaryId: 'a', position: 2, term: 'Saṅgha', createdBy: 'user-2' })],
     });
+  });
+
+  it('keeps a translation outside the basis, added since the list was built', async () => {
+    // Built from t1 and t2 only: t3 was added by someone else meanwhile.
+    await GlossaryStore.update('a', {}, [asStored('t1', 'Buddha'), asStored('t2', 'Dharma')], ['t1', 't2']);
+    expect(db.translationWrites()).toEqual([]);
   });
 
   it('deletes nothing when nothing is left out', async () => {

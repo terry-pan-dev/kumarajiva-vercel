@@ -107,9 +107,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
     const data = JSON.parse(formData.data as string);
     const validatedData = validatePayloadOrThrow({ schema: glossaryEditFormSchema, formData: data });
-    // The edit form sends the whole translations list, each stored one with its id. Matched by
-    // id against what is stored, a translation the list leaves out is a removal and one without
-    // an id an addition. Both need Maintain; Update may only edit the ones that exist.
+    // The edit form sends the whole translations list, each stored one with its id, and the ids
+    // it was opened with. Matched by id against what is stored, one of those the list leaves out
+    // is a removal and one without an id an addition (one added by someone else meanwhile is
+    // neither, and is kept). Both need Maintain; Update may only edit the ones that exist.
     const [existing] = await readGlossariesByIds([validatedData.id]);
     if (!existing) {
       return json({ success: false, errors: ['Glossary not found.'] }, { status: 404 });
@@ -120,7 +121,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }));
     let needsMaintain;
     try {
-      needsMaintain = addsOrRemoves(existing.translations.filter(isStored), validatedDataWithUpdatedBy);
+      needsMaintain = addsOrRemoves(
+        existing.translations.filter(isStored),
+        validatedDataWithUpdatedBy,
+        validatedData.baseTranslationIds,
+      );
     } catch (error) {
       if (error instanceof TranslationListError) return staleEdit();
       throw error;
@@ -137,6 +142,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         cbetaFrequency,
         updatedBy: phonetic || author || cbetaFrequency ? user.id : null,
         translations: validatedDataWithUpdatedBy,
+        basis: validatedData.baseTranslationIds,
         discussion: validatedData.discussion ?? null,
       });
     } catch (error) {

@@ -21,9 +21,30 @@ takes the **whole list** a term should end up with; `diffTranslations`
 (`app/services/glossary.diff.ts`, pure, tested) turns that into insert/update/remove by id
 and is waiting for PR 4.
 
-**PR 4 code: written 2026-11-05, in the working tree (branch `gloss-write`), not yet run
-against any database.** Unit tests, tsc, eslint/prettier on touched files, and 13 mutation
-checks pass. What it does:
+**PR 4 code: committed on branch `glos-migration` (7ecf32e), plus two fixes in the working
+tree (below), tested on dev 2026-11-05.** Dev has 08 applied (17,357 rows). Unit tests (487),
+tsc, eslint/prettier on touched files and 21 mutation checks pass. On dev: the export, every
+field of every translation and the inspector results are byte-identical between the old code
+(JSON) and the new (table); 37 write checks on ZZTEST fixtures pass (edit, no-op, reorder,
+remove, insert, stale save rolled back, create, import merge, trash/revive, purge, concurrent
+inserts, an edit form open while someone adds, search record = table). Prod dry run of 08:
+15,027 terms, 19,325 translations, no issues, no duplicates, no stray `id` fields.
+
+Fixed after the dev tests (working tree):
+
+- An insert-form save sent Drizzle an empty `SET` for the term (it refuses: "No values to
+  set"), so Add New Translation always failed. `update` now always sets the term's `updated_at`,
+  which also keeps the term moving to the top of the glossary page as before.
+- Lost updates: a list built from an earlier read removed translations added since (two
+  concurrent inserts kept one; an open edit form deleted a translation added meanwhile). Saves
+  now carry a **basis**, the ids the list was built from (`TranslationBasis` in
+  `glossary.diff.ts`): the edit form's `baseTranslationIds` (from its default values), the
+  stored ids the insert or import read. A stored translation outside the basis is kept, after
+  the listed ones. No basis (a page loaded before the deploy): the old meaning. The search
+  record is now updated after the save, from the saved entry (a failure is logged; a re-index
+  repairs it), so a refused save no longer reaches search.
+
+What it does:
 
 - `glossary.store.ts` reads term columns (never the JSON column) and loads translations from
   `glossary_translations` in a second query, grouped and ordered by `position`. Not Drizzle's
@@ -46,12 +67,15 @@ checks pass. What it does:
   cleanup relies on the cascade. Inspector label now "translations (glossary_translations)".
 - The JSON column is no longer written: new terms get `[]` there.
 
-Not done in PR 4 (noted): `updateGlossaryTranslations` still updates Algolia before the
-database, so a save refused as stale (409, the race case only) has already pushed its list
-to the search record; the next save or a re-index repairs it. An import touching a term with
-an exact duplicate (癡) drops the duplicate, as the JSON code did (`mergeTranslations`).
+Not done in PR 4 (noted): an import touching a term with an exact duplicate (癡) drops the
+duplicate, as the JSON code did (`mergeTranslations`).
 
-**Next: PR 4, the switch.** In order (step 3 is the code above):
+**Next:** the user's manual pass of the app locally, then the **freeze** (a separate small PR
+off main: drop `Glossary`/`GlossaryData` from every role but admin in `LEVELS`,
+`app/authorisation/ability.ts`, and add the missing server-side Maintain check to the create
+action in `app/routes/_app.glossary.tsx`), kept until step 5 passes, then reverted.
+
+**PR 4 steps.** In order (steps 1–3 done, see above):
 
 1. **Prod dry run of 08** (read-only, but needs the user's yes:
    `pnpm db:migrate:data:08:prod`). Look for blocking issues, in particular `unknown-field`

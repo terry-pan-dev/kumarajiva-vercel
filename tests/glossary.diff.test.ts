@@ -151,3 +151,45 @@ describe('addsOrRemoves', () => {
     expect(() => addsOrRemoves([a], [stored('other', 'Buddha')])).toThrow(TranslationListError);
   });
 });
+
+// The ids the list was built from: a stored translation outside them was added meanwhile.
+describe('diffTranslations with a basis', () => {
+  it('keeps a translation added since the list was built, after the listed ones', () => {
+    // The list was built from a and b; c was added by someone else meanwhile.
+    const added = translation('new');
+    expect(diffTranslations([a, b, c], [a, b, added], ['a', 'b'])).toEqual({
+      insert: [{ position: 2, translation: added }],
+      update: [{ id: 'c', position: 3, translation: c, contentChanged: false }],
+      remove: [],
+    });
+  });
+
+  it('still removes a known translation the list leaves out', () => {
+    const diff = diffTranslations([a, b, c], [a], ['a', 'b']);
+    expect(diff.remove).toEqual(['b']);
+    expect(diff.update).toEqual([{ id: 'c', position: 1, translation: c, contentChanged: false }]);
+  });
+
+  it('keeps unknown ones in their stored order and leaves them alone when already in place', () => {
+    const diff = diffTranslations([a, b, c], [a], ['a']);
+    expect(diff.remove).toEqual([]);
+    expect(diff.update).toEqual([]);
+  });
+
+  it('ignores basis ids that are no longer stored', () => {
+    expect(diffTranslations([a], [a], ['a', 'gone'])).toEqual({ insert: [], update: [], remove: [] });
+  });
+
+  it('an empty basis knows nothing, so nothing is removed', () => {
+    expect(diffTranslations([a, b], [], []).remove).toEqual([]);
+  });
+
+  it('still refuses an id that is not stored', () => {
+    expect(() => diffTranslations([a], [stored('gone', 'x')], ['a', 'gone'])).toThrow(TranslationListError);
+  });
+
+  it('a translation added meanwhile is no removal for the edit permission', () => {
+    expect(addsOrRemoves([a, b, c], [a, b], ['a', 'b'])).toBe(false);
+    expect(addsOrRemoves([a, b, c], [a, b], undefined)).toBe(true);
+  });
+});

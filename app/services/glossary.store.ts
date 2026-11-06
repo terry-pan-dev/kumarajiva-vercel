@@ -11,7 +11,7 @@ import { and, desc, eq, exists, getTableColumns, ilike, inArray, isNotNull, isNu
 import { glossariesTable, glossaryTranslationsTable, type CreateGlossary, type UpdateGlossary } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
 
-import { diffTranslations, type StoredTranslation, type TranslationDiff } from './glossary.diff';
+import { diffTranslations, type StoredTranslation, type TranslationBasis, type TranslationDiff } from './glossary.diff';
 import { groupByGlossaryId, newTranslationRow, toGlossaryTranslation, translationContent } from './glossary.rows';
 import { type GlossaryEntry, type GlossaryTerm, type GlossaryTranslation } from './glossary.types';
 
@@ -283,10 +283,12 @@ export const GlossaryStore = {
   // UPDATE
   // --------------------------------------------------
 
-  // Sets the term's columns and makes its translations exactly `translations`, in that order,
-  // in one transaction. The list is the whole of them: a translation carrying a stored id is
-  // that translation, edited; one without an id is new; a stored translation the list leaves
-  // out is removed. Only the difference is written (diffTranslations in glossary.diff.ts), so
+  // Sets the term's columns and makes its translations `translations`, in that order, in one
+  // transaction. The list is the whole of them as far as its maker knew: a translation carrying
+  // a stored id is that translation, edited; one without an id is new; a stored translation the
+  // list leaves out is removed if it is in `basis` (the ids the list was built from), and kept,
+  // after the listed ones, if it was added since. No basis: every stored one counts as known.
+  // Only the difference is written (diffTranslations in glossary.diff.ts), so
   // translations nobody changed keep their ids and audit.
   // Throws TranslationListError, writing nothing, if the list names an id the term does not
   // have (any more) or names one twice. Undefined if no row has `id`.
@@ -294,14 +296,22 @@ export const GlossaryStore = {
     id: string,
     term: GlossaryTermUpdate,
     translations: GlossaryTranslation[],
+    basis?: TranslationBasis,
   ): Promise<GlossaryEntry | undefined> => {
     return db.transaction(async (tx) => {
       // Updating the term first also locks its row, so two saves of one term run one after
-      // the other and each diffs against what the other left.
-      const [row] = await tx.update(glossariesTable).set(term).where(eq(glossariesTable.id, id)).returning(termColumns);
+      // the other and each diffs against what the other left. updated_at is always set: it
+      // keeps a translation-only save (the insert form passes no term columns) from being an
+      // empty SET, which Drizzle refuses, and it moves the term up the glossary page, which
+      // lists the most recently edited first.
+      const [row] = await tx
+        .update(glossariesTable)
+        .set({ ...term, updatedAt: term.updatedAt ?? new Date() })
+        .where(eq(glossariesTable.id, id))
+        .returning(termColumns);
       if (!row) return undefined;
       const stored = (await loadTranslations(tx, [id])).get(id) ?? [];
-      await applyDiff(tx, id, diffTranslations(stored, translations));
+      await applyDiff(tx, id, diffTranslations(stored, translations, basis));
       return { ...row, translations: (await loadTranslations(tx, [id])).get(id) ?? [] };
     });
   },

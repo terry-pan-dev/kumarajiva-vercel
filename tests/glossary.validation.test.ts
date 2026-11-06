@@ -205,6 +205,14 @@ describe('glossaryEditFormSchema', () => {
     expect(glossaryEditFormSchema.parse(withTranslation({})).translations[0].id).toBeUndefined();
   });
 
+  it('keeps the ids the form was opened with', () => {
+    const ids = ['0000fe57-0000-4000-8000-000000000001'];
+    expect(
+      glossaryEditFormSchema.parse({ ...withTranslation({}), baseTranslationIds: ids }).baseTranslationIds,
+    ).toEqual(ids);
+    expect(glossaryEditFormSchema.parse(withTranslation({})).baseTranslationIds).toBeUndefined();
+  });
+
   it('refuses a translation id that is not a uuid', () => {
     expect(glossaryEditFormSchema.safeParse(withTranslation({ id: 'not-a-uuid' })).success).toBe(false);
   });
