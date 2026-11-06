@@ -65,7 +65,6 @@ export const glossaryEditFormSchema = z.object({
       originSutraText: z.string().nullish(),
       targetSutraText: z.string().nullish(),
       author: z.string().nullish(),
-      updatedAt: z.string().default(new Date().toISOString()),
       partOfSpeech: z.string().nullish(),
       phonetic: z.string().nullish(),
       rationale: rationaleSchema,

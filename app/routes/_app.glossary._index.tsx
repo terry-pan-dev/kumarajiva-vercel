@@ -2,7 +2,6 @@ import { Form, Link, useLoaderData, useNavigation, useRouteError } from '@remix-
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
-import { ZodError } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
 import { defineAbilityFor } from '~/authorisation';
@@ -21,11 +20,7 @@ import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { readGlossaries, readGlossariesByIds, trashGlossaryById, updateGlossaryTranslations } from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
 import { addsOrRemoves, isStored, TranslationListError } from '~/services/glossary.diff';
-import {
-  glossaryEditFormSchema,
-  glossaryFormSchema,
-  glossaryInsertFormSchema,
-} from '~/validations/glossary.validation';
+import { glossaryEditFormSchema, glossaryInsertFormSchema } from '~/validations/glossary.validation';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
@@ -100,9 +95,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (!existing) {
       return json({ success: false, errors: ['Glossary not found.'] }, { status: 404 });
     }
+    // Who and when, for the store: it stamps only the translations whose content changed.
+    const now = new Date().toISOString();
     const validatedDataWithUpdatedBy = validatedData.translations.map((translation) => ({
       ...translation,
       updatedBy: user.id,
+      updatedAt: now,
     }));
     let needsMaintain;
     try {
@@ -162,33 +160,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ success: true, kind: 'insert' });
   }
 
-  if (ability.cannot('Maintain', 'Glossary')) {
-    return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
-  }
-  try {
-    const data = validatePayloadOrThrow({ schema: glossaryFormSchema, formData });
-    const newGlossary = {
-      ...data,
-      createdBy: user.id,
-      updatedBy: user.id,
-    };
-    console.log(newGlossary);
-
-    // await createGlossary(newGlossary);
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return json({ success: false, errors: error.format() });
-    }
-    if (error instanceof Error) {
-      if ('code' in error) {
-        if (error.code === '23505') {
-          return json({ success: false, errors: ['Glossary already exists'] });
-        }
-      }
-    }
-    return json({ success: false, errors: ['Internal Server Error'] });
-  }
-  return json({ success: true });
+  // Nothing else posts here: creating an entry is the layout route's action (_app.glossary.tsx).
+  return json({ success: false, errors: ['Unknown request.'] }, { status: 400 });
 };
 
 export function ErrorBoundary() {

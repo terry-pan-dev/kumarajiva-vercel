@@ -191,10 +191,11 @@ stays. Reverted after step 5.
 
 **Known issues found on the way, not fixed (deliberately):**
 
-- `glossaryEditFormSchema`: `updatedAt` defaults to `new Date()` evaluated once, at module
-  load, so the default is the server's start time.
-- `app/routes/_app.glossary._index.tsx`: the action's last branch (no `kind`) validates and
-  then creates nothing (`createGlossary` was already commented out; the function is gone).
+- Fixed in the cleanup after 7b: `glossaryEditFormSchema` no longer has an `updatedAt` default
+  computed at module load (the edit action stamps the time; the store never wrote the posted
+  value anyway). The glossary page's action no longer answers success to a POST it doesn't
+  handle (the old create branch, dead since creating moved to `_app.glossary.tsx`): 400.
+
 - A copy of the rejected earlier schema draft is in the 2026-11-05 session's scratchpad
   only; ask the user before relying on it.
 
