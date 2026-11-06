@@ -54,10 +54,14 @@
       "sutraName": "source sutra for this translation",
       "volume": "volume within the source sutra",
       "chineseSutraText": "Chinese context sentence for the translation",
-      "englishSutraText": "English context sentence for the translation"
+      "englishSutraText": "English context sentence for the translation",
+      "translationUuidImport": "optional; the translation’s ID from a downloaded export. A row whose TranslationUUID names one of the entry’s translations <strong>updates that translation</strong>; every other row is added as a new translation",
+      "translationUuidReplace": "optional; ignored, since every translation is written anew",
+      "rationale": "optional; why this rendering was chosen. A blank cell clears a stored rationale when the row updates a translation; leaving the column out keeps them all"
     },
     "stepUpload": "<strong>Upload</strong> — select your CSV or XLSX file and click <em>Preview</em>. Both file types are parsed locally in your browser — no file data is sent to the server, so large files are handled without hitting upload size limits.",
-    "stepRepeat": "<strong>Repeat</strong> until all chunks are {{done}}. The progress bar at the top tracks how far along you are."
+    "stepRepeat": "<strong>Repeat</strong> until all chunks are {{done}}. The progress bar at the top tracks how far along you are.",
+    "rationale": "Rationale: {{rationale}}"
   },
   "import": {
     "title": "Import Glossary",
@@ -75,7 +79,10 @@
     "newBadge": "New",
     "updateBadge": "Update",
     "statusKept": "Kept",
+    "statusUpdated": "Updated",
     "statusNew": "New",
+    "duplicate": "Duplicate",
+    "duplicateHint": "Identical to a stored translation or to an earlier row of the file. It will still be added: only a TranslationUUID makes a row an update. Remove the row from the file if it is not meant to be a second copy.",
     "inspectTitle": "Check the glossary",
     "inspectDescription": "The Glossary Inspector shows every entry with its uuid, search_id and stored columns, and — when you run the index check — entries listed more than once in search, entries missing from it, and records left behind by deleted entries.",
     "openInspector": "Open the Glossary Inspector",
@@ -89,7 +96,7 @@
       "repeatDone": "imported",
       "conflictHeading": "Conflict resolution",
       "conflictMatching": "Rows with a UUID are matched to the existing record by primary key. Rows without a UUID are matched by Chinese term. New entries are created and indexed in Algolia automatically.",
-      "conflictMerge": "When a match is found the entry's translations are <strong>merged</strong>, not replaced — translations already in the database are kept even if the file does not mention them, so an import file only needs to carry the terms it is adding. A translation is considered the same as a stored one when its <code>EnglishTerm</code>, <code>SutraName</code> and <code>Volume</code> all match; in that case the file wins and the stored sutra text is overwritten. Everything else is appended. Re-importing the same file therefore changes nothing.",
+      "conflictMerge": "When a match is found the entry’s translations are <strong>merged</strong>, not replaced — translations already in the database are kept even if the file does not mention them, so an import file only needs to carry the terms it is adding or correcting. Only a <code>TranslationUUID</code> makes a row an update: a row whose <code>TranslationUUID</code> names one of the entry’s translations replaces that translation’s content (<em>Updated</em>, or <em>Kept</em> if nothing changed). Every other row is added (<em>New</em>), even when it repeats a stored translation word for word; such rows are marked <em>Duplicate</em> in the preview. Re-importing a downloaded export therefore changes nothing, but re-importing a file without <code>TranslationUUID</code> adds its translations again.",
       "conflictMetadata": "Entry-level metadata (phonetic, author, CBETA frequency) is overwritten by the file when supplied; leaving a cell blank keeps the stored value. To remove a translation, edit the entry directly — an import cannot delete one."
     }
   },

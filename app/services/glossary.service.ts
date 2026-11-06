@@ -7,7 +7,7 @@ import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
 import { mergeTranslations } from './glossary.merge';
-import { groupRows, type GlossaryImportRow } from './glossary.parse';
+import { groupRows, translationFromRow, type GlossaryImportRow } from './glossary.parse';
 import { glossaryIndexRecord, searchablePhonetic } from './glossary.record';
 import { GlossaryStore, type GlossaryTermInput, type GlossaryTermUpdate } from './glossary.store';
 import { type GlossaryEntry, type GlossaryTerm, type GlossaryTranslation } from './glossary.types';
@@ -295,19 +295,16 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
     const results = await Promise.allSettled(
       batch.map(async (group) => {
         const first = group.rows[0];
+        // Read the same way as the preview reads them (translationFromRow). `id` is the file's
+        // TranslationUUID: only the merge into an existing entry uses it.
         const translations: GlossaryTranslation[] = group.rows
           .filter((r) => r.englishTerm)
-          .map((r) => ({
-            glossary: r.englishTerm,
-            language: 'english' as const,
-            sutraName: r.sutraName,
-            volume: r.volume,
-            updatedBy: userId,
-            updatedAt: now,
-            originSutraText: r.chineseSutraText || null,
-            targetSutraText: r.englishSutraText || null,
-            author: r.author || null,
-          }));
+          .map((r) => ({ ...translationFromRow(r), language: 'english' as const, updatedBy: userId, updatedAt: now }));
+        // A new or revived entry gets new translations: a file id is never reused for a new row.
+        const withoutIds = translations.map(({ id, ...translation }) => {
+          void id;
+          return translation;
+        });
 
         // Match on the supplied id first, then fall back to the term, which is what the
         // unique index actually constrains.
@@ -326,7 +323,7 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
               discussion: null,
               updatedBy: userId,
             },
-            translations,
+            withoutIds,
           );
           return 'created' as const;
         } else if (existing) {
@@ -355,7 +352,7 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
               createdBy: userId,
               updatedBy: userId,
             },
-            translations,
+            withoutIds,
           );
           return 'created' as const;
         }

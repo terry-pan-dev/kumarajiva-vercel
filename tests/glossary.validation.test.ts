@@ -4,6 +4,7 @@ import {
   glossaryEditFormSchema,
   glossaryFormSchema,
   glossaryInsertFormSchema,
+  RATIONALE_MAX_LENGTH,
 } from '~/validations/glossary.validation';
 
 // ─── glossaryFormSchema (Add New Entry) ──────────────────────────────────────
@@ -239,5 +240,61 @@ describe('glossary translation language', () => {
     expect(glossaryFormSchema.safeParse({ ...entry, language: 'chinese' }).success).toBe(false);
     expect(glossaryFormSchema.safeParse({ ...entry, language: 'french' }).success).toBe(false);
     expect(glossaryInsertFormSchema.safeParse({ ...insert, language: 'chinese' }).success).toBe(false);
+  });
+});
+
+// ─── Rationale, the same rule in every form ──────────────────────────────────
+
+describe('rationale', () => {
+  const create = (rationale?: unknown) =>
+    glossaryFormSchema.safeParse({ glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma', rationale });
+  const insert = (rationale?: unknown) =>
+    glossaryInsertFormSchema.safeParse({
+      id: 'g1',
+      glossary: 'Dharma',
+      sutraName: '',
+      volume: '',
+      author: '',
+      rationale,
+    });
+  const edit = (rationale?: unknown) =>
+    glossaryEditFormSchema.safeParse({
+      id: 'g1',
+      glossary: '法',
+      phonetic: 'fǎ',
+      translations: [{ glossary: 'Dharma', language: 'english', sutraName: '佛教常用詞', volume: '-', rationale }],
+    });
+  const rationaleOf = {
+    create: (value?: unknown) => {
+      const r = create(value);
+      return r.success ? r.data.rationale : 'invalid';
+    },
+    insert: (value?: unknown) => {
+      const r = insert(value);
+      return r.success ? r.data.rationale : 'invalid';
+    },
+    edit: (value?: unknown) => {
+      const r = edit(value);
+      return r.success ? r.data.translations[0].rationale : 'invalid';
+    },
+  };
+
+  it.each(['create', 'insert', 'edit'] as const)('%s keeps a rationale, trimmed', (form) => {
+    expect(rationaleOf[form]('  chosen over “law”: the term is technical here \n')).toBe(
+      'chosen over “law”: the term is technical here',
+    );
+  });
+
+  // Blank and absent mean the same, so clearing the field never reads as an edit of it.
+  it.each(['create', 'insert', 'edit'] as const)('%s stores blank or absent as null', (form) => {
+    expect(rationaleOf[form]('   ')).toBeNull();
+    expect(rationaleOf[form]('')).toBeNull();
+    expect(rationaleOf[form](null)).toBeNull();
+    expect(rationaleOf[form](undefined)).toBeNull();
+  });
+
+  it.each(['create', 'insert', 'edit'] as const)('%s refuses a rationale over the limit', (form) => {
+    expect(rationaleOf[form]('x'.repeat(RATIONALE_MAX_LENGTH))).toHaveLength(RATIONALE_MAX_LENGTH);
+    expect(rationaleOf[form]('x'.repeat(RATIONALE_MAX_LENGTH + 1))).toBe('invalid');
   });
 });

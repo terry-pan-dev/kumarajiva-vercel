@@ -23,6 +23,10 @@ export type GlossaryImportRow = {
   cbetaFrequency: string;
   author: string;
   phonetic: string;
+  // Optional columns. Undefined when the file has no such column: an older file, or one that
+  // left it out, then leaves stored rationales alone. '' is a blank cell.
+  translationUuid?: string;
+  rationale?: string;
 };
 
 export type GroupedTerm = {
@@ -57,6 +61,9 @@ const XLSX_COLUMNS: Record<string, keyof GlossaryImportRow> = {
   'cbeta frequency': 'cbetaFrequency',
   author: 'author',
   phonetic: 'phonetic',
+  translationuuid: 'translationUuid',
+  'translation uuid': 'translationUuid',
+  rationale: 'rationale',
 };
 
 // PapaParse is isomorphic — safe to call in browser event handlers.
@@ -78,6 +85,9 @@ export function parseGlossaryCSV(csvText: string): GlossaryImportRow[] {
       cbetaFrequency: row.CBetaFrequency?.trim() ?? '',
       author: row.Author?.trim() ?? '',
       phonetic: row.Phonetic?.trim() ?? '',
+      // Left out, not '', when the file has no such column (see GlossaryImportRow).
+      ...(row.TranslationUUID !== undefined && { translationUuid: row.TranslationUUID.trim() }),
+      ...(row.Rationale !== undefined && { rationale: row.Rationale.trim() }),
     }));
 }
 
@@ -183,4 +193,21 @@ export function chunkGroupsToRows(groups: GroupedTerm[]): GlossaryImportRow[][] 
     queue.push(groups.slice(i, i + CHUNK_SIZE).flatMap((g) => g.rows));
   }
   return queue;
+}
+
+// The translation a file row describes, as both the importer and the import preview read it,
+// so the preview shows what the import will store. `id` is the file's TranslationUUID, which
+// only an update of that same stored translation uses (see mergeTranslationsWithStatus).
+// Blank passages and author are null; a blank Rationale is null and a missing column undefined.
+export function translationFromRow(row: GlossaryImportRow) {
+  return {
+    id: row.translationUuid || undefined,
+    glossary: row.englishTerm,
+    sutraName: row.sutraName,
+    volume: row.volume,
+    originSutraText: row.chineseSutraText || null,
+    targetSutraText: row.englishSutraText || null,
+    author: row.author || null,
+    rationale: row.rationale === undefined ? undefined : row.rationale || null,
+  };
 }

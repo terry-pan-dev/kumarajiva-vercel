@@ -17,13 +17,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/com
 import { Separator } from '~/components/ui/separator';
 import { localizeError } from '~/i18n/errors';
 import { getFixedT } from '~/i18n/locale.server';
-import { mergeTranslationsWithStatus, type TranslationStatus } from '~/services/glossary.merge';
+import {
+  mergeTranslationsWithStatus,
+  type MergeableTranslation,
+  type TranslationStatus,
+} from '~/services/glossary.merge';
 import {
   CHUNK_SIZE,
   chunkGroupsToRows,
   GlossaryParseError,
   groupRows,
   parseGlossaryFile,
+  translationFromRow,
   type GlossaryImportRow,
   type GroupedTerm,
 } from '~/services/glossary.parse';
@@ -41,6 +46,7 @@ type ExistingGlossary = {
   discussion?: string | null;
   translations?:
     | Array<{
+        id?: string | null;
         glossary: string;
         language: string;
         sutraName: string;
@@ -48,6 +54,7 @@ type ExistingGlossary = {
         originSutraText?: string | null;
         targetSutraText?: string | null;
         author?: string | null;
+        rationale?: string | null;
       }>
     | null
     | undefined;
@@ -134,11 +141,13 @@ type TermCardProps = {
 
 const TRANSLATION_STATUS_LABELS = {
   kept: 'import.statusKept',
+  updated: 'import.statusUpdated',
   new: 'import.statusNew',
 } as const satisfies Record<TranslationStatus, string>;
 
 const TRANSLATION_STATUS_STYLES: Record<TranslationStatus, string> = {
   kept: 'bg-muted text-muted-foreground',
+  updated: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
   new: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200',
 };
 
@@ -162,30 +171,25 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
   const cbetaFrequency = isIncoming ? first.cbetaFrequency : group.existing!.cbetaFrequency;
 
   const stored = (group.existing?.translations ?? []).map((t) => ({
+    id: t.id ?? undefined,
     glossary: t.glossary,
     sutraName: t.sutraName,
     volume: t.volume,
     originSutraText: t.originSutraText ?? null,
     targetSutraText: t.targetSutraText ?? null,
     author: t.author ?? null,
+    rationale: t.rationale ?? null,
   }));
 
-  // Mirrors the server's merge in importGlossaries, so the panel shows the row that will
-  // actually be stored — kept translations included, not just the file's rows.
-  const translations: Array<(typeof stored)[number] & { status?: TranslationStatus }> = isIncoming
-    ? mergeTranslationsWithStatus(
-        stored,
-        group.rows
-          .filter((r) => r.englishTerm)
-          .map((r) => ({
-            glossary: r.englishTerm,
-            sutraName: r.sutraName,
-            volume: r.volume,
-            originSutraText: r.chineseSutraText || null,
-            targetSutraText: r.englishSutraText || null,
-            author: r.author || null,
-          })),
-      ).map((m) => ({ ...m.translation, status: m.status }))
+  // Mirrors the server's merge in importGlossaries (same rows, same translationFromRow), so the
+  // panel shows the row that will actually be stored — kept translations included, not just the
+  // file's rows, and a row naming a stored translation by TranslationUUID as an update of it.
+  const translations: Array<MergeableTranslation & { status?: TranslationStatus; duplicate?: boolean }> = isIncoming
+    ? mergeTranslationsWithStatus(stored, group.rows.filter((r) => r.englishTerm).map(translationFromRow)).map((m) => ({
+        ...m.translation,
+        status: m.status,
+        duplicate: m.duplicate,
+      }))
     : stored;
 
   return (
@@ -221,11 +225,22 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
             <div key={i} className="bg-background text-foreground space-y-0.5 rounded border p-2 text-xs">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium">{tr.glossary}</p>
-                {tr.status && (
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${TRANSLATION_STATUS_STYLES[tr.status]}`}>
-                    {t(TRANSLATION_STATUS_LABELS[tr.status])}
-                  </span>
-                )}
+                <div className="flex shrink-0 gap-1">
+                  {/* Appended all the same: only a TranslationUUID makes a row an update. */}
+                  {tr.duplicate && (
+                    <span
+                      title={t('import.duplicateHint')}
+                      className="bg-destructive/15 text-destructive rounded px-1.5 py-0.5 text-xs"
+                    >
+                      {t('import.duplicate')}
+                    </span>
+                  )}
+                  {tr.status && (
+                    <span className={`rounded px-1.5 py-0.5 text-xs ${TRANSLATION_STATUS_STYLES[tr.status]}`}>
+                      {t(TRANSLATION_STATUS_LABELS[tr.status])}
+                    </span>
+                  )}
+                </div>
               </div>
               {(tr.sutraName || tr.volume) && (
                 <p className="text-muted-foreground">{[tr.sutraName, tr.volume].filter(Boolean).join(' · ')}</p>
@@ -235,6 +250,11 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
               )}
               {tr.targetSutraText && (
                 <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetSutraText}&rdquo;</p>
+              )}
+              {tr.rationale && (
+                <p className="text-muted-foreground line-clamp-3">
+                  {t('chunked.rationale', { rationale: tr.rationale })}
+                </p>
               )}
             </div>
           ))}

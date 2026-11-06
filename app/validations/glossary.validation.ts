@@ -4,6 +4,17 @@ import { chineseRegex } from '~/lib/utils';
 import { DEFAULT_TARGET_LANG, LANG_VALUES } from '~/utils/constants';
 import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
 
+export const RATIONALE_MAX_LENGTH = 5000;
+
+// Why a rendering was chosen: optional free text, trimmed. Blank is stored as null, the same as
+// never given, so clearing the field in the edit form is not mistaken for an edit of it.
+export const rationaleSchema = z
+  .string()
+  .trim()
+  .max(RATIONALE_MAX_LENGTH, { message: `Rationale must be at most ${RATIONALE_MAX_LENGTH} characters.` })
+  .nullish()
+  .transform((value) => value || null);
+
 export const glossaryFormSchema = z.object({
   glossaryChinese: z
     .string()
@@ -30,6 +41,7 @@ export const glossaryFormSchema = z.object({
   author: z.string().optional(),
   partOfSpeech: z.string().optional(),
   phonetic: z.string().optional(),
+  rationale: rationaleSchema,
 });
 
 export const glossaryEditFormSchema = z.object({
@@ -58,6 +70,7 @@ export const glossaryEditFormSchema = z.object({
       updatedAt: z.string().default(new Date().toISOString()),
       partOfSpeech: z.string().nullish(),
       phonetic: z.string().nullish(),
+      rationale: rationaleSchema,
     }),
   ),
 });
@@ -73,4 +86,5 @@ export const glossaryInsertFormSchema = z.object({
   author: z.string().transform((val) => (val.length > 0 ? val : '翻譯團隊')),
   partOfSpeech: z.string().nullish(),
   phonetic: z.string().nullish(),
+  rationale: rationaleSchema,
 });

@@ -22,6 +22,7 @@ import {
   GlossaryParseError,
   groupRows,
   parseGlossaryFile,
+  translationFromRow,
   type GlossaryImportRow,
   type GroupedTerm,
 } from '~/services/glossary.parse';
@@ -93,15 +94,7 @@ function GlossaryTermCard({ group }: { group: GroupedTerm }) {
   const { chineseTerm, phonetic, author, cbetaFrequency } = first;
   const { t } = useTranslation('glossary');
 
-  const translations = group.rows
-    .filter((r) => r.englishTerm)
-    .map((r) => ({
-      glossary: r.englishTerm,
-      sutraName: r.sutraName,
-      volume: r.volume,
-      originSutraText: r.chineseSutraText || null,
-      targetSutraText: r.englishSutraText || null,
-    }));
+  const translations = group.rows.filter((r) => r.englishTerm).map(translationFromRow);
 
   return (
     <div className="text-foreground space-y-2 rounded-lg border p-3 text-sm">
@@ -128,6 +121,11 @@ function GlossaryTermCard({ group }: { group: GroupedTerm }) {
               )}
               {tr.targetSutraText && (
                 <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetSutraText}&rdquo;</p>
+              )}
+              {tr.rationale && (
+                <p className="text-muted-foreground line-clamp-3">
+                  {t('chunked.rationale', { rationale: tr.rationale })}
+                </p>
               )}
             </div>
           ))}

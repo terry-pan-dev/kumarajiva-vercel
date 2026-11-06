@@ -239,7 +239,8 @@ describe('importGlossaries', () => {
 
     expect(result).toEqual({ created: 0, updated: 1, failed: 0 });
     const written = store.update.mock.calls[0][2] as GlossaryTranslation[];
-    expect(written.map((t) => t.glossary)).toEqual(['Buddha', 'Awakened One']);
+    // Without a TranslationUUID a row is appended, even the one repeating the stored translation.
+    expect(written.map((t) => t.glossary)).toEqual(['Buddha', 'Buddha', 'Awakened One']);
     expect(written[0]).toBe(stored);
   });
 
@@ -249,6 +250,47 @@ describe('importGlossaries', () => {
     store.findById.mockResolvedValue(existing);
     await importGlossaries([fileRow('佛', 'Awakened One')], 'importer');
     expect(store.update.mock.calls[0][3]).toEqual(['t1']);
+  });
+
+  it('a row naming a stored translation by TranslationUUID updates it, keeping its id', async () => {
+    const existing = entry('e', {
+      glossary: '佛',
+      translations: [
+        translation('Buddha', { id: 't1', rationale: 'old reason' }),
+        translation('Awakened', { id: 't2' }),
+      ],
+    });
+    store.findByTermsIncludingTrash.mockResolvedValue([existing]);
+    store.findById.mockResolvedValue(existing);
+
+    await importGlossaries(
+      [{ ...fileRow('佛', 'the Buddha'), translationUuid: 't1', rationale: 'new reason' }],
+      'importer',
+    );
+
+    const written = store.update.mock.calls[0][2] as GlossaryTranslation[];
+    expect(written.map((t) => [t.id, t.glossary, t.rationale ?? null])).toEqual([
+      ['t1', 'the Buddha', 'new reason'],
+      ['t2', 'Awakened', null],
+    ]);
+    expect(written[0].updatedBy).toBe('importer');
+  });
+
+  it('a new term never takes the file’s translation ids', async () => {
+    await importGlossaries(
+      [{ ...fileRow('法', 'Dharma'), translationUuid: 't-from-file', rationale: 'why' }],
+      'importer',
+    );
+    const [created] = store.create.mock.calls[0][1] as GlossaryTranslation[];
+    expect(created).not.toHaveProperty('id');
+    expect(created.rationale).toBe('why');
+  });
+
+  it('a revived term never takes the file’s translation ids', async () => {
+    store.findByTermsIncludingTrash.mockResolvedValue([entry('t', { glossary: '僧', deletedAt: new Date() })]);
+    await importGlossaries([{ ...fileRow('僧', 'Saṅgha'), translationUuid: 't-from-file' }], 'importer');
+    const [revived] = store.revive.mock.calls[0][2] as GlossaryTranslation[];
+    expect(revived).not.toHaveProperty('id');
   });
 
   it('a new term is created with the file’s translations', async () => {

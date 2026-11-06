@@ -9,6 +9,14 @@ import {
   glossariesToXLSX,
   parseExportFormat,
 } from '~/services/glossary.export';
+import { mergeTranslationsWithStatus, type MergeableTranslation } from '~/services/glossary.merge';
+import {
+  groupRows,
+  parseGlossaryCSV,
+  parseGlossaryXLSX,
+  translationFromRow,
+  type GlossaryImportRow,
+} from '~/services/glossary.parse';
 import { type GlossaryTranslation } from '~/services/glossary.types';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -158,5 +166,73 @@ describe('parseExportFormat', () => {
     expect(parseExportFormat(null)).toBe('xlsx');
     expect(parseExportFormat(undefined)).toBe('xlsx');
     expect(parseExportFormat('exe')).toBe('xlsx');
+  });
+});
+
+// ─── Round trip through import (PR 6b) ───────────────────────────────────────
+
+describe('export → import round trip', () => {
+  const entries = [
+    makeGlossary({
+      id: 'g1',
+      glossary: '佛',
+      phonetic: 'fó',
+      translations: [
+        makeTranslation({
+          id: 't1',
+          glossary: 'Buddha',
+          sutraName: '華嚴經',
+          volume: '3',
+          originSutraText: '佛告阿難',
+          targetSutraText: 'The Buddha told Ānanda, "listen"',
+          author: '翻譯團隊',
+          rationale: 'the standard rendering,\nkept for consistency',
+        }),
+        makeTranslation({ id: 't2', glossary: 'the Awakened One', sutraName: 'S', volume: '1', rationale: null }),
+      ],
+    }),
+    makeGlossary({ id: 'g2', glossary: '法', translations: [makeTranslation({ id: 't3', glossary: 'Dharma' })] }),
+  ];
+
+  // What importing the file over the same entries would do to each translation.
+  const reimport = (rows: GlossaryImportRow[]) =>
+    groupRows(rows).flatMap((group) => {
+      const entry = entries.find((e) => e.id === group.uuid)!;
+      // The fixtures are typed as raw rows (no translation id in that type); the entries carry one.
+      const stored = (entry.translations ?? []) as MergeableTranslation[];
+      return mergeTranslationsWithStatus<MergeableTranslation>(stored, group.rows.map(translationFromRow));
+    });
+
+  it('exports each translation’s id and rationale', () => {
+    expect(glossariesToExportRows(entries)[0]).toMatchObject({
+      TranslationUUID: 't1',
+      Rationale: 'the standard rendering,\nkept for consistency',
+    });
+    expect(glossariesToExportRows(entries)[1]).toMatchObject({ TranslationUUID: 't2', Rationale: '' });
+  });
+
+  it('changes nothing when a CSV export is imported back', () => {
+    const merged = reimport(parseGlossaryCSV(glossariesToCSV(entries)));
+    expect(merged.map((m) => m.status)).toEqual(['kept', 'kept', 'kept']);
+  });
+
+  it('changes nothing when an XLSX export is imported back', async () => {
+    const file = new File([await glossariesToXLSX(entries)], 'glossary.xlsx');
+    const merged = reimport(await parseGlossaryXLSX(file));
+    expect(merged.map((m) => m.status)).toEqual(['kept', 'kept', 'kept']);
+  });
+
+  it('brings an edited cell back as an update of that translation, not a new one', () => {
+    const csv = glossariesToCSV(entries).replace('the Awakened One', 'the Awakened');
+    const merged = reimport(parseGlossaryCSV(csv));
+    // groupRows orders terms by Chinese collation, so compare by translation id.
+    const byId = merged
+      .map((m) => [m.translation.id, m.translation.glossary, m.status])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    expect(byId).toEqual([
+      ['t1', 'Buddha', 'kept'],
+      ['t2', 'the Awakened', 'updated'],
+      ['t3', 'Dharma', 'kept'],
+    ]);
   });
 });
