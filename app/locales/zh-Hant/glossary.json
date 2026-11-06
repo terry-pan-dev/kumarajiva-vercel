@@ -207,7 +207,7 @@
       "showColumns": "顯示所有欄位",
       "hideColumns": "隱藏欄位",
       "columns": "欄位",
-      "translationsJson": "譯詞（translations JSON）",
+      "translationsJson": "譯詞（glossary_translations）",
       "searchRecords": "搜尋索引紀錄",
       "emptyString": "空字串",
       "noTranslations": "未儲存任何譯詞。"

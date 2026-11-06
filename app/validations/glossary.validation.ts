@@ -41,6 +41,9 @@ export const glossaryEditFormSchema = z.object({
   discussion: z.string().nullish(),
   translations: z.array(
     z.object({
+      // The stored translation this row edits. Carried from the form's default values (no
+      // input), so a save updates translations in place instead of replacing them all.
+      id: z.string().uuid().optional(),
       glossary: z.string(),
       language: z.enum(LANG_VALUES),
       sutraName: z.string(),

@@ -20,9 +20,10 @@
 import 'dotenv/config';
 import { ilike, inArray, or } from 'drizzle-orm';
 
-import { glossariesTable, type CreateGlossary } from '~/drizzle/tables';
+import { glossariesTable, glossaryTranslationsTable, type CreateGlossary } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
+import { newTranslationRow } from '~/services/glossary.rows';
 
 import {
   deletableFixtures,
@@ -61,6 +62,7 @@ async function clean({ deep }: { deep: boolean }): Promise<{ rows: number; recor
   const all = [...deletableFixtures(), ...issueFixtures()];
   const rowIds = all.map((fixture) => fixture.row?.id).filter((id): id is string => Boolean(id));
 
+  // Their translation rows go with them (the foreign key cascades).
   const deletedRows = await getDb()
     .delete(glossariesTable)
     // By id and by term: a fixture the tester renamed, or one left by an older numbering, still
@@ -90,11 +92,21 @@ async function clean({ deep }: { deep: boolean }): Promise<{ rows: number; recor
 async function seed(fixtures: Fixture[], authorId: string) {
   const rows = fixtures
     .map((fixture) => fixture.row)
-    .filter((fixtureRow): fixtureRow is NonNullable<Fixture['row']> => fixtureRow !== null)
-    .map((fixtureRow) => ({ ...fixtureRow, createdBy: authorId, updatedBy: authorId }) as CreateGlossary);
+    .filter((fixtureRow): fixtureRow is NonNullable<Fixture['row']> => fixtureRow !== null);
 
   if (rows.length > 0) {
-    await getDb().insert(glossariesTable).values(rows);
+    const terms = rows.map(({ translations, ...term }) => {
+      void translations;
+      return { ...term, createdBy: authorId, updatedBy: authorId } satisfies CreateGlossary;
+    });
+    const translationRows = rows.flatMap((fixtureRow) =>
+      fixtureRow.translations.map((translation, position) => newTranslationRow(fixtureRow.id!, position, translation)),
+    );
+    // One transaction: a fixture term is never left without the translations it is meant to have.
+    await getDb().transaction(async (tx) => {
+      await tx.insert(glossariesTable).values(terms);
+      if (translationRows.length > 0) await tx.insert(glossaryTranslationsTable).values(translationRows);
+    });
   }
 
   const records = fixtures.flatMap((fixture) => fixture.records);

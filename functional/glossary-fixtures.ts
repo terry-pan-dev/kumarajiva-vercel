@@ -41,9 +41,13 @@ export type Fixture = {
   tests: string;
   // What should happen when you do that.
   expect: string;
-  row: Omit<CreateGlossary, 'createdBy' | 'updatedBy'> | null;
+  // The term's columns, with its translations as the list the seed writes to
+  // glossary_translations (one row each, in order).
+  row: (Omit<CreateGlossary, 'createdBy' | 'updatedBy' | 'translations'> & { translations: Translation[] }) | null;
   records: IndexRecordLiteral[];
 };
+
+type FixtureRow = NonNullable<Fixture['row']>;
 
 // Fixture row uuids. Valid hex, obviously synthetic, and the last digits are the fixture
 // number — so a bare uuid in the inspector's objectID column is still self-identifying.
@@ -78,7 +82,7 @@ function translation(glossary: string, overrides: Partial<Translation> = {}): Tr
   };
 }
 
-function row(number: number, term: string, overrides: Partial<CreateGlossary> = {}) {
+function row(number: number, term: string, overrides: Partial<FixtureRow> = {}): FixtureRow {
   return {
     id: rowId(number),
     glossary: term,
@@ -313,7 +317,7 @@ export function issueFixtures(): Fixture[] {
       row: noTranslations,
       records: [canonicalRecord(noTranslations)],
       tests: 'Inspector → badge “no-translations” on this entry',
-      expect: 'The translations (json) section reads “No translations stored.”',
+      expect: 'The translations (glossary_translations) section reads “No translations stored.”',
     },
     {
       term: blankTranslation.glossary,

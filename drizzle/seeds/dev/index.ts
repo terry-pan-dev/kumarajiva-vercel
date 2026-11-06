@@ -7,6 +7,7 @@ import * as schema from '~/drizzle/schema';
 import { paragraphsTable, referencesTable, rollsTable, sutrasTable, teamsTable, usersTable } from '~/drizzle/tables';
 
 import algoliaClient from '../../../app/providers/algolia';
+import { newTranslationRow } from '../../../app/services/glossary.rows';
 import { teams } from './0-teams-seed';
 import { users } from './1-users-seed';
 import { sutras } from './2-sutras-seed';
@@ -83,11 +84,26 @@ const main = async () => {
       translations: glossary.translations,
     })),
   });
-  const glossariesWithSearchId = glossaries.map((glossary, index) => ({
-    ...glossary,
-    searchId: glossariesResponse[0].objectIDs[index],
-  }));
-  await dbClient.insert(schema.glossariesTable).values(glossariesWithSearchId).onConflictDoNothing();
+  // Terms first, then their translations as glossary_translations rows. Only terms this run
+  // actually inserted get rows, so seeding twice does not double the translations.
+  const glossariesWithSearchId = glossaries.map(({ translations, ...glossary }, index) => {
+    void translations;
+    return { ...glossary, searchId: glossariesResponse[0].objectIDs[index] };
+  });
+  const inserted = await dbClient
+    .insert(schema.glossariesTable)
+    .values(glossariesWithSearchId)
+    .onConflictDoNothing()
+    .returning({ id: schema.glossariesTable.id });
+  const insertedIds = new Set(inserted.map((row) => row.id));
+  const translationRows = glossaries
+    .filter((glossary) => insertedIds.has(glossary.id))
+    .flatMap((glossary) =>
+      glossary.translations.map((translation, position) => newTranslationRow(glossary.id, position, translation)),
+    );
+  if (translationRows.length > 0) {
+    await dbClient.insert(schema.glossaryTranslationsTable).values(translationRows);
+  }
   console.log('seeding glossaries table done');
   // const glossaries = JSON.parse(fs.readFileSync('drizzle/seeds/dev/glossary.json', 'utf8')) as schema.ReadGlossary[];
 

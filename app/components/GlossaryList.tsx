@@ -262,6 +262,8 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                     author: glossary.author || '',
                     cbetaFrequency: glossary.cbetaFrequency || '',
                     phonetic: glossary.phonetic || '',
+                    // Each translation keeps its id from here to the save (glossaryEditFormSchema
+                    // passes it through), so the save edits it in place. No input needed for it.
                     translations: glossary.translations || [],
                     discussion: glossary.discussion || '',
                   }}

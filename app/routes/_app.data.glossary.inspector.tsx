@@ -273,8 +273,8 @@ function ColumnTable({ row }: { row: InspectedRow }) {
   );
 }
 
-// All fields of every stored translation. The keys come from the data rather than a fixed
-// list: the JSON column has no schema, so an unexpected key is itself worth seeing.
+// All fields of every stored translation (glossary_translations rows, in the read shape). The
+// keys come from the data rather than a fixed list, so a field added later shows up unasked.
 function TranslationsTable({ row }: { row: InspectedRow }) {
   const { t } = useTranslation('glossary');
   const translations = row.translations ?? [];

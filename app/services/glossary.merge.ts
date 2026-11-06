@@ -3,8 +3,8 @@
 // Imported by the browser preview panel as well as the server-side importer, so — like
 // glossary.parse.ts — it must never reach into `~/lib/db.server`, Algolia or OpenAI.
 //
-// Translations live in a single JSON column, so an import that wrote only the file's rows
-// would silently drop every translation the file didn't mention. Import files are expected
+// GlossaryStore.update takes the whole list a term should end up with, so an import that sent
+// only the file's rows would silently drop every translation the file didn't mention. Import files are expected
 // to carry one source at a time, so incoming rows are added to what is already stored.
 //
 // Nothing distinct is ever collapsed. Two translations are the same only when every field

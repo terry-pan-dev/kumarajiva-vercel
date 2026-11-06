@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { diffTranslations, sameContent, type StoredTranslation } from '~/services/glossary.diff';
+import {
+  addsOrRemoves,
+  diffTranslations,
+  isStored,
+  sameContent,
+  type StoredTranslation,
+  TranslationListError,
+} from '~/services/glossary.diff';
 import { type GlossaryTranslation } from '~/services/glossary.types';
 
 const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
@@ -38,21 +45,23 @@ describe('diffTranslations', () => {
 
   it('updates a stored translation whose content changed', () => {
     const edited = { ...b, glossary: 'the Dharma' };
-    expect(diffTranslations([a, b], [a, edited]).update).toEqual([{ id: 'b', position: 1, translation: edited }]);
+    expect(diffTranslations([a, b], [a, edited]).update).toEqual([
+      { id: 'b', position: 1, translation: edited, contentChanged: true },
+    ]);
   });
 
   it('removes the stored translations the list leaves out, and renumbers the rest', () => {
     const diff = diffTranslations([a, b, c], [a, c]);
     expect(diff.remove).toEqual(['b']);
-    expect(diff.update).toEqual([{ id: 'c', position: 1, translation: c }]);
+    expect(diff.update).toEqual([{ id: 'c', position: 1, translation: c, contentChanged: false }]);
     expect(diff.insert).toEqual([]);
   });
 
   it('updates the positions of translations that moved', () => {
     const diff = diffTranslations([a, b], [b, a]);
     expect(diff.update).toEqual([
-      { id: 'b', position: 0, translation: b },
-      { id: 'a', position: 1, translation: a },
+      { id: 'b', position: 0, translation: b, contentChanged: false },
+      { id: 'a', position: 1, translation: a, contentChanged: false },
     ]);
   });
 
@@ -72,10 +81,27 @@ describe('diffTranslations', () => {
 
   it('refuses an id the term does not have', () => {
     expect(() => diffTranslations([a], [stored('other', 'Buddha')])).toThrow(/not one of this term/);
+    expect(() => diffTranslations([a], [stored('other', 'Buddha')])).toThrow(TranslationListError);
   });
 
   it('refuses an id given twice', () => {
     expect(() => diffTranslations([a, b], [a, a])).toThrow(/twice/);
+    expect(() => diffTranslations([a, b], [a, a])).toThrow(TranslationListError);
+  });
+
+  it('marks a translation that moved and changed as changed', () => {
+    const edited = { ...b, glossary: 'the Dharma' };
+    expect(diffTranslations([a, b], [edited]).update).toEqual([
+      { id: 'b', position: 0, translation: edited, contentChanged: true },
+    ]);
+  });
+});
+
+describe('isStored', () => {
+  it('is true only for a translation with an id', () => {
+    expect(isStored(a)).toBe(true);
+    expect(isStored(translation('new'))).toBe(false);
+    expect(isStored({ ...translation('new'), id: '' })).toBe(false);
   });
 });
 
@@ -99,5 +125,29 @@ describe('sameContent', () => {
     const before = translation('x', { originSutraText: 'a', targetSutraText: 'b', author: 'c' });
     const after = { ...before, [field]: field === 'language' ? 'sanskrit' : 'changed' };
     expect(sameContent(before, after)).toBe(false);
+  });
+});
+
+// The edit form's permission rule: Update edits, Maintain also adds and removes.
+describe('addsOrRemoves', () => {
+  it('is false for edits and moves only', () => {
+    expect(addsOrRemoves([a, b], [{ ...a, glossary: 'the Buddha' }, b])).toBe(false);
+    expect(addsOrRemoves([a, b], [b, a])).toBe(false);
+  });
+
+  it('is true when a translation is left out', () => {
+    expect(addsOrRemoves([a, b], [a])).toBe(true);
+  });
+
+  it('is true when a translation without an id is added', () => {
+    expect(addsOrRemoves([a], [a, translation('new')])).toBe(true);
+  });
+
+  it('is true when one translation replaces another and the list keeps its length', () => {
+    expect(addsOrRemoves([a, b], [a, translation('Dharma')])).toBe(true);
+  });
+
+  it('refuses a list built from other translations', () => {
+    expect(() => addsOrRemoves([a], [stored('other', 'Buddha')])).toThrow(TranslationListError);
   });
 });
