@@ -50,10 +50,14 @@
       "sutraName": "此譯詞的出處經典",
       "volume": "出處經典中的卷數",
       "chineseSutraText": "此譯詞的中文例句",
-      "englishSutraText": "此譯詞的英文例句"
+      "englishSutraText": "此譯詞的英文例句",
+      "translationUuidImport": "選填；下載的匯出檔中該譯詞的 ID。若資料列的 TranslationUUID 對應到條目中的某個譯詞，會<strong>更新該譯詞</strong>；其他資料列一律新增為新譯詞",
+      "translationUuidReplace": "選填；會被忽略，因為所有譯詞都會重新寫入",
+      "rationale": "選填；選用此譯法的理由。資料列更新譯詞時，空白儲存格會清除已儲存的理由；省略此欄則全部保留"
     },
     "stepUpload": "<strong>上傳</strong> — 選擇 CSV 或 XLSX 檔案並點選<em>預覽</em>。兩種檔案都在您的瀏覽器中解析，不會將檔案資料傳送到伺服器，因此大型檔案也不會超過上傳大小限制。",
-    "stepRepeat": "<strong>重複</strong>上述步驟，直到所有批次都已{{done}}。頂端的進度列會顯示目前進度。"
+    "stepRepeat": "<strong>重複</strong>上述步驟，直到所有批次都已{{done}}。頂端的進度列會顯示目前進度。",
+    "rationale": "理由：{{rationale}}"
   },
   "import": {
     "title": "匯入詞彙",
@@ -71,7 +75,10 @@
     "newBadge": "新增",
     "updateBadge": "更新",
     "statusKept": "保留",
+    "statusUpdated": "更新",
     "statusNew": "新增",
+    "duplicate": "重複",
+    "duplicateHint": "與已儲存的譯詞或檔案中較前的資料列完全相同。仍會新增：只有 TranslationUUID 能使資料列成為更新。若不打算新增第二份，請從檔案中刪除該列。",
     "inspectTitle": "檢查詞彙表",
     "inspectDescription": "詞彙檢查會列出每個條目的 uuid、search_id 及儲存欄位；執行索引檢查時，還會顯示在搜尋中重複出現的條目、搜尋中缺少的條目，以及已刪除條目遺留的紀錄。",
     "openInspector": "開啟詞彙檢查",
@@ -85,7 +92,7 @@
       "repeatDone": "匯入",
       "conflictHeading": "衝突處理",
       "conflictMatching": "有 UUID 的資料列依主鍵與既有紀錄配對；沒有 UUID 的資料列依中文詞條配對。新條目會自動建立並在 Algolia 建立索引。",
-      "conflictMerge": "找到配對時，條目的譯詞會<strong>合併</strong>而非取代 — 資料庫中已有的譯詞即使檔案未提及也會保留，因此匯入檔只需包含要新增的詞條。當譯詞的 <code>EnglishTerm</code>、<code>SutraName</code> 與 <code>Volume</code> 都相同時，視為同一個已儲存的譯詞；此時以檔案為準，覆寫已儲存的經文例句。其他譯詞則會附加上去。因此重複匯入同一個檔案不會造成任何變更。",
+      "conflictMerge": "找到配對時，條目的譯詞會<strong>合併</strong>而非取代 — 資料庫中已有的譯詞即使檔案未提及也會保留，因此匯入檔只需包含要新增或修正的詞條。只有 <code>TranslationUUID</code> 能使資料列成為更新：若資料列的 <code>TranslationUUID</code> 對應到條目中的某個譯詞，會以檔案內容取代該譯詞（<em>更新</em>；若無變更則為<em>保留</em>）。其他資料列一律新增（<em>新增</em>），即使與已儲存的譯詞逐字相同；這類資料列在預覽中會標示為<em>重複</em>。因此重新匯入下載的匯出檔不會造成任何變更，但重新匯入沒有 <code>TranslationUUID</code> 的檔案會再次新增其譯詞。",
       "conflictMetadata": "條目層級的資訊（讀音、譯者、CBETA 出現次數）若檔案有提供，會被檔案覆寫；儲存格留空則保留原值。若要移除譯詞，請直接編輯該條目 — 匯入無法刪除譯詞。"
     }
   },

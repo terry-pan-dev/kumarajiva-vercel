@@ -7,6 +7,8 @@ export type ExportableGlossary = WithTranslations<
 
 // Column order and names must match what the import parser reads (see XLSX_COLUMNS /
 // parseGlossaryCSV in glossary.parse.ts), so a downloaded file round-trips back through import.
+// TranslationUUID and Rationale came last (PR 6b), after the columns older files already had,
+// so those keep their positions.
 export const GLOSSARY_EXPORT_HEADERS = [
   'UUID',
   'ChineseTerm',
@@ -18,6 +20,8 @@ export const GLOSSARY_EXPORT_HEADERS = [
   'CBetaFrequency',
   'Author',
   'Phonetic',
+  'TranslationUUID',
+  'Rationale',
 ] as const;
 
 export type GlossaryExportRow = Record<(typeof GLOSSARY_EXPORT_HEADERS)[number], string>;
@@ -40,6 +44,9 @@ export function glossariesToExportRows(glossaries: ExportableGlossary[]): Glossa
       CBetaFrequency: glossary.cbetaFrequency ?? '',
       Author: t.author ?? '',
       Phonetic: glossary.phonetic ?? '',
+      // Re-imported, it makes a row an update of this translation rather than a new one.
+      TranslationUUID: t.id ?? '',
+      Rationale: t.rationale ?? '',
     })),
   );
 }

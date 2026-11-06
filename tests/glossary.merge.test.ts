@@ -102,40 +102,35 @@ describe('mergeTranslations', () => {
     expect(mergeTranslations([], incoming)).toHaveLength(2);
   });
 
-  it('preserves stored order and appends new translations at the end', () => {
+  it('preserves stored order and appends new translations at the end, in file order', () => {
     const stored = [
       makeTranslation({ glossary: 'a', sutraName: 'S', volume: '1' }),
       makeTranslation({ glossary: 'b', sutraName: 'S', volume: '2' }),
     ];
     const incoming = [
+      makeTranslation({ glossary: 'd', sutraName: 'S', volume: '4' }),
       makeTranslation({ glossary: 'c', sutraName: 'S', volume: '3' }),
-      // Identical to a stored one, so it is recognised rather than appended again.
-      makeTranslation({ glossary: 'b', sutraName: 'S', volume: '2' }),
     ];
 
-    expect(mergeTranslations(stored, incoming).map((t) => t.glossary)).toEqual(['a', 'b', 'c']);
+    expect(mergeTranslations(stored, incoming).map((t) => t.glossary)).toEqual(['a', 'b', 'd', 'c']);
   });
 
-  it('is idempotent — re-importing the same file changes nothing', () => {
-    const incoming = [
-      makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', targetSutraText: 'text' }),
-    ];
+  // Content never matches: only a TranslationUUID makes a row an update. A row identical to a
+  // stored translation is appended (and flagged, below).
+  it('appends a row without an id even when it is identical to a stored translation', () => {
+    const stored = [makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' })];
+    const incoming = [makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' })];
 
-    const once = mergeTranslations([], incoming);
-    const twice = mergeTranslations(once, incoming);
-
-    expect(twice).toEqual(once);
+    expect(mergeTranslations(stored, incoming)).toHaveLength(2);
   });
 
-  // The one case where two become one: rows identical in every field, which is what keeps a
-  // re-import from doubling the list.
-  it('collapses rows of the incoming file that are identical in every field', () => {
+  it('appends rows of the incoming file that are identical to each other', () => {
     const incoming = [
       makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'first' }),
       makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'first' }),
     ];
 
-    expect(mergeTranslations([], incoming)).toHaveLength(1);
+    expect(mergeTranslations([], incoming)).toHaveLength(2);
   });
 
   it('keeps rows of the incoming file that differ in any field', () => {
@@ -173,8 +168,8 @@ describe('mergeTranslationsWithStatus', () => {
       makeTranslation({ glossary: 'added', sutraName: 'S', volume: '3' }),
     ];
 
-    // The revised one arrives as a separate translation rather than replacing what is stored:
-    // nothing tells the importer whether it is a correction or another passage.
+    // Without a TranslationUUID the revised one arrives as a separate translation rather than
+    // replacing what is stored: nothing tells the importer it is a correction.
     expect(mergeTranslationsWithStatus(stored, incoming).map((m) => [m.translation.glossary, m.status])).toEqual([
       ['untouched', 'kept'],
       ['revised', 'kept'],
@@ -182,16 +177,153 @@ describe('mergeTranslationsWithStatus', () => {
       ['added', 'new'],
     ]);
   });
+});
 
-  // updatedAt/updatedBy always differ on re-import; only file-carried content counts.
-  it('reports an unchanged re-import as kept rather than updated', () => {
-    const translation = makeTranslation({
-      glossary: 'bodhisattva',
-      sutraName: 'Lotus',
-      volume: '1',
-      targetSutraText: 'text',
+// ─── The duplicate flag ──────────────────────────────────────────────────────
+
+describe('mergeTranslationsWithStatus — duplicates', () => {
+  const lotus = (extra: Partial<MergeableTranslation> = {}) =>
+    makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', targetSutraText: 'text', ...extra });
+
+  it('flags a new row identical to a stored translation, as a re-import of an id-less file would be', () => {
+    const merged = mergeTranslationsWithStatus([lotus()], [lotus()]);
+    expect(merged.map((m) => [m.status, m.duplicate])).toEqual([
+      ['kept', undefined],
+      ['new', true],
+    ]);
+  });
+
+  it('flags a row identical to an earlier row of the file', () => {
+    expect(mergeTranslationsWithStatus([], [lotus(), lotus()]).map((m) => m.duplicate)).toEqual([false, true]);
+  });
+
+  it('compares exactly: case, spacing or any other field makes it no duplicate', () => {
+    const stored = [lotus()];
+    for (const row of [
+      lotus({ glossary: 'Bodhisattva' }),
+      lotus({ glossary: 'bodhisattva ' }),
+      lotus({ volume: '2' }),
+      lotus({ originSutraText: '菩薩' }),
+      lotus({ author: 'someone' }),
+    ]) {
+      expect(mergeTranslationsWithStatus(stored, [row])[1].duplicate, JSON.stringify(row)).toBe(false);
+    }
+  });
+
+  it('treats a blank cell as an empty stored value, and ignores the rationale', () => {
+    const stored = [lotus({ originSutraText: null, rationale: 'why' })];
+    expect(mergeTranslationsWithStatus(stored, [lotus({ originSutraText: '', rationale: null })])[1].duplicate).toBe(
+      true,
+    );
+  });
+
+  it('flags a row repeating an updated translation’s new content', () => {
+    const stored = [{ ...lotus(), id: 't1' }];
+    const merged = mergeTranslationsWithStatus(stored, [
+      lotus({ id: 't1', glossary: 'new' }),
+      lotus({ glossary: 'new' }),
+    ]);
+    expect(merged.map((m) => [m.status, m.duplicate])).toEqual([
+      ['updated', undefined],
+      ['new', true],
+    ]);
+  });
+});
+
+// ─── Matching by TranslationUUID (PR 6b) ─────────────────────────────────────
+
+describe('mergeTranslationsWithStatus — by TranslationUUID', () => {
+  type Stored = MergeableTranslation & { language: string; phonetic?: string | null };
+  const stored = (id: string, glossary: string, extra: Partial<Stored> = {}): Stored => ({
+    ...makeTranslation({ glossary, sutraName: 'S', volume: '1' }),
+    id,
+    language: 'english',
+    updatedBy: 'editor',
+    updatedAt: '2025-01-01T00:00:00.000Z',
+    ...extra,
+  });
+  const fileRow = (glossary: string, extra: Partial<Stored> = {}): Stored =>
+    ({
+      ...makeTranslation({ glossary, sutraName: 'S', volume: '1' }),
+      language: 'english',
+      updatedBy: 'importer',
+      updatedAt: '2026-11-06T00:00:00.000Z',
+      ...extra,
+    }) as Stored;
+
+  it('updates the named translation in place, keeping its id and what the file cannot carry', () => {
+    const a = stored('t1', 'Buddha', { language: 'sanskrit', phonetic: 'bud-dha' });
+    const b = stored('t2', 'Dharma');
+    const merged = mergeTranslationsWithStatus([a, b], [fileRow('the Buddha', { id: 't1', targetSutraText: 'fixed' })]);
+
+    expect(merged.map((m) => [m.translation.id, m.translation.glossary, m.status])).toEqual([
+      ['t1', 'the Buddha', 'updated'],
+      ['t2', 'Dharma', 'kept'],
+    ]);
+    expect(merged[0].translation).toMatchObject({
+      language: 'sanskrit',
+      phonetic: 'bud-dha',
+      targetSutraText: 'fixed',
+      updatedBy: 'importer',
     });
+  });
 
-    expect(mergeTranslationsWithStatus([translation], [{ ...translation }]).map((m) => m.status)).toEqual(['kept']);
+  it('reports a named translation the file repeats unchanged as kept, untouched', () => {
+    const a = stored('t1', 'Buddha');
+    const [merged] = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1' })]);
+    expect(merged.status).toBe('kept');
+    expect(merged.translation).toBe(a);
+  });
+
+  it('treats a blank cell and a stored null as the same', () => {
+    const a = stored('t1', 'Buddha', { originSutraText: null });
+    expect(mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', originSutraText: '' })])[0].status).toBe(
+      'kept',
+    );
+  });
+
+  it('leaves the rationale alone when the file has no Rationale column, and clears it on a blank cell', () => {
+    const a = stored('t1', 'Buddha', { rationale: 'why' });
+    const absent = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', rationale: undefined })])[0];
+    expect(absent).toMatchObject({ status: 'kept', translation: { rationale: 'why' } });
+
+    const blank = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', rationale: null })])[0];
+    expect(blank).toMatchObject({ status: 'updated', translation: { rationale: null } });
+
+    const changed = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', rationale: 'because' })])[0];
+    expect(changed).toMatchObject({ status: 'updated', translation: { rationale: 'because' } });
+  });
+
+  it('appends a row whose id names none of the term’s translations, without the id', () => {
+    const a = stored('t1', 'Buddha');
+    const merged = mergeTranslationsWithStatus(
+      [a],
+      [fileRow('Buddha', { id: 'from-elsewhere' }), fileRow('Dharma', { id: 'other-env' })],
+    );
+    expect(merged.map((m) => [m.translation.glossary, m.status, m.duplicate])).toEqual([
+      ['Buddha', 'kept', undefined],
+      ['Buddha', 'new', true],
+      ['Dharma', 'new', false],
+    ]);
+    expect(merged[1].translation).not.toHaveProperty('id');
+    expect(merged[2].translation).not.toHaveProperty('id');
+  });
+
+  it('lets the first row naming an id update it; a second one is appended', () => {
+    const a = stored('t1', 'Buddha');
+    const merged = mergeTranslationsWithStatus([a], [fileRow('first', { id: 't1' }), fileRow('second', { id: 't1' })]);
+    expect(merged.map((m) => [m.translation.id, m.translation.glossary, m.status])).toEqual([
+      ['t1', 'first', 'updated'],
+      [undefined, 'second', 'new'],
+    ]);
+  });
+
+  // An import never removes a translation, not even an exact duplicate already stored.
+  it('keeps stored exact duplicates', () => {
+    const merged = mergeTranslationsWithStatus([stored('t1', 'Buddha'), stored('t2', 'Buddha')], []);
+    expect(merged.map((m) => [m.translation.id, m.status])).toEqual([
+      ['t1', 'kept'],
+      ['t2', 'kept'],
+    ]);
   });
 });

@@ -10,8 +10,7 @@ during the freeze; the prod comparison (step 5) passed. The app reads and writes
 `glossary_translations` only; `glossaries.translations` (JSON) is a frozen fallback copy as
 of the switch, dropped in PR 7.
 
-**PR 6a (Rationale): written 2026-11-06 in the working tree (on `main`; the user branches
-and commits).** Rationale in the create, edit and insert forms and on the translation display
+**PR 6a (Rationale): committed on branch `glos-field` (b834ee0), to merge together with 6b.** Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
 forms, `rationaleSchema` in `glossary.validation.ts`: optional, trimmed, at most 5,000
 characters, blank stored as null (so clearing it is not an edit). Also fixed the known
@@ -21,8 +20,35 @@ passage and the translation section's (`sutraText`) the target one; the mapping 
 touched files, 7 mutation checks, and a dev run on ZZTEST (insert, edit, unchanged save,
 clear, read back). Not in 6a: the import/replace previews and file columns (6b).
 
-**Next:** 6b (import/export `TranslationUUID` and `Rationale`), then PR 7 when the user is
-confident enough to drop the JSON fallback.
+**PR 6b (import/export): written 2026-11-06 in the working tree on `glos-field`.** Files gain
+two optional columns at the end, `TranslationUUID` and `Rationale` (export, CSV and XLSX
+parsing, column docs on both pages, en and zh-Hant). Merge rules (`glossary.merge.ts`, shared
+by the importer and the preview through `translationFromRow` in `glossary.parse.ts`):
+
+- a row whose `TranslationUUID` names one of the term's stored translations updates it in
+  place (status _Updated_, or _Kept_ if nothing changed): file content and the importer's
+  audit, the stored id, language, partOfSpeech/phonetic kept. First row wins if an id repeats;
+- **only an id makes an update** (the user's decision, 2026-11-06: content matching is
+  brittle): every other row is appended, even one identical to a stored translation. Such a
+  row is flagged _Duplicate_ in the preview (exact compare of rendering, source, volume,
+  passages and author; blank = null; rationale ignored), as is a row repeating an earlier
+  row of the file. So re-importing an export changes nothing, but re-importing an id-less
+  file (pre-6b export, hand-made) adds its translations again. An id naming nothing in that
+  term is dropped, never reused for a new row (new and revived terms get new ids too).
+  `translationKey` stays only for data script 08's duplicate report;
+- a missing `Rationale` column leaves stored rationales alone; a blank cell clears it;
+- an import removes nothing, and no longer collapses stored exact duplicates (癡).
+
+Replace ignores `TranslationUUID` (all rows are new). The import page's merge explanation was
+rewritten (it described an older rule). Checked: tsc, 526 tests, eslint/prettier on touched
+files, 20 mutation checks; export → import round trip (CSV and XLSX) changes nothing, an edited
+cell comes back as an update; on dev (ZZTEST): untouched CSV/XLSX re-import writes nothing,
+an edited row and rationale update in place, an old-format file appends one copy per row and
+leaves the originals and their rationales alone.
+Not done: no length cap on an imported rationale (the forms cap at 5,000).
+
+**Next:** PR 7 (drop `glossaries.translations` and `subscribers`; schema change, needs the
+user's approval) when the user is confident enough to drop the JSON fallback; PR 8 (renames).
 
 The sections below, down to "Known issues", are the PR 3–4 record.
 

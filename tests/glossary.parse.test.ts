@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { chunkGroupsToRows, CHUNK_SIZE, groupRows, type GlossaryImportRow } from '~/services/glossary.parse';
+import {
+  chunkGroupsToRows,
+  CHUNK_SIZE,
+  groupRows,
+  parseGlossaryCSV,
+  parseGlossaryXLSX,
+  translationFromRow,
+  type GlossaryImportRow,
+} from '~/services/glossary.parse';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -134,5 +142,92 @@ describe('chunkGroupsToRows', () => {
 
   it('returns no chunks for no groups', () => {
     expect(chunkGroupsToRows([])).toEqual([]);
+  });
+});
+
+// ─── The optional columns (PR 6b) ────────────────────────────────────────────
+
+describe('parseGlossaryCSV — TranslationUUID and Rationale', () => {
+  const header =
+    'UUID,ChineseTerm,EnglishTerm,ChineseSutraText,EnglishSutraText,SutraName,Volume,CBetaFrequency,Author,Phonetic';
+
+  it('reads both columns, trimmed', () => {
+    const [row] = parseGlossaryCSV(`${header},TranslationUUID,Rationale\ng1,法,Dharma,,,S,1,,,fǎ, t1 , why \n`);
+    expect(row).toMatchObject({ translationUuid: 't1', rationale: 'why' });
+  });
+
+  it('leaves them out for a file without those columns, so stored rationales stay', () => {
+    const [row] = parseGlossaryCSV(`${header}\ng1,法,Dharma,,,S,1,,,fǎ\n`);
+    expect(row).not.toHaveProperty('translationUuid');
+    expect(row).not.toHaveProperty('rationale');
+  });
+
+  it('reads a blank cell as empty, not absent', () => {
+    const [row] = parseGlossaryCSV(`${header},TranslationUUID,Rationale\ng1,法,Dharma,,,S,1,,,fǎ,,\n`);
+    expect(row).toMatchObject({ translationUuid: '', rationale: '' });
+  });
+});
+
+describe('parseGlossaryXLSX — TranslationUUID and Rationale', () => {
+  const xlsxFile = async (aoa: string[][]) => {
+    const { utils, write } = await import('xlsx');
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, utils.aoa_to_sheet(aoa), 'Glossary');
+    return new File([write(workbook, { type: 'array', bookType: 'xlsx' })], 'glossary.xlsx');
+  };
+
+  it('reads both columns, under either header spelling', async () => {
+    const [row] = await parseGlossaryXLSX(
+      await xlsxFile([
+        ['ChineseTerm', 'EnglishTerm', 'Translation UUID', 'rationale'],
+        ['法', 'Dharma', 't1', 'why'],
+      ]),
+    );
+    expect(row).toMatchObject({ translationUuid: 't1', rationale: 'why' });
+  });
+
+  it('leaves them out for a file without those columns', async () => {
+    const [row] = await parseGlossaryXLSX(
+      await xlsxFile([
+        ['ChineseTerm', 'EnglishTerm'],
+        ['法', 'Dharma'],
+      ]),
+    );
+    expect(row).not.toHaveProperty('translationUuid');
+    expect(row).not.toHaveProperty('rationale');
+  });
+});
+
+describe('translationFromRow', () => {
+  it('reads a row as the translation it describes', () => {
+    expect(
+      translationFromRow(
+        makeRow({
+          chineseTerm: '法',
+          englishTerm: 'Dharma',
+          sutraName: 'S',
+          volume: '1',
+          chineseSutraText: '法',
+          translationUuid: 't1',
+          rationale: 'why',
+        }),
+      ),
+    ).toEqual({
+      id: 't1',
+      glossary: 'Dharma',
+      sutraName: 'S',
+      volume: '1',
+      originSutraText: '法',
+      targetSutraText: null,
+      author: null,
+      rationale: 'why',
+    });
+  });
+
+  it('gives no id for a blank TranslationUUID, null for a blank rationale and undefined for none', () => {
+    const blank = translationFromRow(makeRow({ chineseTerm: '法', translationUuid: '', rationale: '' }));
+    expect(blank.id).toBeUndefined();
+    expect(blank.rationale).toBeNull();
+    expect(translationFromRow(makeRow({ chineseTerm: '法' })).rationale).toBeUndefined();
   });
 });
