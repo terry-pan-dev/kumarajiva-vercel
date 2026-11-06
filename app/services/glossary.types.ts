@@ -32,12 +32,8 @@ export type GlossaryTranslation = {
   updatedAt: string;
 };
 
-// Columns of `glossaries` the app no longer reads or writes, kept until the legacy purge
-// (docs/plans/legacy-purge.md).
-export type LegacyGlossaryColumn = 'legacyTranslations' | 'legacySubscribers';
-
 // A term without its translations.
-export type GlossaryTerm = Omit<ReadGlossary, LegacyGlossaryColumn>;
+export type GlossaryTerm = ReadGlossary;
 
 // A term with its translations, in display order.
 export type GlossaryEntry = GlossaryTerm & { translations: GlossaryTranslation[] };

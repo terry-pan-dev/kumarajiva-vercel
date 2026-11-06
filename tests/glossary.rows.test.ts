@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { planTerm } from '~/drizzle/migrations/data/08-glossary-translations.rows';
 import { type ReadGlossaryTranslation } from '~/drizzle/tables';
 import {
   groupByGlossaryId,
@@ -137,40 +136,7 @@ describe('groupByGlossaryId', () => {
   });
 });
 
-// Migration 08 writes rows from the JSON; the store reads them back. What it reads must be the
-// element it came from, or the switch changes what everybody sees.
-describe('round trip through migration 08', () => {
-  const element = {
-    glossary: 'Buddha',
-    language: 'english',
-    sutraName: '華嚴經',
-    volume: '3',
-    originSutraText: '佛告阿難',
-    targetSutraText: '',
-    author: '翻譯團隊',
-    partOfSpeech: 'noun',
-    phonetic: '',
-    updatedBy: 'user-1',
-    updatedAt: '2025-06-01T10:00:00.000Z',
-  };
-
-  it('reads back the element 08 copied', () => {
-    const {
-      rows: [planned],
-    } = planTerm({
-      id: 'g1',
-      glossary: '佛',
-      translations: [element],
-      updatedAt: new Date('2024-01-01'),
-      updatedBy: 'term-user',
-      deletedAt: null,
-    });
-    const read = toGlossaryTranslation({ ...planned, id: 't1', deletedAt: null });
-
-    // Only the empty phonetic differs: 08 does not store it, and an absent one reads as null.
-    expect(read).toEqual({ ...element, phonetic: null, rationale: null, id: 't1' });
-  });
-
+describe('round trip', () => {
   it('writes what it reads unchanged', () => {
     const read = toGlossaryTranslation(row({ metadata: { partOfSpeech: 'noun' } }));
     const written = { ...row(), ...translationContent(read) };

@@ -1,7 +1,5 @@
 // Maps `glossary_translations` rows to the read shape (GlossaryTranslation) and back. Pure: no
-// database access, so GlossaryStore's mapping is unit-tested directly. Data migration 08
-// (drizzle/migrations/data/08-glossary-translations.rows.ts, planTerm) maps the JSON elements
-// into rows the same way; reading a row it wrote must give back the element it came from.
+// database access, so GlossaryStore's mapping is unit-tested directly.
 //
 //   row            read shape
 //   term           glossary

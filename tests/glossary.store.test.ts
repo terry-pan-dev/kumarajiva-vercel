@@ -188,14 +188,6 @@ describe('GlossaryStore reads', () => {
     expect(result.map((r) => r.id)).toEqual(['b', 'a']);
   });
 
-  it('never reads the old JSON column', async () => {
-    db.state.terms = [term('a')];
-    await GlossaryStore.findById('a');
-    const termSelect = db.client.select.mock.calls[0][0];
-    expect(termSelect).toHaveProperty('glossary');
-    expect(termSelect).not.toHaveProperty('translations');
-  });
-
   it('asks the database nothing for an empty id list', async () => {
     expect(await GlossaryStore.findByIdsInOrder([])).toEqual([]);
     expect(await GlossaryStore.findByIds([])).toEqual([]);

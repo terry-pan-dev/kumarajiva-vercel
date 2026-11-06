@@ -43,9 +43,7 @@ export type Fixture = {
   expect: string;
   // The term's columns, with its translations as the list the seed writes to
   // glossary_translations (one row each, in order).
-  row:
-    | (Omit<CreateGlossary, 'createdBy' | 'updatedBy' | 'legacyTranslations'> & { translations: Translation[] })
-    | null;
+  row: (Omit<CreateGlossary, 'createdBy' | 'updatedBy'> & { translations: Translation[] }) | null;
   records: IndexRecordLiteral[];
 };
 

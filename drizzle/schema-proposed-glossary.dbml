@@ -3,22 +3,19 @@
 // Plan, decisions and step order: docs/plans/glossary-refactor.md.
 // Before the refactor: glossary-current.dbml.
 //
-// `glossary_translations` exists since migration 0025 (PR 1). `glossaries` is unchanged
-// until PR 7, which drops `translations` and `subscribers` (marked below).
+// `glossary_translations` exists since migration 0025 (PR 1). Migration 0026 (PR 7) dropped
+// `glossaries.translations` and `glossaries.subscribers`; this file shows the result.
 //
 // The glossary is deliberately independent of works, documents, sections and paragraphs:
 // citations (source name, volume, passages) are free text.
 
-// One row per Chinese term. Unchanged: `id` is also the Algolia objectID and the key of
-// localStorage bookmarks, so it must not change.
+// One row per Chinese term. `id` is also the Algolia objectID, so it must not change.
 Table glossaries {
   id uuid [pk, not null, default: `gen_random_uuid()`]
   glossary text [not null, note: 'the Chinese term']
   phonetic text [note: 'pinyin of the term']
-  subscribers integer [default: 0, note: 'unused (subscriptions live in localStorage); dropped in PR 7']
   author text [note: 'term-level author; kept for now, often differs from the translation authors']
   cbeta_frequency text
-  translations json [default: '[]', note: 'replaced by glossary_translations; no longer read after PR 4, dropped in PR 7']
   discussion text
   search_id text [default: null]
   created_at timestamp [not null, default: `now()`]
