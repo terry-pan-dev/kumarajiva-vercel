@@ -1,30 +1,18 @@
 import { useFetcher } from '@remix-run/react';
 import { useLocalStorage } from '@uidotdev/usehooks';
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { json, redirect, type ActionFunctionArgs } from '@vercel/remix';
+import { useEffect, useRef, useState } from 'react';
 import AvatarEditor, { type AvatarEditorRef } from 'react-avatar-editor';
 import { ClientOnly } from 'remix-utils/client-only';
 
 import { assertAuthUser } from '~/auth.server';
-import { GlossaryList } from '~/components/GlossaryList';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '~/components/ui/card';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { Slider } from '~/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import { readGlossariesByIds, updateUser } from '~/services';
-import { type GlossaryEntry } from '~/services/glossary.types';
-
-export async function loader({ request }: LoaderFunctionArgs) {
-  const { searchParams } = new URL(request.url);
-  const glossaryIds = searchParams.getAll('glossaryIds') as string[];
-  if (!glossaryIds.length) {
-    return json({ success: true, glossaries: [] });
-  }
-  const glossaries = await readGlossariesByIds(glossaryIds);
-  return json({ success: true, glossaries: glossaries });
-}
+import { updateUser } from '~/services';
 
 export async function action({ request }: ActionFunctionArgs) {
   const user = await assertAuthUser(request);
@@ -44,20 +32,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function SettingsIndex() {
   return (
-    <Tabs className="w-full" defaultValue="glossary">
-      <TabsList className="grid h-full w-full grid-cols-1 lg:grid-cols-4">
-        <TabsTrigger value="glossary">Glossary Subscriptions</TabsTrigger>
+    <Tabs className="w-full" defaultValue="font-settings">
+      <TabsList className="grid h-full w-full grid-cols-1 lg:grid-cols-3">
         <TabsTrigger value="font-settings">Font Settings</TabsTrigger>
         <TabsTrigger value="user-settings">User Settings</TabsTrigger>
         <TabsTrigger value="search">Search Config</TabsTrigger>
       </TabsList>
-      <TabsContent value="glossary">
-        <ClientOnly>
-          {() => {
-            return <GlossaryComponent />;
-          }}
-        </ClientOnly>
-      </TabsContent>
       <TabsContent value="font-settings">
         <ClientOnly>
           {() => {
@@ -153,40 +133,6 @@ function AvatarEditPage() {
       </CardFooter>
     </Card>
   );
-}
-
-function GlossaryComponent() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [subscribedGlossaries, _] = useLocalStorage<string[]>('subscribedGlossaries', []);
-  const fetcher = useFetcher<{ glossaries: GlossaryEntry[]; success: boolean }>();
-
-  useEffect(() => {
-    if (subscribedGlossaries.length) {
-      const glossaryIds = subscribedGlossaries.map((id) => `glossaryIds=${id}`).join('&');
-      fetcher.load(`/settings?index&${glossaryIds}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const glossaries = useMemo(() => {
-    if (fetcher.data?.success) {
-      return fetcher.data.glossaries.map((glossary) => ({
-        ...glossary,
-        createdAt: new Date(glossary.createdAt),
-        updatedAt: new Date(glossary.updatedAt),
-        deletedAt: glossary.deletedAt ? new Date(glossary.deletedAt) : null,
-      }));
-    }
-    return [];
-  }, [fetcher.data]);
-
-  const glossaryStates = glossaries.filter((glossary) => subscribedGlossaries.includes(glossary.id));
-
-  if (!glossaries.length) {
-    return <div className="mx-auto w-full max-w-md">You have not subscribed to any glossaries yet.</div>;
-  }
-
-  return <GlossaryList glossaries={glossaryStates} />;
 }
 
 export function FontSizePreference() {

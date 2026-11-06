@@ -12,8 +12,8 @@ switch. It is no longer dropped in PR 7 (see "Next").
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
-forms, `rationaleSchema` in `glossary.validation.ts`: optional, trimmed, at most 5,000
-characters, blank stored as null (so clearing it is not an edit). Also fixed the known
+forms, `rationaleSchema` in `glossary.validation.ts`: optional, trimmed (5,000-character cap
+removed in PR 7), blank stored as null (so clearing it is not an edit). Also fixed the known
 create-form issue: its Chinese-section Sutra Text (`sutraTextChinese`) is now the source
 passage and the translation section's (`sutraText`) the target one; the mapping moved into
 `app/services/glossary.create.ts` (pure, tested). Checked: tsc, all tests, eslint/prettier on
@@ -45,7 +45,6 @@ files, 20 mutation checks; export → import round trip (CSV and XLSX) changes n
 cell comes back as an update; on dev (ZZTEST): untouched CSV/XLSX re-import writes nothing,
 an edited row and rationale update in place, an old-format file appends one copy per row and
 leaves the originals and their rationales alone.
-Not done: no length cap on an imported rationale (the forms cap at 5,000).
 
 **PR 7, redefined 2026-11-06 (in the working tree, no migration).** By the user's decision
 nothing is dropped now. Data being phased out stays in the database until a **legacy purge**,
@@ -56,30 +55,34 @@ together with the old sutra/roll tables, once the new model is settled. The list
   in `drizzle/tables/glossary.ts`, marked LEGACY. The database is unchanged and no migration
   is generated. **It must stay in the definition**: deleting it there would make the next
   `drizzle-kit generate` write a DROP COLUMN, which the deploy would run;
-- the store, the types (`GlossaryTerm` omits `legacyTranslations`), script 08 and the fixture
-  type follow. Three test files typed rows as `ReadGlossary` with `translations` inside (the
-  old JSON shape) and now use `InspectedRow` / `ExportableGlossary`;
+- **bookmarking removed** (the user's decision, 2026-11-06: people search terms but don't
+  bookmark; on prod `subscribers` was 0 on all 15,027 live terms, read-only count, and every
+  term dates from July 2026 or later). Gone: the bookmark button and its localStorage list
+  on the term card, the `bookmark` branch of the glossary page's action,
+  `updateGlossarySubscribers`, the counter on the card, the inspector column, and the Settings
+  "Glossary Subscriptions" tab with its loader (which had no sign-in check). Settings now
+  opens on Font Settings. The column is `legacySubscribers: integer('subscribers')`, on the
+  purge list. Browsers keep a stale `subscribedGlossaries` localStorage key; it is harmless;
+- the store, the types (`LegacyGlossaryColumn` in `glossary.types.ts`, left out of
+  `GlossaryTerm` and the store's write types), script 08 and the fixture type follow. Three
+  test files typed rows as `ReadGlossary` with `translations` inside (the old JSON shape) and
+  now use `InspectedRow` / `ExportableGlossary`;
 - the relation clash is gone: `translations` on a term now means only the relation to
   `glossary_translations`. The store could load translations through it
   (`with: { translations: { orderBy: position } }`) instead of its second query. Optional,
-  not done.
+  not done;
+- **Rationale has no length cap any more** (the user's decision, 2026-11-06). Removed from
+  `rationaleSchema`, so create, edit and insert accept any length, like the import. Limits that
+  remain: **XLSX cells hold at most 32,767 characters**, and SheetJS throws on a longer one
+  ("Text length must not exceed 32767 characters"), so a single longer rationale makes the
+  whole XLSX export fail (CSV is fine). See "Open" below. Postgres `text` allows up to 1 GB;
+  Rationale is not in the Algolia record or the assistant prompts; an import chunk is 15
+  terms, far below Vercel's request size limit for any realistic text.
 
-Checked: tsc, 526 tests, eslint and prettier on the touched files. `drizzle-kit generate` was not
-run: the database column keeps its name, so there is nothing for it to generate.
+Checked: tsc, 526 tests, eslint and prettier on the touched files; `pnpm db:generate` reports
+"No schema changes" (both renames keep the database column names).
 
-**Open, under discussion with the user:**
-
-- **Bookmarks / `subscribers`.** Bookmarks are kept in each browser's localStorage
-  (`subscribedGlossaries`, listed in the Settings "Glossary Subscriptions" tab). The
-  `subscribers` counter is +1/-1 per click and drifts (not per user). Nothing else depends on
-  them. **Prod count (read-only, 2026-11-06): `subscribers` is 0 on all 15,027 live terms**
-  (none negative, none null). Every term was created in July 2026 or later (13,921 in July,
-  1,106 in September), so nobody has held a bookmark since then. It is a net count, so a
-  bookmark later removed leaves no trace. The counter's write path was not tested. If bookmarking goes, the code is removed and the column becomes
-  `legacySubscribers` on the purge list.
-- **Rationale cap on import.** The forms cap at 5,000 characters, the import doesn't. The user
-  is unsure a cap is needed at all. If kept: flag over-long cells in the preview, refuse them
-  on the server, and log refusals; or measure stored lengths near the limit in the inspector.
+**Open:** what to do about the XLSX limit on Rationale (see above).
 
 Then PR 8 (renames).
 

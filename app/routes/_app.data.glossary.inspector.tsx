@@ -198,7 +198,6 @@ const COLUMNS: { key: keyof GlossaryTerm; label: string }[] = [
   { key: 'id', label: 'id' },
   { key: 'glossary', label: 'glossary' },
   { key: 'phonetic', label: 'phonetic' },
-  { key: 'subscribers', label: 'subscribers' },
   { key: 'author', label: 'author' },
   { key: 'cbetaFrequency', label: 'cbeta_frequency' },
   { key: 'discussion', label: 'discussion' },

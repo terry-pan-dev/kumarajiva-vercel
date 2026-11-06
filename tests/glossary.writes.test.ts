@@ -46,7 +46,6 @@ const entry = (id: string, extra: Partial<GlossaryEntry> = {}): GlossaryEntry =>
     id,
     glossary: `term-${id}`,
     phonetic: null,
-    subscribers: 0,
     author: null,
     cbetaFrequency: null,
     discussion: null,

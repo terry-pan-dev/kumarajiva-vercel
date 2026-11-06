@@ -14,7 +14,12 @@ import { getDb } from '~/lib/db.server';
 
 import { diffTranslations, type StoredTranslation, type TranslationBasis, type TranslationDiff } from './glossary.diff';
 import { groupByGlossaryId, newTranslationRow, toGlossaryTranslation, translationContent } from './glossary.rows';
-import { type GlossaryEntry, type GlossaryTerm, type GlossaryTranslation } from './glossary.types';
+import {
+  type GlossaryEntry,
+  type GlossaryTerm,
+  type GlossaryTranslation,
+  type LegacyGlossaryColumn,
+} from './glossary.types';
 
 const db = getDb();
 
@@ -24,10 +29,11 @@ type Client = Db | Tx;
 
 const translationsTable = glossaryTranslationsTable;
 
-// Every column of `glossaries` except the legacy JSON one, which is no longer read.
+// Every column of `glossaries` except the legacy ones, which are no longer read.
 const termColumns = (() => {
-  const { legacyTranslations, ...columns } = getTableColumns(glossariesTable);
+  const { legacyTranslations, legacySubscribers, ...columns } = getTableColumns(glossariesTable);
   void legacyTranslations;
+  void legacySubscribers;
   return columns;
 })();
 
@@ -70,8 +76,8 @@ const selectTerms = (client: Client = db) => client.select(termColumns).from(glo
 
 // The term's own columns, for writing. Translations are never among them: they are passed to
 // create, update and revive as a list of their own.
-export type GlossaryTermInput = Omit<CreateGlossary, 'legacyTranslations'>;
-export type GlossaryTermUpdate = Omit<UpdateGlossary, 'id' | 'legacyTranslations'>;
+export type GlossaryTermInput = Omit<CreateGlossary, LegacyGlossaryColumn>;
+export type GlossaryTermUpdate = Omit<UpdateGlossary, 'id' | LegacyGlossaryColumn>;
 
 export type GlossaryPage = {
   glossaries: GlossaryEntry[];

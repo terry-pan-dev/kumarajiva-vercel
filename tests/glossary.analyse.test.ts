@@ -26,7 +26,6 @@ function makeTranslation(overrides: Partial<StoredTranslation> & { glossary: str
 function makeRow(overrides: Partial<InspectedRow> & { id: string; glossary: string }): InspectedRow {
   return {
     phonetic: null,
-    subscribers: 0,
     author: null,
     cbetaFrequency: null,
     // A row with no issues by default, so each test's fixture states only what it is testing.

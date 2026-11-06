@@ -108,7 +108,6 @@ const term = (id: string) => ({
   id,
   glossary: `term-${id}`,
   phonetic: null,
-  subscribers: 0,
   author: null,
   cbetaFrequency: null,
   discussion: null,

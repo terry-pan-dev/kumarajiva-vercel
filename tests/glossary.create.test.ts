@@ -51,7 +51,7 @@ describe('entryFromCreateForm', () => {
       term,
       translations: [translation],
     } = entryFromCreateForm(form(), { id: 'user-1' }, at);
-    expect(term).toMatchObject({ author: '翻譯團隊', cbetaFrequency: '0', discussion: '', subscribers: 0 });
+    expect(term).toMatchObject({ author: '翻譯團隊', cbetaFrequency: '0', discussion: '' });
     expect(translation).toMatchObject({
       glossary: 'Dharma',
       language: 'english',

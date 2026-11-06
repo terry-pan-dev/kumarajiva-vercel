@@ -4,14 +4,12 @@ import { chineseRegex } from '~/lib/utils';
 import { DEFAULT_TARGET_LANG, LANG_VALUES } from '~/utils/constants';
 import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
 
-export const RATIONALE_MAX_LENGTH = 5000;
-
-// Why a rendering was chosen: optional free text, trimmed. Blank is stored as null, the same as
-// never given, so clearing the field in the edit form is not mistaken for an edit of it.
+// Why a rendering was chosen: optional free text, trimmed, no length limit (the user's decision,
+// 2026-11-06). Blank is stored as null, the same as never given, so clearing the field in the
+// edit form is not mistaken for an edit of it.
 export const rationaleSchema = z
   .string()
   .trim()
-  .max(RATIONALE_MAX_LENGTH, { message: `Rationale must be at most ${RATIONALE_MAX_LENGTH} characters.` })
   .nullish()
   .transform((value) => value || null);
 

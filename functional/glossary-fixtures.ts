@@ -91,7 +91,6 @@ function row(number: number, term: string, overrides: Partial<FixtureRow> = {}):
     phonetic: `zztest ${number}`,
     author: 'ZZTEST fixtures',
     cbetaFrequency: '0',
-    subscribers: 0,
     translations: [translation(`ZZTEST fixture ${number}`)],
     // Correct by default: search_id names the record at the row's own uuid. The fixtures that
     // exist because that is wrong override it.

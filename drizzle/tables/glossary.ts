@@ -12,7 +12,10 @@ export const glossariesTable = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     glossary: text('glossary').notNull(),
     phonetic: text('phonetic'),
-    subscribers: integer('subscribers').default(0),
+    // LEGACY: a bookmark counter, +1/-1 per click. Bookmarking was removed (2026-11-06; on prod
+    // the counter was 0 on every term). Neither read nor written; kept until the legacy purge
+    // (docs/plans/legacy-purge.md). Do not delete it from the definition (see below).
+    legacySubscribers: integer('subscribers').default(0),
     author: text('author'),
     cbetaFrequency: text('cbeta_frequency'),
     // LEGACY: the translations as a JSON array, before they moved to `glossary_translations`
