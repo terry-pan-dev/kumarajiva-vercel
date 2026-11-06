@@ -51,26 +51,12 @@ const LEVELS: Record<UserRole, Partial<Record<Subjects, Actions>>> = {
   reader: {},
 };
 
-// TEMPORARY: the glossary is frozen while its translations move from the JSON column to the
-// glossary_translations table (docs/plans/glossary-refactor.md, PR 4 release). Edits made by
-// the old code during the switch would be lost, so only admins (who run the release) keep any
-// glossary level; everyone else reads. Set back to false, or revert this change, once the
-// switch is verified on prod (step 5).
-export const GLOSSARY_FROZEN = true;
-
-const GLOSSARY_SUBJECTS: ReadonlySet<Subjects> = new Set<Subjects>(['Glossary', 'GlossaryData']);
-
 // Only the role is consulted, so callers may pass anything role-shaped — a full ReadUser,
-// or a bare { role } recovered from a loader. `glossaryFrozen` is for tests; the app uses the
-// constant.
-export const defineAbilityFor = (
-  user: Pick<ReadUser, 'role'>,
-  { glossaryFrozen = GLOSSARY_FROZEN }: { glossaryFrozen?: boolean } = {},
-): AppAbility => {
+// or a bare { role } recovered from a loader.
+export const defineAbilityFor = (user: Pick<ReadUser, 'role'>): AppAbility => {
   const { can, build } = new AbilityBuilder<AppAbility>(PureAbility);
   const levels = LEVELS[user.role as UserRole] ?? {};
   for (const [subject, level] of Object.entries(levels) as [Subjects, Actions][]) {
-    if (glossaryFrozen && user.role !== 'admin' && GLOSSARY_SUBJECTS.has(subject)) continue;
     can(level, subject);
   }
   return build({ resolveAction });
