@@ -29,14 +29,14 @@ export function entryFromCreateForm(
       {
         glossary: form.glossary,
         language: form.language,
-        sutraName: form.sutraName || '佛教常用詞',
+        sourceName: form.sutraName || '佛教常用詞',
         volume: form.volume || '-',
         updatedBy: user.id,
         updatedAt: now.toISOString(),
         // The Chinese section's Sutra Text is the source passage, the translation section's
         // the target one. (Until PR 6a both got the translation section's text.)
-        originSutraText: form.sutraTextChinese || '',
-        targetSutraText: form.sutraText || '',
+        sourceText: form.sutraTextChinese || '',
+        targetText: form.sutraText || '',
         author: form.author || '',
         partOfSpeech: form.partOfSpeech || '',
         phonetic: form.phonetic || '',

@@ -15,7 +15,7 @@ type StoredTranslation = GlossaryTranslation;
 function makeTranslation(overrides: Partial<StoredTranslation> & { glossary: string }): StoredTranslation {
   return {
     language: 'english',
-    sutraName: '佛教常用詞',
+    sourceName: '佛教常用詞',
     volume: '-',
     updatedBy: 'user-1',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -285,8 +285,8 @@ describe('analyseGlossary', () => {
       id: 'a',
       glossary: '法',
       translations: [
-        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1', originSutraText: '諸法' }),
-        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1', originSutraText: '法門' }),
+        makeTranslation({ glossary: 'dharma', sourceName: 'Lotus', volume: '1', sourceText: '諸法' }),
+        makeTranslation({ glossary: 'dharma', sourceName: 'Lotus', volume: '1', sourceText: '法門' }),
       ],
     });
 
@@ -300,8 +300,8 @@ describe('analyseGlossary', () => {
       id: 'a',
       glossary: '法',
       translations: [
-        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1' }),
-        makeTranslation({ glossary: 'dharma', sutraName: 'Diamond', volume: '1' }),
+        makeTranslation({ glossary: 'dharma', sourceName: 'Lotus', volume: '1' }),
+        makeTranslation({ glossary: 'dharma', sourceName: 'Diamond', volume: '1' }),
       ],
     });
 

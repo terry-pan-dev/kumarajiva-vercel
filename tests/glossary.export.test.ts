@@ -26,7 +26,7 @@ type Translation = GlossaryTranslation;
 function makeTranslation(overrides: Partial<Translation> & { glossary: string }): Translation {
   return {
     language: 'english',
-    sutraName: '',
+    sourceName: '',
     volume: '',
     updatedBy: '',
     updatedAt: '',
@@ -55,7 +55,7 @@ describe('glossariesToExportRows', () => {
         phonetic: 'púsà',
         cbetaFrequency: '500',
         translations: [
-          makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' }),
+          makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' }),
           makeTranslation({ glossary: 'enlightened being' }),
         ],
       }),
@@ -77,7 +77,7 @@ describe('glossariesToExportRows', () => {
         glossary: '法',
         phonetic: null,
         cbetaFrequency: null,
-        translations: [makeTranslation({ glossary: 'dharma', originSutraText: null, author: null })],
+        translations: [makeTranslation({ glossary: 'dharma', sourceText: null, author: null })],
       }),
     ]);
 
@@ -103,8 +103,8 @@ describe('glossariesToCSV', () => {
         translations: [
           makeTranslation({
             glossary: 'compassion, kindness',
-            originSutraText: 'has "quotes"',
-            targetSutraText: 'line1\nline2',
+            sourceText: 'has "quotes"',
+            targetText: 'line1\nline2',
           }),
         ],
       }),
@@ -125,7 +125,7 @@ describe('glossariesToXLSX', () => {
       makeGlossary({
         id: 'abc',
         glossary: '菩薩',
-        translations: [makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' })],
+        translations: [makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' })],
       }),
     ]);
 
@@ -181,14 +181,14 @@ describe('export → import round trip', () => {
         makeTranslation({
           id: 't1',
           glossary: 'Buddha',
-          sutraName: '華嚴經',
+          sourceName: '華嚴經',
           volume: '3',
-          originSutraText: '佛告阿難',
-          targetSutraText: 'The Buddha told Ānanda, "listen"',
+          sourceText: '佛告阿難',
+          targetText: 'The Buddha told Ānanda, "listen"',
           author: '翻譯團隊',
           rationale: 'the standard rendering,\nkept for consistency',
         }),
-        makeTranslation({ id: 't2', glossary: 'the Awakened One', sutraName: 'S', volume: '1', rationale: null }),
+        makeTranslation({ id: 't2', glossary: 'the Awakened One', sourceName: 'S', volume: '1', rationale: null }),
       ],
     }),
     makeGlossary({ id: 'g2', glossary: '法', translations: [makeTranslation({ id: 't3', glossary: 'Dharma' })] }),

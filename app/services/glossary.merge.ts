@@ -23,10 +23,10 @@
 export type MergeableTranslation = {
   id?: string | null;
   glossary: string;
-  sutraName: string;
+  sourceName: string;
   volume: string;
-  originSutraText?: string | null;
-  targetSutraText?: string | null;
+  sourceText?: string | null;
+  targetText?: string | null;
   author?: string | null;
   rationale?: string | null;
   updatedBy?: string;
@@ -53,7 +53,7 @@ export type MergedTranslation<T> = {
 // updatedAt/updatedBy are excluded because they always differ on re-import and would make
 // every unchanged row look like a new one.
 export function translationKey(t: MergeableTranslation): string {
-  return [t.glossary, t.sutraName, t.volume, t.originSutraText, t.targetSutraText, t.author]
+  return [t.glossary, t.sourceName, t.volume, t.sourceText, t.targetText, t.author]
     .map((field) => (field ?? '').trim().toLowerCase())
     .join('␟');
 }
@@ -63,10 +63,10 @@ export function translationKey(t: MergeableTranslation): string {
 // is a blank cell, which clears it.
 const FILE_CONTENT = [
   'glossary',
-  'sutraName',
+  'sourceName',
   'volume',
-  'originSutraText',
-  'targetSutraText',
+  'sourceText',
+  'targetText',
   'author',
   'rationale',
 ] as const satisfies readonly (keyof MergeableTranslation)[];
@@ -76,7 +76,7 @@ const blankAsNull = (value: string | null | undefined) => (value === '' || value
 // What makes two translations the same record, for the duplicate flag: every field the file
 // carries except the rationale, compared exactly (no trimming or lowercasing); a blank cell and
 // an empty stored value are equal.
-const ATTESTATION = ['glossary', 'sutraName', 'volume', 'originSutraText', 'targetSutraText', 'author'] as const;
+const ATTESTATION = ['glossary', 'sourceName', 'volume', 'sourceText', 'targetText', 'author'] as const;
 
 export const sameAttestation = (a: MergeableTranslation, b: MergeableTranslation): boolean =>
   ATTESTATION.every((field) => blankAsNull(a[field]) === blankAsNull(b[field]));

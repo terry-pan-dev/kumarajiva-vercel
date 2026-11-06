@@ -1,14 +1,14 @@
 # Glossary refactor: translations out of the JSON blob
 
-Written 2026-11-04, updated 2026-11-06 (PR 7a merged, 7b drops the old columns). **Start with "Where we are" below.**
+Written 2026-11-04, updated 2026-11-06 (PR 7 merged; PR 8a renames the source fields). **Start with "Where we are" below.**
 
 ## Where we are (hand-over, 2026-11-06)
 
 **Released (steps 1–5 done):** PR 1 (#205), PR 2 (#206), PR 3a–c (#207–#209), the glossary
 freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
 during the freeze; the prod comparison (step 5) passed. The app reads and writes
-`glossary_translations` only. PR 6 (#212) and PR 7a (#213) are merged and deployed; PR 7b
-(branch `drop-glos-cols`, in the working tree) drops the old columns (see below).
+`glossary_translations` only. PR 6 (#212), PR 7a (#213), PR 7b (#214, drops the old
+columns) and the cleanup (#215) are merged. PR 8a is in the working tree (see below).
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
@@ -64,7 +64,7 @@ leaves the originals and their rationales alone.
   `legacySubscribers`), so no code used them. Three test files that typed rows as
   `ReadGlossary` with `translations` inside now use `InspectedRow` / `ExportableGlossary`.
 
-**PR 7b (branch `drop-glos-cols`, in the working tree): migration B.** First planned as a
+**PR 7b (#214, merged): migration B.** First planned as a
 "legacy purge" later, then the user decided to drop now: the glossary was changed in place,
 the JSON was a stale copy since the switch, and 08's copy had been verified field by field
 and by the step 5 export. Unlike the sutra/roll tables, nothing is waiting to be populated.
@@ -85,11 +85,44 @@ deleted_at, subscribers, translations` for all 15,027 prod terms (19,325 JSON tr
 - Not done: the relation clash is gone, so the store could load translations through it
   (`with: { translations: { orderBy: position } }`) instead of its second query. Optional.
 - Checked: tsc, 495 tests, eslint and prettier on the touched files; `pnpm db:generate`
-  afterwards reports no further changes. **Not applied to dev**: the dev database still has
-  both columns until someone runs `pnpm db:migrate` (needs the user's yes) or a deploy
-  pointing at dev does.
+  afterwards reports no further changes. Dev and prod are migrated.
 
-Then PR 8 (renames).
+**PR 8a (in the working tree on `main`): source fields renamed** in the read shape and the
+edit and insert forms: `sutraName` → `sourceName`, `originSutraText` → `sourceText`,
+`targetSutraText` → `targetText` (the table's names). 8b (`glossary` → `term` for the
+rendering) is separate, because `glossary` also means the term, the page and the feature.
+
+- **Renamed by symbol, not by text:** a throwaway script ran the TypeScript language service's
+  rename on the properties of `GlossaryTranslation`, `MergeableTranslation`, the edit and
+  insert schemas and the import preview's `ExistingGlossary`. tsc then pointed at the rest:
+  the key lists in `glossary.diff.ts` / `glossary.merge.ts`, `translationFromRow`, the
+  replace preview and the dev seed. String form names in `GlossaryList.tsx` were renamed by
+  hand and checked against the schema keys by script.
+- **Kept, on purpose:** the paragraph import / legacy `references` `sutraName` (not
+  glossary); the create form's own fields (`sutraName`, `sutraText`, `sutraTextChinese` in
+  `glossaryFormSchema`); the parsed file row `GlossaryImportRow` and the file columns
+  (`SutraName`, `ChineseSutraText`, …) with their i18n keys; the Algolia record; and the
+  assistant's `sutraTexts[].sutraName` from `searchGlossaries`, which is sent to the model.
+- **Deploy window:** a page loaded before the deploy posts the old names. `sourceName` is
+  required in both the edit and insert schemas, so such a post is refused (an error, reload
+  and redo), never saved without its fields. A test pins this.
+- **Also fixed (found by the dev run, older than 8a):** creating a term that is in the trash
+  (the create form's revive path) failed with a foreign-key error since PR 4: the create
+  form's term carries a new uuid, and `GlossaryStore.revive` wrote it into the trashed row.
+  `revive` now never writes `id`; store test added. The import's revive path was unaffected.
+- **Checked:** tsc, 498 tests (the paragraph import tests unchanged and passing), eslint and
+  prettier on the touched files, 7 mutation checks. On dev, old tree against new:
+  byte-identical read shape (13,926 terms, 17,366 translations, every field, new names mapped
+  back), CSV, XLSX rows, search records, inspector and the assistant's lookups (47 terms
+  through Algolia). Writes on ZZTEST (edit, unchanged save, insert with defaults and in full,
+  create, trash and revive, import by TranslationUUID plus a new entry, export → re-import):
+  the stored rows are identical between the trees. The re-import changes no translation; it
+  only bumps each term's `updated_at` (the store stamps every term update, in both trees).
+- **Not checked by any test:** that the forms show and save the renamed fields in a browser.
+  Worth one pass: open Edit on an entry (Sutra Name and both passages filled in), change
+  them and save; add a translation with Insert.
+
+Then PR 8b (`glossary` → `term` in the read shape).
 
 The sections below, down to "Known issues", are the PR 3–4 record.
 
@@ -206,7 +239,9 @@ fails), then on dev:
 
 - **Read-only comparisons:** a temporary script in the repo root, `.tmp-*.ts` (top-level
   await works there, and packages resolve), run with
-  `npx dotenv -e .env -- npx tsx ./.tmp-x.ts`, deleted afterwards.
+  `pnpm exec dotenv -e .env -- pnpm exec tsx ./.tmp-x.ts` (`npx dotenv` fetches an unrelated
+  package), deleted afterwards. `.env` holds several `DATABASE_URL` lines; dotenv takes the
+  first (dev, `ep-bold-band`). Prod (`.env.prod`) is `ep-nameless-pond`.
 - **Old code against new:** `git archive HEAD | tar -x -C <scratch>/base`, symlink
   `node_modules` into it, copy the same script into both trees and run it in each; diff
   the JSON outputs.
@@ -411,9 +446,10 @@ Every manual apply (dev or prod) needs the user's yes.
 7. **PR 7: migration B.** 7a (#213): bookmarking and the Rationale cap removed, columns
    renamed in code. 7b: migration `0026` drops `glossaries.translations` and
    `glossaries.subscribers` after a prod dump (see "Where we are").
-8. **PR 8 (later): rename** read-shape fields to the table's names (`glossary` → `term`,
-   `sutraName` → `sourceName`, `originSutraText` → `sourceText`,
-   `targetSutraText` → `targetText`). File columns and the Algolia record keep their names.
+8. **PR 8: rename** read-shape fields to the table's names. 8a: `sutraName` → `sourceName`,
+   `originSutraText` → `sourceText`, `targetSutraText` → `targetText` (see "Where we are").
+   8b: `glossary` → `term` for the rendering. File columns, the Algolia record and the
+   assistant's prompt shape keep their names.
 
 ## Code map: everything that reads or writes `translations`
 

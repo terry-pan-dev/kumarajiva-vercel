@@ -49,10 +49,10 @@ type ExistingGlossary = {
         id?: string | null;
         glossary: string;
         language: string;
-        sutraName: string;
+        sourceName: string;
         volume: string;
-        originSutraText?: string | null;
-        targetSutraText?: string | null;
+        sourceText?: string | null;
+        targetText?: string | null;
         author?: string | null;
         rationale?: string | null;
       }>
@@ -173,10 +173,10 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
   const stored = (group.existing?.translations ?? []).map((t) => ({
     id: t.id ?? undefined,
     glossary: t.glossary,
-    sutraName: t.sutraName,
+    sourceName: t.sourceName,
     volume: t.volume,
-    originSutraText: t.originSutraText ?? null,
-    targetSutraText: t.targetSutraText ?? null,
+    sourceText: t.sourceText ?? null,
+    targetText: t.targetText ?? null,
     author: t.author ?? null,
     rationale: t.rationale ?? null,
   }));
@@ -242,14 +242,14 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
                   )}
                 </div>
               </div>
-              {(tr.sutraName || tr.volume) && (
-                <p className="text-muted-foreground">{[tr.sutraName, tr.volume].filter(Boolean).join(' · ')}</p>
+              {(tr.sourceName || tr.volume) && (
+                <p className="text-muted-foreground">{[tr.sourceName, tr.volume].filter(Boolean).join(' · ')}</p>
               )}
-              {tr.originSutraText && (
-                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.originSutraText}&rdquo;</p>
+              {tr.sourceText && (
+                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.sourceText}&rdquo;</p>
               )}
-              {tr.targetSutraText && (
-                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetSutraText}&rdquo;</p>
+              {tr.targetText && (
+                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetText}&rdquo;</p>
               )}
               {tr.rationale && (
                 <p className="text-muted-foreground line-clamp-3">

@@ -11,10 +11,10 @@ import {
 
 function makeTranslation(overrides: Partial<MergeableTranslation> & { glossary: string }): MergeableTranslation {
   return {
-    sutraName: '',
+    sourceName: '',
     volume: '',
-    originSutraText: null,
-    targetSutraText: null,
+    sourceText: null,
+    targetText: null,
     author: null,
     ...overrides,
   };
@@ -24,27 +24,27 @@ function makeTranslation(overrides: Partial<MergeableTranslation> & { glossary: 
 
 describe('translationKey', () => {
   it('ignores surrounding whitespace and case', () => {
-    expect(translationKey(makeTranslation({ glossary: ' Bodhisattva ', sutraName: 'Lotus', volume: '1' }))).toBe(
-      translationKey(makeTranslation({ glossary: 'bodhisattva', sutraName: 'lotus', volume: '1' })),
+    expect(translationKey(makeTranslation({ glossary: ' Bodhisattva ', sourceName: 'Lotus', volume: '1' }))).toBe(
+      translationKey(makeTranslation({ glossary: 'bodhisattva', sourceName: 'lotus', volume: '1' })),
     );
   });
 
   it('separates the same term coming from a different source', () => {
-    expect(translationKey(makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' }))).not.toBe(
-      translationKey(makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '2' })),
+    expect(translationKey(makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' }))).not.toBe(
+      translationKey(makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '2' })),
     );
   });
 
   it('separates two passages from one source that settle on the same term', () => {
-    const base = { glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' };
+    const base = { glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' };
 
-    expect(translationKey(makeTranslation({ ...base, originSutraText: '菩薩摩訶薩' }))).not.toBe(
-      translationKey(makeTranslation({ ...base, originSutraText: '諸菩薩眾' })),
+    expect(translationKey(makeTranslation({ ...base, sourceText: '菩薩摩訶薩' }))).not.toBe(
+      translationKey(makeTranslation({ ...base, sourceText: '諸菩薩眾' })),
     );
   });
 
   it('separates translations that differ only by author', () => {
-    const base = { glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' };
+    const base = { glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' };
 
     expect(translationKey(makeTranslation({ ...base, author: 'one' }))).not.toBe(
       translationKey(makeTranslation({ ...base, author: 'another' })),
@@ -58,8 +58,8 @@ describe('mergeTranslations', () => {
   // The whole point of the merge: an import file carries one source, and everything the
   // file does not mention has to survive the write.
   it('keeps stored translations the incoming file does not mention', () => {
-    const stored = [makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' })];
-    const incoming = [makeTranslation({ glossary: 'awakened being', sutraName: 'Diamond', volume: '3' })];
+    const stored = [makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' })];
+    const incoming = [makeTranslation({ glossary: 'awakened being', sourceName: 'Diamond', volume: '3' })];
 
     const merged = mergeTranslations(stored, incoming);
 
@@ -73,30 +73,30 @@ describe('mergeTranslations', () => {
     const stored = [
       makeTranslation({
         glossary: 'bodhisattva',
-        sutraName: 'Lotus',
+        sourceName: 'Lotus',
         volume: '1',
-        targetSutraText: 'old rendering',
+        targetText: 'old rendering',
       }),
     ];
     const incoming = [
       makeTranslation({
         glossary: 'bodhisattva',
-        sutraName: 'Lotus',
+        sourceName: 'Lotus',
         volume: '1',
-        targetSutraText: 'corrected rendering',
+        targetText: 'corrected rendering',
       }),
     ];
 
     const merged = mergeTranslations(stored, incoming);
 
-    expect(merged.map((t) => t.targetSutraText)).toEqual(['old rendering', 'corrected rendering']);
+    expect(merged.map((t) => t.targetText)).toEqual(['old rendering', 'corrected rendering']);
   });
 
   it('keeps several passages from one sutra and volume that share an English term', () => {
-    const base = { glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' };
+    const base = { glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' };
     const incoming = [
-      makeTranslation({ ...base, originSutraText: '菩薩摩訶薩' }),
-      makeTranslation({ ...base, originSutraText: '諸菩薩眾' }),
+      makeTranslation({ ...base, sourceText: '菩薩摩訶薩' }),
+      makeTranslation({ ...base, sourceText: '諸菩薩眾' }),
     ];
 
     expect(mergeTranslations([], incoming)).toHaveLength(2);
@@ -104,12 +104,12 @@ describe('mergeTranslations', () => {
 
   it('preserves stored order and appends new translations at the end, in file order', () => {
     const stored = [
-      makeTranslation({ glossary: 'a', sutraName: 'S', volume: '1' }),
-      makeTranslation({ glossary: 'b', sutraName: 'S', volume: '2' }),
+      makeTranslation({ glossary: 'a', sourceName: 'S', volume: '1' }),
+      makeTranslation({ glossary: 'b', sourceName: 'S', volume: '2' }),
     ];
     const incoming = [
-      makeTranslation({ glossary: 'd', sutraName: 'S', volume: '4' }),
-      makeTranslation({ glossary: 'c', sutraName: 'S', volume: '3' }),
+      makeTranslation({ glossary: 'd', sourceName: 'S', volume: '4' }),
+      makeTranslation({ glossary: 'c', sourceName: 'S', volume: '3' }),
     ];
 
     expect(mergeTranslations(stored, incoming).map((t) => t.glossary)).toEqual(['a', 'b', 'd', 'c']);
@@ -118,16 +118,16 @@ describe('mergeTranslations', () => {
   // Content never matches: only a TranslationUUID makes a row an update. A row identical to a
   // stored translation is appended (and flagged, below).
   it('appends a row without an id even when it is identical to a stored translation', () => {
-    const stored = [makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' })];
-    const incoming = [makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' })];
+    const stored = [makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' })];
+    const incoming = [makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' })];
 
     expect(mergeTranslations(stored, incoming)).toHaveLength(2);
   });
 
   it('appends rows of the incoming file that are identical to each other', () => {
     const incoming = [
-      makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'first' }),
-      makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'first' }),
+      makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1', author: 'first' }),
+      makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1', author: 'first' }),
     ];
 
     expect(mergeTranslations([], incoming)).toHaveLength(2);
@@ -135,8 +135,8 @@ describe('mergeTranslations', () => {
 
   it('keeps rows of the incoming file that differ in any field', () => {
     const incoming = [
-      makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'first' }),
-      makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', author: 'second' }),
+      makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1', author: 'first' }),
+      makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1', author: 'second' }),
     ];
 
     expect(mergeTranslations([], incoming).map((t) => t.author)).toEqual(['first', 'second']);
@@ -150,7 +150,7 @@ describe('mergeTranslations', () => {
   // A metadata-only row (no EnglishTerm) produces no translations at all, which must not
   // be read as "delete everything".
   it('leaves stored translations alone when the file carries none', () => {
-    const stored = [makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1' })];
+    const stored = [makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' })];
     expect(mergeTranslations(stored, [])).toEqual(stored);
   });
 });
@@ -160,12 +160,12 @@ describe('mergeTranslations', () => {
 describe('mergeTranslationsWithStatus', () => {
   it('labels each translation by what the import will do to it', () => {
     const stored = [
-      makeTranslation({ glossary: 'untouched', sutraName: 'S', volume: '1' }),
-      makeTranslation({ glossary: 'revised', sutraName: 'S', volume: '2', targetSutraText: 'old' }),
+      makeTranslation({ glossary: 'untouched', sourceName: 'S', volume: '1' }),
+      makeTranslation({ glossary: 'revised', sourceName: 'S', volume: '2', targetText: 'old' }),
     ];
     const incoming = [
-      makeTranslation({ glossary: 'revised', sutraName: 'S', volume: '2', targetSutraText: 'new' }),
-      makeTranslation({ glossary: 'added', sutraName: 'S', volume: '3' }),
+      makeTranslation({ glossary: 'revised', sourceName: 'S', volume: '2', targetText: 'new' }),
+      makeTranslation({ glossary: 'added', sourceName: 'S', volume: '3' }),
     ];
 
     // Without a TranslationUUID the revised one arrives as a separate translation rather than
@@ -183,7 +183,7 @@ describe('mergeTranslationsWithStatus', () => {
 
 describe('mergeTranslationsWithStatus — duplicates', () => {
   const lotus = (extra: Partial<MergeableTranslation> = {}) =>
-    makeTranslation({ glossary: 'bodhisattva', sutraName: 'Lotus', volume: '1', targetSutraText: 'text', ...extra });
+    makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1', targetText: 'text', ...extra });
 
   it('flags a new row identical to a stored translation, as a re-import of an id-less file would be', () => {
     const merged = mergeTranslationsWithStatus([lotus()], [lotus()]);
@@ -203,7 +203,7 @@ describe('mergeTranslationsWithStatus — duplicates', () => {
       lotus({ glossary: 'Bodhisattva' }),
       lotus({ glossary: 'bodhisattva ' }),
       lotus({ volume: '2' }),
-      lotus({ originSutraText: '菩薩' }),
+      lotus({ sourceText: '菩薩' }),
       lotus({ author: 'someone' }),
     ]) {
       expect(mergeTranslationsWithStatus(stored, [row])[1].duplicate, JSON.stringify(row)).toBe(false);
@@ -211,10 +211,8 @@ describe('mergeTranslationsWithStatus — duplicates', () => {
   });
 
   it('treats a blank cell as an empty stored value, and ignores the rationale', () => {
-    const stored = [lotus({ originSutraText: null, rationale: 'why' })];
-    expect(mergeTranslationsWithStatus(stored, [lotus({ originSutraText: '', rationale: null })])[1].duplicate).toBe(
-      true,
-    );
+    const stored = [lotus({ sourceText: null, rationale: 'why' })];
+    expect(mergeTranslationsWithStatus(stored, [lotus({ sourceText: '', rationale: null })])[1].duplicate).toBe(true);
   });
 
   it('flags a row repeating an updated translation’s new content', () => {
@@ -235,7 +233,7 @@ describe('mergeTranslationsWithStatus — duplicates', () => {
 describe('mergeTranslationsWithStatus — by TranslationUUID', () => {
   type Stored = MergeableTranslation & { language: string; phonetic?: string | null };
   const stored = (id: string, glossary: string, extra: Partial<Stored> = {}): Stored => ({
-    ...makeTranslation({ glossary, sutraName: 'S', volume: '1' }),
+    ...makeTranslation({ glossary, sourceName: 'S', volume: '1' }),
     id,
     language: 'english',
     updatedBy: 'editor',
@@ -244,7 +242,7 @@ describe('mergeTranslationsWithStatus — by TranslationUUID', () => {
   });
   const fileRow = (glossary: string, extra: Partial<Stored> = {}): Stored =>
     ({
-      ...makeTranslation({ glossary, sutraName: 'S', volume: '1' }),
+      ...makeTranslation({ glossary, sourceName: 'S', volume: '1' }),
       language: 'english',
       updatedBy: 'importer',
       updatedAt: '2026-11-06T00:00:00.000Z',
@@ -254,7 +252,7 @@ describe('mergeTranslationsWithStatus — by TranslationUUID', () => {
   it('updates the named translation in place, keeping its id and what the file cannot carry', () => {
     const a = stored('t1', 'Buddha', { language: 'sanskrit', phonetic: 'bud-dha' });
     const b = stored('t2', 'Dharma');
-    const merged = mergeTranslationsWithStatus([a, b], [fileRow('the Buddha', { id: 't1', targetSutraText: 'fixed' })]);
+    const merged = mergeTranslationsWithStatus([a, b], [fileRow('the Buddha', { id: 't1', targetText: 'fixed' })]);
 
     expect(merged.map((m) => [m.translation.id, m.translation.glossary, m.status])).toEqual([
       ['t1', 'the Buddha', 'updated'],
@@ -263,7 +261,7 @@ describe('mergeTranslationsWithStatus — by TranslationUUID', () => {
     expect(merged[0].translation).toMatchObject({
       language: 'sanskrit',
       phonetic: 'bud-dha',
-      targetSutraText: 'fixed',
+      targetText: 'fixed',
       updatedBy: 'importer',
     });
   });
@@ -276,10 +274,8 @@ describe('mergeTranslationsWithStatus — by TranslationUUID', () => {
   });
 
   it('treats a blank cell and a stored null as the same', () => {
-    const a = stored('t1', 'Buddha', { originSutraText: null });
-    expect(mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', originSutraText: '' })])[0].status).toBe(
-      'kept',
-    );
+    const a = stored('t1', 'Buddha', { sourceText: null });
+    expect(mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', sourceText: '' })])[0].status).toBe('kept');
   });
 
   it('leaves the rationale alone when the file has no Rationale column, and clears it on a blank cell', () => {

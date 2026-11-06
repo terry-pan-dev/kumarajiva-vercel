@@ -40,10 +40,10 @@ export type TranslationDiff = {
 const CONTENT_FIELDS = [
   'glossary',
   'language',
-  'sutraName',
+  'sourceName',
   'volume',
-  'originSutraText',
-  'targetSutraText',
+  'sourceText',
+  'targetText',
   'author',
   'partOfSpeech',
   'phonetic',

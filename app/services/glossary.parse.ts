@@ -203,10 +203,10 @@ export function translationFromRow(row: GlossaryImportRow) {
   return {
     id: row.translationUuid || undefined,
     glossary: row.englishTerm,
-    sutraName: row.sutraName,
+    sourceName: row.sutraName,
     volume: row.volume,
-    originSutraText: row.chineseSutraText || null,
-    targetSutraText: row.englishSutraText || null,
+    sourceText: row.chineseSutraText || null,
+    targetText: row.englishSutraText || null,
     author: row.author || null,
     rationale: row.rationale === undefined ? undefined : row.rationale || null,
   };

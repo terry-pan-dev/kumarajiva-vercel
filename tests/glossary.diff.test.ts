@@ -13,7 +13,7 @@ import { type GlossaryTranslation } from '~/services/glossary.types';
 const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
   glossary,
   language: 'english',
-  sutraName: '華嚴經',
+  sourceName: '華嚴經',
   volume: '1',
   updatedBy: 'user-1',
   updatedAt: '2025-01-01T00:00:00.000Z',
@@ -113,16 +113,16 @@ describe('sameContent', () => {
   it.each([
     'glossary',
     'language',
-    'sutraName',
+    'sourceName',
     'volume',
-    'originSutraText',
-    'targetSutraText',
+    'sourceText',
+    'targetText',
     'author',
     'partOfSpeech',
     'phonetic',
     'rationale',
   ] as const)('sees a change in %s', (field) => {
-    const before = translation('x', { originSutraText: 'a', targetSutraText: 'b', author: 'c' });
+    const before = translation('x', { sourceText: 'a', targetText: 'b', author: 'c' });
     const after = { ...before, [field]: field === 'language' ? 'sanskrit' : 'changed' };
     expect(sameContent(before, after)).toBe(false);
   });

@@ -6,8 +6,9 @@
 // spelling the read shape out here is what let storage change underneath while the rest of the
 // app kept reading the same fields.
 //
-// Field names are today's JSON names (`glossary` for the rendering, `sutraName`, …). Renaming
-// them to the table's names is a later, separate step.
+// Field names follow the table's (`sourceName`, `sourceText`, `targetText`; PR 8a), except
+// `glossary` for the rendering, which the table calls `term` (PR 8b). File columns (SutraName,
+// ChineseSutraText, …), the Algolia record and the assistant's `sutraTexts` keep their names.
 import { type ReadGlossary } from '~/drizzle/tables';
 import { type Lang } from '~/utils/constants';
 
@@ -18,10 +19,10 @@ export type GlossaryTranslation = {
   // The rendering.
   glossary: string;
   language: Lang;
-  sutraName: string;
+  sourceName: string;
   volume: string;
-  originSutraText?: string | null;
-  targetSutraText?: string | null;
+  sourceText?: string | null;
+  targetText?: string | null;
   author?: string | null;
   partOfSpeech?: string | null;
   phonetic?: string | null;

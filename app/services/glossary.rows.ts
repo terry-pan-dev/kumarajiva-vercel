@@ -1,11 +1,10 @@
 // Maps `glossary_translations` rows to the read shape (GlossaryTranslation) and back. Pure: no
 // database access, so GlossaryStore's mapping is unit-tested directly.
 //
+// Fields with the same name on both sides map straight across. The rest:
+//
 //   row            read shape
 //   term           glossary
-//   sourceName     sutraName
-//   sourceText     originSutraText
-//   targetText     targetSutraText
 //   metadata       partOfSpeech, phonetic (stored only when non-empty)
 //   updatedAt      updatedAt, as an ISO string
 //   updatedBy      updatedBy
@@ -21,10 +20,10 @@ export const toGlossaryTranslation = (row: ReadGlossaryTranslation): StoredTrans
   id: row.id,
   glossary: row.term,
   language: row.language,
-  sutraName: row.sourceName,
+  sourceName: row.sourceName,
   volume: row.volume,
-  originSutraText: row.sourceText,
-  targetSutraText: row.targetText,
+  sourceText: row.sourceText,
+  targetText: row.targetText,
   author: row.author,
   partOfSpeech: row.metadata?.partOfSpeech ?? null,
   phonetic: row.metadata?.phonetic ?? null,
@@ -44,10 +43,10 @@ export const translationContent = (translation: GlossaryTranslation) => {
   return {
     language: translation.language,
     term: translation.glossary,
-    sourceName: translation.sutraName,
+    sourceName: translation.sourceName,
     volume: translation.volume,
-    sourceText: translation.originSutraText ?? null,
-    targetText: translation.targetSutraText ?? null,
+    sourceText: translation.sourceText ?? null,
+    targetText: translation.targetText ?? null,
     author: translation.author ?? null,
     rationale: translation.rationale ?? null,
     metadata: Object.keys(metadata).length > 0 ? metadata : null,

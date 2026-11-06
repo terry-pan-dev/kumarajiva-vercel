@@ -113,14 +113,14 @@ function GlossaryTermCard({ group }: { group: GroupedTerm }) {
           {translations.map((tr, i) => (
             <div key={i} className="bg-background text-foreground space-y-0.5 rounded border p-2 text-xs">
               <p className="font-medium">{tr.glossary}</p>
-              {(tr.sutraName || tr.volume) && (
-                <p className="text-muted-foreground">{[tr.sutraName, tr.volume].filter(Boolean).join(' · ')}</p>
+              {(tr.sourceName || tr.volume) && (
+                <p className="text-muted-foreground">{[tr.sourceName, tr.volume].filter(Boolean).join(' · ')}</p>
               )}
-              {tr.originSutraText && (
-                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.originSutraText}&rdquo;</p>
+              {tr.sourceText && (
+                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.sourceText}&rdquo;</p>
               )}
-              {tr.targetSutraText && (
-                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetSutraText}&rdquo;</p>
+              {tr.targetText && (
+                <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetText}&rdquo;</p>
               )}
               {tr.rationale && (
                 <p className="text-muted-foreground line-clamp-3">

@@ -31,10 +31,10 @@ vi.mock('~/services/glossary.store', () => ({ GlossaryStore: store }));
 const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
   glossary,
   language: 'english',
-  sutraName: '華嚴經',
+  sourceName: '華嚴經',
   volume: '1',
-  originSutraText: null,
-  targetSutraText: null,
+  sourceText: null,
+  targetText: null,
   author: null,
   updatedBy: 'user-1',
   updatedAt: '2025-01-01T00:00:00.000Z',

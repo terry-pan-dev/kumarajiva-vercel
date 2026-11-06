@@ -97,7 +97,7 @@ vi.mock('~/lib/db.server', () => ({ getDb: () => db.client }));
 const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
   glossary,
   language: 'english',
-  sutraName: '華嚴經',
+  sourceName: '華嚴經',
   volume: '1',
   updatedBy: 'user-1',
   updatedAt: '2025-01-01T00:00:00.000Z',
@@ -220,7 +220,7 @@ describe('GlossaryStore reads', () => {
     db.state.translations = [translationRow('t1', 'a', 0, 'Buddha', { metadata: { partOfSpeech: 'noun' } })];
     const [entry] = await read();
     expect(entry.translations).toEqual([
-      expect.objectContaining({ id: 't1', glossary: 'Buddha', sutraName: '華嚴經', partOfSpeech: 'noun' }),
+      expect.objectContaining({ id: 't1', glossary: 'Buddha', sourceName: '華嚴經', partOfSpeech: 'noun' }),
     ]);
   });
 
@@ -373,6 +373,13 @@ describe('GlossaryStore.revive', () => {
     expect(db.state.calls[0].set).not.toHaveProperty('translations');
     expect(db.translationWrites().map((call) => call.op)).toEqual(['delete', 'insert']);
     expect(revived?.translations.map((t) => t.glossary)).toEqual(['Buddha']);
+  });
+
+  it('keeps the row’s uuid when the term carries a new one (the create form’s)', async () => {
+    db.state.updatedTerms = [term('t')];
+    const fromCreateForm = { id: 'new-uuid', glossary: '佛' };
+    await GlossaryStore.revive('t', fromCreateForm, [translation('Buddha')]);
+    expect(db.state.calls[0].set).not.toHaveProperty('id');
   });
 
   it('returns undefined and touches no translation when the row is not in the trash', async () => {

@@ -33,10 +33,10 @@ const row = (extra: Partial<ReadGlossaryTranslation> = {}): ReadGlossaryTranslat
 const translation = (extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
   glossary: 'Buddha',
   language: 'english',
-  sutraName: '華嚴經',
+  sourceName: '華嚴經',
   volume: '3',
-  originSutraText: '佛告阿難',
-  targetSutraText: 'The Buddha told Ānanda',
+  sourceText: '佛告阿難',
+  targetText: 'The Buddha told Ānanda',
   author: '翻譯團隊',
   updatedBy: 'user-1',
   updatedAt: '2025-06-01T10:00:00.000Z',
@@ -51,10 +51,10 @@ describe('toGlossaryTranslation', () => {
       id: 't1',
       glossary: 'Buddha',
       language: 'english',
-      sutraName: '華嚴經',
+      sourceName: '華嚴經',
       volume: '3',
-      originSutraText: '佛告阿難',
-      targetSutraText: 'The Buddha told Ānanda',
+      sourceText: '佛告阿難',
+      targetText: 'The Buddha told Ānanda',
       author: '翻譯團隊',
       partOfSpeech: 'noun',
       phonetic: 'bud-dha',
@@ -95,7 +95,7 @@ describe('translationContent', () => {
   });
 
   it('writes null for absent optional fields, and keeps an empty passage as it is', () => {
-    const content = translationContent({ ...translation({ originSutraText: '' }), targetSutraText: undefined });
+    const content = translationContent({ ...translation({ sourceText: '' }), targetText: undefined });
     expect(content.sourceText).toBe('');
     expect(content.targetText).toBeNull();
     expect(content.rationale).toBeNull();

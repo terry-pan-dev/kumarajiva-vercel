@@ -220,11 +220,13 @@ export const searchGlossaries = async (tokens: string[]) => {
       if (glossary.glossary) {
         acc[glossary.glossary] = {
           definitions: glossary.translations?.map((t) => t.glossary) ?? [],
+          // The assistant's prompt shape, sent to the model as JSON: its keys are its own and did
+          // not follow the read shape's renames.
           sutraTexts:
             glossary.translations?.map((t) => ({
-              chinese: t.originSutraText,
-              english: t.targetSutraText,
-              sutraName: t.sutraName,
+              chinese: t.sourceText,
+              english: t.targetText,
+              sutraName: t.sourceName,
               volume: t.volume,
             })) ?? [],
         };
