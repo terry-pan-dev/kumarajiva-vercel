@@ -2,7 +2,7 @@ import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import OpenAI from 'openai';
 import 'dotenv/config';
 
-import { glossariesTable, type UpdateGlossary } from '~/drizzle/tables';
+import { glossariesTable } from '~/drizzle/tables';
 import { getDb } from '~/lib/db.server';
 import algoliaClient from '~/providers/algolia';
 
@@ -71,22 +71,6 @@ export const generateEmbedding = async <T extends string | string[]>(text: T): P
     dimensions: 1536,
   });
   return embeddings.data.map((embedding) => embedding.embedding) as ReturnType<T>;
-};
-
-// Term columns only: translations are written through GlossaryStore.
-export const updateGlossarySubscribers = async (glossary: Pick<UpdateGlossary, 'id' | 'subscribers'>) => {
-  if (!glossary.id) {
-    throw new Error('Glossary id is required');
-  }
-  if (glossary.subscribers) {
-    const newSubscribers =
-      glossary.subscribers > 0 ? sql`${glossariesTable.subscribers} + 1` : sql`${glossariesTable.subscribers} - 1`;
-    return dbClient
-      .update(glossariesTable)
-      .set({ subscribers: newSubscribers })
-      .where(eq(glossariesTable.id, glossary.id));
-  }
-  return dbClient.update(glossariesTable).set(glossary).where(eq(glossariesTable.id, glossary.id));
 };
 
 export const updateGlossaryTranslations = async ({
@@ -520,8 +504,7 @@ export const purgeTrashedGlossaries = async (ids: string[]): Promise<TrashResult
 // so inserting it again would fail. Nothing of the trashed contents survives.
 export const reviveTrashedGlossary = async (
   id: string,
-  term: Pick<GlossaryTermUpdate, 'glossary' | 'phonetic' | 'author' | 'cbetaFrequency' | 'discussion' | 'updatedBy'> &
-    Partial<Pick<GlossaryTermUpdate, 'subscribers'>>,
+  term: Pick<GlossaryTermUpdate, 'glossary' | 'phonetic' | 'author' | 'cbetaFrequency' | 'discussion' | 'updatedBy'>,
   translations: GlossaryTranslation[],
 ): Promise<GlossaryEntry[]> => {
   const entry = await GlossaryStore.revive(id, term, translations);

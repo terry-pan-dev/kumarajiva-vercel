@@ -18,13 +18,7 @@ import {
   PaginationEllipsis,
 } from '~/components/ui/pagination';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import {
-  readGlossaries,
-  readGlossariesByIds,
-  trashGlossaryById,
-  updateGlossarySubscribers,
-  updateGlossaryTranslations,
-} from '~/services';
+import { readGlossaries, readGlossariesByIds, trashGlossaryById, updateGlossaryTranslations } from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
 import { addsOrRemoves, isStored, TranslationListError } from '~/services/glossary.diff';
 import {
@@ -88,15 +82,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       success: true,
       message: `Moved “${deletion.term}” to the trash.`,
     });
-  }
-  const bookmark = formData.bookmark;
-  const glossaryId = formData.glossaryId as string;
-  if (bookmark) {
-    await updateGlossarySubscribers({
-      id: glossaryId,
-      subscribers: bookmark === 'true' ? 1 : -1,
-    });
-    return json({ success: true });
   }
 
   // Edit and insert mirror the <Can> gates on the buttons in GlossaryDetail. Those only hide

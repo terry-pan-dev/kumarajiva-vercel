@@ -5,7 +5,6 @@ export const glossaries = [
     phonetic: 'long guan fo',
     author: '近永法師',
     cbetaFrequency: '1',
-    subscribers: 0,
     translations: [
       {
         glossary: 'Buddha Demeanor of the Dragon',
@@ -31,7 +30,6 @@ export const glossaries = [
     phonetic: 'gong de',
     author: 'CTTB',
     cbetaFrequency: '108312',
-    subscribers: 0,
     translations: [
       {
         glossary: 'merit',
@@ -58,7 +56,6 @@ export const glossaries = [
     phonetic: 'de shan',
     author: '義工組-詞彙',
     cbetaFrequency: '9323',
-    subscribers: 0,
     translations: [
       {
         glossary: 'Mount Merit',
@@ -84,7 +81,6 @@ export const glossaries = [
     phonetic: 'gong de zhi',
     author: '近永法師',
     cbetaFrequency: '1129',
-    subscribers: 0,
     translations: [
       {
         glossary: 'Merit and Virtue of Jnana / Jnana of Merit and Virtue',
@@ -110,7 +106,6 @@ export const glossaries = [
     phonetic: 'fo huan xi fo',
     author: '近永法師',
     cbetaFrequency: '1',
-    subscribers: 0,
     translations: [
       {
         glossary: 'Buddha Joy of the Buddhas',
@@ -136,7 +131,6 @@ export const glossaries = [
     phonetic: 'ruo ren',
     author: 'CTTB',
     cbetaFrequency: '160861',
-    subscribers: 0,
     translations: [
       {
         glossary: 'People',
@@ -163,7 +157,6 @@ export const glossaries = [
     phonetic: 'shan nan zi',
     author: 'CTTB',
     cbetaFrequency: '53957',
-    subscribers: 0,
     translations: [
       {
         sutraName: '楞嚴經',
@@ -189,7 +182,6 @@ export const glossaries = [
     phonetic: 'da long fo',
     author: '近永法師',
     cbetaFrequency: '1',
-    subscribers: 0,
     translations: [
       {
         glossary: 'Buddha Great Dragon',
@@ -215,7 +207,6 @@ export const glossaries = [
     phonetic: 'fo zang',
     author: 'CTTB',
     cbetaFrequency: '984',
-    subscribers: 0,
     translations: [
       {
         glossary: `Buddha's treasury`,
@@ -241,7 +232,6 @@ export const glossaries = [
     phonetic: 'bao zang fo',
     author: '近永法師',
     cbetaFrequency: '354',
-    subscribers: 0,
     translations: [
       {
         glossary: `Buddha Treasury of Jewels / Treasure Trove`,
@@ -267,7 +257,6 @@ export const glossaries = [
     phonetic: 'mo ni lun',
     author: '義工組-詞彙',
     cbetaFrequency: '354',
-    subscribers: 0,
     translations: [
       {
         glossary: `mani wheel`,
@@ -293,7 +282,6 @@ export const glossaries = [
     phonetic: 'jin gang',
     author: '義工組-萬佛寶懺',
     cbetaFrequency: '94',
-    subscribers: 0,
     translations: [
       {
         glossary: `Vajra of Joy / Vajra Joy`,
@@ -319,7 +307,6 @@ export const glossaries = [
     phonetic: 'shen li',
     author: '義工組-詞彙',
     cbetaFrequency: '2a',
-    subscribers: 0,
     translations: [
       {
         glossary: `spiritual powers`,

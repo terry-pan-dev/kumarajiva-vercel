@@ -32,12 +32,16 @@ export type GlossaryTranslation = {
   updatedAt: string;
 };
 
+// Columns of `glossaries` the app no longer reads or writes, kept until the legacy purge
+// (docs/plans/legacy-purge.md).
+export type LegacyGlossaryColumn = 'legacyTranslations' | 'legacySubscribers';
+
 // A term without its translations.
-export type GlossaryTerm = Omit<ReadGlossary, 'translations'>;
+export type GlossaryTerm = Omit<ReadGlossary, LegacyGlossaryColumn>;
 
 // A term with its translations, in display order.
 export type GlossaryEntry = GlossaryTerm & { translations: GlossaryTranslation[] };
 
-// Accepted by the pure helpers (export, search record, inspector checks) so they take both an
-// entry and a raw row, whose JSON column can be null.
+// Accepted by the pure helpers (export, search record, inspector checks). Translations are
+// optional so they also take a term on its own.
 export type WithTranslations<T> = T & { translations?: readonly GlossaryTranslation[] | null };

@@ -12,10 +12,19 @@ export const glossariesTable = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     glossary: text('glossary').notNull(),
     phonetic: text('phonetic'),
-    subscribers: integer('subscribers').default(0),
+    // LEGACY: a bookmark counter, +1/-1 per click. Bookmarking was removed (2026-11-06; on prod
+    // the counter was 0 on every term). Neither read nor written; kept until the legacy purge
+    // (docs/plans/legacy-purge.md). Do not delete it from the definition (see below).
+    legacySubscribers: integer('subscribers').default(0),
     author: text('author'),
     cbetaFrequency: text('cbeta_frequency'),
-    translations: json()
+    // LEGACY: the translations as a JSON array, before they moved to `glossary_translations`
+    // (docs/plans/glossary-refactor.md). Neither read nor written by the app. The data stays
+    // until the legacy purge (docs/plans/legacy-purge.md). Renamed on the code side only, so
+    // nothing uses it by accident and the relation can be called `translations`. Do not
+    // delete this column from the definition: `drizzle-kit generate` would then write a
+    // DROP COLUMN, which the next deploy would run.
+    legacyTranslations: json('translations')
       .$type<
         {
           glossary: string;

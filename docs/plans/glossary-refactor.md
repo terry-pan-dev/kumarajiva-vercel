@@ -1,26 +1,26 @@
 # Glossary refactor: translations out of the JSON blob
 
-Written 2026-11-04, updated 2026-11-06 (PR 4 released; PR 6a written). **Start with "Where we are" below.**
+Written 2026-11-04, updated 2026-11-06 (PR 6 merged; PR 7 redefined: no drop). **Start with "Where we are" below.**
 
 ## Where we are (hand-over, 2026-11-06)
 
 **Released (steps 1–5 done):** PR 1 (#205), PR 2 (#206), PR 3a–c (#207–#209), the glossary
 freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
 during the freeze; the prod comparison (step 5) passed. The app reads and writes
-`glossary_translations` only; `glossaries.translations` (JSON) is a frozen fallback copy as
-of the switch, dropped in PR 7.
+`glossary_translations` only; `glossaries.translations` (JSON) is a frozen copy as of the
+switch. It is no longer dropped in PR 7 (see "Next").
 
-**PR 6a (Rationale): committed on branch `glos-field` (b834ee0), to merge together with 6b.** Rationale in the create, edit and insert forms and on the translation display
+**PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
-forms, `rationaleSchema` in `glossary.validation.ts`: optional, trimmed, at most 5,000
-characters, blank stored as null (so clearing it is not an edit). Also fixed the known
+forms, `rationaleSchema` in `glossary.validation.ts`: optional, trimmed (5,000-character cap
+removed in PR 7), blank stored as null (so clearing it is not an edit). Also fixed the known
 create-form issue: its Chinese-section Sutra Text (`sutraTextChinese`) is now the source
 passage and the translation section's (`sutraText`) the target one; the mapping moved into
 `app/services/glossary.create.ts` (pure, tested). Checked: tsc, all tests, eslint/prettier on
 touched files, 7 mutation checks, and a dev run on ZZTEST (insert, edit, unchanged save,
 clear, read back). Not in 6a: the import/replace previews and file columns (6b).
 
-**PR 6b (import/export): written 2026-11-06 in the working tree on `glos-field`.** Files gain
+**PR 6b (import/export).** Files gain
 two optional columns at the end, `TranslationUUID` and `Rationale` (export, CSV and XLSX
 parsing, column docs on both pages, en and zh-Hant). Merge rules (`glossary.merge.ts`, shared
 by the importer and the preview through `translationFromRow` in `glossary.parse.ts`):
@@ -45,10 +45,46 @@ files, 20 mutation checks; export → import round trip (CSV and XLSX) changes n
 cell comes back as an update; on dev (ZZTEST): untouched CSV/XLSX re-import writes nothing,
 an edited row and rationale update in place, an old-format file appends one copy per row and
 leaves the originals and their rationales alone.
-Not done: no length cap on an imported rationale (the forms cap at 5,000).
 
-**Next:** PR 7 (drop `glossaries.translations` and `subscribers`; schema change, needs the
-user's approval) when the user is confident enough to drop the JSON fallback; PR 8 (renames).
+**PR 7, redefined 2026-11-06 (in the working tree, no migration).** By the user's decision
+nothing is dropped now. Data being phased out stays in the database until a **legacy purge**,
+together with the old sutra/roll tables, once the new model is settled. The list is in
+`docs/plans/legacy-purge.md`. What PR 7 does:
+
+- the JSON column is renamed on the code side only: `legacyTranslations: json('translations')`
+  in `drizzle/tables/glossary.ts`, marked LEGACY. The database is unchanged and no migration
+  is generated. **It must stay in the definition**: deleting it there would make the next
+  `drizzle-kit generate` write a DROP COLUMN, which the deploy would run;
+- **bookmarking removed** (the user's decision, 2026-11-06: people search terms but don't
+  bookmark; on prod `subscribers` was 0 on all 15,027 live terms, read-only count, and every
+  term dates from July 2026 or later). Gone: the bookmark button and its localStorage list
+  on the term card, the `bookmark` branch of the glossary page's action,
+  `updateGlossarySubscribers`, the counter on the card, the inspector column, and the Settings
+  "Glossary Subscriptions" tab with its loader (which had no sign-in check). Settings now
+  opens on Font Settings. The column is `legacySubscribers: integer('subscribers')`, on the
+  purge list. Browsers keep a stale `subscribedGlossaries` localStorage key; it is harmless;
+- the store, the types (`LegacyGlossaryColumn` in `glossary.types.ts`, left out of
+  `GlossaryTerm` and the store's write types), script 08 and the fixture type follow. Three
+  test files typed rows as `ReadGlossary` with `translations` inside (the old JSON shape) and
+  now use `InspectedRow` / `ExportableGlossary`;
+- the relation clash is gone: `translations` on a term now means only the relation to
+  `glossary_translations`. The store could load translations through it
+  (`with: { translations: { orderBy: position } }`) instead of its second query. Optional,
+  not done;
+- **Rationale has no length cap any more** (the user's decision, 2026-11-06). Removed from
+  `rationaleSchema`, so create, edit and insert accept any length, like the import. Limits that
+  remain: **XLSX cells hold at most 32,767 characters**, and SheetJS throws on a longer one
+  ("Text length must not exceed 32767 characters"), so a single longer rationale makes the
+  whole XLSX export fail (CSV is fine). See "Open" below. Postgres `text` allows up to 1 GB;
+  Rationale is not in the Algolia record or the assistant prompts; an import chunk is 15
+  terms, far below Vercel's request size limit for any realistic text.
+
+Checked: tsc, 526 tests, eslint and prettier on the touched files; `pnpm db:generate` reports
+"No schema changes" (both renames keep the database column names).
+
+**Open:** what to do about the XLSX limit on Rationale (see above).
+
+Then PR 8 (renames).
 
 The sections below, down to "Known issues", are the PR 3–4 record.
 
@@ -366,8 +402,9 @@ Every manual apply (dev or prod) needs the user's yes.
 6. **PR 6: features.** 6a Rationale in the create/edit/insert forms and display, with
    validation. 6b import/export `TranslationUUID` and `Rationale` columns, id-matched
    re-import, previews; export must round-trip through import.
-7. **PR 7: migration B.** Drop `glossaries.translations` and `glossaries.subscribers`;
-   remove the JSON type. Only after step 5 passes.
+7. **PR 7: make the JSON column obsolete in code (redefined 2026-11-06, no migration).**
+   Renamed to `legacyTranslations` in Drizzle; dropped only at the legacy purge
+   (`docs/plans/legacy-purge.md`). `subscribers` waits for the bookmarking decision.
 8. **PR 8 (later): rename** read-shape fields to the table's names (`glossary` → `term`,
    `sutraName` → `sourceName`, `originSutraText` → `sourceText`,
    `targetSutraText` → `targetText`). File columns and the Algolia record keep their names.
@@ -419,7 +456,8 @@ the user (open question 5).
 2. **Rationale per translation only.** Leave the empty term `discussion` alone.
 3. **Per-translation `partOfSpeech` / `phonetic`:** keep, in the `metadata` json column
    (no data today). The Chinese pinyin is the term-level `glossaries.phonetic`, unchanged.
-4. **`subscribers`:** drop it in PR 7.
+4. **`subscribers`:** was to be dropped in PR 7; since 2026-11-06 it waits for the decision
+   on bookmarking.
 5. **Field names:** keep today's names in the read shape for PRs 3–4; rename in PR 8.
    Naming rule for new code: **source / target** (as in `projects.source_document_id`).
    `origin` is legacy; avoid `translation` as the counterpart of `source`, since it already
@@ -431,6 +469,4 @@ the user (open question 5).
   paragraph index has been rebuilt; run `pnpm search:rebuild --apply` (and `:prod`) once to
   apply the index settings (search only the text, typo fallback, phrase search).
 - Paragraph history and comments: deferred. Nobody uses them yet.
-- `users.origin_lang` / `target_lang` are no longer read. They are still `NOT NULL`, so
-  `createUser` writes a placeholder (`app/services/user.service.ts`). Dropping them is
-  optional cleanup and needs approval. No native-language field is wanted.
+- `users.origin_lang` / `target_lang` were dropped (#204). No native-language field is wanted.

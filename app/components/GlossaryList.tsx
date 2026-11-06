@@ -1,7 +1,5 @@
-import { useFetcher } from '@remix-run/react';
-import { useLocalStorage } from '@uidotdev/usehooks';
 import { ChevronRight, Trash2 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useMemo, useState, useRef } from 'react';
 import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 import { type z } from 'zod';
@@ -124,37 +122,6 @@ export const RATIONALE_DESCRIPTION =
   'Why this rendering was chosen: the reasoning, sources or alternatives considered. Optional.';
 
 export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: GlossaryEntry; showEdit?: boolean }) => {
-  const [subscribedGlossaries, setSubscribedGlossaries] = useLocalStorage<string[]>('subscribedGlossaries', []);
-  const fetcher = useFetcher<{ success: boolean }>();
-
-  let isBookmarked = useMemo(() => {
-    if (glossary?.id) {
-      const result = subscribedGlossaries.includes(glossary.id);
-      return result;
-    }
-    return false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [glossary, subscribedGlossaries]);
-
-  isBookmarked = fetcher.formData ? fetcher.formData.get('bookmark') === 'true' : isBookmarked;
-
-  useEffect(() => {
-    const id = fetcher.formData?.get('glossaryId');
-
-    if (fetcher.formData && id === glossary?.id) {
-      const result = fetcher.formData.get('bookmark') === 'true';
-      const set = new Set(subscribedGlossaries);
-      if (result) {
-        set.add(glossary.id);
-      } else {
-        set.delete(glossary.id);
-      }
-      const newSubscribedGlossaries = Array.from(set);
-      setSubscribedGlossaries(newSubscribedGlossaries);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher.formData, subscribedGlossaries, glossary]);
-
   // Regex cache to avoid recompilation
   const regexCache = useRef<Map<string, RegExp>>(new Map());
 
@@ -233,21 +200,8 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
   return (
     <TooltipProvider>
       <Card className="flex h-full flex-col">
-        <CardHeader className="flex-row items-center justify-between px-2 py-4">
-          <fetcher.Form method="post" action="/glossary?index&page=-1">
-            <input type="hidden" name="glossaryId" value={glossary?.id} />
-            <button
-              type="submit"
-              name="bookmark"
-              aria-label="bookmark-glossary"
-              value={isBookmarked ? 'false' : 'true'}
-            >
-              <Icons.BookMark
-                className={`ml-1 h-6 w-6 ${isBookmarked ? 'fill-red-500 text-red-500' : 'text-slate-800'}`}
-              />
-            </button>
-          </fetcher.Form>
-          {showEdit && (
+        {showEdit && (
+          <CardHeader className="flex-row items-center justify-end px-2 py-4">
             <div className="flex">
               <Can I="Update" this="Glossary">
                 <FormModal
@@ -312,8 +266,8 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                 </span>
               </Can>
             </div>
-          )}
-        </CardHeader>
+          </CardHeader>
+        )}
         <CardContent className="flex-grow px-4">
           <div className="my-2 flex items-end justify-start gap-2">
             <h2 className="text-primary text-xl font-semibold tracking-tight lg:text-3xl">{glossary.glossary}</h2>
@@ -385,10 +339,6 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
             </span>
           </div>
           {/* <div className="flex flex-col gap-2 md:flex-row"> */}
-          <div className="flex items-center gap-2">
-            <Icons.LineChart className="h-4 w-4" />
-            <span title="subscribers">{glossary.subscribers}</span>
-          </div>
           <div className="flex items-center gap-2">
             <Icons.User className="h-4 w-4" />
             <span title="author">{glossary.author || glossary.updatedBy}</span>

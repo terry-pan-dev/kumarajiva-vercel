@@ -4,7 +4,6 @@ import {
   glossaryEditFormSchema,
   glossaryFormSchema,
   glossaryInsertFormSchema,
-  RATIONALE_MAX_LENGTH,
 } from '~/validations/glossary.validation';
 
 // ─── glossaryFormSchema (Add New Entry) ──────────────────────────────────────
@@ -293,8 +292,7 @@ describe('rationale', () => {
     expect(rationaleOf[form](undefined)).toBeNull();
   });
 
-  it.each(['create', 'insert', 'edit'] as const)('%s refuses a rationale over the limit', (form) => {
-    expect(rationaleOf[form]('x'.repeat(RATIONALE_MAX_LENGTH))).toHaveLength(RATIONALE_MAX_LENGTH);
-    expect(rationaleOf[form]('x'.repeat(RATIONALE_MAX_LENGTH + 1))).toBe('invalid');
+  it.each(['create', 'insert', 'edit'] as const)('%s accepts a long rationale', (form) => {
+    expect(rationaleOf[form]('x'.repeat(20_000))).toHaveLength(20_000);
   });
 });

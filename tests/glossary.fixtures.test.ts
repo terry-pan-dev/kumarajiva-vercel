@@ -11,13 +11,17 @@
 // buttons would delete the things the issue checks are meant to be reporting.
 import { describe, expect, it } from 'vitest';
 
-import { type ReadGlossary } from '~/drizzle/tables';
-import { analyseGlossary, type GlossaryIssueCode, type IndexRecord } from '~/services/glossary.analyse';
+import {
+  analyseGlossary,
+  type GlossaryIssueCode,
+  type IndexRecord,
+  type InspectedRow,
+} from '~/services/glossary.analyse';
 
 import { deletableFixtures, issueFixtures, type Fixture } from '../functional/glossary-fixtures';
 
 // The seed script leaves the audit columns to the database; the analyser wants whole rows.
-function asRows(fixtures: Fixture[]): ReadGlossary[] {
+function asRows(fixtures: Fixture[]): InspectedRow[] {
   return fixtures
     .map((fixture) => fixture.row)
     .filter((row): row is NonNullable<Fixture['row']> => row !== null)
@@ -31,7 +35,7 @@ function asRows(fixtures: Fixture[]): ReadGlossary[] {
           createdBy: 'user-1',
           updatedBy: 'user-1',
           ...row,
-        }) as ReadGlossary,
+        }) as InspectedRow,
     );
 }
 

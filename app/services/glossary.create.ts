@@ -19,7 +19,6 @@ export function entryFromCreateForm(
       id,
       glossary: form.glossaryChinese,
       phonetic: form.phoneticChinese,
-      subscribers: 0,
       author: user.username || '翻譯團隊',
       cbetaFrequency: form.cbetaFrequencyChinese || '0',
       discussion: form.discussionChinese || '',

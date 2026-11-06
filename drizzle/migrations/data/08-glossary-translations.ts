@@ -43,7 +43,7 @@ const loadTerms = (client: typeof db | Tx) =>
     .select({
       id: glossariesTable.id,
       glossary: glossariesTable.glossary,
-      translations: glossariesTable.translations,
+      translations: glossariesTable.legacyTranslations,
       updatedAt: glossariesTable.updatedAt,
       updatedBy: glossariesTable.updatedBy,
       deletedAt: glossariesTable.deletedAt,

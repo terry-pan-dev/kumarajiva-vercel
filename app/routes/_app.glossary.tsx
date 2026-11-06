@@ -64,7 +64,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { term, translations } = entryFromCreateForm(validatedData, user, { id: uuidv4(), now: new Date() });
   // A term in the trash is created afresh over the trashed row, which keeps its uuid.
   const newGlossary = existing
-    ? await reviveTrashedGlossary(existing.id, { ...term, subscribers: 0 }, translations)
+    ? await reviveTrashedGlossary(existing.id, term, translations)
     : await createGlossaryAndIndexInAlgolia(term, translations);
   return json({ success: true, glossary: newGlossary });
 };
