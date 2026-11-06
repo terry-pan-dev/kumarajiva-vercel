@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { type z } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
-import { Can } from '~/authorisation';
+import { Can, defineAbilityFor } from '~/authorisation';
 import { FormInput, FormModal, FormSelect, FormTextarea } from '~/components/FormModal';
 import { Icons } from '~/components/icons';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
@@ -48,6 +48,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
+  }
+  // Creating a term needs Maintain, as on the Add New Entry button. The <Can> around the
+  // button only hides it; without this any signed-in user could POST here directly.
+  if (defineAbilityFor(user).cannot('Maintain', 'Glossary')) {
+    return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
   }
 
   const formData = Object.fromEntries(await request.formData());
