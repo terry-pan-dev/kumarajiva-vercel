@@ -4,9 +4,8 @@
 // the rest of the app never sees the storage shape.
 //
 // Translations are rows of `glossary_translations`, one per translation, in `position` order
-// (docs/plans/glossary-refactor.md, PR 4). The old `glossaries.translations` JSON column
-// (`legacyTranslations` in Drizzle) is neither read nor written; its data stays until the
-// legacy purge (docs/plans/legacy-purge.md).
+// (docs/plans/glossary-refactor.md). The old `glossaries.translations` JSON column was
+// dropped in migration 0026.
 import { and, desc, eq, exists, getTableColumns, ilike, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 
 import { glossariesTable, glossaryTranslationsTable, type CreateGlossary, type UpdateGlossary } from '~/drizzle/tables';
@@ -14,12 +13,7 @@ import { getDb } from '~/lib/db.server';
 
 import { diffTranslations, type StoredTranslation, type TranslationBasis, type TranslationDiff } from './glossary.diff';
 import { groupByGlossaryId, newTranslationRow, toGlossaryTranslation, translationContent } from './glossary.rows';
-import {
-  type GlossaryEntry,
-  type GlossaryTerm,
-  type GlossaryTranslation,
-  type LegacyGlossaryColumn,
-} from './glossary.types';
+import { type GlossaryEntry, type GlossaryTerm, type GlossaryTranslation } from './glossary.types';
 
 const db = getDb();
 
@@ -29,13 +23,8 @@ type Client = Db | Tx;
 
 const translationsTable = glossaryTranslationsTable;
 
-// Every column of `glossaries` except the legacy ones, which are no longer read.
-const termColumns = (() => {
-  const { legacyTranslations, legacySubscribers, ...columns } = getTableColumns(glossariesTable);
-  void legacyTranslations;
-  void legacySubscribers;
-  return columns;
-})();
+// Every column of `glossaries`: the term's own fields. Its translations are loaded separately.
+const termColumns = getTableColumns(glossariesTable);
 
 // Soft-deleted rows (deleted_at set) are in the trash: every read below leaves them out unless
 // its name says IncludingTrash or Trashed, so they are gone from the glossary page, search,
@@ -76,8 +65,8 @@ const selectTerms = (client: Client = db) => client.select(termColumns).from(glo
 
 // The term's own columns, for writing. Translations are never among them: they are passed to
 // create, update and revive as a list of their own.
-export type GlossaryTermInput = Omit<CreateGlossary, LegacyGlossaryColumn>;
-export type GlossaryTermUpdate = Omit<UpdateGlossary, 'id' | LegacyGlossaryColumn>;
+export type GlossaryTermInput = CreateGlossary;
+export type GlossaryTermUpdate = Omit<UpdateGlossary, 'id'>;
 
 export type GlossaryPage = {
   glossaries: GlossaryEntry[];

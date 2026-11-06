@@ -176,6 +176,13 @@
       "when": 1793901094152,
       "tag": "0025_add-glossary-translations",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793991899595,
+      "tag": "0026_drop-glossary-legacy-columns",
+      "breakpoints": true
     }
   ]
 }

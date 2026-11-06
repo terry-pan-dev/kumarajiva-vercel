@@ -1,14 +1,14 @@
 # Glossary refactor: translations out of the JSON blob
 
-Written 2026-11-04, updated 2026-11-06 (PR 6 merged; PR 7 redefined: no drop). **Start with "Where we are" below.**
+Written 2026-11-04, updated 2026-11-06 (PR 7a merged, 7b drops the old columns). **Start with "Where we are" below.**
 
 ## Where we are (hand-over, 2026-11-06)
 
 **Released (steps 1–5 done):** PR 1 (#205), PR 2 (#206), PR 3a–c (#207–#209), the glossary
 freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
 during the freeze; the prod comparison (step 5) passed. The app reads and writes
-`glossary_translations` only; `glossaries.translations` (JSON) is a frozen copy as of the
-switch. It is no longer dropped in PR 7 (see "Next").
+`glossary_translations` only. PR 6 (#212) and PR 7a (#213) are merged and deployed; PR 7b
+(branch `drop-glos-cols`, in the working tree) drops the old columns (see below).
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
@@ -46,43 +46,48 @@ cell comes back as an update; on dev (ZZTEST): untouched CSV/XLSX re-import writ
 an edited row and rationale update in place, an old-format file appends one copy per row and
 leaves the originals and their rationales alone.
 
-**PR 7, redefined 2026-11-06 (in the working tree, no migration).** By the user's decision
-nothing is dropped now. Data being phased out stays in the database until a **legacy purge**,
-together with the old sutra/roll tables, once the new model is settled. The list is in
-`docs/plans/legacy-purge.md`. What PR 7 does:
+**PR 7a (#213, merged and deployed 2026-11-06).**
 
-- the JSON column is renamed on the code side only: `legacyTranslations: json('translations')`
-  in `drizzle/tables/glossary.ts`, marked LEGACY. The database is unchanged and no migration
-  is generated. **It must stay in the definition**: deleting it there would make the next
-  `drizzle-kit generate` write a DROP COLUMN, which the deploy would run;
-- **bookmarking removed** (the user's decision, 2026-11-06: people search terms but don't
-  bookmark; on prod `subscribers` was 0 on all 15,027 live terms, read-only count, and every
-  term dates from July 2026 or later). Gone: the bookmark button and its localStorage list
-  on the term card, the `bookmark` branch of the glossary page's action,
-  `updateGlossarySubscribers`, the counter on the card, the inspector column, and the Settings
-  "Glossary Subscriptions" tab with its loader (which had no sign-in check). Settings now
-  opens on Font Settings. The column is `legacySubscribers: integer('subscribers')`, on the
-  purge list. Browsers keep a stale `subscribedGlossaries` localStorage key; it is harmless;
-- the store, the types (`LegacyGlossaryColumn` in `glossary.types.ts`, left out of
-  `GlossaryTerm` and the store's write types), script 08 and the fixture type follow. Three
-  test files typed rows as `ReadGlossary` with `translations` inside (the old JSON shape) and
-  now use `InspectedRow` / `ExportableGlossary`;
-- the relation clash is gone: `translations` on a term now means only the relation to
-  `glossary_translations`. The store could load translations through it
-  (`with: { translations: { orderBy: position } }`) instead of its second query. Optional,
-  not done;
-- **Rationale has no length cap any more** (the user's decision, 2026-11-06). Removed from
-  `rationaleSchema`, so create, edit and insert accept any length, like the import. Limits that
-  remain: **XLSX cells hold at most 32,767 characters**, and SheetJS throws on a longer one
-  ("Text length must not exceed 32767 characters"), so a single longer rationale makes the
-  whole XLSX export fail (CSV is fine). See "Open" below. Postgres `text` allows up to 1 GB;
-  Rationale is not in the Algolia record or the assistant prompts; an import chunk is 15
-  terms, far below Vercel's request size limit for any realistic text.
+- **Bookmarking removed** (the user's decision: people search terms but don't bookmark; on
+  prod `subscribers` was 0 on all 15,027 live terms, and every term dates from July 2026 or
+  later). Gone: the bookmark button and its localStorage list on the term card, the
+  `bookmark` branch of the glossary page's action, `updateGlossarySubscribers`, the counter
+  on the card, the inspector column, and the Settings "Glossary Subscriptions" tab with its
+  loader (which had no sign-in check). Settings opens on Font Settings. Browsers keep a stale
+  `subscribedGlossaries` localStorage key; it is harmless.
+- **Rationale has no length cap** (the user's decision). Create, edit, insert and import all
+  accept any length. Known and accepted: **XLSX cells hold at most 32,767 characters** and
+  SheetJS throws on a longer one ("Text length must not exceed 32767 characters"), so a
+  single longer rationale would make the whole XLSX export fail; CSV is fine. Postgres `text`
+  allows up to 1 GB; Rationale is not in the Algolia record or the assistant prompts.
+- The JSON and subscriber columns were renamed on the code side (`legacyTranslations`,
+  `legacySubscribers`), so no code used them. Three test files that typed rows as
+  `ReadGlossary` with `translations` inside now use `InspectedRow` / `ExportableGlossary`.
 
-Checked: tsc, 526 tests, eslint and prettier on the touched files; `pnpm db:generate` reports
-"No schema changes" (both renames keep the database column names).
+**PR 7b (branch `drop-glos-cols`, in the working tree): migration B.** First planned as a
+"legacy purge" later, then the user decided to drop now: the glossary was changed in place,
+the JSON was a stale copy since the switch, and 08's copy had been verified field by field
+and by the step 5 export. Unlike the sutra/roll tables, nothing is waiting to be populated.
 
-**Open:** what to do about the XLSX limit on Rationale (see above).
+- **Backup first (done 2026-11-07 00:03 UTC):** a read-only dump of `id, glossary,
+deleted_at, subscribers, translations` for all 15,027 prod terms (19,325 JSON translations,
+  the same as 08's dry run; `subscribers` 0 everywhere), saved as JSON for the user to keep.
+- **Order:** 7a had to be deployed first, because the code live before it still read
+  `subscribers`; with 7a live nothing reads either column, so merging 7b (which runs `0026`
+  on deploy) is safe.
+- `drizzle/migrations/0026_drop-glossary-legacy-columns.sql`, generated by drizzle-kit:
+  `ALTER TABLE "glossaries" DROP COLUMN "subscribers"; ALTER TABLE "glossaries" DROP COLUMN
+"translations";`. The 0026 snapshot differs from 0025 only by those two columns.
+- Removed: both columns from `drizzle/tables/glossary.ts`, `LegacyGlossaryColumn`
+  (`GlossaryTerm` is `ReadGlossary` again), data script 08 with its rows module, its test file,
+  the round-trip case that used `planTerm`, a store test that guarded against reading the JSON
+  column, and `db:migrate:data:08`/`:prod`. Updated `drizzle/schema-proposed-glossary.dbml`.
+- Not done: the relation clash is gone, so the store could load translations through it
+  (`with: { translations: { orderBy: position } }`) instead of its second query. Optional.
+- Checked: tsc, 495 tests, eslint and prettier on the touched files; `pnpm db:generate`
+  afterwards reports no further changes. **Not applied to dev**: the dev database still has
+  both columns until someone runs `pnpm db:migrate` (needs the user's yes) or a deploy
+  pointing at dev does.
 
 Then PR 8 (renames).
 
@@ -402,9 +407,9 @@ Every manual apply (dev or prod) needs the user's yes.
 6. **PR 6: features.** 6a Rationale in the create/edit/insert forms and display, with
    validation. 6b import/export `TranslationUUID` and `Rationale` columns, id-matched
    re-import, previews; export must round-trip through import.
-7. **PR 7: make the JSON column obsolete in code (redefined 2026-11-06, no migration).**
-   Renamed to `legacyTranslations` in Drizzle; dropped only at the legacy purge
-   (`docs/plans/legacy-purge.md`). `subscribers` waits for the bookmarking decision.
+7. **PR 7: migration B.** 7a (#213): bookmarking and the Rationale cap removed, columns
+   renamed in code. 7b: migration `0026` drops `glossaries.translations` and
+   `glossaries.subscribers` after a prod dump (see "Where we are").
 8. **PR 8 (later): rename** read-shape fields to the table's names (`glossary` → `term`,
    `sutraName` → `sourceName`, `originSutraText` → `sourceText`,
    `targetSutraText` → `targetText`). File columns and the Algolia record keep their names.
@@ -456,8 +461,7 @@ the user (open question 5).
 2. **Rationale per translation only.** Leave the empty term `discussion` alone.
 3. **Per-translation `partOfSpeech` / `phonetic`:** keep, in the `metadata` json column
    (no data today). The Chinese pinyin is the term-level `glossaries.phonetic`, unchanged.
-4. **`subscribers`:** was to be dropped in PR 7; since 2026-11-06 it waits for the decision
-   on bookmarking.
+4. **`subscribers`:** dropped in PR 7b, together with bookmarking (removed in 7a).
 5. **Field names:** keep today's names in the read shape for PRs 3–4; rename in PR 8.
    Naming rule for new code: **source / target** (as in `projects.source_document_id`).
    `origin` is legacy; avoid `translation` as the counterpart of `source`, since it already

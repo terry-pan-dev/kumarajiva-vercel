@@ -11,14 +11,6 @@ definition**, renamed on the code side only (`legacyX: type('x')`) and marked `L
 it were deleted from the definition, the next `drizzle-kit generate` (for any unrelated
 change) would write a `DROP COLUMN`, and the deploy would run it.
 
-## Glossary
-
-| What                                                                                                                                                                        | Status                                                                                                                                                                                                              | When purging                                                                                                                         |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `glossaries.translations` (JSON), `legacyTranslations` in Drizzle                                                                                                           | Not read or written since PR 4 (#211, 2026-11-05). Every translation is in `glossary_translations`. Its contents are a **snapshot from 2026-11-05**, so it doesn't reflect later edits. Don't treat it as a backup. | Drop the column. Remove `legacyTranslations` and its JSON type from `drizzle/tables/glossary.ts`. Remove item 2 below.               |
-| Data script 08: `drizzle/migrations/data/08-glossary-translations.ts`, `08-glossary-translations.rows.ts`, their test, and `db:migrate:data:08` / `:prod` in `package.json` | One-off copy, done on dev and prod. It refuses to run once the table has rows. It is the only code that still reads the JSON column. `tests/glossary.rows.test.ts` uses its `planTerm` for a round trip.            | Delete together with the column. Drop the round-trip case or keep its expected rows inline.                                          |
-| `glossaries.subscribers`, `legacySubscribers` in Drizzle                                                                                                                    | Bookmarking was removed 2026-11-06. Not read or written since. It was 0 on every prod term at removal.                                                                                                              | Drop the column. Remove `legacySubscribers` from `drizzle/tables/glossary.ts` and from `LegacyGlossaryColumn` (`glossary.types.ts`). |
-
 ## Legacy translation tables (sutra / roll model)
 
 Being replaced by works / documents / sections / `paragraphs_new`. **No page uses these
@@ -44,3 +36,11 @@ Dormant code that goes with them, unreachable from the app but deliberately kept
 
 Drop order follows the foreign keys: `comments` and `paragraphs_history` first, then
 `paragraphs` (which references `rolls` and itself), then `rolls`, then `sutras`.
+
+## Done
+
+- **Glossary, 2026-11-06 (PR 7, migration `0026`):** dropped `glossaries.translations` (the JSON
+  array, replaced by `glossary_translations`) and `glossaries.subscribers` (the bookmark
+  counter, 0 on every prod term). Removed data script 08 with its tests and package scripts.
+  Before the drop, a read-only dump of both columns for all 15,027 prod terms (19,325 JSON
+  translations, trashed terms included) was taken and kept by the user.
