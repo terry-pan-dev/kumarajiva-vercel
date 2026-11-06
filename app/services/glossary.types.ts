@@ -33,11 +33,11 @@ export type GlossaryTranslation = {
 };
 
 // A term without its translations.
-export type GlossaryTerm = Omit<ReadGlossary, 'translations'>;
+export type GlossaryTerm = Omit<ReadGlossary, 'legacyTranslations'>;
 
 // A term with its translations, in display order.
 export type GlossaryEntry = GlossaryTerm & { translations: GlossaryTranslation[] };
 
-// Accepted by the pure helpers (export, search record, inspector checks) so they take both an
-// entry and a raw row, whose JSON column can be null.
+// Accepted by the pure helpers (export, search record, inspector checks). Translations are
+// optional so they also take a term on its own.
 export type WithTranslations<T> = T & { translations?: readonly GlossaryTranslation[] | null };

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { type ReadGlossary } from '~/drizzle/tables';
-import { analyseGlossary, type GlossaryIssueCode, type IndexRecord } from '~/services/glossary.analyse';
+import {
+  analyseGlossary,
+  type GlossaryIssueCode,
+  type IndexRecord,
+  type InspectedRow,
+} from '~/services/glossary.analyse';
 import { type GlossaryTranslation } from '~/services/glossary.types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -19,7 +23,7 @@ function makeTranslation(overrides: Partial<StoredTranslation> & { glossary: str
   };
 }
 
-function makeRow(overrides: Partial<ReadGlossary> & { id: string; glossary: string }): ReadGlossary {
+function makeRow(overrides: Partial<InspectedRow> & { id: string; glossary: string }): InspectedRow {
   return {
     phonetic: null,
     subscribers: 0,
@@ -35,12 +39,12 @@ function makeRow(overrides: Partial<ReadGlossary> & { id: string; glossary: stri
     createdBy: 'user-1',
     updatedBy: 'user-1',
     ...overrides,
-  } as ReadGlossary;
+  } as InspectedRow;
 }
 
 // The healthy pairing: one record per row, carrying that row's uuid, with the objectID the
 // row's search_id points at.
-function recordFor(row: ReadGlossary, overrides: Partial<IndexRecord> = {}): IndexRecord {
+function recordFor(row: InspectedRow, overrides: Partial<IndexRecord> = {}): IndexRecord {
   return { objectID: row.searchId ?? `obj-${row.id}`, id: row.id, glossary: row.glossary, ...overrides };
 }
 

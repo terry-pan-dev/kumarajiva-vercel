@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { read, utils } from 'xlsx';
 
-import { type ReadGlossary } from '~/drizzle/tables';
 import {
   GLOSSARY_EXPORT_HEADERS,
   glossariesToCSV,
   glossariesToExportRows,
   glossariesToXLSX,
   parseExportFormat,
+  type ExportableGlossary,
 } from '~/services/glossary.export';
 import { mergeTranslationsWithStatus, type MergeableTranslation } from '~/services/glossary.merge';
 import {
@@ -34,14 +34,14 @@ function makeTranslation(overrides: Partial<Translation> & { glossary: string })
   } as Translation;
 }
 
-function makeGlossary(overrides: Partial<ReadGlossary> & { glossary: string }): ReadGlossary {
+function makeGlossary(overrides: Partial<ExportableGlossary> & { glossary: string }): ExportableGlossary {
   return {
     id: 'id-1',
     phonetic: null,
     cbetaFrequency: null,
     translations: [],
     ...overrides,
-  } as ReadGlossary;
+  } as ExportableGlossary;
 }
 
 // ─── glossariesToExportRows ──────────────────────────────────────────────────
@@ -198,8 +198,7 @@ describe('export → import round trip', () => {
   const reimport = (rows: GlossaryImportRow[]) =>
     groupRows(rows).flatMap((group) => {
       const entry = entries.find((e) => e.id === group.uuid)!;
-      // The fixtures are typed as raw rows (no translation id in that type); the entries carry one.
-      const stored = (entry.translations ?? []) as MergeableTranslation[];
+      const stored: MergeableTranslation[] = [...(entry.translations ?? [])];
       return mergeTranslationsWithStatus<MergeableTranslation>(stored, group.rows.map(translationFromRow));
     });
 
