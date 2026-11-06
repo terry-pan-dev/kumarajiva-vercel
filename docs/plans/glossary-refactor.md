@@ -1,15 +1,30 @@
 # Glossary refactor: translations out of the JSON blob
 
-Written 2026-11-04, updated 2026-11-05 (PR 4 code written). **Start with "Where we are" below.**
+Written 2026-11-04, updated 2026-11-06 (PR 4 released; PR 6a written). **Start with "Where we are" below.**
 
-## Where we are (hand-over, 2026-11-05)
+## Where we are (hand-over, 2026-11-06)
 
-**Merged to main:** PR 1 (#205, table + migration `0025`), PR 2 (#206, data script 08 and the
-dbml files), PR 3a (#207, types), PR 3b (#208, reads through the store), PR 3c (writes
-through the store). The app still reads and writes the `glossaries.translations` JSON
-column; `glossary_translations` exists (on dev, and on prod via the deploy) and is **empty
-everywhere**. By the user's decision, script 08 has **not been run with `--apply`
-anywhere**; it is applied at PR 4.
+**Released (steps 1–5 done):** PR 1 (#205), PR 2 (#206), PR 3a–c (#207–#209), the glossary
+freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
+during the freeze; the prod comparison (step 5) passed. The app reads and writes
+`glossary_translations` only; `glossaries.translations` (JSON) is a frozen fallback copy as
+of the switch, dropped in PR 7.
+
+**PR 6a (Rationale): written 2026-11-06 in the working tree (on `main`; the user branches
+and commits).** Rationale in the create, edit and insert forms and on the translation display
+(`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
+forms, `rationaleSchema` in `glossary.validation.ts`: optional, trimmed, at most 5,000
+characters, blank stored as null (so clearing it is not an edit). Also fixed the known
+create-form issue: its Chinese-section Sutra Text (`sutraTextChinese`) is now the source
+passage and the translation section's (`sutraText`) the target one; the mapping moved into
+`app/services/glossary.create.ts` (pure, tested). Checked: tsc, all tests, eslint/prettier on
+touched files, 7 mutation checks, and a dev run on ZZTEST (insert, edit, unchanged save,
+clear, read back). Not in 6a: the import/replace previews and file columns (6b).
+
+**Next:** 6b (import/export `TranslationUUID` and `Rationale`), then PR 7 when the user is
+confident enough to drop the JSON fallback.
+
+The sections below, down to "Known issues", are the PR 3–4 record.
 
 **What PR 3 left in place.** Every read and write of translations goes through one module,
 `app/services/glossary.store.ts` (`GlossaryStore`). Nothing else touches the column, except
@@ -70,12 +85,11 @@ What it does:
 Not done in PR 4 (noted): an import touching a term with an exact duplicate (癡) drops the
 duplicate, as the JSON code did (`mergeTranslations`).
 
-**Next:** the user's manual pass of the app locally, then the **freeze** (a separate small PR
-off main: drop `Glossary`/`GlossaryData` from every role but admin in `LEVELS`,
-`app/authorisation/ability.ts`, and add the missing server-side Maintain check to the create
-action in `app/routes/_app.glossary.tsx`), kept until step 5 passes, then reverted.
+The freeze (#210) was a `GLOSSARY_FROZEN` switch in `app/authorisation/ability.ts` (non-admins
+lost every glossary level) plus a server-side Maintain check on the create action, which
+stays. Reverted after step 5.
 
-**PR 4 steps.** In order (steps 1–3 done, see above):
+**PR 4 steps** (all done):
 
 1. **Prod dry run of 08** (read-only, but needs the user's yes:
    `pnpm db:migrate:data:08:prod`). Look for blocking issues, in particular `unknown-field`
@@ -110,8 +124,6 @@ action in `app/routes/_app.glossary.tsx`), kept until step 5 passes, then revert
 
 **Known issues found on the way, not fixed (deliberately):**
 
-- `app/routes/_app.glossary.tsx` (create a term): `validatedData.sutraText` goes into both
-  `originSutraText` and `targetSutraText`. Planned for PR 6a with the Rationale field.
 - `glossaryEditFormSchema`: `updatedAt` defaults to `new Date()` evaluated once, at module
   load, so the default is the server's start time.
 - `app/routes/_app.glossary._index.tsx`: the action's last branch (no `kind`) validates and

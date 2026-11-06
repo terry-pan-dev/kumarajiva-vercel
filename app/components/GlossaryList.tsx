@@ -119,6 +119,10 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
   );
 }
 
+// The same prompt wherever a rationale is entered: create, edit and insert.
+export const RATIONALE_DESCRIPTION =
+  'Why this rendering was chosen: the reasoning, sources or alternatives considered. Optional.';
+
 export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: GlossaryEntry; showEdit?: boolean }) => {
   const [subscribedGlossaries, setSubscribedGlossaries] = useLocalStorage<string[]>('subscribedGlossaries', []);
   const fetcher = useFetcher<{ success: boolean }>();
@@ -264,7 +268,10 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                     phonetic: glossary.phonetic || '',
                     // Each translation keeps its id from here to the save (glossaryEditFormSchema
                     // passes it through), so the save edits it in place. No input needed for it.
-                    translations: glossary.translations || [],
+                    translations: (glossary.translations || []).map((translation) => ({
+                      ...translation,
+                      rationale: translation.rationale ?? null,
+                    })),
                     baseTranslationIds: glossary.translations.flatMap((translation) => translation.id ?? []),
                     discussion: glossary.discussion || '',
                   }}
@@ -354,6 +361,14 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
                     <h3 className="text-muted-foreground text-sm font-medium">{targetSutraText}</h3>
+                  </div>
+                )}
+                {translation.rationale && (
+                  <div aria-label="rationale" className="border-primary/40 mt-2 border-l-2 pl-3">
+                    <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                      Rationale
+                    </span>
+                    <p className="text-sm whitespace-pre-wrap">{translation.rationale}</p>
                   </div>
                 )}
               </div>
@@ -460,6 +475,13 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
               description="The part of speech of the term"
             />
             <FormInput label="Author" description="The author of the term" name={`translations.${index}.author`} />
+            <span className="col-span-2">
+              <FormTextarea
+                label="Rationale"
+                description={RATIONALE_DESCRIPTION}
+                name={`translations.${index}.rationale`}
+              />
+            </span>
           </div>
         </div>
       ))}
@@ -509,6 +531,9 @@ const GlossaryInsertForm = ({ id }: { id: string }) => {
           placeholder="翻譯團隊(default)"
           description="The author of the new term"
         />
+        <span className="col-span-2">
+          <FormTextarea name="rationale" label="Rationale" description={RATIONALE_DESCRIPTION} />
+        </span>
       </div>
     </div>
   );

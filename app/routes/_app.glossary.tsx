@@ -13,6 +13,7 @@ import { type z } from 'zod';
 import { assertAuthUser } from '~/auth.server';
 import { Can } from '~/authorisation';
 import { FormInput, FormModal, FormSelect, FormTextarea } from '~/components/FormModal';
+import { RATIONALE_DESCRIPTION } from '~/components/GlossaryList';
 import { Icons } from '~/components/icons';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Button } from '~/components/ui/button';
@@ -20,9 +21,9 @@ import { Divider } from '~/components/ui/divider';
 import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
+import { entryFromCreateForm } from '~/services/glossary.create';
 import { createGlossaryAndIndexInAlgolia, reviveTrashedGlossary } from '~/services/glossary.service';
-import { GlossaryStore, type GlossaryTermInput } from '~/services/glossary.store';
-import { type GlossaryTranslation } from '~/services/glossary.types';
+import { GlossaryStore } from '~/services/glossary.store';
 import { readUsers } from '~/services/user.service';
 import { DEFAULT_TARGET_LANG } from '~/utils/constants';
 import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
@@ -60,32 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       { status: 400 },
     );
   }
-  const term = {
-    id: uuidv4(),
-    glossary: validatedData.glossaryChinese,
-    phonetic: validatedData.phoneticChinese,
-    subscribers: 0,
-    author: user.username || '翻譯團隊',
-    cbetaFrequency: validatedData.cbetaFrequencyChinese || '0',
-    discussion: validatedData.discussionChinese || '',
-    createdBy: user.id,
-    updatedBy: user.id,
-  } satisfies GlossaryTermInput;
-  const translations: GlossaryTranslation[] = [
-    {
-      glossary: validatedData.glossary,
-      language: validatedData.language,
-      sutraName: validatedData.sutraName || '佛教常用詞',
-      volume: validatedData.volume || '-',
-      updatedBy: user.id,
-      updatedAt: new Date().toISOString(),
-      originSutraText: validatedData.sutraText || '',
-      targetSutraText: validatedData.sutraText || '',
-      author: validatedData.author || '',
-      partOfSpeech: validatedData.partOfSpeech || '',
-      phonetic: validatedData.phonetic || '',
-    },
-  ];
+  const { term, translations } = entryFromCreateForm(validatedData, user, { id: uuidv4(), now: new Date() });
   // A term in the trash is created afresh over the trashed row, which keeps its uuid.
   const newGlossary = existing
     ? await reviveTrashedGlossary(existing.id, { ...term, subscribers: 0 }, translations)
@@ -174,7 +150,11 @@ const GlossaryCreateForm = () => {
         <div className="col-span-2">
           <CustomAccordion onToggle={setChineseAccordionOpen} title="Optional Fields For Chinese">
             <div className="grid grid-cols-2 gap-4">
-              <FormTextarea label="Sutra Text" name="sutraTextChinese" description="The text of the sutra." />
+              <FormTextarea
+                label="Sutra Text"
+                name="sutraTextChinese"
+                description="The Chinese passage the term comes from."
+              />
               <FormTextarea label="Volume" name="volumeChinese" description="The volume of the sutra." />
               <FormTextarea
                 label="CBETA Frequency"
@@ -210,6 +190,7 @@ const GlossaryCreateForm = () => {
           label={`${languageName} Term`}
           description={`The ${languageName} translation of the Chinese term.`}
         />
+        <FormTextarea name="rationale" label="Rationale" description={RATIONALE_DESCRIPTION} />
         <CustomAccordion onToggle={setTargetLangAccordionOpen} title={`Optional Fields For ${languageName}`}>
           <div className="grid grid-cols-2 gap-4">
             <FormInput name="phonetic" label="Phonetic" description="The phonetic of the glossary." />
@@ -224,7 +205,11 @@ const GlossaryCreateForm = () => {
               label="Part of Speech"
               description="The part of speech of the glossary term."
             />
-            <FormTextarea name="sutraText" label="Sutra Text" description="The text of the sutra." />
+            <FormTextarea
+              name="sutraText"
+              label="Sutra Text"
+              description={`The ${languageName} translation of that passage.`}
+            />
             <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
             <FormTextarea name="author" label="Author" description="The author of the glossary." />
           </div>
