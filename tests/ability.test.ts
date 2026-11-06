@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineAbilityFor } from '~/authorisation/ability';
+import { defineAbilityFor, GLOSSARY_FROZEN } from '~/authorisation/ability';
 import { ROLE_VALUES, type UserRole } from '~/utils/constants';
 
-const abilityFor = (role: UserRole) => defineAbilityFor({ role });
+// The roles as they stand outside the temporary glossary freeze, which is tested on its own below.
+const abilityFor = (role: UserRole) => defineAbilityFor({ role }, { glossaryFrozen: false });
+const frozenAbilityFor = (role: UserRole) => defineAbilityFor({ role }, { glossaryFrozen: true });
 
 const LEVELS = ['Update', 'Maintain', 'Administrate'] as const;
 const SUBJECTS = ['Glossary', 'GlossaryData', 'Translation', 'TranslationData', 'Users'] as const;
@@ -115,6 +117,45 @@ describe('defineAbilityFor — least-privileged roles', () => {
       for (const level of LEVELS) {
         const allowed = subject === 'Translation' && level === 'Update';
         expect(assistant.can(level, subject), `${level} ${subject}`).toBe(allowed);
+      }
+    }
+  });
+});
+
+// ─── Temporary: the glossary freeze (PR 4 release) ───────────────────────────
+
+describe('defineAbilityFor — glossary freeze', () => {
+  // Remove this test along with the freeze.
+  it('is on in the app', () => {
+    expect(GLOSSARY_FROZEN).toBe(true);
+    expect(defineAbilityFor({ role: 'editor' }).can('Update', 'Glossary')).toBe(false);
+  });
+
+  it('leaves admins every glossary level', () => {
+    const admin = frozenAbilityFor('admin');
+    for (const subject of ['Glossary', 'GlossaryData'] as const) {
+      expect(admin.can('Administrate', subject), subject).toBe(true);
+    }
+  });
+
+  it('takes every glossary level from everyone else', () => {
+    for (const role of ROLE_VALUES.filter((r) => r !== 'admin')) {
+      for (const subject of ['Glossary', 'GlossaryData'] as const) {
+        for (const level of LEVELS) {
+          expect(frozenAbilityFor(role).can(level, subject), `${role} ${level} ${subject}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('leaves every other subject as it was', () => {
+    for (const role of ROLE_VALUES) {
+      for (const subject of ['Translation', 'TranslationData', 'Users'] as const) {
+        for (const level of LEVELS) {
+          expect(frozenAbilityFor(role).can(level, subject), `${role} ${level} ${subject}`).toBe(
+            abilityFor(role).can(level, subject),
+          );
+        }
       }
     }
   });
