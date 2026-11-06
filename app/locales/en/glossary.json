@@ -221,7 +221,7 @@
       "showColumns": "Show all columns",
       "hideColumns": "Hide columns",
       "columns": "Columns",
-      "translationsJson": "translations (json)",
+      "translationsJson": "translations (glossary_translations)",
       "searchRecords": "Search index records",
       "emptyString": "empty string",
       "noTranslations": "No translations stored."

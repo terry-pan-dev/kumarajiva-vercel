@@ -105,7 +105,22 @@ describe('updateGlossaryTranslations', () => {
       'g',
       { phonetic: 'fó', author: undefined, cbetaFrequency: undefined, updatedBy: 'user-2', discussion: undefined },
       [translation('edited')],
+      undefined,
     );
+  });
+
+  it('an edit passes on the ids its list was built from', async () => {
+    store.findById.mockResolvedValue(entry('g'));
+    await edit({ basis: ['t1', 't2'] });
+    expect(store.update.mock.calls[0][3]).toEqual(['t1', 't2']);
+  });
+
+  it('an insert’s basis is the stored translations it read', async () => {
+    store.findById.mockResolvedValue(
+      entry('g', { translations: [translation('a', { id: 't1' }), translation('b', { id: 't2' })] }),
+    );
+    await edit({ translations: [translation('c')], isNewInsert: true, basis: ['ignored'] });
+    expect(store.update.mock.calls[0][3]).toEqual(['t1', 't2']);
   });
 
   it('an insert hands the store the stored list with the new translation after it', async () => {
@@ -114,17 +129,40 @@ describe('updateGlossaryTranslations', () => {
     expect(store.update.mock.calls[0][2]).toEqual([translation('a'), translation('b'), translation('c')]);
   });
 
-  it('updates the search record with the new list', async () => {
-    store.findById.mockResolvedValue(entry('g', { searchId: 'rec-g' }));
+  // The saved entry can hold more than the list sent: translations added meanwhile are kept.
+  it('updates the search record from the saved entry, after the save', async () => {
+    store.findById.mockResolvedValue(entry('g'));
+    store.update.mockImplementation(async () => {
+      expect(algolia.partialUpdateObject).not.toHaveBeenCalled();
+      return entry('g', { searchId: 'rec-g', translations: [translation('edited'), translation('added meanwhile')] });
+    });
     await edit();
     expect(algolia.partialUpdateObject).toHaveBeenCalledWith(
       expect.objectContaining({
         objectID: 'rec-g',
         attributesToUpdate: expect.objectContaining({
-          translations: [{ glossary: 'edited', language: 'english', phonetic: undefined }],
+          translations: [
+            { glossary: 'edited', language: 'english', phonetic: undefined },
+            { glossary: 'added meanwhile', language: 'english', phonetic: undefined },
+          ],
         }),
       }),
     );
+  });
+
+  it('leaves search alone when the store refuses the save', async () => {
+    store.findById.mockResolvedValue(entry('g'));
+    store.update.mockRejectedValue(new Error('stale'));
+    await expect(edit()).rejects.toThrow('stale');
+    expect(algolia.partialUpdateObject).not.toHaveBeenCalled();
+  });
+
+  it('keeps the save when the search record cannot be updated', async () => {
+    store.findById.mockResolvedValue(entry('g'));
+    algolia.partialUpdateObject.mockRejectedValueOnce(new Error('algolia down'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await expect(edit()).resolves.toMatchObject({ id: 'g' });
+    error.mockRestore();
   });
 
   it('writes nothing for an entry that is not there', async () => {
@@ -203,6 +241,14 @@ describe('importGlossaries', () => {
     const written = store.update.mock.calls[0][2] as GlossaryTranslation[];
     expect(written.map((t) => t.glossary)).toEqual(['Buddha', 'Awakened One']);
     expect(written[0]).toBe(stored);
+  });
+
+  it('the merge’s basis is the stored translations it was built from', async () => {
+    const existing = entry('e', { glossary: '佛', translations: [translation('Buddha', { id: 't1' })] });
+    store.findByTermsIncludingTrash.mockResolvedValue([existing]);
+    store.findById.mockResolvedValue(existing);
+    await importGlossaries([fileRow('佛', 'Awakened One')], 'importer');
+    expect(store.update.mock.calls[0][3]).toEqual(['t1']);
   });
 
   it('a new term is created with the file’s translations', async () => {

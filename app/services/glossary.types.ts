@@ -1,10 +1,10 @@
 // The shapes the glossary is read in, everywhere outside the storage layer: services, routes,
 // components, import/export and search. Client-safe (types only).
 //
-// They are deliberately not derived from the `glossaries.translations` JSON column. That
-// column is being replaced by the `glossary_translations` table
-// (docs/plans/glossary-refactor.md); spelling the read shape out here is what lets storage
-// change underneath while the rest of the app keeps reading the same fields.
+// They are deliberately not derived from storage (the `glossary_translations` table, which
+// replaced the `glossaries.translations` JSON column; docs/plans/glossary-refactor.md):
+// spelling the read shape out here is what let storage change underneath while the rest of the
+// app kept reading the same fields.
 //
 // Field names are today's JSON names (`glossary` for the rendering, `sutraName`, …). Renaming
 // them to the table's names is a later, separate step.
@@ -12,8 +12,8 @@ import { type ReadGlossary } from '~/drizzle/tables';
 import { type Lang } from '~/utils/constants';
 
 export type GlossaryTranslation = {
-  // The translation's own id. Absent while translations are stored as JSON; always present
-  // once they are rows.
+  // The translation's own id. Always present on a stored translation; absent on a new one
+  // (not saved yet), which is how GlossaryStore.update tells an addition from an edit.
   id?: string;
   // The rendering.
   glossary: string;
@@ -25,7 +25,7 @@ export type GlossaryTranslation = {
   author?: string | null;
   partOfSpeech?: string | null;
   phonetic?: string | null;
-  // Why this rendering was chosen. Not stored until translations are rows.
+  // Why this rendering was chosen. Stored, but no form or file carries it yet (PR 6).
   rationale?: string | null;
   updatedBy: string;
   // ISO timestamp.

@@ -98,6 +98,7 @@ export const updateGlossaryTranslations = async ({
   discussion,
   updatedBy,
   isNewInsert = false,
+  basis,
 }: {
   id: string;
   phonetic: string | null;
@@ -107,35 +108,20 @@ export const updateGlossaryTranslations = async ({
   translations?: GlossaryTranslation[];
   updatedBy: string | null;
   isNewInsert?: boolean;
+  // The translation ids `translations` was built from (TranslationBasis in glossary.diff.ts):
+  // the edit form's, or the stored ones the caller read. A translation added since is kept.
+  // Omitted: every stored translation counts as known. An insert sets it itself.
+  basis?: string[];
 }): Promise<GlossaryEntry | undefined> => {
   const glossary = await GlossaryStore.findById(id);
   if (!glossary) {
     throw new Error('Glossary not found');
   }
-  const { searchId } = glossary;
 
   // The store takes the whole list, so an insert sends the stored translations with the new
-  // one after them.
+  // one after them — built from what was just read, which is its basis.
   const newTranslations = isNewInsert ? [...glossary.translations, ...translations] : [...translations];
-  const translationsToSearch = newTranslations?.map((translation) => ({
-    glossary: translation.glossary,
-    language: translation.language,
-    phonetic: translation.phonetic ?? undefined,
-  }));
-
-  if (searchId) {
-    await algoliaClient.partialUpdateObject({
-      indexName: 'glossaries',
-      objectID: searchId,
-      attributesToUpdate: {
-        // undefined rather than null: this is a partial update, where undefined leaves the
-        // stored phonetic alone and null would erase it. Clearing a phonetic is left to a
-        // re-index, which rewrites the whole record.
-        translations: translationsToSearch,
-        phonetic: searchablePhonetic(phonetic) ?? undefined,
-      },
-    });
-  }
+  const newBasis = isNewInsert ? glossary.translations.flatMap((translation) => translation.id ?? []) : basis;
 
   const toUpdate: GlossaryTermUpdate = {
     phonetic: phonetic ?? undefined,
@@ -145,7 +131,34 @@ export const updateGlossaryTranslations = async ({
     discussion: discussion ?? undefined,
   };
 
-  return GlossaryStore.update(id, toUpdate, newTranslations);
+  const entry = await GlossaryStore.update(id, toUpdate, newTranslations, newBasis);
+
+  // Search follows the saved entry, not the list sent: they differ when translations added by
+  // someone else meanwhile were kept, and a save the store refused must not reach search at all.
+  // A failure here leaves the save in place; any re-index repairs the record.
+  if (entry?.searchId) {
+    try {
+      await algoliaClient.partialUpdateObject({
+        indexName: 'glossaries',
+        objectID: entry.searchId,
+        attributesToUpdate: {
+          translations: entry.translations.map((translation) => ({
+            glossary: translation.glossary,
+            language: translation.language,
+            phonetic: translation.phonetic ?? undefined,
+          })),
+          // undefined rather than null: this is a partial update, where undefined leaves the
+          // stored phonetic alone and null would erase it. Clearing a phonetic is left to a
+          // re-index, which rewrites the whole record.
+          phonetic: searchablePhonetic(phonetic) ?? undefined,
+        },
+      });
+    } catch (error) {
+      console.error('Saved glossary entry but could not update its search record', id, error);
+    }
+  }
+
+  return entry;
 };
 
 // Creates the entry, then indexes it. Indexing first meant a failed insert left a record no row
@@ -326,6 +339,8 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
             // The store takes the whole list: send the merge, not just the file's rows, or
             // every translation the file omits would be dropped.
             translations: mergeTranslations(existing.translations, translations),
+            // The merge was built from these; a translation added since the file was read is kept.
+            basis: existing.translations.flatMap((translation) => translation.id ?? []),
             updatedBy: userId,
           });
           return 'updated' as const;

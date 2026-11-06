@@ -26,6 +26,7 @@ import {
   updateGlossaryTranslations,
 } from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
+import { addsOrRemoves, isStored, TranslationListError } from '~/services/glossary.diff';
 import {
   glossaryEditFormSchema,
   glossaryFormSchema,
@@ -56,6 +57,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     throw new Error('Internal Server Error');
   }
 };
+
+// The form was built from translations that have changed since: one it names is gone.
+const staleEdit = () =>
+  json(
+    { success: false, errors: ['This entry was changed by someone else. Reload the page and edit it again.'] },
+    { status: 409 },
+  );
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);
@@ -99,28 +107,49 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
     const data = JSON.parse(formData.data as string);
     const validatedData = validatePayloadOrThrow({ schema: glossaryEditFormSchema, formData: data });
-    // The edit form sends the whole translations array, so a removal is just a shorter array.
-    // Removing translations needs Maintain; Update may only edit the ones that exist.
-    if (ability.cannot('Maintain', 'Glossary')) {
-      const [existing] = await readGlossariesByIds([validatedData.id]);
-      if (validatedData.translations.length < (existing?.translations?.length ?? 0)) {
-        return json({ success: false, errors: ['You are not allowed to remove translations.'] }, { status: 403 });
-      }
+    // The edit form sends the whole translations list, each stored one with its id, and the ids
+    // it was opened with. Matched by id against what is stored, one of those the list leaves out
+    // is a removal and one without an id an addition (one added by someone else meanwhile is
+    // neither, and is kept). Both need Maintain; Update may only edit the ones that exist.
+    const [existing] = await readGlossariesByIds([validatedData.id]);
+    if (!existing) {
+      return json({ success: false, errors: ['Glossary not found.'] }, { status: 404 });
     }
     const validatedDataWithUpdatedBy = validatedData.translations.map((translation) => ({
       ...translation,
       updatedBy: user.id,
     }));
+    let needsMaintain;
+    try {
+      needsMaintain = addsOrRemoves(
+        existing.translations.filter(isStored),
+        validatedDataWithUpdatedBy,
+        validatedData.baseTranslationIds,
+      );
+    } catch (error) {
+      if (error instanceof TranslationListError) return staleEdit();
+      throw error;
+    }
+    if (needsMaintain && ability.cannot('Maintain', 'Glossary')) {
+      return json({ success: false, errors: ['You are not allowed to add or remove translations.'] }, { status: 403 });
+    }
     const { id, phonetic = null, author = null, cbetaFrequency = null } = validatedData;
-    await updateGlossaryTranslations({
-      id,
-      phonetic,
-      author,
-      cbetaFrequency,
-      updatedBy: phonetic || author || cbetaFrequency ? user.id : null,
-      translations: validatedDataWithUpdatedBy,
-      discussion: validatedData.discussion ?? null,
-    });
+    try {
+      await updateGlossaryTranslations({
+        id,
+        phonetic,
+        author,
+        cbetaFrequency,
+        updatedBy: phonetic || author || cbetaFrequency ? user.id : null,
+        translations: validatedDataWithUpdatedBy,
+        basis: validatedData.baseTranslationIds,
+        discussion: validatedData.discussion ?? null,
+      });
+    } catch (error) {
+      // Someone else removed one of these translations between the check above and the save.
+      if (error instanceof TranslationListError) return staleEdit();
+      throw error;
+    }
     return json({ success: true, kind: 'edit' });
   }
 

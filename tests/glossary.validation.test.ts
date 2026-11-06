@@ -187,6 +187,35 @@ describe('glossaryEditFormSchema', () => {
     expect(translation.partOfSpeech).toBeUndefined();
     expect(translation.phonetic).toBeUndefined();
   });
+
+  // Without it a save would replace every translation, giving each a new id.
+  const withTranslation = (extra: object) => ({
+    id: 'glossary-uuid-000',
+    glossary: '法',
+    phonetic: 'fǎ',
+    translations: [{ glossary: 'dharma', language: 'english', sutraName: '佛教常用詞', volume: '-', ...extra }],
+  });
+
+  it('keeps each translation’s id', () => {
+    const id = '0000fe57-0000-4000-8000-000000000001';
+    expect(glossaryEditFormSchema.parse(withTranslation({ id })).translations[0].id).toBe(id);
+  });
+
+  it('accepts a translation without an id', () => {
+    expect(glossaryEditFormSchema.parse(withTranslation({})).translations[0].id).toBeUndefined();
+  });
+
+  it('keeps the ids the form was opened with', () => {
+    const ids = ['0000fe57-0000-4000-8000-000000000001'];
+    expect(
+      glossaryEditFormSchema.parse({ ...withTranslation({}), baseTranslationIds: ids }).baseTranslationIds,
+    ).toEqual(ids);
+    expect(glossaryEditFormSchema.parse(withTranslation({})).baseTranslationIds).toBeUndefined();
+  });
+
+  it('refuses a translation id that is not a uuid', () => {
+    expect(glossaryEditFormSchema.safeParse(withTranslation({ id: 'not-a-uuid' })).success).toBe(false);
+  });
 });
 
 // ─── Translation language (no longer the user's target language) ────────────

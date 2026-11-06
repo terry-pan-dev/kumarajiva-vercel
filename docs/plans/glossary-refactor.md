@@ -1,10 +1,140 @@
 # Glossary refactor: translations out of the JSON blob
 
-Status: **PR 1, 2, 3a, 3b merged; PR 3c written** (writes through `GlossaryStore`, `glossary.diff.ts`). Written 2026-11-04, updated 2026-11-05.
-`glossary_translations` (`drizzle/tables/glossary.ts`, migration `0025`) exists on dev,
-empty; not yet on prod (applied by the PR 1 merge). Data script 08 is written; dev dry run:
-13,920 terms, 17,357 rows, 1 duplicate (癡), no issues. Not applied anywhere, and by the
-user's decision it is **not run on dev or prod until PR 4** (dev when PR 4 work starts).
+Written 2026-11-04, updated 2026-11-05 (PR 4 code written). **Start with "Where we are" below.**
+
+## Where we are (hand-over, 2026-11-05)
+
+**Merged to main:** PR 1 (#205, table + migration `0025`), PR 2 (#206, data script 08 and the
+dbml files), PR 3a (#207, types), PR 3b (#208, reads through the store), PR 3c (writes
+through the store). The app still reads and writes the `glossaries.translations` JSON
+column; `glossary_translations` exists (on dev, and on prod via the deploy) and is **empty
+everywhere**. By the user's decision, script 08 has **not been run with `--apply`
+anywhere**; it is applied at PR 4.
+
+**What PR 3 left in place.** Every read and write of translations goes through one module,
+`app/services/glossary.store.ts` (`GlossaryStore`). Nothing else touches the column, except
+the seeds and the ZZTEST fixture script, which write the table directly (PR 4 updates
+them). The rest of the app sees the shapes in `app/services/glossary.types.ts`
+(`GlossaryEntry` = term + `translations: GlossaryTranslation[]`) and keeps the old field
+names (`glossary`, `sutraName`, `originSutraText`, … until PR 8). `GlossaryStore.update`
+takes the **whole list** a term should end up with; `diffTranslations`
+(`app/services/glossary.diff.ts`, pure, tested) turns that into insert/update/remove by id
+and is waiting for PR 4.
+
+**PR 4 code: committed on branch `glos-migration` (7ecf32e), plus two fixes in the working
+tree (below), tested on dev 2026-11-05.** Dev has 08 applied (17,357 rows). Unit tests (487),
+tsc, eslint/prettier on touched files and 21 mutation checks pass. On dev: the export, every
+field of every translation and the inspector results are byte-identical between the old code
+(JSON) and the new (table); 37 write checks on ZZTEST fixtures pass (edit, no-op, reorder,
+remove, insert, stale save rolled back, create, import merge, trash/revive, purge, concurrent
+inserts, an edit form open while someone adds, search record = table). Prod dry run of 08:
+15,027 terms, 19,325 translations, no issues, no duplicates, no stray `id` fields.
+
+Fixed after the dev tests (working tree):
+
+- An insert-form save sent Drizzle an empty `SET` for the term (it refuses: "No values to
+  set"), so Add New Translation always failed. `update` now always sets the term's `updated_at`,
+  which also keeps the term moving to the top of the glossary page as before.
+- Lost updates: a list built from an earlier read removed translations added since (two
+  concurrent inserts kept one; an open edit form deleted a translation added meanwhile). Saves
+  now carry a **basis**, the ids the list was built from (`TranslationBasis` in
+  `glossary.diff.ts`): the edit form's `baseTranslationIds` (from its default values), the
+  stored ids the insert or import read. A stored translation outside the basis is kept, after
+  the listed ones. No basis (a page loaded before the deploy): the old meaning. The search
+  record is now updated after the save, from the saved entry (a failure is logged; a re-index
+  repairs it), so a refused save no longer reaches search.
+
+What it does:
+
+- `glossary.store.ts` reads term columns (never the JSON column) and loads translations from
+  `glossary_translations` in a second query, grouped and ordered by `position`. Not Drizzle's
+  `with:`: the relation is named `translations`, the same as the JSON column, until PR 7.
+  `findAll`/`findAllIncludingTrash` load every row without naming 14k ids.
+- `glossary.rows.ts` (new, pure, tested): row ↔ `GlossaryTranslation`, including a round trip
+  through 08's `planTerm`. `partOfSpeech`/`phonetic` read as `null`, not absent: the edit form
+  posts `''` for an absent field, which the diff would see as an edit of every translation.
+- `create`, `update`, `revive` each run in one transaction. `update` updates the term row first
+  (which locks it, so concurrent saves of one term serialise), then diffs. A translation that
+  only moved keeps its `updated_at`/`updated_by` (set to itself, overriding `$onUpdate`).
+- `glossary.diff.ts`: `TranslationListError` (stale or forged ids), `isStored`, `contentChanged`
+  on updates, and `addsOrRemoves`, the edit permission rule: adding or removing a
+  translation needs Maintain (also closes the "replace one, same length" gap, and an Update
+  user can no longer add via the edit form). A stale list returns 409, not 500.
+- Edit form: no hidden input. The translation `id` travels in the form's default values and
+  `glossaryEditFormSchema` keeps it (`uuid().optional()`); a registered input with no value
+  would post `''`.
+- Seeds and ZZTEST fixtures write `glossary_translations` (fixtures in one transaction);
+  cleanup relies on the cascade. Inspector label now "translations (glossary_translations)".
+- The JSON column is no longer written: new terms get `[]` there.
+
+Not done in PR 4 (noted): an import touching a term with an exact duplicate (癡) drops the
+duplicate, as the JSON code did (`mergeTranslations`).
+
+**Next:** the user's manual pass of the app locally, then the **freeze** (a separate small PR
+off main: drop `Glossary`/`GlossaryData` from every role but admin in `LEVELS`,
+`app/authorisation/ability.ts`, and add the missing server-side Maintain check to the create
+action in `app/routes/_app.glossary.tsx`), kept until step 5 passes, then reverted.
+
+**PR 4 steps.** In order (steps 1–3 done, see above):
+
+1. **Prod dry run of 08** (read-only, but needs the user's yes:
+   `pnpm db:migrate:data:08:prod`). Look for blocking issues, in particular `unknown-field`
+   for `id`: until 3c, the glossary page's insert form saved the term's uuid in the new
+   translation as `id`. Dev has none. If prod has some, decide with the user: drop `id` in
+   08's mapping (it is the term's own id, so nothing is lost) or clean the JSON first.
+2. **Dev `--apply` of 08** (needs the user's yes) when PR 4 is ready to test, then a dev
+   export before and after the switch must match row for row.
+3. **Code for PR 4:**
+   - `GlossaryStore` reads load translations from the table, ordered by `position`
+     (Drizzle `with: { translations: { orderBy: position } }`, relations exist), and map
+     rows to `GlossaryTranslation`: `term`→`glossary`, `sourceName`→`sutraName`,
+     `sourceText`→`originSutraText`, `targetText`→`targetSutraText`, `metadata`
+     → `partOfSpeech`/`phonetic`, `updatedAt` timestamp → ISO string, `rationale`, `id`.
+     Keep a pure mapper with tests; 08's `planTerm` is the mapping in the other direction.
+   - `findForInspection`'s `translations::text ILIKE` becomes a search on the table;
+     `findIndexPage` loads translations for the page.
+   - `create`, `update`, `revive` in one transaction each (`db.transaction`, supported: the
+     app uses the Neon `Pool` driver). `update` reads the stored rows and applies
+     `diffTranslations`; `revive` replaces all rows.
+   - Edit form: a hidden translation `id` per row (`app/components/GlossaryList.tsx`), and
+     `id` kept by `glossaryEditFormSchema`. Without it every save deletes and re-creates
+     all of a term's translations, so they get new ids each time.
+   - "Removing translations needs Maintain" (`app/routes/_app.glossary._index.tsx`)
+     becomes "the diff removes something", which also closes today's gap: replacing one
+     translation with another without shortening the list.
+   - Seeds (`drizzle/seeds/dev/6-glossaries-seed.ts`) and fixtures
+     (`functional/glossary-fixtures.ts`, `seed-glossary-fixtures.ts`) write the table.
+   - Stop writing the JSON column; keep it (fallback) until PR 7.
+4. **Release** (each prod step needs the user's yes): prod export → freeze glossary editing →
+   `08 --apply` on prod → merge and deploy at once → unfreeze when live. Then step 5.
+
+**Known issues found on the way, not fixed (deliberately):**
+
+- `app/routes/_app.glossary.tsx` (create a term): `validatedData.sutraText` goes into both
+  `originSutraText` and `targetSutraText`. Planned for PR 6a with the Rationale field.
+- `glossaryEditFormSchema`: `updatedAt` defaults to `new Date()` evaluated once, at module
+  load, so the default is the server's start time.
+- `app/routes/_app.glossary._index.tsx`: the action's last branch (no `kind`) validates and
+  then creates nothing (`createGlossary` was already commented out; the function is gone).
+- A copy of the rejected earlier schema draft is in the 2026-11-05 session's scratchpad
+  only; ask the user before relying on it.
+
+**How each PR so far was checked** (keep doing this): `npx tsc --noEmit -p .`,
+`npx vitest run`, eslint and prettier **on the touched files only** (running prettier over
+`app/` reformats ~40 unrelated files), mutation checks (break each rule, confirm a test
+fails), then on dev:
+
+- **Read-only comparisons:** a temporary script in the repo root, `.tmp-*.ts` (top-level
+  await works there, and packages resolve), run with
+  `npx dotenv -e .env -- npx tsx ./.tmp-x.ts`, deleted afterwards.
+- **Old code against new:** `git archive HEAD | tar -x -C <scratch>/base`, symlink
+  `node_modules` into it, copy the same script into both trees and run it in each; diff
+  the JSON outputs.
+- **Writes, on fixtures only** (with the user's yes): seed with
+  `pnpm glossary:fixtures -- --yes --deletable`, and remove every trace with
+  `pnpm glossary:fixtures -- --yes --clean` (rows and index records, including other
+  `ZZTEST%` terms a test created). Use fixed uuids
+  (`0000fe57-0000-4000-8000-0000000000nn`) for anything a test creates, so runs compare.
 
 ## Goal
 
