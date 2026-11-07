@@ -8,10 +8,10 @@ export const glossariesTable = pgTable(
   'glossaries',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    // The headword. File column ChineseTerm, Algolia record `glossary`. Moving from the column
-    // `glossary` to `source_term` in three deploys (docs/plans/glossary-refactor.md, "Column
-    // move"): since deploy A it lives in `temp_term`; deploy B moves it to `source_term`.
-    sourceTerm: text('temp_term').notNull(),
+    // The headword. File column ChineseTerm, Algolia record `glossary`. The column was
+    // `glossary` until the column move (docs/plans/glossary-refactor.md, "Column move"): deploy
+    // B renamed it to `source_term`, so it keeps its place in the table.
+    sourceTerm: text('source_term').notNull(),
     phonetic: text('phonetic'),
     author: text('author'),
     cbetaFrequency: text('cbeta_frequency'),
@@ -19,15 +19,16 @@ export const glossariesTable = pgTable(
     searchId: text('search_id').default(sql`NULL`),
     ...auditAtFields,
     ...auditByFields,
-    // LEGACY (deploy A to B): the headword's old column, neither read nor written since deploy A,
-    // so it is optional (new terms leave it null). Deploy B renames it to `source_term` and
-    // copies `temp_term` back into it. Do not delete it from the definition: `drizzle-kit
-    // generate` would write a DROP COLUMN, which the next deploy would run.
-    legacyGlossary: text('glossary'),
+    // LEGACY (deploy B to C): where the headword lived during the column move. Neither read nor
+    // written since deploy B, so it is optional. Deploy C drops it. Do not delete it from the
+    // definition before then: `drizzle-kit generate` would write a DROP COLUMN, which the next
+    // deploy would run while deploy A's code (which reads it) may still be live.
+    legacyTempTerm: text('temp_term'),
   },
   (t) => ({
-    uniqueGlossaryIdx: uniqueIndex('unique_glossary_idx').on(t.legacyGlossary),
-    uniqueTempTermIdx: uniqueIndex('glossaries_temp_term_idx').on(t.sourceTerm),
+    // Named after the column's old name; it followed the rename.
+    uniqueGlossaryIdx: uniqueIndex('unique_glossary_idx').on(t.sourceTerm),
+    uniqueTempTermIdx: uniqueIndex('glossaries_temp_term_idx').on(t.legacyTempTerm),
   }),
 );
 

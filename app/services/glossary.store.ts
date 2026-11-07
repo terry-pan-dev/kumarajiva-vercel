@@ -31,8 +31,8 @@ const translationsTable = glossaryTranslationsTable;
 // Every column of `glossaries` except the legacy one: the term's own fields. Its translations
 // are loaded separately.
 const termColumns = (() => {
-  const { legacyGlossary, ...columns } = getTableColumns(glossariesTable);
-  void legacyGlossary;
+  const { legacyTempTerm, ...columns } = getTableColumns(glossariesTable);
+  void legacyTempTerm;
   return columns;
 })();
 
