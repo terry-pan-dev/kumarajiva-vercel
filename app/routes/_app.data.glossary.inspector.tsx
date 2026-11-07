@@ -196,7 +196,7 @@ const SUBTLE = 'text-muted-foreground';
 // silently going unseen.
 const COLUMNS: { key: keyof GlossaryTerm; label: string }[] = [
   { key: 'id', label: 'id' },
-  { key: 'sourceTerm', label: 'glossary' },
+  { key: 'sourceTerm', label: 'temp_term' },
   { key: 'phonetic', label: 'phonetic' },
   { key: 'author', label: 'author' },
   { key: 'cbetaFrequency', label: 'cbeta_frequency' },

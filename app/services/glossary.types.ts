@@ -34,8 +34,12 @@ export type GlossaryTranslation = {
   updatedAt: string;
 };
 
+// The column of `glossaries` the app no longer reads or writes, during the headword's column
+// move (deploys A to B; docs/plans/glossary-refactor.md).
+export type LegacyGlossaryColumn = 'legacyGlossary';
+
 // A term without its translations.
-export type GlossaryTerm = ReadGlossary;
+export type GlossaryTerm = Omit<ReadGlossary, LegacyGlossaryColumn>;
 
 // A term with its translations, in display order.
 export type GlossaryEntry = GlossaryTerm & { translations: GlossaryTranslation[] };

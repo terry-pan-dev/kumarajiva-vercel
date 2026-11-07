@@ -183,6 +183,13 @@
       "when": 1793991899595,
       "tag": "0026_drop-glossary-legacy-columns",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794052672081,
+      "tag": "0027_glossary-temp-term",
+      "breakpoints": true
     }
   ]
 }
