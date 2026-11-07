@@ -122,9 +122,9 @@ function GlossaryTermCard({ group }: { group: GroupedTerm }) {
               {tr.targetText && (
                 <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetText}&rdquo;</p>
               )}
-              {tr.rationale && (
+              {tr.discussion && (
                 <p className="text-muted-foreground line-clamp-3">
-                  {t('chunked.rationale', { rationale: tr.rationale })}
+                  {t('chunked.discussion', { discussion: tr.discussion })}
                 </p>
               )}
             </div>

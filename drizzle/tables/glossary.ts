@@ -19,16 +19,10 @@ export const glossariesTable = pgTable(
     searchId: text('search_id').default(sql`NULL`),
     ...auditAtFields,
     ...auditByFields,
-    // LEGACY (deploy B to C): where the headword lived during the column move. Neither read nor
-    // written since deploy B, so it is optional. Deploy C drops it. Do not delete it from the
-    // definition before then: `drizzle-kit generate` would write a DROP COLUMN, which the next
-    // deploy would run while deploy A's code (which reads it) may still be live.
-    legacyTempTerm: text('temp_term'),
   },
   (t) => ({
     // Named after the column's old name; it followed the rename.
     uniqueGlossaryIdx: uniqueIndex('unique_glossary_idx').on(t.sourceTerm),
-    uniqueTempTermIdx: uniqueIndex('glossaries_temp_term_idx').on(t.legacyTempTerm),
   }),
 );
 
@@ -58,8 +52,9 @@ export const glossaryTranslationsTable = pgTable(
     sourceText: text('source_text'),
     targetText: text('target_text'),
     author: text('author'),
-    // Why this rendering was chosen.
-    rationale: text('rationale'),
+    // Notes on this translation, e.g. why this rendering was chosen. Was `rationale` until
+    // migration 0029. The term has its own glossaries.discussion.
+    discussion: text('discussion'),
     // Rare per-translation fields (partOfSpeech, phonetic of the rendering); unused today.
     // The Chinese pinyin is the term-level glossaries.phonetic.
     metadata: json('metadata').$type<Record<string, string>>(),

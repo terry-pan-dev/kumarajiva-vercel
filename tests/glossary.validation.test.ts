@@ -319,57 +319,57 @@ describe('glossary translation language', () => {
   });
 });
 
-// ─── Rationale, the same rule in every form ──────────────────────────────────
+// ─── Discussion, the same rule in every form ──────────────────────────────────
 
-describe('rationale', () => {
-  const create = (rationale?: unknown) =>
-    glossaryFormSchema.safeParse({ glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma', rationale });
-  const insert = (rationale?: unknown) =>
+describe('discussion', () => {
+  const create = (discussion?: unknown) =>
+    glossaryFormSchema.safeParse({ glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma', discussion });
+  const insert = (discussion?: unknown) =>
     glossaryInsertFormSchema.safeParse({
       id: 'g1',
       term: 'Dharma',
       sourceName: '',
       volume: '',
       author: '',
-      rationale,
+      discussion,
     });
-  const edit = (rationale?: unknown) =>
+  const edit = (discussion?: unknown) =>
     glossaryEditFormSchema.safeParse({
       id: 'g1',
       sourceTerm: '法',
       phonetic: 'fǎ',
-      translations: [{ term: 'Dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', rationale }],
+      translations: [{ term: 'Dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', discussion }],
     });
-  const rationaleOf = {
+  const discussionOf = {
     create: (value?: unknown) => {
       const r = create(value);
-      return r.success ? r.data.rationale : 'invalid';
+      return r.success ? r.data.discussion : 'invalid';
     },
     insert: (value?: unknown) => {
       const r = insert(value);
-      return r.success ? r.data.rationale : 'invalid';
+      return r.success ? r.data.discussion : 'invalid';
     },
     edit: (value?: unknown) => {
       const r = edit(value);
-      return r.success ? r.data.translations[0].rationale : 'invalid';
+      return r.success ? r.data.translations[0].discussion : 'invalid';
     },
   };
 
-  it.each(['create', 'insert', 'edit'] as const)('%s keeps a rationale, trimmed', (form) => {
-    expect(rationaleOf[form]('  chosen over “law”: the term is technical here \n')).toBe(
+  it.each(['create', 'insert', 'edit'] as const)('%s keeps a discussion, trimmed', (form) => {
+    expect(discussionOf[form]('  chosen over “law”: the term is technical here \n')).toBe(
       'chosen over “law”: the term is technical here',
     );
   });
 
   // Blank and absent mean the same, so clearing the field never reads as an edit of it.
   it.each(['create', 'insert', 'edit'] as const)('%s stores blank or absent as null', (form) => {
-    expect(rationaleOf[form]('   ')).toBeNull();
-    expect(rationaleOf[form]('')).toBeNull();
-    expect(rationaleOf[form](null)).toBeNull();
-    expect(rationaleOf[form](undefined)).toBeNull();
+    expect(discussionOf[form]('   ')).toBeNull();
+    expect(discussionOf[form]('')).toBeNull();
+    expect(discussionOf[form](null)).toBeNull();
+    expect(discussionOf[form](undefined)).toBeNull();
   });
 
-  it.each(['create', 'insert', 'edit'] as const)('%s accepts a long rationale', (form) => {
-    expect(rationaleOf[form]('x'.repeat(20_000))).toHaveLength(20_000);
+  it.each(['create', 'insert', 'edit'] as const)('%s accepts a long discussion', (form) => {
+    expect(discussionOf[form]('x'.repeat(20_000))).toHaveLength(20_000);
   });
 });

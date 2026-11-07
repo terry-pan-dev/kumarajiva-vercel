@@ -53,11 +53,11 @@
       "englishSutraText": "此譯詞的英文例句",
       "translationUuidImport": "選填；下載的匯出檔中該譯詞的 ID。若資料列的 TranslationUUID 對應到條目中的某個譯詞，會<strong>更新該譯詞</strong>；其他資料列一律新增為新譯詞",
       "translationUuidReplace": "選填；會被忽略，因為所有譯詞都會重新寫入",
-      "rationale": "選填；選用此譯法的理由。資料列更新譯詞時，空白儲存格會清除已儲存的理由；省略此欄則全部保留"
+      "discussion": "選填；關於此譯詞的討論，例如選用此譯法的理由。資料列更新譯詞時，空白儲存格會清除已儲存的討論；省略此欄則全部保留。舊匯出檔的 Rationale 欄視同 Discussion"
     },
     "stepUpload": "<strong>上傳</strong> — 選擇 CSV 或 XLSX 檔案並點選<em>預覽</em>。兩種檔案都在您的瀏覽器中解析，不會將檔案資料傳送到伺服器，因此大型檔案也不會超過上傳大小限制。",
     "stepRepeat": "<strong>重複</strong>上述步驟，直到所有批次都已{{done}}。頂端的進度列會顯示目前進度。",
-    "rationale": "理由：{{rationale}}"
+    "discussion": "討論：{{discussion}}"
   },
   "import": {
     "title": "匯入詞彙",

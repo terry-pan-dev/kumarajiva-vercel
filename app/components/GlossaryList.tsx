@@ -117,9 +117,9 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
   );
 }
 
-// The same prompt wherever a rationale is entered: create, edit and insert.
-export const RATIONALE_DESCRIPTION =
-  'Why this rendering was chosen: the reasoning, sources or alternatives considered. Optional.';
+// The same prompt wherever a translation's discussion is entered: create, edit and insert.
+export const DISCUSSION_DESCRIPTION =
+  'Notes on this translation, e.g. why this rendering was chosen, sources or alternatives considered. Optional.';
 
 export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: GlossaryEntry; showEdit?: boolean }) => {
   // Regex cache to avoid recompilation
@@ -224,7 +224,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                     // passes it through), so the save edits it in place. No input needed for it.
                     translations: (glossary.translations || []).map((translation) => ({
                       ...translation,
-                      rationale: translation.rationale ?? null,
+                      discussion: translation.discussion ?? null,
                     })),
                     baseTranslationIds: glossary.translations.flatMap((translation) => translation.id ?? []),
                     discussion: glossary.discussion || '',
@@ -319,12 +319,12 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                     <h3 className="text-muted-foreground text-sm font-medium">{targetText}</h3>
                   </div>
                 )}
-                {translation.rationale && (
-                  <div aria-label="rationale" className="border-primary/40 mt-2 border-l-2 pl-3">
+                {translation.discussion && (
+                  <div aria-label="discussion" className="border-primary/40 mt-2 border-l-2 pl-3">
                     <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                      Rationale
+                      Discussion
                     </span>
-                    <p className="text-sm whitespace-pre-wrap">{translation.rationale}</p>
+                    <p className="text-sm whitespace-pre-wrap">{translation.discussion}</p>
                   </div>
                 )}
               </div>
@@ -429,9 +429,9 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
             <FormInput label="Author" description="The author of the term" name={`translations.${index}.author`} />
             <span className="col-span-2">
               <FormTextarea
-                label="Rationale"
-                description={RATIONALE_DESCRIPTION}
-                name={`translations.${index}.rationale`}
+                label="Discussion"
+                description={DISCUSSION_DESCRIPTION}
+                name={`translations.${index}.discussion`}
               />
             </span>
           </div>
@@ -470,7 +470,7 @@ const GlossaryInsertForm = ({ id }: { id: string }) => {
         <FormInput label="Phonetic" name={`phonetic`} description="The phonetic of the term" />
         <FormInput label="Author" name={`author`} description="The author of the new term" />
         <span className="col-span-2">
-          <FormTextarea name="rationale" label="Rationale" description={RATIONALE_DESCRIPTION} />
+          <FormTextarea name="discussion" label="Discussion" description={DISCUSSION_DESCRIPTION} />
         </span>
       </div>
     </div>

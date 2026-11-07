@@ -197,6 +197,13 @@
       "when": 1794058728384,
       "tag": "0028_glossary-source-term",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794060996263,
+      "tag": "0029_glossary-drop-temp-term-rename-discussion",
+      "breakpoints": true
     }
   ]
 }

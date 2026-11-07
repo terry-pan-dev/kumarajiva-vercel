@@ -255,7 +255,7 @@ describe('importGlossaries', () => {
     const existing = entry('e', {
       sourceTerm: '佛',
       translations: [
-        translation('Buddha', { id: 't1', rationale: 'old reason' }),
+        translation('Buddha', { id: 't1', discussion: 'old reason' }),
         translation('Awakened', { id: 't2' }),
       ],
     });
@@ -263,12 +263,12 @@ describe('importGlossaries', () => {
     store.findById.mockResolvedValue(existing);
 
     await importGlossaries(
-      [{ ...fileRow('佛', 'the Buddha'), translationUuid: 't1', rationale: 'new reason' }],
+      [{ ...fileRow('佛', 'the Buddha'), translationUuid: 't1', discussion: 'new reason' }],
       'importer',
     );
 
     const written = store.update.mock.calls[0][2] as GlossaryTranslation[];
-    expect(written.map((t) => [t.id, t.term, t.rationale ?? null])).toEqual([
+    expect(written.map((t) => [t.id, t.term, t.discussion ?? null])).toEqual([
       ['t1', 'the Buddha', 'new reason'],
       ['t2', 'Awakened', null],
     ]);
@@ -277,12 +277,12 @@ describe('importGlossaries', () => {
 
   it('a new term never takes the file’s translation ids', async () => {
     await importGlossaries(
-      [{ ...fileRow('法', 'Dharma'), translationUuid: 't-from-file', rationale: 'why' }],
+      [{ ...fileRow('法', 'Dharma'), translationUuid: 't-from-file', discussion: 'why' }],
       'importer',
     );
     const [created] = store.create.mock.calls[0][1] as GlossaryTranslation[];
     expect(created).not.toHaveProperty('id');
-    expect(created.rationale).toBe('why');
+    expect(created.discussion).toBe('why');
   });
 
   it('a revived term never takes the file’s translation ids', async () => {

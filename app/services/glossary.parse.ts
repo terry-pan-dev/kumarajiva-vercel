@@ -24,9 +24,9 @@ export type GlossaryImportRow = {
   author: string;
   phonetic: string;
   // Optional columns. Undefined when the file has no such column: an older file, or one that
-  // left it out, then leaves stored rationales alone. '' is a blank cell.
+  // left it out, then leaves stored discussions alone. '' is a blank cell.
   translationUuid?: string;
-  rationale?: string;
+  discussion?: string;
 };
 
 export type GroupedTerm = {
@@ -63,7 +63,9 @@ const XLSX_COLUMNS: Record<string, keyof GlossaryImportRow> = {
   phonetic: 'phonetic',
   translationuuid: 'translationUuid',
   'translation uuid': 'translationUuid',
-  rationale: 'rationale',
+  discussion: 'discussion',
+  // The column's name in exports before it was renamed (2026-11-07).
+  rationale: 'discussion',
 };
 
 // PapaParse is isomorphic — safe to call in browser event handlers.
@@ -87,7 +89,8 @@ export function parseGlossaryCSV(csvText: string): GlossaryImportRow[] {
       phonetic: row.Phonetic?.trim() ?? '',
       // Left out, not '', when the file has no such column (see GlossaryImportRow).
       ...(row.TranslationUUID !== undefined && { translationUuid: row.TranslationUUID.trim() }),
-      ...(row.Rationale !== undefined && { rationale: row.Rationale.trim() }),
+      // Discussion, or Rationale in a file exported before the rename (2026-11-07).
+      ...((row.Discussion ?? row.Rationale) !== undefined && { discussion: (row.Discussion ?? row.Rationale).trim() }),
     }));
 }
 
@@ -198,7 +201,7 @@ export function chunkGroupsToRows(groups: GroupedTerm[]): GlossaryImportRow[][] 
 // The translation a file row describes, as both the importer and the import preview read it,
 // so the preview shows what the import will store. `id` is the file's TranslationUUID, which
 // only an update of that same stored translation uses (see mergeTranslationsWithStatus).
-// Blank passages and author are null; a blank Rationale is null and a missing column undefined.
+// Blank passages and author are null; a blank Discussion is null and a missing column undefined.
 export function translationFromRow(row: GlossaryImportRow) {
   return {
     id: row.translationUuid || undefined,
@@ -208,6 +211,6 @@ export function translationFromRow(row: GlossaryImportRow) {
     sourceText: row.chineseSutraText || null,
     targetText: row.englishSutraText || null,
     author: row.author || null,
-    rationale: row.rationale === undefined ? undefined : row.rationale || null,
+    discussion: row.discussion === undefined ? undefined : row.discussion || null,
   };
 }

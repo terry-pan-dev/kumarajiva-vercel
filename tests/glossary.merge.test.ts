@@ -210,9 +210,9 @@ describe('mergeTranslationsWithStatus — duplicates', () => {
     }
   });
 
-  it('treats a blank cell as an empty stored value, and ignores the rationale', () => {
-    const stored = [lotus({ sourceText: null, rationale: 'why' })];
-    expect(mergeTranslationsWithStatus(stored, [lotus({ sourceText: '', rationale: null })])[1].duplicate).toBe(true);
+  it('treats a blank cell as an empty stored value, and ignores the discussion', () => {
+    const stored = [lotus({ sourceText: null, discussion: 'why' })];
+    expect(mergeTranslationsWithStatus(stored, [lotus({ sourceText: '', discussion: null })])[1].duplicate).toBe(true);
   });
 
   it('flags a row repeating an updated translation’s new content', () => {
@@ -275,16 +275,16 @@ describe('mergeTranslationsWithStatus — by TranslationUUID', () => {
     expect(mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', sourceText: '' })])[0].status).toBe('kept');
   });
 
-  it('leaves the rationale alone when the file has no Rationale column, and clears it on a blank cell', () => {
-    const a = stored('t1', 'Buddha', { rationale: 'why' });
-    const absent = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', rationale: undefined })])[0];
-    expect(absent).toMatchObject({ status: 'kept', translation: { rationale: 'why' } });
+  it('leaves the discussion alone when the file has no Discussion column, and clears it on a blank cell', () => {
+    const a = stored('t1', 'Buddha', { discussion: 'why' });
+    const absent = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', discussion: undefined })])[0];
+    expect(absent).toMatchObject({ status: 'kept', translation: { discussion: 'why' } });
 
-    const blank = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', rationale: null })])[0];
-    expect(blank).toMatchObject({ status: 'updated', translation: { rationale: null } });
+    const blank = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', discussion: null })])[0];
+    expect(blank).toMatchObject({ status: 'updated', translation: { discussion: null } });
 
-    const changed = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', rationale: 'because' })])[0];
-    expect(changed).toMatchObject({ status: 'updated', translation: { rationale: 'because' } });
+    const changed = mergeTranslationsWithStatus([a], [fileRow('Buddha', { id: 't1', discussion: 'because' })])[0];
+    expect(changed).toMatchObject({ status: 'updated', translation: { discussion: 'because' } });
   });
 
   it('appends a row whose id names none of the term’s translations, without the id', () => {

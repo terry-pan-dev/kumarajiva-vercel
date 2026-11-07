@@ -54,7 +54,7 @@ type ExistingGlossary = {
         sourceText?: string | null;
         targetText?: string | null;
         author?: string | null;
-        rationale?: string | null;
+        discussion?: string | null;
       }>
     | null
     | undefined;
@@ -178,7 +178,7 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
     sourceText: t.sourceText ?? null,
     targetText: t.targetText ?? null,
     author: t.author ?? null,
-    rationale: t.rationale ?? null,
+    discussion: t.discussion ?? null,
   }));
 
   // Mirrors the server's merge in importGlossaries (same rows, same translationFromRow), so the
@@ -251,9 +251,9 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
               {tr.targetText && (
                 <p className="text-muted-foreground line-clamp-2 italic">&ldquo;{tr.targetText}&rdquo;</p>
               )}
-              {tr.rationale && (
+              {tr.discussion && (
                 <p className="text-muted-foreground line-clamp-3">
-                  {t('chunked.rationale', { rationale: tr.rationale })}
+                  {t('chunked.discussion', { discussion: tr.discussion })}
                 </p>
               )}
             </div>

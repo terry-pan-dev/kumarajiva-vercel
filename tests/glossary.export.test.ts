@@ -186,9 +186,9 @@ describe('export → import round trip', () => {
           sourceText: '佛告阿難',
           targetText: 'The Buddha told Ānanda, "listen"',
           author: '翻譯團隊',
-          rationale: 'the standard rendering,\nkept for consistency',
+          discussion: 'the standard rendering,\nkept for consistency',
         }),
-        makeTranslation({ id: 't2', term: 'the Awakened One', sourceName: 'S', volume: '1', rationale: null }),
+        makeTranslation({ id: 't2', term: 'the Awakened One', sourceName: 'S', volume: '1', discussion: null }),
       ],
     }),
     makeGlossary({ id: 'g2', sourceTerm: '法', translations: [makeTranslation({ id: 't3', term: 'Dharma' })] }),
@@ -202,12 +202,12 @@ describe('export → import round trip', () => {
       return mergeTranslationsWithStatus<MergeableTranslation>(stored, group.rows.map(translationFromRow));
     });
 
-  it('exports each translation’s id and rationale', () => {
+  it('exports each translation’s id and discussion', () => {
     expect(glossariesToExportRows(entries)[0]).toMatchObject({
       TranslationUUID: 't1',
-      Rationale: 'the standard rendering,\nkept for consistency',
+      Discussion: 'the standard rendering,\nkept for consistency',
     });
-    expect(glossariesToExportRows(entries)[1]).toMatchObject({ TranslationUUID: 't2', Rationale: '' });
+    expect(glossariesToExportRows(entries)[1]).toMatchObject({ TranslationUUID: 't2', Discussion: '' });
   });
 
   it('changes nothing when a CSV export is imported back', () => {

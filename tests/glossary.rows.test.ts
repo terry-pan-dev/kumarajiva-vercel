@@ -20,7 +20,7 @@ const row = (extra: Partial<ReadGlossaryTranslation> = {}): ReadGlossaryTranslat
   sourceText: '佛告阿難',
   targetText: 'The Buddha told Ānanda',
   author: '翻譯團隊',
-  rationale: null,
+  discussion: null,
   metadata: null,
   createdAt: new Date('2025-01-01T00:00:00.000Z'),
   updatedAt: new Date('2025-06-01T10:00:00.000Z'),
@@ -46,7 +46,7 @@ const translation = (extra: Partial<GlossaryTranslation> = {}): GlossaryTranslat
 describe('toGlossaryTranslation', () => {
   it('maps every column to its read-shape field', () => {
     expect(
-      toGlossaryTranslation(row({ rationale: 'why', metadata: { partOfSpeech: 'noun', phonetic: 'bud-dha' } })),
+      toGlossaryTranslation(row({ discussion: 'why', metadata: { partOfSpeech: 'noun', phonetic: 'bud-dha' } })),
     ).toEqual({
       id: 't1',
       term: 'Buddha',
@@ -58,7 +58,7 @@ describe('toGlossaryTranslation', () => {
       author: '翻譯團隊',
       partOfSpeech: 'noun',
       phonetic: 'bud-dha',
-      rationale: 'why',
+      discussion: 'why',
       updatedBy: 'user-1',
       updatedAt: '2025-06-01T10:00:00.000Z',
     });
@@ -74,7 +74,7 @@ describe('toGlossaryTranslation', () => {
 
 describe('translationContent', () => {
   it('maps every content field to its column', () => {
-    expect(translationContent(translation({ rationale: 'why', partOfSpeech: 'noun', phonetic: 'bud-dha' }))).toEqual({
+    expect(translationContent(translation({ discussion: 'why', partOfSpeech: 'noun', phonetic: 'bud-dha' }))).toEqual({
       language: 'english',
       term: 'Buddha',
       sourceName: '華嚴經',
@@ -82,7 +82,7 @@ describe('translationContent', () => {
       sourceText: '佛告阿難',
       targetText: 'The Buddha told Ānanda',
       author: '翻譯團隊',
-      rationale: 'why',
+      discussion: 'why',
       metadata: { partOfSpeech: 'noun', phonetic: 'bud-dha' },
     });
   });
@@ -98,7 +98,7 @@ describe('translationContent', () => {
     const content = translationContent({ ...translation({ sourceText: '' }), targetText: undefined });
     expect(content.sourceText).toBe('');
     expect(content.targetText).toBeNull();
-    expect(content.rationale).toBeNull();
+    expect(content.discussion).toBeNull();
   });
 });
 

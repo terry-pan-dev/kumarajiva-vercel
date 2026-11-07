@@ -147,28 +147,34 @@ describe('chunkGroupsToRows', () => {
 
 // ─── The optional columns (PR 6b) ────────────────────────────────────────────
 
-describe('parseGlossaryCSV — TranslationUUID and Rationale', () => {
+describe('parseGlossaryCSV — TranslationUUID and Discussion', () => {
   const header =
     'UUID,ChineseTerm,EnglishTerm,ChineseSutraText,EnglishSutraText,SutraName,Volume,CBetaFrequency,Author,Phonetic';
 
   it('reads both columns, trimmed', () => {
-    const [row] = parseGlossaryCSV(`${header},TranslationUUID,Rationale\ng1,法,Dharma,,,S,1,,,fǎ, t1 , why \n`);
-    expect(row).toMatchObject({ translationUuid: 't1', rationale: 'why' });
+    const [row] = parseGlossaryCSV(`${header},TranslationUUID,Discussion\ng1,法,Dharma,,,S,1,,,fǎ, t1 , why \n`);
+    expect(row).toMatchObject({ translationUuid: 't1', discussion: 'why' });
   });
 
-  it('leaves them out for a file without those columns, so stored rationales stay', () => {
+  it('leaves them out for a file without those columns, so stored discussions stay', () => {
     const [row] = parseGlossaryCSV(`${header}\ng1,法,Dharma,,,S,1,,,fǎ\n`);
     expect(row).not.toHaveProperty('translationUuid');
-    expect(row).not.toHaveProperty('rationale');
+    expect(row).not.toHaveProperty('discussion');
   });
 
   it('reads a blank cell as empty, not absent', () => {
-    const [row] = parseGlossaryCSV(`${header},TranslationUUID,Rationale\ng1,法,Dharma,,,S,1,,,fǎ,,\n`);
-    expect(row).toMatchObject({ translationUuid: '', rationale: '' });
+    const [row] = parseGlossaryCSV(`${header},TranslationUUID,Discussion\ng1,法,Dharma,,,S,1,,,fǎ,,\n`);
+    expect(row).toMatchObject({ translationUuid: '', discussion: '' });
+  });
+
+  // The column was Rationale until 2026-11-07; files exported before then still import.
+  it('reads an older file’s Rationale column as Discussion', () => {
+    const [row] = parseGlossaryCSV(`${header},TranslationUUID,Rationale\ng1,法,Dharma,,,S,1,,,fǎ,t1, why \n`);
+    expect(row).toMatchObject({ translationUuid: 't1', discussion: 'why' });
   });
 });
 
-describe('parseGlossaryXLSX — TranslationUUID and Rationale', () => {
+describe('parseGlossaryXLSX — TranslationUUID and Discussion', () => {
   const xlsxFile = async (aoa: string[][]) => {
     const { utils, write } = await import('xlsx');
     const workbook = utils.book_new();
@@ -179,11 +185,21 @@ describe('parseGlossaryXLSX — TranslationUUID and Rationale', () => {
   it('reads both columns, under either header spelling', async () => {
     const [row] = await parseGlossaryXLSX(
       await xlsxFile([
-        ['ChineseTerm', 'EnglishTerm', 'Translation UUID', 'rationale'],
+        ['ChineseTerm', 'EnglishTerm', 'Translation UUID', 'discussion'],
         ['法', 'Dharma', 't1', 'why'],
       ]),
     );
-    expect(row).toMatchObject({ translationUuid: 't1', rationale: 'why' });
+    expect(row).toMatchObject({ translationUuid: 't1', discussion: 'why' });
+  });
+
+  it('reads an older file’s Rationale column as Discussion', async () => {
+    const [row] = await parseGlossaryXLSX(
+      await xlsxFile([
+        ['ChineseTerm', 'EnglishTerm', 'Rationale'],
+        ['法', 'Dharma', 'why'],
+      ]),
+    );
+    expect(row).toMatchObject({ discussion: 'why' });
   });
 
   it('leaves them out for a file without those columns', async () => {
@@ -194,7 +210,7 @@ describe('parseGlossaryXLSX — TranslationUUID and Rationale', () => {
       ]),
     );
     expect(row).not.toHaveProperty('translationUuid');
-    expect(row).not.toHaveProperty('rationale');
+    expect(row).not.toHaveProperty('discussion');
   });
 });
 
@@ -209,7 +225,7 @@ describe('translationFromRow', () => {
           volume: '1',
           chineseSutraText: '法',
           translationUuid: 't1',
-          rationale: 'why',
+          discussion: 'why',
         }),
       ),
     ).toEqual({
@@ -220,14 +236,14 @@ describe('translationFromRow', () => {
       sourceText: '法',
       targetText: null,
       author: null,
-      rationale: 'why',
+      discussion: 'why',
     });
   });
 
-  it('gives no id for a blank TranslationUUID, null for a blank rationale and undefined for none', () => {
-    const blank = translationFromRow(makeRow({ chineseTerm: '法', translationUuid: '', rationale: '' }));
+  it('gives no id for a blank TranslationUUID, null for a blank discussion and undefined for none', () => {
+    const blank = translationFromRow(makeRow({ chineseTerm: '法', translationUuid: '', discussion: '' }));
     expect(blank.id).toBeUndefined();
-    expect(blank.rationale).toBeNull();
-    expect(translationFromRow(makeRow({ chineseTerm: '法' })).rationale).toBeUndefined();
+    expect(blank.discussion).toBeNull();
+    expect(translationFromRow(makeRow({ chineseTerm: '法' })).discussion).toBeUndefined();
   });
 });
