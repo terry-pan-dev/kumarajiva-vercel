@@ -8,9 +8,10 @@ export const glossariesTable = pgTable(
   'glossaries',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    // The headword. Named like the translation's `term` / `sourceText` (PR 11); the column keeps
-    // its old name, so no migration. File column ChineseTerm, Algolia record `glossary`.
-    sourceTerm: text('glossary').notNull(),
+    // The headword. File column ChineseTerm, Algolia record `glossary`. Moving from the column
+    // `glossary` to `source_term` in three deploys (docs/plans/glossary-refactor.md, "Column
+    // move"): since deploy A it lives in `temp_term`; deploy B moves it to `source_term`.
+    sourceTerm: text('temp_term').notNull(),
     phonetic: text('phonetic'),
     author: text('author'),
     cbetaFrequency: text('cbeta_frequency'),
@@ -18,9 +19,15 @@ export const glossariesTable = pgTable(
     searchId: text('search_id').default(sql`NULL`),
     ...auditAtFields,
     ...auditByFields,
+    // LEGACY (deploy A to B): the headword's old column, neither read nor written since deploy A,
+    // so it is optional (new terms leave it null). Deploy B renames it to `source_term` and
+    // copies `temp_term` back into it. Do not delete it from the definition: `drizzle-kit
+    // generate` would write a DROP COLUMN, which the next deploy would run.
+    legacyGlossary: text('glossary'),
   },
   (t) => ({
-    uniqueGlossaryIdx: uniqueIndex('unique_glossary_idx').on(t.sourceTerm),
+    uniqueGlossaryIdx: uniqueIndex('unique_glossary_idx').on(t.legacyGlossary),
+    uniqueTempTermIdx: uniqueIndex('glossaries_temp_term_idx').on(t.sourceTerm),
   }),
 );
 

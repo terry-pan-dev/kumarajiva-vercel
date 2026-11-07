@@ -8,9 +8,10 @@ Written 2026-11-04, updated 2026-11-06 (PR 7 merged; PR 8a renames the source fi
 freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
 during the freeze; the prod comparison (step 5) passed. The app reads and writes
 `glossary_translations` only. PR 6 (#212), PR 7a (#213), PR 7b (#214, drops the old
-columns), the cleanup (#215) and PR 8a + 8b (#216, `rename-labels`) are merged. PR 9 is
-committed on `main` (93d08da32). PR 11 is in the working tree; PR 10 waits (the user wants to
-think it over), so 11 went first (see "Next" below).
+columns), the cleanup (#215), PR 8a + 8b (#216) and PR 9 (#217) are merged. PR 11 is
+committed on branch `var-term` (3ed5eebca). **Column move deploy A** (the headword's column
+`glossary` → `source_term`, in three deploys) is in the working tree on `var-term`, not
+applied anywhere yet: see "Column move" below. PR 10 waits (the user wants to think it over).
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
@@ -233,6 +234,74 @@ PR each, in this order:
   prompt shape.
 
 Also open, not scheduled: remove `translationKey` (no caller since 7b; see 8b above).
+
+### Column move: `glossaries.glossary` → `source_term` (agreed 2026-11-07)
+
+The user wants the column to match the code's `sourceTerm` now, while there are few users, and
+with no deploy ever breaking the code still live. Deploys run `pnpm build && pnpm db:migrate`
+(`vercel.json`): the migration runs **before** the new code is live, while the previous
+deployment still serves, so each migration must work with the code before it and after it.
+The drizzle migrator runs each batch in one transaction (`ALTER TABLE` locks the table, so
+nothing writes in between steps). A plain `RENAME COLUMN` would break every glossary read for
+up to a minute; adding `source_term` and dropping `glossary` would put the column last
+(Postgres orders columns by creation and has no `ADD COLUMN … AFTER`). So: a temporary
+column, then a rename, which keeps `source_term` second, where `glossary` is.
+
+Accepted by the user: a term created during the build minute of A or B can fail to save
+(NOT NULL on the column the old code does not write); they retry. No data is lost otherwise.
+
+| Deploy | Migration (runs first)                                                                                                  | Code (live after)              |
+| ------ | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| A      | 0027: add `temp_term`, copy `glossary` into it, NOT NULL, unique index; `glossary` optional                             | `sourceTerm` → `temp_term`     |
+| B      | 0028: rename `glossary` → `source_term`, copy `temp_term` back, `source_term` NOT NULL; `temp_term` optional            | `sourceTerm` → `source_term`   |
+| C      | 0029: drop `temp_term` and its index                                                                                    | no change (legacy field gone)  |
+
+**Deploy A (in the working tree, 2026-11-07).**
+
+- `drizzle/tables/glossary.ts`: `sourceTerm: text('temp_term').notNull()`, unique index
+  `glossaries_temp_term_idx`; the old column stays as `legacyGlossary: text('glossary')`
+  (optional, still under `unique_glossary_idx`; nulls do not clash). Pattern from 7a:
+  `LegacyGlossaryColumn` in `glossary.types.ts`, left out of `GlossaryTerm`, `termColumns`
+  (so no read returns it) and `GlossaryTermInput` / `GlossaryTermUpdate`. Nothing else in the
+  app names the column (no raw SQL does). Inspector column label `temp_term`.
+- `0027_glossary-temp-term.sql`: generated, then edited by hand (drizzle-kit adds a NOT NULL
+  column in one statement, which fails on a filled table): `ADD COLUMN temp_term text`,
+  `UPDATE … SET temp_term = glossary`, `SET NOT NULL`, the unique index, `glossary DROP NOT
+  NULL`. `pnpm db:generate` afterwards: no changes.
+- During A's build minute the old code still writes `glossary` only: its inserts fail (NOT
+  NULL on `temp_term`), its reads are unaffected. After A, new terms have `glossary` null.
+- Checked: tsc, 503 tests (new: the term select reads `temp_term` and never `glossary`,
+  mutation-checked), eslint/prettier on touched files.
+- **Still to do, each needs the user's yes:** apply 0027 on dev (`pnpm db:migrate`), then
+  read-only: old tree (HEAD) and new tree give the identical export and search records on the
+  migrated DB (the old one simulates the code live during the build); `temp_term = glossary`
+  on every row. Writes on ZZTEST fixtures with the new code (create, revive, import): new
+  rows have `temp_term` set and `glossary` null; a duplicate term is refused by the new
+  index. Before prod (merging runs 0027): a Neon restore point or a read-only dump of `id,
+  glossary`.
+
+**Deploy B (after A is live on prod).**
+
+- Definition: `sourceTerm: text('source_term').notNull()` under `unique_glossary_idx` (the
+  index follows the renamed column; renaming the index itself is optional and cosmetic);
+  `legacyTempTerm: text('temp_term')` (optional) under `glossaries_temp_term_idx`;
+  `LegacyGlossaryColumn` becomes `'legacyTempTerm'`.
+- 0028, hand-written (drizzle-kit asks interactively whether a column was renamed): create it
+  with `pnpm db:generate --custom --name glossary-source-term` after editing the definition
+  (check that its snapshot is the new schema), then `ALTER TABLE "glossaries" RENAME COLUMN
+  "glossary" TO "source_term"; UPDATE "glossaries" SET "source_term" = "temp_term" WHERE
+  "source_term" IS DISTINCT FROM "temp_term"; ALTER … "source_term" SET NOT NULL; ALTER …
+  "temp_term" DROP NOT NULL;`. Afterwards `pnpm db:generate` must report no changes.
+- A's code (live during B's build) reads and writes `temp_term` only: unaffected, except its
+  inserts fail for that minute (NOT NULL on `source_term`). The copy-back is what keeps every
+  term created or changed while A was live. On dev: check `source_term = temp_term` on all
+  rows and that the column is still second.
+
+**Deploy C (after B is live).** Remove `legacyTempTerm`, its index and `LegacyGlossaryColumn`
+(back to `termColumns = getTableColumns(…)`, `GlossaryTerm = ReadGlossary`); `pnpm
+db:generate --name drop-glossary-temp-term` writes the DROP INDEX / DROP COLUMN, no hand
+edit. B's code does not touch `temp_term`, so nothing breaks. Update the dbml and the
+inspector label (`source_term`) along the way.
 
 The sections below, down to "Known issues", are the PR 3–4 record.
 

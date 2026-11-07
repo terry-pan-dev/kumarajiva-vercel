@@ -12,7 +12,8 @@
 // One row per Chinese term. `id` is also the Algolia objectID, so it must not change.
 Table glossaries {
   id uuid [pk, not null, default: `gen_random_uuid()`]
-  glossary text [not null, note: 'the Chinese term']
+  glossary text [note: 'LEGACY: the old headword column, unused since deploy A; deploy B renames it to source_term']
+  temp_term text [not null, unique, note: 'the Chinese term (headword) during the column move; dropped in deploy C']
   phonetic text [note: 'pinyin of the term']
   author text [note: 'term-level author; kept for now, often differs from the translation authors']
   cbeta_frequency text

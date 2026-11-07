@@ -195,6 +195,18 @@ describe('GlossaryStore reads', () => {
     expect(db.client.select).not.toHaveBeenCalled();
   });
 
+  // Column move, deploy A: the headword is read from temp_term; the old `glossary` column is
+  // neither read nor written until deploy B renames it.
+  it('reads the headword from temp_term, never the old glossary column', async () => {
+    db.state.terms = [term('a')];
+    await GlossaryStore.findById('a');
+    // The columns object passed to select(): property name → Drizzle column.
+    const termSelect = db.client.select.mock.calls[0][0] as unknown as Record<string, { name: string }>;
+    expect(termSelect.sourceTerm.name).toBe('temp_term');
+    expect(termSelect).not.toHaveProperty('legacyGlossary');
+    expect(Object.values(termSelect).map((column) => column.name)).not.toContain('glossary');
+  });
+
   it('asks for no translations when no term matched', async () => {
     expect(await GlossaryStore.findByTerms(['nothing'])).toEqual([]);
     expect(db.state.calls.map((call) => call.table)).toEqual(['glossaries']);
