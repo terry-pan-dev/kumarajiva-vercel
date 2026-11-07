@@ -7,12 +7,12 @@ export const glossaries = [
     cbetaFrequency: '1',
     translations: [
       {
-        glossary: 'Buddha Demeanor of the Dragon',
+        term: 'Buddha Demeanor of the Dragon',
         language: 'english' as const,
-        sutraName: '萬佛寶懺',
+        sourceName: '萬佛寶懺',
         volume: '10a',
-        originSutraText: '南無龍觀佛',
-        targetSutraText: 'Namo Buddha Demeanor of the Dragon',
+        sourceText: '南無龍觀佛',
+        targetText: 'Namo Buddha Demeanor of the Dragon',
         phonetic: null,
         author: '近永法師',
         updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -32,12 +32,12 @@ export const glossaries = [
     cbetaFrequency: '108312',
     translations: [
       {
-        glossary: 'merit',
+        term: 'merit',
         language: 'english' as const,
-        targetSutraText:
+        targetText:
           'Within one of its seeds of worlds, there is a land named Bringing Forth Excellent Nutrients for Sustaining Life. The Buddha there is named Adorned with Fragrant Flames, Meritorious Virtue, and Jewels',
-        sutraName: '華嚴經',
-        originSutraText: '彼世界種中，有國土，名：出生上妙資身具，佛號：香焰功德寶莊嚴。',
+        sourceName: '華嚴經',
+        sourceText: '彼世界種中，有國土，名：出生上妙資身具，佛號：香焰功德寶莊嚴。',
         volume: '6',
         phonetic: null,
         author: 'CTTB',
@@ -58,11 +58,11 @@ export const glossaries = [
     cbetaFrequency: '9323',
     translations: [
       {
-        glossary: 'Mount Merit',
+        term: 'Mount Merit',
         language: 'english' as const,
-        targetSutraText: 'Buddha Majestic Mount Merit and Virtue of All-Pervading Light',
-        sutraName: '萬佛寶懺',
-        originSutraText: '普光功德山王佛',
+        targetText: 'Buddha Majestic Mount Merit and Virtue of All-Pervading Light',
+        sourceName: '萬佛寶懺',
+        sourceText: '普光功德山王佛',
         volume: '1a',
         phonetic: null,
         author: '義工組-詞彙',
@@ -83,11 +83,11 @@ export const glossaries = [
     cbetaFrequency: '1129',
     translations: [
       {
-        glossary: 'Merit and Virtue of Jnana / Jnana of Merit and Virtue',
+        term: 'Merit and Virtue of Jnana / Jnana of Merit and Virtue',
         language: 'english' as const,
-        targetSutraText: 'Namo Buddha Merit and Virtue of Jnana / Namo Buddha Jnana of Merit and Virtue',
-        sutraName: '萬佛寶懺',
-        originSutraText: '南無功德智佛',
+        targetText: 'Namo Buddha Merit and Virtue of Jnana / Namo Buddha Jnana of Merit and Virtue',
+        sourceName: '萬佛寶懺',
+        sourceText: '南無功德智佛',
         phonetic: null,
         volume: '3b',
         author: '近永法師',
@@ -108,11 +108,11 @@ export const glossaries = [
     cbetaFrequency: '1',
     translations: [
       {
-        glossary: 'Buddha Joy of the Buddhas',
+        term: 'Buddha Joy of the Buddhas',
         language: 'english' as const,
-        targetSutraText: 'Namo Buddha Joy of the Buddhas',
-        sutraName: '萬佛寶懺',
-        originSutraText: '南無佛歡喜佛',
+        targetText: 'Namo Buddha Joy of the Buddhas',
+        sourceName: '萬佛寶懺',
+        sourceText: '南無佛歡喜佛',
         phonetic: null,
         volume: '10b',
         author: '近永法師',
@@ -133,12 +133,12 @@ export const glossaries = [
     cbetaFrequency: '160861',
     translations: [
       {
-        glossary: 'People',
+        term: 'People',
         language: 'english' as const,
-        targetSutraText:
+        targetText:
           'People with faith and understanding, Who have made great vows Will have deep wisdom to Thoroughly understand the Dharma',
-        sutraName: '華嚴經',
-        originSutraText: '若人有信解， 及以諸大願， 具足深智慧， 通達一切法。',
+        sourceName: '華嚴經',
+        sourceText: '若人有信解， 及以諸大願， 具足深智慧， 通達一切法。',
         volume: '6',
         author: 'CTTB',
         phonetic: null,
@@ -159,12 +159,12 @@ export const glossaries = [
     cbetaFrequency: '53957',
     translations: [
       {
-        sutraName: '楞嚴經',
-        glossary: 'Good People',
+        sourceName: '楞嚴經',
+        term: 'Good People',
         language: 'english' as const,
         volume: '10',
-        targetSutraText: null,
-        originSutraText: null,
+        targetText: null,
+        sourceText: null,
         author: 'CTTB',
         phonetic: null,
         updatedBy: 'd2e3bb43-cb01-4673-81ed-20fd4b5acfc9',
@@ -184,11 +184,11 @@ export const glossaries = [
     cbetaFrequency: '1',
     translations: [
       {
-        glossary: 'Buddha Great Dragon',
+        term: 'Buddha Great Dragon',
         language: 'english' as const,
-        targetSutraText: 'Namo Buddha Great Dragon',
-        sutraName: '萬佛寶懺',
-        originSutraText: '南無大龍佛',
+        targetText: 'Namo Buddha Great Dragon',
+        sourceName: '萬佛寶懺',
+        sourceText: '南無大龍佛',
         volume: '9a',
         author: '近永法師',
         phonetic: null,
@@ -209,11 +209,11 @@ export const glossaries = [
     cbetaFrequency: '984',
     translations: [
       {
-        glossary: `Buddha's treasury`,
+        term: `Buddha's treasury`,
         language: 'english' as const,
-        targetSutraText: `Adorned everywhere by the Buddha's treasury of maṇi They are purified by the strength of the Tathāgata's vows`,
-        sutraName: '華嚴經',
-        originSutraText: '佛藏摩尼普嚴飾， 如來願力令清淨。',
+        targetText: `Adorned everywhere by the Buddha's treasury of maṇi They are purified by the strength of the Tathāgata's vows`,
+        sourceName: '華嚴經',
+        sourceText: '佛藏摩尼普嚴飾， 如來願力令清淨。',
         volume: '8',
         author: 'CTTB',
         phonetic: null,
@@ -234,11 +234,11 @@ export const glossaries = [
     cbetaFrequency: '354',
     translations: [
       {
-        glossary: `Buddha Treasury of Jewels / Treasure Trove`,
+        term: `Buddha Treasury of Jewels / Treasure Trove`,
         language: 'english' as const,
-        targetSutraText: `Namo Buddha Treasury of Jewels / Treasure Trove`,
-        sutraName: '萬佛寶懺',
-        originSutraText: '南無寶藏佛',
+        targetText: `Namo Buddha Treasury of Jewels / Treasure Trove`,
+        sourceName: '萬佛寶懺',
+        sourceText: '南無寶藏佛',
         volume: '6a',
         author: '近永法師',
         phonetic: null,
@@ -259,11 +259,11 @@ export const glossaries = [
     cbetaFrequency: '354',
     translations: [
       {
-        glossary: `mani wheel`,
+        term: `mani wheel`,
         language: 'english' as const,
-        targetSutraText: `It is rectangular and covered with clouds of curtains of mani wheel topknots`,
-        sutraName: '華嚴經',
-        originSutraText: '其形四方，摩尼輪髻帳雲而覆其上',
+        targetText: `It is rectangular and covered with clouds of curtains of mani wheel topknots`,
+        sourceName: '華嚴經',
+        sourceText: '其形四方，摩尼輪髻帳雲而覆其上',
         volume: '8',
         author: '義工組-詞彙',
         phonetic: null,
@@ -284,11 +284,11 @@ export const glossaries = [
     cbetaFrequency: '94',
     translations: [
       {
-        glossary: `Vajra of Joy / Vajra Joy`,
+        term: `Vajra of Joy / Vajra Joy`,
         language: 'english' as const,
-        targetSutraText: `Namo Buddha Vajra of Joy / Vajra Joy`,
-        sutraName: '萬佛寶懺',
-        originSutraText: '南無金剛喜佛',
+        targetText: `Namo Buddha Vajra of Joy / Vajra Joy`,
+        sourceName: '萬佛寶懺',
+        sourceText: '南無金剛喜佛',
         volume: '5b',
         author: '義工組-詞彙',
         phonetic: null,
@@ -309,11 +309,11 @@ export const glossaries = [
     cbetaFrequency: '2a',
     translations: [
       {
-        glossary: `spiritual powers`,
+        term: `spiritual powers`,
         language: 'english' as const,
-        targetSutraText: `With the awe-inspiring spiritual powers of Samanthabhadra's vows and practices`,
-        sutraName: '佛說佛名經',
-        originSutraText: '普賢行願威神力',
+        targetText: `With the awe-inspiring spiritual powers of Samanthabhadra's vows and practices`,
+        sourceName: '佛說佛名經',
+        sourceText: '普賢行願威神力',
         volume: '2a',
         author: '義工組-詞彙',
         phonetic: null,

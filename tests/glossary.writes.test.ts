@@ -29,12 +29,12 @@ vi.mock('~/providers/algolia', () => ({ default: algolia }));
 vi.mock('~/services/glossary.store', () => ({ GlossaryStore: store }));
 
 const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
-  glossary,
+  term: glossary,
   language: 'english',
-  sutraName: '華嚴經',
+  sourceName: '華嚴經',
   volume: '1',
-  originSutraText: null,
-  targetSutraText: null,
+  sourceText: null,
+  targetText: null,
   author: null,
   updatedBy: 'user-1',
   updatedAt: '2025-01-01T00:00:00.000Z',
@@ -239,7 +239,7 @@ describe('importGlossaries', () => {
     expect(result).toEqual({ created: 0, updated: 1, failed: 0 });
     const written = store.update.mock.calls[0][2] as GlossaryTranslation[];
     // Without a TranslationUUID a row is appended, even the one repeating the stored translation.
-    expect(written.map((t) => t.glossary)).toEqual(['Buddha', 'Buddha', 'Awakened One']);
+    expect(written.map((t) => t.term)).toEqual(['Buddha', 'Buddha', 'Awakened One']);
     expect(written[0]).toBe(stored);
   });
 
@@ -268,7 +268,7 @@ describe('importGlossaries', () => {
     );
 
     const written = store.update.mock.calls[0][2] as GlossaryTranslation[];
-    expect(written.map((t) => [t.id, t.glossary, t.rationale ?? null])).toEqual([
+    expect(written.map((t) => [t.id, t.term, t.rationale ?? null])).toEqual([
       ['t1', 'the Buddha', 'new reason'],
       ['t2', 'Awakened', null],
     ]);
@@ -296,7 +296,7 @@ describe('importGlossaries', () => {
     const result = await importGlossaries([fileRow('法', 'Dharma')], 'importer');
     expect(result).toEqual({ created: 1, updated: 0, failed: 0 });
     expect(store.create.mock.calls[0][0]).toMatchObject({ glossary: '法', createdBy: 'importer' });
-    expect((store.create.mock.calls[0][1] as GlossaryTranslation[]).map((t) => t.glossary)).toEqual(['Dharma']);
+    expect((store.create.mock.calls[0][1] as GlossaryTranslation[]).map((t) => t.term)).toEqual(['Dharma']);
   });
 
   it('a trashed term is revived with only the file’s translations', async () => {
@@ -306,6 +306,6 @@ describe('importGlossaries', () => {
     const result = await importGlossaries([fileRow('僧', 'Saṅgha')], 'importer');
     expect(result).toEqual({ created: 1, updated: 0, failed: 0 });
     expect(store.revive.mock.calls[0][0]).toBe('t');
-    expect((store.revive.mock.calls[0][2] as GlossaryTranslation[]).map((t) => t.glossary)).toEqual(['Saṅgha']);
+    expect((store.revive.mock.calls[0][2] as GlossaryTranslation[]).map((t) => t.term)).toEqual(['Saṅgha']);
   });
 });

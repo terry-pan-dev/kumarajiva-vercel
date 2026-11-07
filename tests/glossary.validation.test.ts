@@ -67,18 +67,18 @@ describe('glossaryInsertFormSchema', () => {
   it('parses required fields and applies defaults for blank optional strings', () => {
     const result = glossaryInsertFormSchema.parse({
       id: 'glossary-uuid-123',
-      glossary: 'vocabulary',
+      term: 'vocabulary',
       language: 'english',
-      sutraName: '',
+      sourceName: '',
       volume: '',
       author: '',
     });
 
     expect(result).toMatchObject({
       id: 'glossary-uuid-123',
-      glossary: 'vocabulary',
+      term: 'vocabulary',
       language: 'english',
-      sutraName: '佛教常用詞',
+      sourceName: '佛教常用詞',
       volume: '-',
       author: '翻譯團隊',
     });
@@ -87,12 +87,12 @@ describe('glossaryInsertFormSchema', () => {
   it('parses all fields when provided', () => {
     const result = glossaryInsertFormSchema.parse({
       id: 'glossary-uuid-456',
-      glossary: 'impermanence',
+      term: 'impermanence',
       language: 'english',
-      sutraName: 'Diamond Sutra',
+      sourceName: 'Diamond Sutra',
       volume: '2a',
-      originSutraText: '無常',
-      targetSutraText: 'all things are impermanent',
+      sourceText: '無常',
+      targetText: 'all things are impermanent',
       author: 'Translation Team',
       partOfSpeech: 'noun',
       phonetic: 'impermanence',
@@ -100,12 +100,12 @@ describe('glossaryInsertFormSchema', () => {
 
     expect(result).toMatchObject({
       id: 'glossary-uuid-456',
-      glossary: 'impermanence',
+      term: 'impermanence',
       language: 'english',
-      sutraName: 'Diamond Sutra',
+      sourceName: 'Diamond Sutra',
       volume: '2a',
-      originSutraText: '無常',
-      targetSutraText: 'all things are impermanent',
+      sourceText: '無常',
+      targetText: 'all things are impermanent',
       author: 'Translation Team',
       partOfSpeech: 'noun',
       phonetic: 'impermanence',
@@ -126,12 +126,12 @@ describe('glossaryEditFormSchema', () => {
       discussion: 'a key Buddhist concept',
       translations: [
         {
-          glossary: 'prajna',
+          term: 'prajna',
           language: 'english',
-          sutraName: 'Heart Sutra',
+          sourceName: 'Heart Sutra',
           volume: '1a',
-          originSutraText: '觀自在菩薩',
-          targetSutraText: 'Avalokitesvara Bodhisattva',
+          sourceText: '觀自在菩薩',
+          targetText: 'Avalokitesvara Bodhisattva',
           author: 'Translation Team',
           updatedAt: '2024-01-01T00:00:00.000Z',
           partOfSpeech: 'noun',
@@ -150,12 +150,12 @@ describe('glossaryEditFormSchema', () => {
     expect(result.translations).toHaveLength(1);
     const [translation] = result.translations;
     expect(translation).toMatchObject({
-      glossary: 'prajna',
+      term: 'prajna',
       language: 'english',
-      sutraName: 'Heart Sutra',
+      sourceName: 'Heart Sutra',
       volume: '1a',
-      originSutraText: '觀自在菩薩',
-      targetSutraText: 'Avalokitesvara Bodhisattva',
+      sourceText: '觀自在菩薩',
+      targetText: 'Avalokitesvara Bodhisattva',
       author: 'Translation Team',
       partOfSpeech: 'noun',
       phonetic: 'prajna',
@@ -169,9 +169,9 @@ describe('glossaryEditFormSchema', () => {
       phonetic: 'fǎ',
       translations: [
         {
-          glossary: 'dharma',
+          term: 'dharma',
           language: 'english',
-          sutraName: '佛教常用詞',
+          sourceName: '佛教常用詞',
           volume: '-',
         },
       ],
@@ -182,8 +182,8 @@ describe('glossaryEditFormSchema', () => {
     expect(result.discussion).toBeUndefined();
 
     const [translation] = result.translations;
-    expect(translation.originSutraText).toBeUndefined();
-    expect(translation.targetSutraText).toBeUndefined();
+    expect(translation.sourceText).toBeUndefined();
+    expect(translation.targetText).toBeUndefined();
     expect(translation.partOfSpeech).toBeUndefined();
     expect(translation.phonetic).toBeUndefined();
   });
@@ -193,7 +193,7 @@ describe('glossaryEditFormSchema', () => {
     id: 'glossary-uuid-000',
     glossary: '法',
     phonetic: 'fǎ',
-    translations: [{ glossary: 'dharma', language: 'english', sutraName: '佛教常用詞', volume: '-', ...extra }],
+    translations: [{ term: 'dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', ...extra }],
   });
 
   it('keeps each translation’s id', () => {
@@ -218,11 +218,62 @@ describe('glossaryEditFormSchema', () => {
   });
 });
 
+// ─── Field names before PR 8a ────────────────────────────────────────────────
+// A page loaded before the rename deploy posts sutraName / originSutraText / targetSutraText.
+// It must be refused, not saved without the fields it names the old way.
+
+describe('a form posting the old field names', () => {
+  const old = { sutraName: 'Heart Sutra', originSutraText: '觀自在菩薩', targetSutraText: 'Avalokitesvara' };
+
+  it('is refused by the edit form', () => {
+    const result = glossaryEditFormSchema.safeParse({
+      id: 'glossary-uuid-000',
+      glossary: '法',
+      phonetic: 'fǎ',
+      translations: [{ term: 'dharma', language: 'english', volume: '-', ...old }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('is refused by the insert form', () => {
+    const result = glossaryInsertFormSchema.safeParse({ id: 'g1', term: 'Dharma', volume: '', author: '', ...old });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── Field name before PR 8b ─────────────────────────────────────────────────
+// A page loaded before that deploy posts the rendering as `glossary`, not `term`. It must be
+// refused, not saved without its rendering. (The edit form's own `glossary`, the headword, is
+// unchanged.)
+
+describe('a form posting the rendering as glossary', () => {
+  it('is refused by the edit form', () => {
+    const result = glossaryEditFormSchema.safeParse({
+      id: 'glossary-uuid-000',
+      glossary: '法',
+      phonetic: 'fǎ',
+      translations: [{ glossary: 'dharma', language: 'english', sourceName: '佛教常用詞', volume: '-' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('is refused by the insert form', () => {
+    const result = glossaryInsertFormSchema.safeParse({
+      id: 'g1',
+      glossary: 'Dharma',
+      sourceName: '',
+      volume: '',
+      author: '',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
 // ─── Translation language (no longer the user's target language) ────────────
 
 describe('glossary translation language', () => {
   const entry = { glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma' };
-  const insert = { id: 'g1', glossary: 'Dharma', sutraName: '', volume: '', author: '' };
+  const insert = { id: 'g1', term: 'Dharma', sourceName: '', volume: '', author: '' };
 
   it('a new entry is in English unless another language is chosen', () => {
     expect(glossaryFormSchema.parse(entry).language).toBe('english');
@@ -250,8 +301,8 @@ describe('rationale', () => {
   const insert = (rationale?: unknown) =>
     glossaryInsertFormSchema.safeParse({
       id: 'g1',
-      glossary: 'Dharma',
-      sutraName: '',
+      term: 'Dharma',
+      sourceName: '',
       volume: '',
       author: '',
       rationale,
@@ -261,7 +312,7 @@ describe('rationale', () => {
       id: 'g1',
       glossary: '法',
       phonetic: 'fǎ',
-      translations: [{ glossary: 'Dharma', language: 'english', sutraName: '佛教常用詞', volume: '-', rationale }],
+      translations: [{ term: 'Dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', rationale }],
     });
   const rationaleOf = {
     create: (value?: unknown) => {

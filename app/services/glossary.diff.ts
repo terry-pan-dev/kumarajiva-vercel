@@ -38,12 +38,12 @@ export type TranslationDiff = {
 // content are unchanged whatever their updatedBy/updatedAt, so an edit that leaves one alone
 // leaves its audit alone too.
 const CONTENT_FIELDS = [
-  'glossary',
+  'term',
   'language',
-  'sutraName',
+  'sourceName',
   'volume',
-  'originSutraText',
-  'targetSutraText',
+  'sourceText',
+  'targetText',
   'author',
   'partOfSpeech',
   'phonetic',

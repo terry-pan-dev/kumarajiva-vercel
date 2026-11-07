@@ -320,10 +320,14 @@ export const GlossaryStore = {
     term: GlossaryTermUpdate,
     translations: GlossaryTranslation[],
   ): Promise<GlossaryEntry | undefined> => {
+    // The create form's term carries the uuid it would have had as a new row. Written here it
+    // would move the row to that uuid, which its translations' foreign key refuses.
+    const { id: _newId, ...columns } = term as GlossaryTermUpdate & { id?: string };
+    void _newId;
     return db.transaction(async (tx) => {
       const [row] = await tx
         .update(glossariesTable)
-        .set({ ...term, deletedAt: null, searchId: null })
+        .set({ ...columns, deletedAt: null, searchId: null })
         .where(and(eq(glossariesTable.id, id), trashed))
         .returning(termColumns);
       if (!row) return undefined;

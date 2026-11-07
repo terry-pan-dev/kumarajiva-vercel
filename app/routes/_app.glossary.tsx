@@ -151,11 +151,15 @@ const GlossaryCreateForm = () => {
           <CustomAccordion onToggle={setChineseAccordionOpen} title="Optional Fields For Chinese">
             <div className="grid grid-cols-2 gap-4">
               <FormTextarea
-                label="Sutra Text"
+                label="Origin Text"
                 name="sutraTextChinese"
                 description="The Chinese passage the term comes from."
               />
-              <FormTextarea label="Volume" name="volumeChinese" description="The volume of the sutra." />
+              <FormTextarea
+                label="Section"
+                name="volumeChinese"
+                description="Where in the document, e.g. a volume or chapter."
+              />
               <FormTextarea
                 label="CBETA Frequency"
                 name="cbetaFrequencyChinese"
@@ -196,9 +200,9 @@ const GlossaryCreateForm = () => {
             <FormInput name="phonetic" label="Phonetic" description="The phonetic of the glossary." />
             <FormInput
               name="sutraName"
-              label="Sutra Name"
+              label="Document Name"
               placeholder="佛教常用詞(default)"
-              description="The name of the sutra."
+              description="The work this translation is from, e.g. a sutra."
             />
             <FormTextarea
               name="partOfSpeech"
@@ -207,10 +211,14 @@ const GlossaryCreateForm = () => {
             />
             <FormTextarea
               name="sutraText"
-              label="Sutra Text"
+              label="Target Text"
               description={`The ${languageName} translation of that passage.`}
             />
-            <FormTextarea name="volume" label="Volume" description="The volume of the sutra." />
+            <FormTextarea
+              name="volume"
+              label="Section"
+              description="Where in the document, e.g. a volume or chapter."
+            />
             <FormTextarea name="author" label="Author" description="The author of the glossary." />
           </div>
         </CustomAccordion>

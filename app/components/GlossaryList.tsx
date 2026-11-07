@@ -106,7 +106,7 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
           {glossary.translations?.map((translation, index) => {
             return (
               <p key={index} className="text-muted-foreground line-clamp-2 text-sm">
-                {translation.glossary}
+                {translation.term}
               </p>
             );
           })}
@@ -290,31 +290,31 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
           </div>
 
           {glossary.translations?.map((translation, index) => {
-            const originSutraText = highlightKeyword({ text: translation.originSutraText, keyword: glossary.glossary });
-            const targetSutraText = highlightKeyword({
-              text: translation.targetSutraText,
-              keyword: translation.glossary,
+            const sourceText = highlightKeyword({ text: translation.sourceText, keyword: glossary.glossary });
+            const targetText = highlightKeyword({
+              text: translation.targetText,
+              keyword: translation.term,
             });
             return (
               <div key={`${glossary.id}-${index}`}>
                 <Divider className="text-primary py-1 lg:py-3">{translation.language.toUpperCase()}</Divider>
                 <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
-                  {translation.sutraName} | {translation.volume}
+                  {translation.sourceName} | {translation.volume}
                 </Badge>
-                {originSutraText && (
+                {sourceText && (
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
-                    <h3 className="text-muted-foreground text-sm font-medium">{originSutraText}</h3>
+                    <h3 className="text-muted-foreground text-sm font-medium">{sourceText}</h3>
                   </div>
                 )}
                 <Spacer />
                 <h2 className="text-primary mb-2 text-xl font-semibold tracking-tight lg:text-2xl">
-                  {translation.glossary}
+                  {translation.term}
                 </h2>
-                {targetSutraText && (
+                {targetText && (
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
-                    <h3 className="text-muted-foreground text-sm font-medium">{targetSutraText}</h3>
+                    <h3 className="text-muted-foreground text-sm font-medium">{targetText}</h3>
                   </div>
                 )}
                 {translation.rationale && (
@@ -391,33 +391,33 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
             </Can>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <FormInput required label="Translation Term" name={`translations.${index}.glossary`} />
-            <FormInput
-              required
-              label="Sutra Name"
-              name={`translations.${index}.sutraName`}
-              description="The sutra name of the term"
-            />
-            <FormInput
-              required
-              label="Volume"
-              name={`translations.${index}.volume`}
-              description="The volume of the sutra"
-            />
+            <FormInput required label="Translation Term" name={`translations.${index}.term`} />
             <FormInput
               label="Phonetic"
               description="The phonetic of the term"
               name={`translations.${index}.phonetic`}
             />
-            <FormTextarea
-              label="Origin Sutra Text"
-              name={`translations.${index}.originSutraText`}
-              description="The origin sutra text of the term"
+            <FormInput
+              required
+              label="Document Name"
+              name={`translations.${index}.sourceName`}
+              description="The work this translation is from, e.g. a sutra"
+            />
+            <FormInput
+              required
+              label="Section"
+              name={`translations.${index}.volume`}
+              description="Where in the document, e.g. a volume or chapter"
             />
             <FormTextarea
-              label="Target Sutra Text"
-              name={`translations.${index}.targetSutraText`}
-              description="The sutra text in target language"
+              label="Origin Text"
+              name={`translations.${index}.sourceText`}
+              description="The passage in the original language"
+            />
+            <FormTextarea
+              label="Target Text"
+              name={`translations.${index}.targetText`}
+              description="The passage in the target language"
             />
             <FormInput
               label="Part of Speech"
@@ -456,24 +456,21 @@ const GlossaryInsertForm = ({ id }: { id: string }) => {
           options={languageOptions}
           description="The language of the new translation"
         />
-        <FormInput required name={`glossary`} label="New Translation" description="The term you want to insert" />
+        <FormInput required name={`term`} label="New Translation" description="The term you want to insert" />
         <FormInput
-          label="Sutra Name"
-          name={'sutraName'}
+          name={'sourceName'}
+          label="Document Name"
           placeholder="佛教常用詞(default)"
-          description="The sutra name of the new term"
-        />
-        <FormInput label="Volume" name={'volume'} placeholder="-(default)" description="The volume of the term" />
-        <FormInput
-          name={'originSutraText'}
-          label="Origin Sutra Text"
-          description="The sutra text of the new term in Chinese"
+          description="The work this translation is from, e.g. a sutra"
         />
         <FormInput
-          name={'targetSutraText'}
-          label="Target Sutra Text"
-          description="The sutra text of the new term in the target language"
+          label="Section"
+          name={'volume'}
+          placeholder="-(default)"
+          description="Where in the document, e.g. a volume or chapter"
         />
+        <FormInput name={'sourceText'} label="Origin Text" description="The passage in the original language" />
+        <FormInput name={'targetText'} label="Target Text" description="The passage in the target language" />
         <FormInput label="Phonetic" name={`phonetic`} description="The phonetic of the term" />
         <FormInput
           label="Author"

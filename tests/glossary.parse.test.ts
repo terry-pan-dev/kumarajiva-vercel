@@ -214,11 +214,11 @@ describe('translationFromRow', () => {
       ),
     ).toEqual({
       id: 't1',
-      glossary: 'Dharma',
-      sutraName: 'S',
+      term: 'Dharma',
+      sourceName: 'S',
       volume: '1',
-      originSutraText: '法',
-      targetSutraText: null,
+      sourceText: '法',
+      targetText: null,
       author: null,
       rationale: 'why',
     });

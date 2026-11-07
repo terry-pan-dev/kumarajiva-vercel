@@ -58,12 +58,12 @@ export const glossaryEditFormSchema = z.object({
       // The stored translation this row edits. Carried from the form's default values (no
       // input), so a save updates translations in place instead of replacing them all.
       id: z.string().uuid().optional(),
-      glossary: z.string(),
+      term: z.string(),
       language: z.enum(LANG_VALUES),
-      sutraName: z.string(),
+      sourceName: z.string(),
       volume: z.string(),
-      originSutraText: z.string().nullish(),
-      targetSutraText: z.string().nullish(),
+      sourceText: z.string().nullish(),
+      targetText: z.string().nullish(),
       author: z.string().nullish(),
       partOfSpeech: z.string().nullish(),
       phonetic: z.string().nullish(),
@@ -74,12 +74,12 @@ export const glossaryEditFormSchema = z.object({
 
 export const glossaryInsertFormSchema = z.object({
   id: z.string(),
-  glossary: z.string(),
+  term: z.string(),
   language: z.enum(GLOSSARY_TRANSLATION_LANGUAGES).default(DEFAULT_TARGET_LANG),
-  sutraName: z.string().transform((val) => (val.length > 0 ? val : '佛教常用詞')),
+  sourceName: z.string().transform((val) => (val.length > 0 ? val : '佛教常用詞')),
   volume: z.string().transform((val) => (val.length > 0 ? val : '-')),
-  originSutraText: z.string().nullish(),
-  targetSutraText: z.string().nullish(),
+  sourceText: z.string().nullish(),
+  targetText: z.string().nullish(),
   author: z.string().transform((val) => (val.length > 0 ? val : '翻譯團隊')),
   partOfSpeech: z.string().nullish(),
   phonetic: z.string().nullish(),

@@ -14,16 +14,16 @@ describe('entryFromCreateForm', () => {
     const {
       translations: [translation],
     } = entryFromCreateForm(form({ sutraTextChinese: '佛告阿難', sutraText: 'The Buddha told Ānanda' }), user, at);
-    expect(translation.originSutraText).toBe('佛告阿難');
-    expect(translation.targetSutraText).toBe('The Buddha told Ānanda');
+    expect(translation.sourceText).toBe('佛告阿難');
+    expect(translation.targetText).toBe('The Buddha told Ānanda');
   });
 
   it('leaves a passage empty when only the other one is given', () => {
     const {
       translations: [translation],
     } = entryFromCreateForm(form({ sutraText: 'The Buddha told Ānanda' }), user, at);
-    expect(translation.originSutraText).toBe('');
-    expect(translation.targetSutraText).toBe('The Buddha told Ānanda');
+    expect(translation.sourceText).toBe('');
+    expect(translation.targetText).toBe('The Buddha told Ānanda');
   });
 
   it('carries the rationale, and null when none is given', () => {
@@ -53,9 +53,9 @@ describe('entryFromCreateForm', () => {
     } = entryFromCreateForm(form(), { id: 'user-1' }, at);
     expect(term).toMatchObject({ author: '翻譯團隊', cbetaFrequency: '0', discussion: '' });
     expect(translation).toMatchObject({
-      glossary: 'Dharma',
+      term: 'Dharma',
       language: 'english',
-      sutraName: '佛教常用詞',
+      sourceName: '佛教常用詞',
       volume: '-',
       updatedBy: 'user-1',
       updatedAt: '2026-11-06T00:00:00.000Z',

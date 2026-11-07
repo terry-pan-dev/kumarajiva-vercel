@@ -38,12 +38,12 @@ export const glossaryTranslationsTable = pgTable(
     // Display order within the term.
     position: integer('position').notNull(),
     language: langEnum('language').notNull().default('english'),
-    // The rendering (JSON `glossary`).
+    // The rendering.
     term: text('term').notNull(),
-    // JSON `sutraName`; '佛教常用詞' is the sentinel for "no source".
+    // '佛教常用詞' is the sentinel for "no source". File column SutraName.
     sourceName: text('source_name').notNull().default('佛教常用詞'),
     volume: text('volume').notNull().default('-'),
-    // JSON `originSutraText` / `targetSutraText`.
+    // The passages the term appears in. File columns ChineseSutraText / EnglishSutraText.
     sourceText: text('source_text'),
     targetText: text('target_text'),
     author: text('author'),

@@ -69,14 +69,14 @@ export function setFixtureAuthorId(id: string) {
 
 function translation(glossary: string, overrides: Partial<Translation> = {}): Translation {
   return {
-    glossary,
+    term: glossary,
     language: 'english',
-    sutraName: 'ZZTEST Sutra',
+    sourceName: 'ZZTEST Sutra',
     volume: '1',
     updatedBy: authorId,
     updatedAt: '2026-01-01',
-    originSutraText: null,
-    targetSutraText: null,
+    sourceText: null,
+    targetText: null,
     author: 'ZZTEST fixtures',
     ...overrides,
   };

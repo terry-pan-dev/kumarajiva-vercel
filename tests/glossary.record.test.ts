@@ -5,10 +5,10 @@ import { type GlossaryTranslation } from '~/services/glossary.types';
 
 type StoredTranslation = GlossaryTranslation;
 
-function makeTranslation(overrides: Partial<StoredTranslation> & { glossary: string }): StoredTranslation {
+function makeTranslation(overrides: Partial<StoredTranslation> & { term: string }): StoredTranslation {
   return {
     language: 'english',
-    sutraName: '佛教常用詞',
+    sourceName: '佛教常用詞',
     volume: '-',
     updatedBy: 'user-1',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -43,7 +43,7 @@ describe('glossaryIndexRecord', () => {
     id: '0b3f1c2d-0000-4000-8000-000000000001',
     glossary: '法',
     phonetic: 'dhárma',
-    translations: [makeTranslation({ glossary: 'dharma', originSutraText: '諸法', targetSutraText: 'all dharmas' })],
+    translations: [makeTranslation({ term: 'dharma', sourceText: '諸法', targetText: 'all dharmas' })],
   };
 
   it('keys the record on the row uuid, so re-indexing overwrites rather than duplicates', () => {

@@ -12,10 +12,10 @@ import { type GlossaryTranslation } from '~/services/glossary.types';
 
 type StoredTranslation = GlossaryTranslation;
 
-function makeTranslation(overrides: Partial<StoredTranslation> & { glossary: string }): StoredTranslation {
+function makeTranslation(overrides: Partial<StoredTranslation> & { term: string }): StoredTranslation {
   return {
     language: 'english',
-    sutraName: '佛教常用詞',
+    sourceName: '佛教常用詞',
     volume: '-',
     updatedBy: 'user-1',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -29,7 +29,7 @@ function makeRow(overrides: Partial<InspectedRow> & { id: string; glossary: stri
     author: null,
     cbetaFrequency: null,
     // A row with no issues by default, so each test's fixture states only what it is testing.
-    translations: [makeTranslation({ glossary: 'dharma' })],
+    translations: [makeTranslation({ term: 'dharma' })],
     discussion: null,
     searchId: `obj-${overrides.id}`,
     createdAt: new Date('2026-01-01'),
@@ -285,8 +285,8 @@ describe('analyseGlossary', () => {
       id: 'a',
       glossary: '法',
       translations: [
-        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1', originSutraText: '諸法' }),
-        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1', originSutraText: '法門' }),
+        makeTranslation({ term: 'dharma', sourceName: 'Lotus', volume: '1', sourceText: '諸法' }),
+        makeTranslation({ term: 'dharma', sourceName: 'Lotus', volume: '1', sourceText: '法門' }),
       ],
     });
 
@@ -300,8 +300,8 @@ describe('analyseGlossary', () => {
       id: 'a',
       glossary: '法',
       translations: [
-        makeTranslation({ glossary: 'dharma', sutraName: 'Lotus', volume: '1' }),
-        makeTranslation({ glossary: 'dharma', sutraName: 'Diamond', volume: '1' }),
+        makeTranslation({ term: 'dharma', sourceName: 'Lotus', volume: '1' }),
+        makeTranslation({ term: 'dharma', sourceName: 'Diamond', volume: '1' }),
       ],
     });
 
@@ -312,7 +312,7 @@ describe('analyseGlossary', () => {
 
   it('flags empty and missing translations', () => {
     const empty = makeRow({ id: 'a', glossary: '法', translations: [] });
-    const blank = makeRow({ id: 'b', glossary: '心', translations: [makeTranslation({ glossary: '  ' })] });
+    const blank = makeRow({ id: 'b', glossary: '心', translations: [makeTranslation({ term: '  ' })] });
 
     const inspection = analyseGlossary({
       rows: [empty, blank],

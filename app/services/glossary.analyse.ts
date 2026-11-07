@@ -293,7 +293,7 @@ export function analyseGlossary({
       issues.push({ code: 'no-translations', severity: 'warning', detail: 'The entry has no translations.' });
     }
 
-    const blank = rowTranslations.filter((translation) => !translation.glossary?.trim()).length;
+    const blank = rowTranslations.filter((translation) => !translation.term?.trim()).length;
     if (blank > 0) {
       issues.push({
         code: 'blank-translation',
