@@ -47,7 +47,7 @@ const CONTENT_FIELDS = [
   'author',
   'partOfSpeech',
   'phonetic',
-  'rationale',
+  'discussion',
 ] as const satisfies readonly (keyof GlossaryTranslation)[];
 
 // Null and absent are the same: both are "not given".

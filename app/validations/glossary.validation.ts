@@ -4,10 +4,11 @@ import { chineseRegex } from '~/lib/utils';
 import { DEFAULT_TARGET_LANG, LANG_VALUES } from '~/utils/constants';
 import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
 
-// Why a rendering was chosen: optional free text, trimmed, no length limit (the user's decision,
+// A translation's discussion (notes, e.g. why a rendering was chosen; `rationale` until
+// 2026-11-07): optional free text, trimmed, no length limit (the user's decision,
 // 2026-11-06). Blank is stored as null, the same as never given, so clearing the field in the
 // edit form is not mistaken for an edit of it.
-export const rationaleSchema = z
+export const discussionSchema = z
   .string()
   .trim()
   .nullish()
@@ -39,7 +40,7 @@ export const glossaryFormSchema = z.object({
   author: z.string().optional(),
   partOfSpeech: z.string().optional(),
   phonetic: z.string().optional(),
-  rationale: rationaleSchema,
+  discussion: discussionSchema,
 });
 
 export const glossaryEditFormSchema = z.object({
@@ -67,7 +68,7 @@ export const glossaryEditFormSchema = z.object({
       author: z.string().nullish(),
       partOfSpeech: z.string().nullish(),
       phonetic: z.string().nullish(),
-      rationale: rationaleSchema,
+      discussion: discussionSchema,
     }),
   ),
 });
@@ -85,5 +86,5 @@ export const glossaryInsertFormSchema = z.object({
   author: z.string(),
   partOfSpeech: z.string().nullish(),
   phonetic: z.string().nullish(),
-  rationale: rationaleSchema,
+  discussion: discussionSchema,
 });

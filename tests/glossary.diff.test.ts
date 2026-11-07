@@ -120,7 +120,7 @@ describe('sameContent', () => {
     'author',
     'partOfSpeech',
     'phonetic',
-    'rationale',
+    'discussion',
   ] as const)('sees a change in %s', (field) => {
     const before = translation('x', { sourceText: 'a', targetText: 'b', author: 'c' });
     const after = { ...before, [field]: field === 'language' ? 'sanskrit' : 'changed' };

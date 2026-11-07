@@ -26,7 +26,7 @@ export const toGlossaryTranslation = (row: ReadGlossaryTranslation): StoredTrans
   author: row.author,
   partOfSpeech: row.metadata?.partOfSpeech ?? null,
   phonetic: row.metadata?.phonetic ?? null,
-  rationale: row.rationale,
+  discussion: row.discussion,
   updatedBy: row.updatedBy,
   updatedAt: row.updatedAt.toISOString(),
 });
@@ -47,7 +47,7 @@ export const translationContent = (translation: GlossaryTranslation) => {
     sourceText: translation.sourceText ?? null,
     targetText: translation.targetText ?? null,
     author: translation.author ?? null,
-    rationale: translation.rationale ?? null,
+    discussion: translation.discussion ?? null,
     metadata: Object.keys(metadata).length > 0 ? metadata : null,
   } satisfies Partial<CreateGlossaryTranslation>;
 };

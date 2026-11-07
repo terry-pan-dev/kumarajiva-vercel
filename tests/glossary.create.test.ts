@@ -26,11 +26,11 @@ describe('entryFromCreateForm', () => {
     expect(translation.targetText).toBe('The Buddha told Ānanda');
   });
 
-  it('carries the rationale, and null when none is given', () => {
-    expect(entryFromCreateForm(form({ rationale: 'technical sense' }), user, at).translations[0].rationale).toBe(
+  it('carries the discussion, and null when none is given', () => {
+    expect(entryFromCreateForm(form({ discussion: 'technical sense' }), user, at).translations[0].discussion).toBe(
       'technical sense',
     );
-    expect(entryFromCreateForm(form(), user, at).translations[0].rationale).toBeNull();
+    expect(entryFromCreateForm(form(), user, at).translations[0].discussion).toBeNull();
   });
 
   it('builds the term from the Chinese section, credited to the user', () => {

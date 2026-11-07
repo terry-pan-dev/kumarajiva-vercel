@@ -57,11 +57,11 @@
       "englishSutraText": "English context sentence for the translation",
       "translationUuidImport": "optional; the translation’s ID from a downloaded export. A row whose TranslationUUID names one of the entry’s translations <strong>updates that translation</strong>; every other row is added as a new translation",
       "translationUuidReplace": "optional; ignored, since every translation is written anew",
-      "rationale": "optional; why this rendering was chosen. A blank cell clears a stored rationale when the row updates a translation; leaving the column out keeps them all"
+      "discussion": "optional; discussion of this translation, e.g. why this rendering was chosen. A blank cell clears a stored discussion when the row updates a translation; leaving the column out keeps them all. A Rationale column (older exports) is read as Discussion"
     },
     "stepUpload": "<strong>Upload</strong> — select your CSV or XLSX file and click <em>Preview</em>. Both file types are parsed locally in your browser — no file data is sent to the server, so large files are handled without hitting upload size limits.",
     "stepRepeat": "<strong>Repeat</strong> until all chunks are {{done}}. The progress bar at the top tracks how far along you are.",
-    "rationale": "Rationale: {{rationale}}"
+    "discussion": "Discussion: {{discussion}}"
   },
   "import": {
     "title": "Import Glossary",

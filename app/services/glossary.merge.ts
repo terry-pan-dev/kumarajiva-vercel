@@ -28,7 +28,7 @@ export type MergeableTranslation = {
   sourceText?: string | null;
   targetText?: string | null;
   author?: string | null;
-  rationale?: string | null;
+  discussion?: string | null;
   updatedBy?: string;
   updatedAt?: string;
 };
@@ -46,7 +46,7 @@ export type MergedTranslation<T> = {
 
 // What a translation says, normalised (trimmed, lowercased): the term, the source, the volume,
 // both passages and the author. Imports no longer match by it (see the top of this file); data
-// migration 08 used it to report duplicates. The rationale is not part of it.
+// migration 08 used it to report duplicates. The discussion is not part of it.
 // Anything less would merge separate attestations — several passages from one volume can use
 // the same English term — and merging them would destroy the record of one of them.
 //
@@ -59,7 +59,7 @@ export function translationKey(t: MergeableTranslation): string {
 }
 
 // What a file row says about a translation. An undefined field is one the file does not carry
-// (Rationale in a file without that column), which leaves the stored value alone; null or ''
+// (Discussion in a file without that column), which leaves the stored value alone; null or ''
 // is a blank cell, which clears it.
 const FILE_CONTENT = [
   'term',
@@ -68,13 +68,13 @@ const FILE_CONTENT = [
   'sourceText',
   'targetText',
   'author',
-  'rationale',
+  'discussion',
 ] as const satisfies readonly (keyof MergeableTranslation)[];
 
 const blankAsNull = (value: string | null | undefined) => (value === '' || value === undefined ? null : value);
 
 // What makes two translations the same record, for the duplicate flag: every field the file
-// carries except the rationale, compared exactly (no trimming or lowercasing); a blank cell and
+// carries except the discussion, compared exactly (no trimming or lowercasing); a blank cell and
 // an empty stored value are equal.
 const ATTESTATION = ['term', 'sourceName', 'volume', 'sourceText', 'targetText', 'author'] as const;
 

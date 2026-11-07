@@ -13,7 +13,6 @@
 Table glossaries {
   id uuid [pk, not null, default: `gen_random_uuid()`]
   source_term text [not null, unique, note: 'the Chinese term (headword); was the column glossary until deploy B']
-  temp_term text [note: 'LEGACY: the headword during deploy A, unused since deploy B; deploy C drops it']
   phonetic text [note: 'pinyin of the term']
   author text [note: 'term-level author; kept for now, often differs from the translation authors']
   cbeta_frequency text
@@ -44,7 +43,7 @@ Table glossary_translations {
   source_text text [note: 'cited Chinese passage (JSON originSutraText)']
   target_text text [note: 'its translation (JSON targetSutraText)']
   author text
-  rationale text [note: 'new: why this rendering was chosen']
+  discussion text [note: 'notes on this translation, e.g. why this rendering was chosen; was rationale until 0029']
   metadata json [note: 'rare per-translation fields: partOfSpeech, phonetic of the rendering']
   created_at timestamp [not null, default: `now()`]
   updated_at timestamp [not null, default: `now()`]

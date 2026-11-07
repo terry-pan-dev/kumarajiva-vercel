@@ -13,7 +13,7 @@ import { type z } from 'zod';
 import { assertAuthUser } from '~/auth.server';
 import { Can } from '~/authorisation';
 import { FormInput, FormModal, FormSelect, FormTextarea } from '~/components/FormModal';
-import { RATIONALE_DESCRIPTION } from '~/components/GlossaryList';
+import { DISCUSSION_DESCRIPTION } from '~/components/GlossaryList';
 import { Icons } from '~/components/icons';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Button } from '~/components/ui/button';
@@ -194,7 +194,7 @@ const GlossaryCreateForm = () => {
           label={`${languageName} Term`}
           description={`The ${languageName} translation of the Chinese term.`}
         />
-        <FormTextarea name="rationale" label="Rationale" description={RATIONALE_DESCRIPTION} />
+        <FormTextarea name="discussion" label="Discussion" description={DISCUSSION_DESCRIPTION} />
         <CustomAccordion onToggle={setTargetLangAccordionOpen} title={`Optional Fields For ${languageName}`}>
           <div className="grid grid-cols-2 gap-4">
             <FormInput name="phonetic" label="Phonetic" description="The phonetic of the glossary." />

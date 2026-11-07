@@ -27,19 +27,16 @@ export type GlossaryTranslation = {
   author?: string | null;
   partOfSpeech?: string | null;
   phonetic?: string | null;
-  // Why this rendering was chosen. Stored, but no form or file carries it yet (PR 6).
-  rationale?: string | null;
+  // Notes on this translation, e.g. why this rendering was chosen. Was `rationale` until
+  // 2026-11-07. Not the term's own `discussion` (GlossaryTerm).
+  discussion?: string | null;
   updatedBy: string;
   // ISO timestamp.
   updatedAt: string;
 };
 
-// The column of `glossaries` the app no longer reads or writes, during the headword's column
-// move (deploys B to C; docs/plans/glossary-refactor.md).
-export type LegacyGlossaryColumn = 'legacyTempTerm';
-
 // A term without its translations.
-export type GlossaryTerm = Omit<ReadGlossary, LegacyGlossaryColumn>;
+export type GlossaryTerm = ReadGlossary;
 
 // A term with its translations, in display order.
 export type GlossaryEntry = GlossaryTerm & { translations: GlossaryTranslation[] };

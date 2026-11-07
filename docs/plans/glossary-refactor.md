@@ -10,10 +10,10 @@ during the freeze; the prod comparison (step 5) passed. The app reads and writes
 `glossary_translations` only. PR 6 (#212), PR 7a (#213), PR 7b (#214, drops the old
 columns), the cleanup (#215), PR 8a + 8b (#216), PR 9 (#217) and PR 11 (#218) are merged.
 **Column move** (the headword's column `glossary` → `source_term`, three deploys): deploy A is
-committed on branch `switch-term` (2b9fdfc04, PR open, not merged); deploy B is in the working
-tree on top of it. Neither is applied on dev or prod. The user merges A and B close together
-to keep the time between them short, but **A must be live on prod before B is merged** (see
-"Column move"). PR 10 waits (the user wants to think it over).
+merged (#219, 0027 ran on prod). Deploy B is committed on `switch-term` (5ccf90b55), not merged
+(the user is pausing). Deploy C (drop `temp_term`, plus rationale → discussion) is in the working
+tree on top of B. **Merge C only after B is live.** PR 10 waits (the user wants to think it
+over).
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
@@ -324,7 +324,43 @@ The original spec:
   term created or changed while A was live. On dev: check `source_term = temp_term` on all
   rows and that the column is still second.
 
-**Deploy C (after B is live).** Remove `legacyTempTerm`, its index and `LegacyGlossaryColumn`
+**Deploy C (in the working tree on `switch-term`, 2026-11-07; merge only after B is live).**
+Done as specified below, plus **`glossary_translations.rationale` → `discussion`** (the user's
+choice: more generic). Details:
+
+- 0029: drizzle-kit generated the `temp_term` DROP INDEX / DROP COLUMN; the `RENAME COLUMN
+  rationale TO discussion` was added by hand and 0029's snapshot edited to match (drizzle-kit
+  asks about renames interactively). `pnpm db:generate` afterwards: no changes.
+- **Not zero-downtime, accepted by the user** (no translation has a rationale yet): B's code
+  selects `rationale` (Drizzle lists every column), so every glossary read and translation
+  write fails between 0029 and C's code going live, about a minute.
+- **Code renamed by symbol** (language service on `GlossaryTranslation`, `MergeableTranslation`,
+  `GlossaryImportRow`, the import preview's type, the three form schemas, the table column,
+  `rationaleSchema` → `discussionSchema`, `RATIONALE_DESCRIPTION` → `DISCUSSION_DESCRIPTION`),
+  then tsc's errors by hand: the content key lists in `glossary.diff.ts` / `glossary.merge.ts`,
+  `glossary.rows.ts`, `translationFromRow`, the replace and import previews. Form input names
+  (`discussion`, `translations.${index}.discussion`), labels ("Discussion"), the prompt text
+  (now "Notes on this translation, e.g. why this rendering was chosen, …") and i18n keys
+  (`columns.discussion`, `chunked.discussion`; zh-Hant 討論) by hand.
+- **The term's own `discussion`** (`glossaries.discussion`, the edit form's top-level field) is
+  separate: the translation's is `translations[].discussion`. Neither file nor Algolia carries
+  the term's.
+- **File column `Rationale` → `Discussion`** in exports. The import reads `Discussion`, or
+  `Rationale` from a file exported before (CSV and XLSX), so old exports still import. Tests
+  added for both.
+- **Deploy window:** an edit form loaded before C posts `translations[].rationale`, which the
+  schema ignores, so the save writes discussion null. That would clear a stored value, but
+  none exists yet. Worth a read-only prod check before merging: `select count(*) from
+  glossary_translations where rationale is not null` (expect 0).
+- Removed: `legacyTempTerm`, its index, `LegacyGlossaryColumn` (`GlossaryTerm = ReadGlossary`,
+  `termColumns = getTableColumns(…)` again). Inspector label `source_term`; dbml updated.
+- **Tested on a throwaway local Postgres 16:** 0000–0026, a term with a translation carrying a
+  rationale, then 0027–0029: `glossaries` is `id, source_term, …` (no `temp_term`, indexes
+  `glossaries_pkey`, `unique_glossary_idx`); `glossary_translations` has `discussion` in
+  `rationale`'s place, value kept; selecting `rationale` (B's code) fails, as expected.
+- Checked: tsc, 505 tests, eslint/prettier on touched files, run after the last edit.
+
+The original spec: Remove `legacyTempTerm`, its index and `LegacyGlossaryColumn`
 (back to `termColumns = getTableColumns(…)`, `GlossaryTerm = ReadGlossary`); `pnpm
 db:generate --name drop-glossary-temp-term` writes the DROP INDEX / DROP COLUMN, no hand
 edit. B's code does not touch `temp_term`, so nothing breaks. Update the dbml and the

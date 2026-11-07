@@ -21,7 +21,7 @@ const COLUMNS = {
     ['Volume', 'volume'],
     ['ChineseSutraText', 'chineseSutraText'],
     ['EnglishSutraText', 'englishSutraText'],
-    ['Rationale', 'rationale'],
+    ['Discussion', 'discussion'],
   ],
 } as const;
 

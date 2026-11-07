@@ -41,7 +41,7 @@ export function entryFromCreateForm(
         author: form.author || '',
         partOfSpeech: form.partOfSpeech || '',
         phonetic: form.phonetic || '',
-        rationale: form.rationale,
+        discussion: form.discussion,
       },
     ],
   };
