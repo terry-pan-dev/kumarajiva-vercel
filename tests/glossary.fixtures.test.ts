@@ -49,7 +49,7 @@ const ALL = [...deletableFixtures(), ...issueFixtures()];
 const inspection = analyseGlossary({ rows: asRows(ALL), indexRecords: asRecords(ALL) });
 
 function issuesFor(term: string): GlossaryIssueCode[] {
-  const entry = inspection.entries.find((candidate) => candidate.row.glossary === term);
+  const entry = inspection.entries.find((candidate) => candidate.row.sourceTerm === term);
   return entry ? entry.issues.map((issue) => issue.code) : [];
 }
 
@@ -73,7 +73,7 @@ describe('the fixtures you remove by testing a button', () => {
     const orphan = inspection.orphanIndexRecords.find(
       (record) => record.objectID === 'zztest-04-orphan-record-live-term',
     );
-    expect(orphan?.liveRowWithSameTerm?.glossary).toBe('ZZTEST-04-DELETE-ORPHAN-TERM-STILL-LIVE');
+    expect(orphan?.liveRowWithSameTerm?.sourceTerm).toBe('ZZTEST-04-DELETE-ORPHAN-TERM-STILL-LIVE');
   });
 
   it('classes ZZTEST-05 as an orphan whose term is gone, and gives it no row', () => {
@@ -82,13 +82,15 @@ describe('the fixtures you remove by testing a button', () => {
       (record) => record.objectID === 'zztest-05-orphan-record-term-gone',
     );
     expect(orphan?.liveRowWithSameTerm).toBeNull();
-    expect(inspection.entries.some((entry) => entry.row.glossary === 'ZZTEST-05-DELETE-ORPHAN-TERM-GONE')).toBe(false);
+    expect(inspection.entries.some((entry) => entry.row.sourceTerm === 'ZZTEST-05-DELETE-ORPHAN-TERM-GONE')).toBe(
+      false,
+    );
   });
 });
 
 describe('the trash fixture', () => {
   it('keeps ZZTEST-06 out of every check and counts it as trashed', () => {
-    expect(inspection.entries.some((entry) => entry.row.glossary === 'ZZTEST-06-DELETE-FROM-TRASH')).toBe(false);
+    expect(inspection.entries.some((entry) => entry.row.sourceTerm === 'ZZTEST-06-DELETE-FROM-TRASH')).toBe(false);
     expect(inspection.stats.trashedEntries).toBe(1);
   });
 });

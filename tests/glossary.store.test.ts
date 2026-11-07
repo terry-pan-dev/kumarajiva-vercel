@@ -106,7 +106,7 @@ const translation = (term: string, extra: Partial<GlossaryTranslation> = {}): Gl
 
 const term = (id: string) => ({
   id,
-  glossary: `term-${id}`,
+  sourceTerm: `term-${id}`,
   phonetic: null,
   author: null,
   cbetaFrequency: null,
@@ -242,7 +242,7 @@ describe('GlossaryStore reads', () => {
 // ─── Writes ──────────────────────────────────────────────────────────────────
 
 describe('GlossaryStore.create', () => {
-  const newTerm = { glossary: '佛', createdBy: 'user-1', updatedBy: 'user-1' };
+  const newTerm = { sourceTerm: '佛', createdBy: 'user-1', updatedBy: 'user-1' };
 
   it('inserts the term, then one row per translation in order, in one transaction', async () => {
     const created = await GlossaryStore.create(newTerm, [
@@ -362,13 +362,13 @@ describe('GlossaryStore.update', () => {
 describe('GlossaryStore.revive', () => {
   it('takes the row out of the trash, unindexed, and replaces every translation', async () => {
     db.state.updatedTerms = [term('t')];
-    const revived = await GlossaryStore.revive('t', { glossary: '佛' }, [translation('Buddha')]);
+    const revived = await GlossaryStore.revive('t', { sourceTerm: '佛' }, [translation('Buddha')]);
 
     expect(db.client.transaction).toHaveBeenCalledTimes(1);
     expect(db.state.calls[0]).toMatchObject({
       op: 'update',
       table: 'glossaries',
-      set: { glossary: '佛', deletedAt: null, searchId: null },
+      set: { sourceTerm: '佛', deletedAt: null, searchId: null },
     });
     expect(db.state.calls[0].set).not.toHaveProperty('translations');
     expect(db.translationWrites().map((call) => call.op)).toEqual(['delete', 'insert']);
@@ -377,7 +377,7 @@ describe('GlossaryStore.revive', () => {
 
   it('keeps the row’s uuid when the term carries a new one (the create form’s)', async () => {
     db.state.updatedTerms = [term('t')];
-    const fromCreateForm = { id: 'new-uuid', glossary: '佛' };
+    const fromCreateForm = { id: 'new-uuid', sourceTerm: '佛' };
     await GlossaryStore.revive('t', fromCreateForm, [translation('Buddha')]);
     expect(db.state.calls[0].set).not.toHaveProperty('id');
   });

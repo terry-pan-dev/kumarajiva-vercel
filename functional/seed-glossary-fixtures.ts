@@ -67,7 +67,7 @@ async function clean({ deep }: { deep: boolean }): Promise<{ rows: number; recor
     .delete(glossariesTable)
     // By id and by term: a fixture the tester renamed, or one left by an older numbering, still
     // goes. Nothing outside the prefix is matched.
-    .where(or(inArray(glossariesTable.id, rowIds), ilike(glossariesTable.glossary, `${PREFIX}%`)))
+    .where(or(inArray(glossariesTable.id, rowIds), ilike(glossariesTable.sourceTerm, `${PREFIX}%`)))
     .returning({ id: glossariesTable.id });
 
   const objectIDs = new Set(fixtureObjectIds(all));

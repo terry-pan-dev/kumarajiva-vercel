@@ -44,7 +44,7 @@ const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {})
 const entry = (id: string, extra: Partial<GlossaryEntry> = {}): GlossaryEntry =>
   ({
     id,
-    glossary: `term-${id}`,
+    sourceTerm: `term-${id}`,
     phonetic: null,
     author: null,
     cbetaFrequency: null,
@@ -59,7 +59,7 @@ const entry = (id: string, extra: Partial<GlossaryEntry> = {}): GlossaryEntry =>
     ...extra,
   }) as GlossaryEntry;
 
-const term = { glossary: '佛', phonetic: 'fó', author: null, cbetaFrequency: null, discussion: null, updatedBy: 'u' };
+const term = { sourceTerm: '佛', phonetic: 'fó', author: null, cbetaFrequency: null, discussion: null, updatedBy: 'u' };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -174,7 +174,7 @@ describe('updateGlossaryTranslations', () => {
 // ─── Create and revive ───────────────────────────────────────────────────────
 
 describe('createGlossaryAndIndexInAlgolia', () => {
-  const newTerm = { id: 'n', glossary: '佛', createdBy: 'u', updatedBy: 'u' };
+  const newTerm = { id: 'n', sourceTerm: '佛', createdBy: 'u', updatedBy: 'u' };
 
   it('creates the entry with its translations, indexes it, then points search_id at the record', async () => {
     const result = await createGlossaryAndIndexInAlgolia(newTerm, [translation('Buddha')]);
@@ -230,7 +230,7 @@ describe('importGlossaries', () => {
 
   it('an existing entry gets the merge: its stored translations, then the file’s new ones', async () => {
     const stored = translation('Buddha');
-    const existing = entry('e', { glossary: '佛', translations: [stored] });
+    const existing = entry('e', { sourceTerm: '佛', translations: [stored] });
     store.findByTermsIncludingTrash.mockResolvedValue([existing]);
     store.findById.mockResolvedValue(existing);
 
@@ -244,7 +244,7 @@ describe('importGlossaries', () => {
   });
 
   it('the merge’s basis is the stored translations it was built from', async () => {
-    const existing = entry('e', { glossary: '佛', translations: [translation('Buddha', { id: 't1' })] });
+    const existing = entry('e', { sourceTerm: '佛', translations: [translation('Buddha', { id: 't1' })] });
     store.findByTermsIncludingTrash.mockResolvedValue([existing]);
     store.findById.mockResolvedValue(existing);
     await importGlossaries([fileRow('佛', 'Awakened One')], 'importer');
@@ -253,7 +253,7 @@ describe('importGlossaries', () => {
 
   it('a row naming a stored translation by TranslationUUID updates it, keeping its id', async () => {
     const existing = entry('e', {
-      glossary: '佛',
+      sourceTerm: '佛',
       translations: [
         translation('Buddha', { id: 't1', rationale: 'old reason' }),
         translation('Awakened', { id: 't2' }),
@@ -286,7 +286,7 @@ describe('importGlossaries', () => {
   });
 
   it('a revived term never takes the file’s translation ids', async () => {
-    store.findByTermsIncludingTrash.mockResolvedValue([entry('t', { glossary: '僧', deletedAt: new Date() })]);
+    store.findByTermsIncludingTrash.mockResolvedValue([entry('t', { sourceTerm: '僧', deletedAt: new Date() })]);
     await importGlossaries([{ ...fileRow('僧', 'Saṅgha'), translationUuid: 't-from-file' }], 'importer');
     const [revived] = store.revive.mock.calls[0][2] as GlossaryTranslation[];
     expect(revived).not.toHaveProperty('id');
@@ -295,13 +295,13 @@ describe('importGlossaries', () => {
   it('a new term is created with the file’s translations', async () => {
     const result = await importGlossaries([fileRow('法', 'Dharma')], 'importer');
     expect(result).toEqual({ created: 1, updated: 0, failed: 0 });
-    expect(store.create.mock.calls[0][0]).toMatchObject({ glossary: '法', createdBy: 'importer' });
+    expect(store.create.mock.calls[0][0]).toMatchObject({ sourceTerm: '法', createdBy: 'importer' });
     expect((store.create.mock.calls[0][1] as GlossaryTranslation[]).map((t) => t.term)).toEqual(['Dharma']);
   });
 
   it('a trashed term is revived with only the file’s translations', async () => {
     store.findByTermsIncludingTrash.mockResolvedValue([
-      entry('t', { glossary: '僧', deletedAt: new Date(), translations: [translation('old')] }),
+      entry('t', { sourceTerm: '僧', deletedAt: new Date(), translations: [translation('old')] }),
     ]);
     const result = await importGlossaries([fileRow('僧', 'Saṅgha')], 'importer');
     expect(result).toEqual({ created: 1, updated: 0, failed: 0 });

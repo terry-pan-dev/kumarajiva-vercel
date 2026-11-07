@@ -1,7 +1,7 @@
 export const glossaries = [
   {
     id: '4e57cea1-0708-49be-843f-0b787925995f',
-    glossary: '龍觀佛',
+    sourceTerm: '龍觀佛',
     phonetic: 'long guan fo',
     author: '近永法師',
     cbetaFrequency: '1',
@@ -26,7 +26,7 @@ export const glossaries = [
   },
   {
     id: '3dcc6f7a-72f7-4de9-a973-0fcdad03d6fc',
-    glossary: '功德',
+    sourceTerm: '功德',
     phonetic: 'gong de',
     author: 'CTTB',
     cbetaFrequency: '108312',
@@ -52,7 +52,7 @@ export const glossaries = [
   },
   {
     id: '3137c8bc-809a-46ce-9e78-f84740ddadec',
-    glossary: '德山',
+    sourceTerm: '德山',
     phonetic: 'de shan',
     author: '義工組-詞彙',
     cbetaFrequency: '9323',
@@ -77,7 +77,7 @@ export const glossaries = [
   },
   {
     id: '2b00d22f-587a-4e6e-a453-a58edd66517a',
-    glossary: '功德智',
+    sourceTerm: '功德智',
     phonetic: 'gong de zhi',
     author: '近永法師',
     cbetaFrequency: '1129',
@@ -102,7 +102,7 @@ export const glossaries = [
   },
   {
     id: '0cc6fb64-4ba7-4c61-93d6-003445aa05c4',
-    glossary: '佛歡喜佛',
+    sourceTerm: '佛歡喜佛',
     phonetic: 'fo huan xi fo',
     author: '近永法師',
     cbetaFrequency: '1',
@@ -127,7 +127,7 @@ export const glossaries = [
   },
   {
     id: 'ce5979ab-28da-4af4-91b2-3ffae082eb90',
-    glossary: '若人',
+    sourceTerm: '若人',
     phonetic: 'ruo ren',
     author: 'CTTB',
     cbetaFrequency: '160861',
@@ -153,7 +153,7 @@ export const glossaries = [
   },
   {
     id: '41f84fee-3b53-448e-9406-36f3217b68d4',
-    glossary: '善男子',
+    sourceTerm: '善男子',
     phonetic: 'shan nan zi',
     author: 'CTTB',
     cbetaFrequency: '53957',
@@ -178,7 +178,7 @@ export const glossaries = [
   },
   {
     id: '19e002ae-c402-4570-8ecb-3d4d2aa64c0f',
-    glossary: '大龍佛',
+    sourceTerm: '大龍佛',
     phonetic: 'da long fo',
     author: '近永法師',
     cbetaFrequency: '1',
@@ -203,7 +203,7 @@ export const glossaries = [
   },
   {
     id: 'cc1e4ca8-6cc9-4d59-b153-86226d5846fa',
-    glossary: '佛藏',
+    sourceTerm: '佛藏',
     phonetic: 'fo zang',
     author: 'CTTB',
     cbetaFrequency: '984',
@@ -228,7 +228,7 @@ export const glossaries = [
   },
   {
     id: '79b0bd72-e4ce-4295-8ae8-5043d64b8294',
-    glossary: '寶藏佛',
+    sourceTerm: '寶藏佛',
     phonetic: 'bao zang fo',
     author: '近永法師',
     cbetaFrequency: '354',
@@ -253,7 +253,7 @@ export const glossaries = [
   },
   {
     id: '3199b3fa-0b61-4499-9ea6-9f7b27a5ca50',
-    glossary: '摩尼輪',
+    sourceTerm: '摩尼輪',
     phonetic: 'mo ni lun',
     author: '義工組-詞彙',
     cbetaFrequency: '354',
@@ -278,7 +278,7 @@ export const glossaries = [
   },
   {
     id: '0e508cc1-ad73-43ee-b698-00f586f857ab',
-    glossary: '金剛',
+    sourceTerm: '金剛',
     phonetic: 'jin gang',
     author: '義工組-萬佛寶懺',
     cbetaFrequency: '94',
@@ -303,7 +303,7 @@ export const glossaries = [
   },
   {
     id: '7c50f16e-166e-45ab-b8da-a67e2b0e67bd',
-    glossary: '神力',
+    sourceTerm: '神力',
     phonetic: 'shen li',
     author: '義工組-詞彙',
     cbetaFrequency: '2a',

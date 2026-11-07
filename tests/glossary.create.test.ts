@@ -37,7 +37,7 @@ describe('entryFromCreateForm', () => {
     const { term } = entryFromCreateForm(form({ cbetaFrequencyChinese: '12' }), user, at);
     expect(term).toMatchObject({
       id: 'new-id',
-      glossary: '法',
+      sourceTerm: '法',
       phonetic: 'fǎ',
       author: 'Ānanda',
       cbetaFrequency: '12',

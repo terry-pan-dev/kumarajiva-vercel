@@ -2,7 +2,7 @@ import { type GlossaryTerm, type WithTranslations } from './glossary.types';
 
 // What an export needs of an entry.
 export type ExportableGlossary = WithTranslations<
-  Pick<GlossaryTerm, 'id' | 'glossary' | 'cbetaFrequency' | 'phonetic'>
+  Pick<GlossaryTerm, 'id' | 'sourceTerm' | 'cbetaFrequency' | 'phonetic'>
 >;
 
 // Column order and names must match what the import parser reads (see XLSX_COLUMNS /
@@ -35,7 +35,7 @@ export function glossariesToExportRows(glossaries: ExportableGlossary[]): Glossa
   return glossaries.flatMap((glossary) =>
     (glossary.translations ?? []).map((t) => ({
       UUID: glossary.id ?? '',
-      ChineseTerm: glossary.glossary ?? '',
+      ChineseTerm: glossary.sourceTerm ?? '',
       EnglishTerm: t.term ?? '',
       ChineseSutraText: t.sourceText ?? '',
       EnglishSutraText: t.targetText ?? '',

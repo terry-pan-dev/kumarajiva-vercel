@@ -34,7 +34,7 @@ function makeTranslation(overrides: Partial<Translation> & { term: string }): Tr
   } as Translation;
 }
 
-function makeGlossary(overrides: Partial<ExportableGlossary> & { glossary: string }): ExportableGlossary {
+function makeGlossary(overrides: Partial<ExportableGlossary> & { sourceTerm: string }): ExportableGlossary {
   return {
     id: 'id-1',
     phonetic: null,
@@ -51,7 +51,7 @@ describe('glossariesToExportRows', () => {
     const rows = glossariesToExportRows([
       makeGlossary({
         id: 'abc',
-        glossary: '菩薩',
+        sourceTerm: '菩薩',
         phonetic: 'púsà',
         cbetaFrequency: '500',
         translations: [
@@ -67,14 +67,14 @@ describe('glossariesToExportRows', () => {
   });
 
   it('drops entries that have no translations', () => {
-    const rows = glossariesToExportRows([makeGlossary({ glossary: '空', translations: [] })]);
+    const rows = glossariesToExportRows([makeGlossary({ sourceTerm: '空', translations: [] })]);
     expect(rows).toEqual([]);
   });
 
   it('renders null entry/translation fields as empty strings', () => {
     const rows = glossariesToExportRows([
       makeGlossary({
-        glossary: '法',
+        sourceTerm: '法',
         phonetic: null,
         cbetaFrequency: null,
         translations: [makeTranslation({ term: 'dharma', sourceText: null, author: null })],
@@ -99,7 +99,7 @@ describe('glossariesToCSV', () => {
   it('quotes and escapes values containing commas, quotes or newlines', () => {
     const csv = glossariesToCSV([
       makeGlossary({
-        glossary: '慈悲',
+        sourceTerm: '慈悲',
         translations: [
           makeTranslation({
             term: 'compassion, kindness',
@@ -124,7 +124,7 @@ describe('glossariesToXLSX', () => {
     const bytes = await glossariesToXLSX([
       makeGlossary({
         id: 'abc',
-        glossary: '菩薩',
+        sourceTerm: '菩薩',
         translations: [makeTranslation({ term: 'bodhisattva', sourceName: 'Lotus', volume: '1' })],
       }),
     ]);
@@ -175,7 +175,7 @@ describe('export → import round trip', () => {
   const entries = [
     makeGlossary({
       id: 'g1',
-      glossary: '佛',
+      sourceTerm: '佛',
       phonetic: 'fó',
       translations: [
         makeTranslation({
@@ -191,7 +191,7 @@ describe('export → import round trip', () => {
         makeTranslation({ id: 't2', term: 'the Awakened One', sourceName: 'S', volume: '1', rationale: null }),
       ],
     }),
-    makeGlossary({ id: 'g2', glossary: '法', translations: [makeTranslation({ id: 't3', term: 'Dharma' })] }),
+    makeGlossary({ id: 'g2', sourceTerm: '法', translations: [makeTranslation({ id: 't3', term: 'Dharma' })] }),
   ];
 
   // What importing the file over the same entries would do to each translation.

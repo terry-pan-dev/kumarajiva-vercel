@@ -7,9 +7,9 @@
 // app kept reading the same fields.
 //
 // Translation field names follow the table's (`term`, `sourceName`, `sourceText`, `targetText`;
-// PRs 8a–8b). The term's own `glossary` (the headword) is the glossaries column's name. File
-// columns (EnglishTerm, SutraName, …), the Algolia record (`translations[].glossary`) and the
-// assistant's `sutraTexts` keep their names.
+// PRs 8a–8b). The term's headword is `sourceTerm` (PR 11), still stored in the column `glossary`.
+// File columns (ChineseTerm, EnglishTerm, SutraName, …), the Algolia record (`glossary`,
+// `translations[].glossary`) and the assistant's `sutraTexts` keep their names.
 import { type ReadGlossary } from '~/drizzle/tables';
 import { type Lang } from '~/utils/constants';
 

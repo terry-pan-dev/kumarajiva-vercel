@@ -217,8 +217,8 @@ export const searchGlossaries = async (tokens: string[]) => {
   const glossaries = await readGlossariesByIds(glossaryIds);
   return glossaries.reduce(
     (acc, glossary) => {
-      if (glossary.glossary) {
-        acc[glossary.glossary] = {
+      if (glossary.sourceTerm) {
+        acc[glossary.sourceTerm] = {
           definitions: glossary.translations?.map((t) => t.term) ?? [],
           // The assistant's prompt shape, sent to the model as JSON: its keys are its own and did
           // not follow the read shape's renames.
@@ -268,7 +268,7 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
   ]);
 
   const idMap = new Map(existingByUuid.map((g) => [g.id, g]));
-  const termMap = new Map(existingByTerm.map((g) => [g.glossary, g]));
+  const termMap = new Map(existingByTerm.map((g) => [g.sourceTerm, g]));
 
   let created = 0;
   let updated = 0;
@@ -302,7 +302,7 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
           await reviveTrashedGlossary(
             existing.id,
             {
-              glossary: group.key,
+              sourceTerm: group.key,
               phonetic: first.phonetic || null,
               cbetaFrequency: first.cbetaFrequency || null,
               author: first.author || null,
@@ -331,7 +331,7 @@ export const importGlossaries = async (rows: GlossaryImportRow[], userId: string
           await createGlossaryAndIndexInAlgolia(
             {
               ...(group.uuid ? { id: group.uuid } : {}),
-              glossary: group.key,
+              sourceTerm: group.key,
               phonetic: first.phonetic || null,
               cbetaFrequency: first.cbetaFrequency || null,
               author: first.author || null,
@@ -384,7 +384,7 @@ export const deleteGlossariesByUserId = async (userId: string) => {
 // found by searching each entry's own term and keeping the hits that carry its uuid. One
 // multi-query covers the whole batch.
 const findIndexObjectIdsForEntries = async (
-  glossaries: Pick<GlossaryTerm, 'id' | 'glossary' | 'searchId'>[],
+  glossaries: Pick<GlossaryTerm, 'id' | 'sourceTerm' | 'searchId'>[],
 ): Promise<Map<string, string[]>> => {
   const objectIds = new Map<string, Set<string>>();
   for (const glossary of glossaries) {
@@ -396,7 +396,7 @@ const findIndexObjectIdsForEntries = async (
     const { results } = await algoliaClient.search<{ id?: string }>({
       requests: glossaries.map((glossary) => ({
         indexName: 'glossaries',
-        query: glossary.glossary,
+        query: glossary.sourceTerm,
         hitsPerPage: 200,
         attributesToRetrieve: ['id'],
       })),
@@ -436,7 +436,7 @@ export const trashGlossaryById = async (
   await algoliaClient.deleteObjects({ indexName: 'glossaries', objectIDs });
   // search_id is cleared because nothing is indexed any more; a restore writes it again.
   await GlossaryStore.updateTerm(id, { deletedAt: new Date(), searchId: null, updatedBy: userId });
-  return { term: glossary.glossary, deletedRecords: objectIDs.length };
+  return { term: glossary.sourceTerm, deletedRecords: objectIDs.length };
 };
 
 export const TRASH_LIST_LIMIT = 500;
@@ -506,7 +506,7 @@ export const purgeTrashedGlossaries = async (ids: string[]): Promise<TrashResult
 // so inserting it again would fail. Nothing of the trashed contents survives.
 export const reviveTrashedGlossary = async (
   id: string,
-  term: Pick<GlossaryTermUpdate, 'glossary' | 'phonetic' | 'author' | 'cbetaFrequency' | 'discussion' | 'updatedBy'>,
+  term: Pick<GlossaryTermUpdate, 'sourceTerm' | 'phonetic' | 'author' | 'cbetaFrequency' | 'discussion' | 'updatedBy'>,
   translations: GlossaryTranslation[],
 ): Promise<GlossaryEntry[]> => {
   const entry = await GlossaryStore.revive(id, term, translations);

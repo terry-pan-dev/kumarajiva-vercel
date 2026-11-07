@@ -39,7 +39,7 @@ import { getGlossariesByGivenGlossaries, importGlossaries, readGlossariesByIds }
 // Subset of ReadGlossary we need for display — avoids Date→string mismatch from Remix JSON serialization.
 type ExistingGlossary = {
   id: string;
-  glossary: string;
+  sourceTerm: string;
   phonetic?: string | null;
   author?: string | null;
   cbetaFrequency?: string | null;
@@ -106,7 +106,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const existing: Record<string, ExistingGlossary> = {};
     for (const g of byUuid) existing[g.id] = g;
-    for (const g of byTerm) existing[g.glossary] = g;
+    for (const g of byTerm) existing[g.sourceTerm] = g;
 
     return json<ActionResponse>({ intent: 'fetch-existing', existing });
   }
@@ -165,7 +165,7 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
     );
   }
 
-  const chineseTerm = isIncoming ? first.chineseTerm : group.existing!.glossary;
+  const chineseTerm = isIncoming ? first.chineseTerm : group.existing!.sourceTerm;
   const phonetic = isIncoming ? first.phonetic : group.existing!.phonetic;
   const author = isIncoming ? first.author : group.existing!.author;
   const cbetaFrequency = isIncoming ? first.cbetaFrequency : group.existing!.cbetaFrequency;

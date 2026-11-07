@@ -119,7 +119,7 @@ describe('glossaryEditFormSchema', () => {
   it('parses a glossary entry with one translation', () => {
     const result = glossaryEditFormSchema.parse({
       id: 'glossary-uuid-789',
-      glossary: '般若',
+      sourceTerm: '般若',
       phonetic: 'bō rě',
       author: 'Translation Team',
       cbetaFrequency: '1200',
@@ -141,7 +141,7 @@ describe('glossaryEditFormSchema', () => {
     });
 
     expect(result.id).toBe('glossary-uuid-789');
-    expect(result.glossary).toBe('般若');
+    expect(result.sourceTerm).toBe('般若');
     expect(result.phonetic).toBe('bō rě');
     expect(result.author).toBe('Translation Team');
     expect(result.cbetaFrequency).toBe('1200');
@@ -165,7 +165,7 @@ describe('glossaryEditFormSchema', () => {
   it('parses nullable optional fields as null when omitted', () => {
     const result = glossaryEditFormSchema.parse({
       id: 'glossary-uuid-000',
-      glossary: '法',
+      sourceTerm: '法',
       phonetic: 'fǎ',
       translations: [
         {
@@ -191,7 +191,7 @@ describe('glossaryEditFormSchema', () => {
   // Without it a save would replace every translation, giving each a new id.
   const withTranslation = (extra: object) => ({
     id: 'glossary-uuid-000',
-    glossary: '法',
+    sourceTerm: '法',
     phonetic: 'fǎ',
     translations: [{ term: 'dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', ...extra }],
   });
@@ -228,7 +228,7 @@ describe('a form posting the old field names', () => {
   it('is refused by the edit form', () => {
     const result = glossaryEditFormSchema.safeParse({
       id: 'glossary-uuid-000',
-      glossary: '法',
+      sourceTerm: '法',
       phonetic: 'fǎ',
       translations: [{ term: 'dharma', language: 'english', volume: '-', ...old }],
     });
@@ -243,14 +243,14 @@ describe('a form posting the old field names', () => {
 
 // ─── Field name before PR 8b ─────────────────────────────────────────────────
 // A page loaded before that deploy posts the rendering as `glossary`, not `term`. It must be
-// refused, not saved without its rendering. (The edit form's own `glossary`, the headword, is
-// unchanged.)
+// refused, not saved without its rendering. (The headword was still `glossary` then; it became
+// `sourceTerm` in PR 11.)
 
 describe('a form posting the rendering as glossary', () => {
   it('is refused by the edit form', () => {
     const result = glossaryEditFormSchema.safeParse({
       id: 'glossary-uuid-000',
-      glossary: '法',
+      sourceTerm: '法',
       phonetic: 'fǎ',
       translations: [{ glossary: 'dharma', language: 'english', sourceName: '佛教常用詞', volume: '-' }],
     });
@@ -266,6 +266,32 @@ describe('a form posting the rendering as glossary', () => {
       author: '',
     });
     expect(result.success).toBe(false);
+  });
+});
+
+// ─── Field name before PR 11 ─────────────────────────────────────────────────
+// A page loaded before that deploy posts the headword as `glossary`, not `sourceTerm`. The edit
+// form refuses it (reload and redo) rather than accepting a save without its headword.
+
+describe('an edit form posting the headword as glossary', () => {
+  it('is refused', () => {
+    const result = glossaryEditFormSchema.safeParse({
+      id: 'glossary-uuid-000',
+      glossary: '法',
+      phonetic: 'fǎ',
+      translations: [{ term: 'dharma', language: 'english', sourceName: '', volume: '' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('is accepted under the new name', () => {
+    const result = glossaryEditFormSchema.safeParse({
+      id: 'glossary-uuid-000',
+      sourceTerm: '法',
+      phonetic: 'fǎ',
+      translations: [{ term: 'dharma', language: 'english', sourceName: '', volume: '' }],
+    });
+    expect(result.success).toBe(true);
   });
 });
 
@@ -310,7 +336,7 @@ describe('rationale', () => {
   const edit = (rationale?: unknown) =>
     glossaryEditFormSchema.safeParse({
       id: 'g1',
-      glossary: '法',
+      sourceTerm: '法',
       phonetic: 'fǎ',
       translations: [{ term: 'Dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', rationale }],
     });

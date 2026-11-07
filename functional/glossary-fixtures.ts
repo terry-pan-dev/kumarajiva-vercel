@@ -85,7 +85,7 @@ function translation(glossary: string, overrides: Partial<Translation> = {}): Tr
 function row(number: number, term: string, overrides: Partial<FixtureRow> = {}): FixtureRow {
   return {
     id: rowId(number),
-    glossary: term,
+    sourceTerm: term,
     phonetic: `zztest ${number}`,
     author: 'ZZTEST fixtures',
     cbetaFrequency: '0',
@@ -145,7 +145,7 @@ export function deletableFixtures(): Fixture[] {
 
   return [
     {
-      term: deleteWholeEntry.glossary,
+      term: deleteWholeEntry.sourceTerm,
       row: deleteWholeEntry,
       records: [canonicalRecord(deleteWholeEntry)],
       tests: '/glossary → find the entry → trash button (admin only)',
@@ -153,7 +153,7 @@ export function deletableFixtures(): Fixture[] {
         'It leaves /glossary and search, and its search record goes. The row moves to the inspector’s Trash with both translations, and is reported nowhere else.',
     },
     {
-      term: deleteOneTranslation.glossary,
+      term: deleteOneTranslation.sourceTerm,
       row: deleteOneTranslation,
       records: [canonicalRecord(deleteOneTranslation)],
       tests: '/glossary → find the entry → edit → remove the “DELETE ME” translation → save',
@@ -161,27 +161,27 @@ export function deletableFixtures(): Fixture[] {
         'The entry stays with 2 translations, and its index record loses the deleted one too — check the inspector’s translations table and the record beside it.',
     },
     {
-      term: duplicateRecords.glossary,
+      term: duplicateRecords.sourceTerm,
       row: duplicateRecords,
       records: [
         canonicalRecord(duplicateRecords),
         // Same uuid, different objectID: this is exactly the shape that makes one entry appear
         // several times in search results.
-        { objectID: 'zztest-03-duplicate-record-a', id: rowId(3), glossary: duplicateRecords.glossary },
-        { objectID: 'zztest-03-duplicate-record-b', id: rowId(3), glossary: duplicateRecords.glossary },
+        { objectID: 'zztest-03-duplicate-record-a', id: rowId(3), glossary: duplicateRecords.sourceTerm },
+        { objectID: 'zztest-03-duplicate-record-b', id: rowId(3), glossary: duplicateRecords.sourceTerm },
       ],
       tests: 'Inspector → Check the search index → “Delete 2 duplicate records” (or the per-row trash buttons)',
       expect:
         'The two zztest-03-… records go, the record at the row’s own uuid is kept, and the entry is untouched. Its duplicate-index-record issue clears on the next check.',
     },
     {
-      term: orphanLiveTerm.glossary,
+      term: orphanLiveTerm.sourceTerm,
       row: orphanLiveTerm,
       records: [
         canonicalRecord(orphanLiveTerm),
         // No row has this uuid, but the term it carries still exists above — the "orphan whose
         // term is still in the glossary" class.
-        { objectID: 'zztest-04-orphan-record-live-term', id: deadId(4), glossary: orphanLiveTerm.glossary },
+        { objectID: 'zztest-04-orphan-record-live-term', id: deadId(4), glossary: orphanLiveTerm.sourceTerm },
       ],
       tests: 'Inspector → “Delete 1 orphan records whose term is still in the glossary”',
       expect:
@@ -203,7 +203,7 @@ export function deletableFixtures(): Fixture[] {
         'The record goes and nothing in the database is involved. Before deleting, find it in the Orphan index records table — it should be badged “term not in glossary”.',
     },
     {
-      term: trashed.glossary,
+      term: trashed.sourceTerm,
       row: trashed,
       records: [],
       tests: 'Inspector → Trash → restore (↺), then /glossary trash button, then Trash → delete permanently',
@@ -261,27 +261,27 @@ export function issueFixtures(): Fixture[] {
 
   return [
     {
-      term: notIndexed.glossary,
+      term: notIndexed.sourceTerm,
       row: notIndexed,
       records: [],
       tests: 'Inspector → badge “not-indexed” on this entry',
       expect: 'Re-index repairs it: it gets a record at its own uuid and search_id starts pointing there.',
     },
     {
-      term: stalePointer.glossary,
+      term: stalePointer.sourceTerm,
       row: stalePointer,
       records: [],
       tests: 'Inspector → badge “stale-index-pointer” on this entry',
       expect: 'Re-index repairs it. The dead pointer is simply overwritten with the row’s own uuid.',
     },
     {
-      term: mismatch.glossary,
+      term: mismatch.sourceTerm,
       row: mismatch,
       records: [
         // Exists in the index, so the pointer is not stale, but carries no uuid — search can
         // never resolve it back to the row. The row's search_id claims it, which is what keeps
         // it out of the orphan list.
-        { objectID: 'zztest-13-partial-record-no-uuid', glossary: mismatch.glossary },
+        { objectID: 'zztest-13-partial-record-no-uuid', glossary: mismatch.sourceTerm },
         // The record that does carry the uuid, at a different objectID.
         canonicalRecord(mismatch),
       ],
@@ -290,21 +290,21 @@ export function issueFixtures(): Fixture[] {
         'Re-index repairs the row. Watch what it leaves: zztest-13-partial-record-no-uuid is no longer claimed by anything, so the next index check reports it as an orphan whose term is still live — the hand-off between the two buttons.',
     },
     {
-      term: nearDuplicateUpper.glossary,
+      term: nearDuplicateUpper.sourceTerm,
       row: nearDuplicateUpper,
       records: [canonicalRecord(nearDuplicateUpper)],
       tests: 'Inspector → badge “near-duplicate-term” on both halves of the pair',
       expect: 'Two genuinely separate rows. Deleting one does not affect the other — the badge says so.',
     },
     {
-      term: nearDuplicateLower.glossary,
+      term: nearDuplicateLower.sourceTerm,
       row: nearDuplicateLower,
       records: [canonicalRecord(nearDuplicateLower)],
       tests: 'Inspector → the lower-case half of the near-duplicate-term pair',
       expect: 'Reported alongside row …0015. Look up “ZZTEST-15” to see both at once.',
     },
     {
-      term: invisible.glossary,
+      term: invisible.sourceTerm,
       row: invisible,
       records: [canonicalRecord(invisible)],
       tests: 'Inspector → badge “term-has-invisible-characters” on this entry',
@@ -312,14 +312,14 @@ export function issueFixtures(): Fixture[] {
         'Search the inspector for ZZTEST-17 to find it; searching for the visible term with a plain trailing space will not match.',
     },
     {
-      term: noTranslations.glossary,
+      term: noTranslations.sourceTerm,
       row: noTranslations,
       records: [canonicalRecord(noTranslations)],
       tests: 'Inspector → badge “no-translations” on this entry',
       expect: 'The translations (glossary_translations) section reads “No translations stored.”',
     },
     {
-      term: blankTranslation.glossary,
+      term: blankTranslation.sourceTerm,
       row: blankTranslation,
       records: [canonicalRecord(blankTranslation)],
       tests: 'Inspector → badge “blank-translation” on this entry',
