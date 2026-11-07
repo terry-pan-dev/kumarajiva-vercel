@@ -29,8 +29,9 @@ export function entryFromCreateForm(
       {
         term: form.glossary,
         language: form.language,
-        sourceName: form.sutraName || '佛教常用詞',
-        volume: form.volume || '-',
+        // Blank stays blank: no placeholder source or section (PR 9).
+        sourceName: form.sutraName || '',
+        volume: form.volume || '',
         updatedBy: user.id,
         updatedAt: now.toISOString(),
         // The Chinese section's Sutra Text is the source passage, the translation section's

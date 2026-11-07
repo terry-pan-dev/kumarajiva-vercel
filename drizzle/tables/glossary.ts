@@ -40,7 +40,8 @@ export const glossaryTranslationsTable = pgTable(
     language: langEnum('language').notNull().default('english'),
     // The rendering.
     term: text('term').notNull(),
-    // '佛教常用詞' is the sentinel for "no source". File column SutraName.
+    // File column SutraName. No source is '' (forms and import since PR 9); older rows say
+    // '佛教常用詞', the placeholder the forms used to fill in. Both stay.
     sourceName: text('source_name').notNull().default('佛教常用詞'),
     volume: text('volume').notNull().default('-'),
     // The passages the term appears in. File columns ChineseSutraText / EnglishSutraText.

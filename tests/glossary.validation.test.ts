@@ -9,7 +9,7 @@ import {
 // ─── glossaryFormSchema (Add New Entry) ──────────────────────────────────────
 
 describe('glossaryFormSchema', () => {
-  it('parses required fields and applies sutraName default', () => {
+  it('parses required fields and leaves the sutra name blank', () => {
     const result = glossaryFormSchema.parse({
       glossaryChinese: '詞彙',
       phoneticChinese: 'cí huì',
@@ -20,8 +20,8 @@ describe('glossaryFormSchema', () => {
       glossaryChinese: '詞彙',
       phoneticChinese: 'cí huì',
       glossary: 'vocabulary',
-      sutraName: '佛教常用詞',
     });
+    expect(result.sutraName).toBeUndefined();
   });
 
   it('parses all optional fields when provided', () => {
@@ -64,7 +64,7 @@ describe('glossaryFormSchema', () => {
 // ─── glossaryInsertFormSchema (Add New Translation) ──────────────────────────
 
 describe('glossaryInsertFormSchema', () => {
-  it('parses required fields and applies defaults for blank optional strings', () => {
+  it('stores blank source, section and author as blank, with no placeholder', () => {
     const result = glossaryInsertFormSchema.parse({
       id: 'glossary-uuid-123',
       term: 'vocabulary',
@@ -78,9 +78,9 @@ describe('glossaryInsertFormSchema', () => {
       id: 'glossary-uuid-123',
       term: 'vocabulary',
       language: 'english',
-      sourceName: '佛教常用詞',
-      volume: '-',
-      author: '翻譯團隊',
+      sourceName: '',
+      volume: '',
+      author: '',
     });
   });
 

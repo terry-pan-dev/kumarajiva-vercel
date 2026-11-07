@@ -8,8 +8,8 @@ Written 2026-11-04, updated 2026-11-06 (PR 7 merged; PR 8a renames the source fi
 freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
 during the freeze; the prod comparison (step 5) passed. The app reads and writes
 `glossary_translations` only. PR 6 (#212), PR 7a (#213), PR 7b (#214, drops the old
-columns) and the cleanup (#215) are merged. PR 8a is committed on branch `rename-labels`
-(e01324617, not merged yet); PR 8b is in the working tree on that branch (see below).
+columns), the cleanup (#215) and PR 8a + 8b (#216, `rename-labels`) are merged. PR 9 is in
+the working tree on `main` (see "Next" below).
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
@@ -149,6 +149,60 @@ step 8: the translation fields now carry the table's names.
   only, and the read and write mappings (`glossary.rows.ts`) are unit-tested and mutation-
   checked. Worth one browser pass like 8a's: open Edit on an entry, change a translation's
   term and save; add a translation with Insert; the import preview shows the translations.
+
+**Next (agreed with the user 2026-11-06):** `rename-labels` (8a + 8b) is merged as #216. Then one
+PR each, in this order:
+
+- **PR 9 (done in the working tree, 2026-11-06).** The user chose to drop all three defaults:
+  a blank Document Name, Section or Author is stored as `''`, not as `佛教常用詞`, `-` or
+  `翻譯團隊`. `glossaryInsertFormSchema` keeps the three as required `z.string()` without
+  transforms (so a post without them is still refused); `glossaryFormSchema.sutraName` lost its
+  default and `entryFromCreateForm` maps blank to `''` (the create form's translation author
+  was already `''`). The term's own author on create still falls back to `翻譯團隊` when the
+  user has no username: that is the term, not a translation default. The placeholders are
+  gone from both forms. The term card's `source | section` badge is now hidden when both are
+  blank and shows only the one given (imports could already store blanks, which showed a bare
+  `|`). Table comment updated; no schema or data change. Import, export and the duplicate
+  compare already treated a blank source as blank and are unchanged. Checked: tsc, 500 tests,
+  eslint/prettier on touched files, 3 mutation checks (each default put back fails a test).
+  Not checked in a browser yet: Insert with everything optional blank, and Create the same.
+
+  The original plan text:
+  **stop filling in a default sutra.** A blank Sutra Name is stored as is, not as the
+  placeholder `佛教常用詞` ("no source"). Today the insert form's schema
+  (`glossaryInsertFormSchema.sourceName`), the create form (`glossaryFormSchema.sutraName`
+  default and `glossary.create.ts`) and the "佛教常用詞(default)" placeholders in
+  `GlossaryList.tsx` and `_app.glossary.tsx` fill it in; the edit form already stores blank.
+  **Forms only, by the user's choice:** no schema change (`source_name` stays not null with
+  its default, so a blank is stored as `''`) and no data change (existing `佛教常用詞` rows
+  stay, so both forms of "no source" coexist). Still to ask the user: whether volume (`-`)
+  and author (`翻譯團隊`, or the username on create) stop being filled in too. Check the
+  import (blank `SutraName`), the export and the duplicate compare (blank = null) with a
+  blank source.
+- **PR 10: reorganize the add-new-entry form** (`_app.glossary.tsx`, `glossaryFormSchema`,
+  `glossary.create.ts`). **Agreed 2026-11-06:** group by what is stored, not by language.
+  _Term_: Chinese Term, Phonetic (auto pinyin), and under "More" Discussion and CBETA
+  Frequency. _First translation_: the Insert form's fields (Language, Translation, Rationale;
+  under "Source" Document Name, Section, Origin Text, Target Text; under "More" Author, Part of
+  Speech, Phonetic). Drop the two fields that were never stored (`volumeChinese`,
+  `authorChinese`). Use the final names now: `sourceTerm`, `phonetic`, `discussion`,
+  `cbetaFrequency`; `term`, `language`, `sourceName`, `volume`, `sourceText`, `targetText`,
+  `author`, `partOfSpeech`, `rationale` (the translation's phonetic needs its own name, as the
+  term's takes `phonetic`). Old details: The create form keeps its own
+  old field names (`glossaryChinese`, `glossary`, `sutraName`, `sutraText`,
+  `sutraTextChinese`); move them to the source/target names while reorganizing.
+- **PR 11: the headword `glossary` → `sourceTerm`** (the user's choice, 2026-11-06: `term`
+  would clash with the translation's `term`; `sourceTerm` fits the source/target rule and the
+  `ChineseTerm` / `EnglishTerm` file columns). The term-level field on `GlossaryTerm` /
+  `GlossaryEntry`, the edit form's top-level `glossary`, the import preview, the store's
+  queries. Rename by symbol, as in 8a/8b: `glossary` also names the feature, the page, the
+  table and the Algolia key. **Code-only** unless the user decides otherwise: Drizzle maps
+  the property to the existing column (`sourceTerm: text('glossary')`); renaming the column
+  is a migration and needs approval. Keep the Algolia record's `glossary` (mapped in
+  `glossary.record.ts`, no re-index), the file column `ChineseTerm` and the assistant's
+  prompt shape.
+
+Also open, not scheduled: remove `translationKey` (no caller since 7b; see 8b above).
 
 The sections below, down to "Known issues", are the PR 3–4 record.
 
@@ -476,6 +530,9 @@ Every manual apply (dev or prod) needs the user's yes.
    `originSutraText` → `sourceText`, `targetSutraText` → `targetText` (see "Where we are").
    8b: `glossary` → `term` for the rendering. File columns, the Algolia record and the
    assistant's prompt shape keep their names.
+9. **PR 9 (working tree):** forms stop filling in `佛教常用詞`, `-` and `翻譯團隊` (see "Where we are").
+10. **PR 10:** reorganize the add-new-entry form.
+11. **PR 11:** the headword `glossary` → `sourceTerm`, code-only.
 
 ## Code map: everything that reads or writes `translations`
 

@@ -201,7 +201,6 @@ const GlossaryCreateForm = () => {
             <FormInput
               name="sutraName"
               label="Document Name"
-              placeholder="佛教常用詞(default)"
               description="The work this translation is from, e.g. a sutra."
             />
             <FormTextarea
