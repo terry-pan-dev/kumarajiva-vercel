@@ -1,19 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
 import { entryFromCreateForm } from '~/services/glossary.create';
-import { glossaryFormSchema } from '~/validations/glossary.validation';
+import { glossaryCreateFormSchema } from '~/validations/glossary.validation';
 
 const user = { id: 'user-1', username: 'Ānanda' };
 const at = { id: 'new-id', now: new Date('2026-11-06T00:00:00.000Z') };
-const form = (fields: Record<string, unknown> = {}) =>
-  glossaryFormSchema.parse({ glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma', ...fields });
+const blank = { sourceName: '', volume: '' };
+const form = (fields: Record<string, unknown> = {}, translation: Record<string, unknown> = {}) =>
+  glossaryCreateFormSchema.parse({
+    sourceTerm: '法',
+    phonetic: 'fǎ',
+    translations: [{ term: 'Dharma', ...blank, ...translation }],
+    ...fields,
+  });
 
 describe('entryFromCreateForm', () => {
-  // The form has a Sutra Text field in each section. Both used to land in both passages.
-  it('puts the Chinese section’s sutra text in the source passage and the translation’s in the target', () => {
+  it('keeps each translation’s origin and target passages', () => {
     const {
       translations: [translation],
-    } = entryFromCreateForm(form({ sutraTextChinese: '佛告阿難', sutraText: 'The Buddha told Ānanda' }), user, at);
+    } = entryFromCreateForm(form({}, { sourceText: '佛告阿難', targetText: 'The Buddha told Ānanda' }), user, at);
     expect(translation.sourceText).toBe('佛告阿難');
     expect(translation.targetText).toBe('The Buddha told Ānanda');
   });
@@ -21,29 +26,53 @@ describe('entryFromCreateForm', () => {
   it('leaves a passage empty when only the other one is given', () => {
     const {
       translations: [translation],
-    } = entryFromCreateForm(form({ sutraText: 'The Buddha told Ānanda' }), user, at);
+    } = entryFromCreateForm(form({}, { targetText: 'The Buddha told Ānanda' }), user, at);
     expect(translation.sourceText).toBe('');
     expect(translation.targetText).toBe('The Buddha told Ānanda');
   });
 
   it('carries the discussion, and null when none is given', () => {
-    expect(entryFromCreateForm(form({ discussion: 'technical sense' }), user, at).translations[0].discussion).toBe(
+    expect(entryFromCreateForm(form({}, { discussion: 'technical sense' }), user, at).translations[0].discussion).toBe(
       'technical sense',
     );
     expect(entryFromCreateForm(form(), user, at).translations[0].discussion).toBeNull();
   });
 
-  it('builds the term from the Chinese section, credited to the user', () => {
-    const { term } = entryFromCreateForm(form({ cbetaFrequencyChinese: '12' }), user, at);
+  // The term's author records who created the entry; the form does not ask for it.
+  it('builds the term, credited to the user', () => {
+    const { term } = entryFromCreateForm(form({ cbetaFrequency: '12' }), user, at);
     expect(term).toMatchObject({
       id: 'new-id',
       sourceTerm: '法',
       phonetic: 'fǎ',
       author: 'Ānanda',
       cbetaFrequency: '12',
+      discussion: '',
       createdBy: 'user-1',
       updatedBy: 'user-1',
     });
+  });
+
+  // A translation's author is its document's, as given, not the user.
+  it('keeps the document author as given', () => {
+    expect(entryFromCreateForm(form({}, { author: 'Kumārajīva' }), user, at).translations[0].author).toBe('Kumārajīva');
+  });
+
+  it('creates every translation given, in order', () => {
+    const { translations } = entryFromCreateForm(
+      form({
+        translations: [
+          { term: 'Dharma', ...blank },
+          { term: 'dharma', language: 'sanskrit', ...blank },
+        ],
+      }),
+      user,
+      at,
+    );
+    expect(translations.map(({ term, language }) => [term, language])).toEqual([
+      ['Dharma', 'english'],
+      ['dharma', 'sanskrit'],
+    ]);
   });
 
   // PR 9: no placeholder source (佛教常用詞) or section ('-'); the term's author still

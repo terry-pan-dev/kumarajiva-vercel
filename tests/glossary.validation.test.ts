@@ -1,115 +1,60 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  glossaryEditFormSchema,
-  glossaryFormSchema,
-  glossaryInsertFormSchema,
-} from '~/validations/glossary.validation';
+import { glossaryCreateFormSchema, glossaryEditFormSchema } from '~/validations/glossary.validation';
 
-// ─── glossaryFormSchema (Add New Entry) ──────────────────────────────────────
+// ─── glossaryCreateFormSchema (Add New Entry) ────────────────────────────────
 
-describe('glossaryFormSchema', () => {
-  it('parses required fields and leaves the sutra name blank', () => {
-    const result = glossaryFormSchema.parse({
-      glossaryChinese: '詞彙',
-      phoneticChinese: 'cí huì',
-      glossary: 'vocabulary',
-    });
-
-    expect(result).toMatchObject({
-      glossaryChinese: '詞彙',
-      phoneticChinese: 'cí huì',
-      glossary: 'vocabulary',
-    });
-    expect(result.sutraName).toBeUndefined();
+describe('glossaryCreateFormSchema', () => {
+  const entry = (translation: object = {}, fields: object = {}) => ({
+    sourceTerm: '詞彙',
+    phonetic: 'cí huì',
+    translations: [{ term: 'vocabulary', sourceName: '', volume: '', ...translation }],
+    ...fields,
   });
 
-  it('parses all optional fields when provided', () => {
-    const result = glossaryFormSchema.parse({
-      glossaryChinese: '法',
-      phoneticChinese: 'fǎ',
-      sutraTextChinese: '法者，諸聖人之所趨也',
-      volumeChinese: '1a',
-      cbetaFrequencyChinese: '500',
-      authorChinese: '鳩摩羅什',
-      discussionChinese: 'discussion text',
-      glossary: 'Dharma',
-      sutraText: 'the dharma sutra text',
-      sutraName: 'flower sutra',
-      volume: '1b',
-      author: 'Translation Team',
-      partOfSpeech: 'noun',
-      phonetic: 'dharma',
-    });
-
+  it('needs only the term, its phonetic and a translation term', () => {
+    const result = glossaryCreateFormSchema.parse(entry());
     expect(result).toMatchObject({
-      glossaryChinese: '法',
-      phoneticChinese: 'fǎ',
-      sutraTextChinese: '法者，諸聖人之所趨也',
-      volumeChinese: '1a',
-      cbetaFrequencyChinese: '500',
-      authorChinese: '鳩摩羅什',
-      discussionChinese: 'discussion text',
-      glossary: 'Dharma',
-      sutraText: 'the dharma sutra text',
-      sutraName: 'flower sutra',
-      volume: '1b',
-      author: 'Translation Team',
-      partOfSpeech: 'noun',
-      phonetic: 'dharma',
+      sourceTerm: '詞彙',
+      phonetic: 'cí huì',
+      translations: [{ term: 'vocabulary', language: 'english', sourceName: '', volume: '' }],
     });
-  });
-});
-
-// ─── glossaryInsertFormSchema (Add New Translation) ──────────────────────────
-
-describe('glossaryInsertFormSchema', () => {
-  it('stores blank source, section and author as blank, with no placeholder', () => {
-    const result = glossaryInsertFormSchema.parse({
-      id: 'glossary-uuid-123',
-      term: 'vocabulary',
-      language: 'english',
-      sourceName: '',
-      volume: '',
-      author: '',
-    });
-
-    expect(result).toMatchObject({
-      id: 'glossary-uuid-123',
-      term: 'vocabulary',
-      language: 'english',
-      sourceName: '',
-      volume: '',
-      author: '',
-    });
+    expect(result.cbetaFrequency).toBeUndefined();
   });
 
   it('parses all fields when provided', () => {
-    const result = glossaryInsertFormSchema.parse({
-      id: 'glossary-uuid-456',
-      term: 'impermanence',
-      language: 'english',
-      sourceName: 'Diamond Sutra',
-      volume: '2a',
-      sourceText: '無常',
-      targetText: 'all things are impermanent',
-      author: 'Translation Team',
+    const translation = {
+      term: 'Dharma',
+      language: 'sanskrit',
+      phonetic: 'dharma',
+      sourceName: 'flower sutra',
+      author: 'Kumārajīva',
+      volume: '1b',
       partOfSpeech: 'noun',
-      phonetic: 'impermanence',
+      sourceText: '法者，諸聖人之所趨也',
+      targetText: 'the dharma sutra text',
+      discussion: 'technical sense',
+    };
+    expect(glossaryCreateFormSchema.parse(entry(translation, { cbetaFrequency: '500' }))).toMatchObject({
+      cbetaFrequency: '500',
+      translations: [translation],
     });
+  });
 
-    expect(result).toMatchObject({
-      id: 'glossary-uuid-456',
-      term: 'impermanence',
-      language: 'english',
-      sourceName: 'Diamond Sutra',
-      volume: '2a',
-      sourceText: '無常',
-      targetText: 'all things are impermanent',
-      author: 'Translation Team',
-      partOfSpeech: 'noun',
-      phonetic: 'impermanence',
-    });
+  it('refuses an entry without a translation, or with a blank translation term', () => {
+    expect(glossaryCreateFormSchema.safeParse(entry({}, { translations: [] })).success).toBe(false);
+    expect(glossaryCreateFormSchema.safeParse(entry({ term: '  ' })).success).toBe(false);
+  });
+
+  it('refuses a term that is not Chinese', () => {
+    expect(glossaryCreateFormSchema.safeParse(entry({}, { sourceTerm: 'dharma' })).success).toBe(false);
+  });
+
+  // The term's author is set from the user, not taken from the form.
+  it('drops a term author or discussion a page still posts', () => {
+    const result = glossaryCreateFormSchema.parse(entry({}, { author: 'someone', discussion: 'x' }));
+    expect(result).not.toHaveProperty('author');
+    expect(result).not.toHaveProperty('discussion');
   });
 });
 
@@ -121,9 +66,7 @@ describe('glossaryEditFormSchema', () => {
       id: 'glossary-uuid-789',
       sourceTerm: '般若',
       phonetic: 'bō rě',
-      author: 'Translation Team',
       cbetaFrequency: '1200',
-      discussion: 'a key Buddhist concept',
       translations: [
         {
           term: 'prajna',
@@ -143,9 +86,7 @@ describe('glossaryEditFormSchema', () => {
     expect(result.id).toBe('glossary-uuid-789');
     expect(result.sourceTerm).toBe('般若');
     expect(result.phonetic).toBe('bō rě');
-    expect(result.author).toBe('Translation Team');
     expect(result.cbetaFrequency).toBe('1200');
-    expect(result.discussion).toBe('a key Buddhist concept');
 
     expect(result.translations).toHaveLength(1);
     const [translation] = result.translations;
@@ -177,9 +118,7 @@ describe('glossaryEditFormSchema', () => {
       ],
     });
 
-    expect(result.author).toBeUndefined();
     expect(result.cbetaFrequency).toBeUndefined();
-    expect(result.discussion).toBeUndefined();
 
     const [translation] = result.translations;
     expect(translation.sourceText).toBeUndefined();
@@ -216,6 +155,24 @@ describe('glossaryEditFormSchema', () => {
   it('refuses a translation id that is not a uuid', () => {
     expect(glossaryEditFormSchema.safeParse(withTranslation({ id: 'not-a-uuid' })).success).toBe(false);
   });
+
+  it('refuses a blank translation term', () => {
+    expect(glossaryEditFormSchema.safeParse(withTranslation({ term: ' ' })).success).toBe(false);
+  });
+
+  // Who created the entry, and a column that is only ever blank: neither is edited here.
+  it('drops a term author or discussion a page still posts', () => {
+    const result = glossaryEditFormSchema.parse({ ...withTranslation({}), author: 'someone', discussion: 'x' });
+    expect(result).not.toHaveProperty('author');
+    expect(result).not.toHaveProperty('discussion');
+  });
+
+  // A stored translation keeps its language; one added in the form needs a translation language.
+  it('refuses Chinese for an added translation but not a stored one', () => {
+    const id = '0000fe57-0000-4000-8000-000000000001';
+    expect(glossaryEditFormSchema.safeParse(withTranslation({ language: 'chinese' })).success).toBe(false);
+    expect(glossaryEditFormSchema.safeParse(withTranslation({ id, language: 'chinese' })).success).toBe(true);
+  });
 });
 
 // ─── Field names before PR 8a ────────────────────────────────────────────────
@@ -235,8 +192,12 @@ describe('a form posting the old field names', () => {
     expect(result.success).toBe(false);
   });
 
-  it('is refused by the insert form', () => {
-    const result = glossaryInsertFormSchema.safeParse({ id: 'g1', term: 'Dharma', volume: '', author: '', ...old });
+  it('is refused by the create form', () => {
+    const result = glossaryCreateFormSchema.safeParse({
+      sourceTerm: '法',
+      phonetic: 'fǎ',
+      translations: [{ term: 'Dharma', volume: '', ...old }],
+    });
     expect(result.success).toBe(false);
   });
 });
@@ -257,13 +218,11 @@ describe('a form posting the rendering as glossary', () => {
     expect(result.success).toBe(false);
   });
 
-  it('is refused by the insert form', () => {
-    const result = glossaryInsertFormSchema.safeParse({
-      id: 'g1',
-      glossary: 'Dharma',
-      sourceName: '',
-      volume: '',
-      author: '',
+  it('is refused by the create form', () => {
+    const result = glossaryCreateFormSchema.safeParse({
+      sourceTerm: '法',
+      phonetic: 'fǎ',
+      translations: [{ glossary: 'Dharma', sourceName: '', volume: '' }],
     });
     expect(result.success).toBe(false);
   });
@@ -298,56 +257,42 @@ describe('an edit form posting the headword as glossary', () => {
 // ─── Translation language (no longer the user's target language) ────────────
 
 describe('glossary translation language', () => {
-  const entry = { glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma' };
-  const insert = { id: 'g1', term: 'Dharma', sourceName: '', volume: '', author: '' };
-
-  it('a new entry is in English unless another language is chosen', () => {
-    expect(glossaryFormSchema.parse(entry).language).toBe('english');
-    expect(glossaryFormSchema.parse({ ...entry, language: 'indonesian' }).language).toBe('indonesian');
+  const entry = (language?: string) => ({
+    sourceTerm: '法',
+    phonetic: 'fǎ',
+    translations: [{ term: 'Dharma', sourceName: '', volume: '', ...(language && { language }) }],
   });
+  const languageOf = (language?: string) => glossaryCreateFormSchema.parse(entry(language)).translations[0].language;
 
-  it('a new translation of an existing entry defaults to English too', () => {
-    expect(glossaryInsertFormSchema.parse(insert).language).toBe('english');
-    expect(glossaryInsertFormSchema.parse({ ...insert, language: 'sanskrit' }).language).toBe('sanskrit');
+  it('a new translation is in English unless another language is chosen', () => {
+    expect(languageOf()).toBe('english');
+    expect(languageOf('indonesian')).toBe('indonesian');
   });
 
   // Entries are Chinese terms; a "translation" into Chinese is not one.
   it('refuses Chinese and unknown languages for a translation', () => {
-    expect(glossaryFormSchema.safeParse({ ...entry, language: 'chinese' }).success).toBe(false);
-    expect(glossaryFormSchema.safeParse({ ...entry, language: 'french' }).success).toBe(false);
-    expect(glossaryInsertFormSchema.safeParse({ ...insert, language: 'chinese' }).success).toBe(false);
+    expect(glossaryCreateFormSchema.safeParse(entry('chinese')).success).toBe(false);
+    expect(glossaryCreateFormSchema.safeParse(entry('french')).success).toBe(false);
   });
 });
 
 // ─── Discussion, the same rule in every form ──────────────────────────────────
 
 describe('discussion', () => {
+  const translation = (discussion?: unknown) => ({ term: 'Dharma', sourceName: '', volume: '', discussion });
   const create = (discussion?: unknown) =>
-    glossaryFormSchema.safeParse({ glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma', discussion });
-  const insert = (discussion?: unknown) =>
-    glossaryInsertFormSchema.safeParse({
-      id: 'g1',
-      term: 'Dharma',
-      sourceName: '',
-      volume: '',
-      author: '',
-      discussion,
-    });
+    glossaryCreateFormSchema.safeParse({ sourceTerm: '法', phonetic: 'fǎ', translations: [translation(discussion)] });
   const edit = (discussion?: unknown) =>
     glossaryEditFormSchema.safeParse({
       id: 'g1',
       sourceTerm: '法',
       phonetic: 'fǎ',
-      translations: [{ term: 'Dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', discussion }],
+      translations: [{ ...translation(discussion), language: 'english' }],
     });
   const discussionOf = {
     create: (value?: unknown) => {
       const r = create(value);
-      return r.success ? r.data.discussion : 'invalid';
-    },
-    insert: (value?: unknown) => {
-      const r = insert(value);
-      return r.success ? r.data.discussion : 'invalid';
+      return r.success ? r.data.translations[0].discussion : 'invalid';
     },
     edit: (value?: unknown) => {
       const r = edit(value);
@@ -355,21 +300,21 @@ describe('discussion', () => {
     },
   };
 
-  it.each(['create', 'insert', 'edit'] as const)('%s keeps a discussion, trimmed', (form) => {
+  it.each(['create', 'edit'] as const)('%s keeps a discussion, trimmed', (form) => {
     expect(discussionOf[form]('  chosen over “law”: the term is technical here \n')).toBe(
       'chosen over “law”: the term is technical here',
     );
   });
 
   // Blank and absent mean the same, so clearing the field never reads as an edit of it.
-  it.each(['create', 'insert', 'edit'] as const)('%s stores blank or absent as null', (form) => {
+  it.each(['create', 'edit'] as const)('%s stores blank or absent as null', (form) => {
     expect(discussionOf[form]('   ')).toBeNull();
     expect(discussionOf[form]('')).toBeNull();
     expect(discussionOf[form](null)).toBeNull();
     expect(discussionOf[form](undefined)).toBeNull();
   });
 
-  it.each(['create', 'insert', 'edit'] as const)('%s accepts a long discussion', (form) => {
+  it.each(['create', 'edit'] as const)('%s accepts a long discussion', (form) => {
     expect(discussionOf[form]('x'.repeat(20_000))).toHaveLength(20_000);
   });
 });

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFetcher } from '@remix-run/react';
 import React, { useCallback, useEffect, useState, type PropsWithChildren } from 'react';
-import { Controller, FormProvider, useForm, useFormContext, type Mode } from 'react-hook-form';
+import { Controller, FormProvider, get, useForm, useFormContext, type Mode } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
 import { type z, type ZodSchema } from 'zod';
 
@@ -279,7 +279,8 @@ function BaseFormField({
       </FormLabel>
       <FormControl>{children}</FormControl>
       {description && <FormDescription>{description}</FormDescription>}
-      {errors[name] && <p className="text-sm text-red-500">{errors[name]?.message as string}</p>}
+      {/* get, not errors[name]: a field in a list (translations.0.term) is nested in errors. */}
+      {get(errors, name)?.message && <p className="text-sm text-red-500">{get(errors, name).message as string}</p>}
     </FormItem>
   );
 }

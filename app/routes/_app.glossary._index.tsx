@@ -20,7 +20,7 @@ import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { readGlossaries, readGlossariesByIds, trashGlossaryById, updateGlossaryTranslations } from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
 import { addsOrRemoves, isStored, TranslationListError } from '~/services/glossary.diff';
-import { glossaryEditFormSchema, glossaryInsertFormSchema } from '~/validations/glossary.validation';
+import { glossaryEditFormSchema } from '~/validations/glossary.validation';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
@@ -79,8 +79,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
   }
 
-  // Edit and insert mirror the <Can> gates on the buttons in GlossaryDetail. Those only hide
-  // the buttons; without these checks any signed-in user could POST here directly.
+  // The edit mirrors the <Can> gates in GlossaryDetail and its form (edit, add and remove
+  // translation). Those only hide the buttons; without these checks any signed-in user could
+  // POST here directly.
   if (kind === 'edit') {
     if (ability.cannot('Update', 'Glossary')) {
       return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
@@ -116,17 +117,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (needsMaintain && ability.cannot('Maintain', 'Glossary')) {
       return json({ success: false, errors: ['You are not allowed to add or remove translations.'] }, { status: 403 });
     }
-    const { id, phonetic = null, author = null, cbetaFrequency = null } = validatedData;
+    const { id, phonetic = null, cbetaFrequency = null } = validatedData;
     try {
       await updateGlossaryTranslations({
         id,
         phonetic,
-        author,
+        // The term's author records who created the entry, and its discussion is only ever
+        // blank (to be dropped): the form edits neither, and null leaves both as stored.
+        author: null,
+        discussion: null,
         cbetaFrequency,
-        updatedBy: phonetic || author || cbetaFrequency ? user.id : null,
+        updatedBy: phonetic || cbetaFrequency ? user.id : null,
         translations: validatedDataWithUpdatedBy,
         basis: validatedData.baseTranslationIds,
-        discussion: validatedData.discussion ?? null,
       });
     } catch (error) {
       // Someone else removed one of these translations between the check above and the save.
@@ -134,30 +137,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       throw error;
     }
     return json({ success: true, kind: 'edit' });
-  }
-
-  if (kind === 'insert') {
-    if (ability.cannot('Maintain', 'Glossary')) {
-      return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
-    }
-    // `id` is the term's: it says which term gets the translation and is not part of it.
-    const { id, ...data } = validatePayloadOrThrow({ schema: glossaryInsertFormSchema, formData });
-    const newTranslation = {
-      ...data,
-      updatedBy: user.id,
-      updatedAt: new Date().toISOString(),
-    };
-    await updateGlossaryTranslations({
-      id,
-      translations: [newTranslation],
-      isNewInsert: true,
-      phonetic: null,
-      author: null,
-      cbetaFrequency: null,
-      updatedBy: null,
-      discussion: null,
-    });
-    return json({ success: true, kind: 'insert' });
   }
 
   // Nothing else posts here: creating an entry is the layout route's action (_app.glossary.tsx).

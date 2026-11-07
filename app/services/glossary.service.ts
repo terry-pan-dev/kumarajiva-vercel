@@ -81,7 +81,6 @@ export const updateGlossaryTranslations = async ({
   translations = [],
   discussion,
   updatedBy,
-  isNewInsert = false,
   basis,
 }: {
   id: string;
@@ -91,21 +90,15 @@ export const updateGlossaryTranslations = async ({
   discussion: string | null;
   translations?: GlossaryTranslation[];
   updatedBy: string | null;
-  isNewInsert?: boolean;
   // The translation ids `translations` was built from (TranslationBasis in glossary.diff.ts):
   // the edit form's, or the stored ones the caller read. A translation added since is kept.
-  // Omitted: every stored translation counts as known. An insert sets it itself.
+  // Omitted: every stored translation counts as known.
   basis?: string[];
 }): Promise<GlossaryEntry | undefined> => {
   const glossary = await GlossaryStore.findById(id);
   if (!glossary) {
     throw new Error('Glossary not found');
   }
-
-  // The store takes the whole list, so an insert sends the stored translations with the new
-  // one after them — built from what was just read, which is its basis.
-  const newTranslations = isNewInsert ? [...glossary.translations, ...translations] : [...translations];
-  const newBasis = isNewInsert ? glossary.translations.flatMap((translation) => translation.id ?? []) : basis;
 
   const toUpdate: GlossaryTermUpdate = {
     phonetic: phonetic ?? undefined,
@@ -115,7 +108,7 @@ export const updateGlossaryTranslations = async ({
     discussion: discussion ?? undefined,
   };
 
-  const entry = await GlossaryStore.update(id, toUpdate, newTranslations, newBasis);
+  const entry = await GlossaryStore.update(id, toUpdate, translations, basis);
 
   // Search follows the saved entry, not the list sent: they differ when translations added by
   // someone else meanwhile were kept, and a save the store refused must not reach search at all.

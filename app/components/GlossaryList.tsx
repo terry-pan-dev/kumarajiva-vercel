@@ -1,8 +1,6 @@
-import { ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import React, { useCallback, useMemo, useState, useRef } from 'react';
-import { useFieldArray } from 'react-hook-form';
 import { ClientOnly } from 'remix-utils/client-only';
-import { type z } from 'zod';
 
 import { Can } from '~/authorisation';
 import { DeleteEntityButton } from '~/components/data/DeleteEntityButton';
@@ -23,11 +21,10 @@ import {
 } from '~/components/ui';
 import { Divider } from '~/components/ui/divider';
 import { type GlossaryEntry } from '~/services/glossary.types';
-import { DEFAULT_TARGET_LANG } from '~/utils/constants';
-import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
-import { glossaryEditFormSchema, glossaryInsertFormSchema } from '~/validations/glossary.validation';
+import { glossaryEditFormSchema } from '~/validations/glossary.validation';
 
-import { FormInput, FormModal, FormSelect, FormTextarea, HiddenInput } from './FormModal';
+import { FormModal, HiddenInput } from './FormModal';
+import { SourceTermFields, TranslationsFields } from './GlossaryForm';
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
@@ -118,9 +115,6 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
 }
 
 // The same prompt wherever a translation's discussion is entered: create, edit and insert.
-export const DISCUSSION_DESCRIPTION =
-  'Notes on this translation, e.g. why this rendering was chosen, sources or alternatives considered. Optional.';
-
 export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: GlossaryEntry; showEdit?: boolean }) => {
   // Regex cache to avoid recompilation
   const regexCache = useRef<Map<string, RegExp>>(new Map());
@@ -217,7 +211,6 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                   defaultValues={{
                     id: glossary?.id,
                     sourceTerm: glossary.sourceTerm,
-                    author: glossary.author || '',
                     cbetaFrequency: glossary.cbetaFrequency || '',
                     phonetic: glossary.phonetic || '',
                     // Each translation keeps its id from here to the save (glossaryEditFormSchema
@@ -227,27 +220,9 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                       discussion: translation.discussion ?? null,
                     })),
                     baseTranslationIds: glossary.translations.flatMap((translation) => translation.id ?? []),
-                    discussion: glossary.discussion || '',
                   }}
                 >
                   <GlossaryEditForm id={glossary.id} />
-                </FormModal>
-              </Can>
-              <Can I="Maintain" this="Glossary">
-                <FormModal
-                  kind="insert"
-                  title="Add New Translation"
-                  fetcherKey="insert-glossary"
-                  schema={glossaryInsertFormSchema}
-                  // Only the language starts filled in; FormModal types defaultValues as a whole form.
-                  defaultValues={{ language: DEFAULT_TARGET_LANG } as z.infer<typeof glossaryInsertFormSchema>}
-                  trigger={
-                    <Button size="icon" variant="ghost" aria-label="add-glossary">
-                      <Icons.SquarePlus className="h-6 w-6 text-slate-800" />
-                    </Button>
-                  }
-                >
-                  <GlossaryInsertForm id={glossary.id} />
                 </FormModal>
               </Can>
               <Can I="Maintain" this="Glossary">
@@ -356,123 +331,13 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
   );
 };
 
+// Adding a translation is part of the edit: "+ Add translation" appends one, saved with the rest.
 const GlossaryEditForm = ({ id }: { id: string }) => {
-  const { fields, remove } = useFieldArray({
-    name: 'translations',
-  });
   return (
     <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
       <HiddenInput name="id" value={id} />
-      <Divider>CHINESE</Divider>
-      <div className="grid grid-cols-2 gap-4">
-        <FormInput required label="Term" disabled={true} name={`sourceTerm`} description="The term in Chinese" />
-        <FormInput required label="Phonetic" name={`phonetic`} description="The phonetic of the term" />
-        <FormInput label="Author" name={`author`} description="The author of the term" />
-        <FormInput label="CBETA Frequency" name={`cbetaFrequency`} description="The cbeta frequency of the term" />
-        <span className="col-span-2">
-          <FormTextarea label="Discussion" name={`discussion`} description="The discussion of the term" />
-        </span>
-      </div>
-      {fields.map((field, index) => (
-        <div key={field.id}>
-          <div className="flex items-center gap-2">
-            {/* @ts-ignore */}
-            <Divider className="flex-1">{field.language.toUpperCase()}</Divider>
-            {/* Removal takes effect on Save, like every other edit in this form. */}
-            <Can I="Maintain" this="Glossary">
-              <Button
-                size="icon"
-                type="button"
-                variant="ghost"
-                title="Remove translation"
-                onClick={() => remove(index)}
-                aria-label="remove-translation"
-              >
-                <Trash2 className="text-muted-foreground hover:text-destructive h-4 w-4" />
-              </Button>
-            </Can>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput required label="Translation Term" name={`translations.${index}.term`} />
-            <FormInput
-              label="Phonetic"
-              description="The phonetic of the term"
-              name={`translations.${index}.phonetic`}
-            />
-            <FormInput
-              required
-              label="Document Name"
-              name={`translations.${index}.sourceName`}
-              description="The work this translation is from, e.g. a sutra"
-            />
-            <FormInput
-              required
-              label="Section"
-              name={`translations.${index}.volume`}
-              description="Where in the document, e.g. a volume or chapter"
-            />
-            <FormTextarea
-              label="Origin Text"
-              name={`translations.${index}.sourceText`}
-              description="The passage in the original language"
-            />
-            <FormTextarea
-              label="Target Text"
-              name={`translations.${index}.targetText`}
-              description="The passage in the target language"
-            />
-            <FormInput
-              label="Part of Speech"
-              name={`translations.${index}.partOfSpeech`}
-              description="The part of speech of the term"
-            />
-            <FormInput label="Author" description="The author of the term" name={`translations.${index}.author`} />
-            <span className="col-span-2">
-              <FormTextarea
-                label="Discussion"
-                description={DISCUSSION_DESCRIPTION}
-                name={`translations.${index}.discussion`}
-              />
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const GlossaryInsertForm = ({ id }: { id: string }) => {
-  const languageOptions = GLOSSARY_TRANSLATION_LANGUAGES.map((language) => ({
-    label: language,
-    value: language,
-  }));
-
-  return (
-    <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
-      <HiddenInput name="id" value={id} />
-      <div className="grid grid-cols-2 gap-4">
-        <FormSelect
-          required
-          name="language"
-          label="Language"
-          options={languageOptions}
-          description="The language of the new translation"
-        />
-        <FormInput required name={`term`} label="New Translation" description="The term you want to insert" />
-        <FormInput
-          name={'sourceName'}
-          label="Document Name"
-          description="The work this translation is from, e.g. a sutra"
-        />
-        <FormInput label="Section" name={'volume'} description="Where in the document, e.g. a volume or chapter" />
-        <FormInput name={'sourceText'} label="Origin Text" description="The passage in the original language" />
-        <FormInput name={'targetText'} label="Target Text" description="The passage in the target language" />
-        <FormInput label="Phonetic" name={`phonetic`} description="The phonetic of the term" />
-        <FormInput label="Author" name={`author`} description="The author of the new term" />
-        <span className="col-span-2">
-          <FormTextarea name="discussion" label="Discussion" description={DISCUSSION_DESCRIPTION} />
-        </span>
-      </div>
+      <SourceTermFields />
+      <TranslationsFields />
     </div>
   );
 };

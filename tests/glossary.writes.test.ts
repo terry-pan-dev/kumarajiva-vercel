@@ -82,7 +82,7 @@ beforeEach(() => {
   store.findByTermsIncludingTrash.mockResolvedValue([]);
 });
 
-// ─── Edit and insert ─────────────────────────────────────────────────────────
+// ─── Edit (which also adds translations) ─────────────────────────────────────
 
 describe('updateGlossaryTranslations', () => {
   const edit = (extra: Partial<Parameters<typeof updateGlossaryTranslations>[0]> = {}) =>
@@ -112,20 +112,6 @@ describe('updateGlossaryTranslations', () => {
     store.findById.mockResolvedValue(entry('g'));
     await edit({ basis: ['t1', 't2'] });
     expect(store.update.mock.calls[0][3]).toEqual(['t1', 't2']);
-  });
-
-  it('an insert’s basis is the stored translations it read', async () => {
-    store.findById.mockResolvedValue(
-      entry('g', { translations: [translation('a', { id: 't1' }), translation('b', { id: 't2' })] }),
-    );
-    await edit({ translations: [translation('c')], isNewInsert: true, basis: ['ignored'] });
-    expect(store.update.mock.calls[0][3]).toEqual(['t1', 't2']);
-  });
-
-  it('an insert hands the store the stored list with the new translation after it', async () => {
-    store.findById.mockResolvedValue(entry('g', { translations: [translation('a'), translation('b')] }));
-    await edit({ translations: [translation('c')], isNewInsert: true });
-    expect(store.update.mock.calls[0][2]).toEqual([translation('a'), translation('b'), translation('c')]);
   });
 
   // The saved entry can hold more than the list sent: translations added meanwhile are kept.
