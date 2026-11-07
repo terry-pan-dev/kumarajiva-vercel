@@ -202,7 +202,7 @@ export function chunkGroupsToRows(groups: GroupedTerm[]): GlossaryImportRow[][] 
 export function translationFromRow(row: GlossaryImportRow) {
   return {
     id: row.translationUuid || undefined,
-    glossary: row.englishTerm,
+    term: row.englishTerm,
     sourceName: row.sutraName,
     volume: row.volume,
     sourceText: row.chineseSutraText || null,

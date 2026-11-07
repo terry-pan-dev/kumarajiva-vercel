@@ -36,7 +36,7 @@ export function glossariesToExportRows(glossaries: ExportableGlossary[]): Glossa
     (glossary.translations ?? []).map((t) => ({
       UUID: glossary.id ?? '',
       ChineseTerm: glossary.glossary ?? '',
-      EnglishTerm: t.glossary ?? '',
+      EnglishTerm: t.term ?? '',
       ChineseSutraText: t.sourceText ?? '',
       EnglishSutraText: t.targetText ?? '',
       SutraName: t.sourceName ?? '',

@@ -27,7 +27,7 @@ export function entryFromCreateForm(
     },
     translations: [
       {
-        glossary: form.glossary,
+        term: form.glossary,
         language: form.language,
         sourceName: form.sutraName || '佛教常用詞',
         volume: form.volume || '-',

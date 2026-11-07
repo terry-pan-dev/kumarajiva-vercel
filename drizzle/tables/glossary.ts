@@ -38,7 +38,7 @@ export const glossaryTranslationsTable = pgTable(
     // Display order within the term.
     position: integer('position').notNull(),
     language: langEnum('language').notNull().default('english'),
-    // The rendering (JSON `glossary`).
+    // The rendering.
     term: text('term').notNull(),
     // '佛教常用詞' is the sentinel for "no source". File column SutraName.
     sourceName: text('source_name').notNull().default('佛教常用詞'),

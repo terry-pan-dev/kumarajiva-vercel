@@ -31,7 +31,7 @@ const row = (extra: Partial<ReadGlossaryTranslation> = {}): ReadGlossaryTranslat
 });
 
 const translation = (extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
-  glossary: 'Buddha',
+  term: 'Buddha',
   language: 'english',
   sourceName: '華嚴經',
   volume: '3',
@@ -49,7 +49,7 @@ describe('toGlossaryTranslation', () => {
       toGlossaryTranslation(row({ rationale: 'why', metadata: { partOfSpeech: 'noun', phonetic: 'bud-dha' } })),
     ).toEqual({
       id: 't1',
-      glossary: 'Buddha',
+      term: 'Buddha',
       language: 'english',
       sourceName: '華嚴經',
       volume: '3',

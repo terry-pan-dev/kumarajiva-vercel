@@ -4,7 +4,6 @@
 // Fields with the same name on both sides map straight across. The rest:
 //
 //   row            read shape
-//   term           glossary
 //   metadata       partOfSpeech, phonetic (stored only when non-empty)
 //   updatedAt      updatedAt, as an ISO string
 //   updatedBy      updatedBy
@@ -18,7 +17,7 @@ import { type GlossaryTranslation } from './glossary.types';
 // absent would make every save look like an edit of every translation.
 export const toGlossaryTranslation = (row: ReadGlossaryTranslation): StoredTranslation => ({
   id: row.id,
-  glossary: row.term,
+  term: row.term,
   language: row.language,
   sourceName: row.sourceName,
   volume: row.volume,
@@ -42,7 +41,7 @@ export const translationContent = (translation: GlossaryTranslation) => {
   if (nonEmpty(translation.phonetic)) metadata.phonetic = translation.phonetic;
   return {
     language: translation.language,
-    term: translation.glossary,
+    term: translation.term,
     sourceName: translation.sourceName,
     volume: translation.volume,
     sourceText: translation.sourceText ?? null,

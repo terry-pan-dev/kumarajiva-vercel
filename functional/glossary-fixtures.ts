@@ -69,7 +69,7 @@ export function setFixtureAuthorId(id: string) {
 
 function translation(glossary: string, overrides: Partial<Translation> = {}): Translation {
   return {
-    glossary,
+    term: glossary,
     language: 'english',
     sourceName: 'ZZTEST Sutra',
     volume: '1',

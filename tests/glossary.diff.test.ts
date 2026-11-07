@@ -10,8 +10,8 @@ import {
 } from '~/services/glossary.diff';
 import { type GlossaryTranslation } from '~/services/glossary.types';
 
-const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
-  glossary,
+const translation = (term: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
+  term,
   language: 'english',
   sourceName: '華嚴經',
   volume: '1',
@@ -20,8 +20,8 @@ const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {})
   ...extra,
 });
 
-const stored = (id: string, glossary: string, extra: Partial<GlossaryTranslation> = {}): StoredTranslation => ({
-  ...translation(glossary, extra),
+const stored = (id: string, term: string, extra: Partial<GlossaryTranslation> = {}): StoredTranslation => ({
+  ...translation(term, extra),
   id,
 });
 
@@ -44,7 +44,7 @@ describe('diffTranslations', () => {
   });
 
   it('updates a stored translation whose content changed', () => {
-    const edited = { ...b, glossary: 'the Dharma' };
+    const edited = { ...b, term: 'the Dharma' };
     expect(diffTranslations([a, b], [a, edited]).update).toEqual([
       { id: 'b', position: 1, translation: edited, contentChanged: true },
     ]);
@@ -90,7 +90,7 @@ describe('diffTranslations', () => {
   });
 
   it('marks a translation that moved and changed as changed', () => {
-    const edited = { ...b, glossary: 'the Dharma' };
+    const edited = { ...b, term: 'the Dharma' };
     expect(diffTranslations([a, b], [edited]).update).toEqual([
       { id: 'b', position: 0, translation: edited, contentChanged: true },
     ]);
@@ -111,7 +111,7 @@ describe('sameContent', () => {
   });
 
   it.each([
-    'glossary',
+    'term',
     'language',
     'sourceName',
     'volume',
@@ -131,7 +131,7 @@ describe('sameContent', () => {
 // The edit form's permission rule: Update edits, Maintain also adds and removes.
 describe('addsOrRemoves', () => {
   it('is false for edits and moves only', () => {
-    expect(addsOrRemoves([a, b], [{ ...a, glossary: 'the Buddha' }, b])).toBe(false);
+    expect(addsOrRemoves([a, b], [{ ...a, term: 'the Buddha' }, b])).toBe(false);
     expect(addsOrRemoves([a, b], [b, a])).toBe(false);
   });
 

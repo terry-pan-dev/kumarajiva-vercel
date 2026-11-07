@@ -23,7 +23,7 @@ import { type GlossaryTranslation } from '~/services/glossary.types';
 
 type Translation = GlossaryTranslation;
 
-function makeTranslation(overrides: Partial<Translation> & { glossary: string }): Translation {
+function makeTranslation(overrides: Partial<Translation> & { term: string }): Translation {
   return {
     language: 'english',
     sourceName: '',
@@ -55,8 +55,8 @@ describe('glossariesToExportRows', () => {
         phonetic: 'púsà',
         cbetaFrequency: '500',
         translations: [
-          makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' }),
-          makeTranslation({ glossary: 'enlightened being' }),
+          makeTranslation({ term: 'bodhisattva', sourceName: 'Lotus', volume: '1' }),
+          makeTranslation({ term: 'enlightened being' }),
         ],
       }),
     ]);
@@ -77,7 +77,7 @@ describe('glossariesToExportRows', () => {
         glossary: '法',
         phonetic: null,
         cbetaFrequency: null,
-        translations: [makeTranslation({ glossary: 'dharma', sourceText: null, author: null })],
+        translations: [makeTranslation({ term: 'dharma', sourceText: null, author: null })],
       }),
     ]);
 
@@ -102,7 +102,7 @@ describe('glossariesToCSV', () => {
         glossary: '慈悲',
         translations: [
           makeTranslation({
-            glossary: 'compassion, kindness',
+            term: 'compassion, kindness',
             sourceText: 'has "quotes"',
             targetText: 'line1\nline2',
           }),
@@ -125,7 +125,7 @@ describe('glossariesToXLSX', () => {
       makeGlossary({
         id: 'abc',
         glossary: '菩薩',
-        translations: [makeTranslation({ glossary: 'bodhisattva', sourceName: 'Lotus', volume: '1' })],
+        translations: [makeTranslation({ term: 'bodhisattva', sourceName: 'Lotus', volume: '1' })],
       }),
     ]);
 
@@ -180,7 +180,7 @@ describe('export → import round trip', () => {
       translations: [
         makeTranslation({
           id: 't1',
-          glossary: 'Buddha',
+          term: 'Buddha',
           sourceName: '華嚴經',
           volume: '3',
           sourceText: '佛告阿難',
@@ -188,10 +188,10 @@ describe('export → import round trip', () => {
           author: '翻譯團隊',
           rationale: 'the standard rendering,\nkept for consistency',
         }),
-        makeTranslation({ id: 't2', glossary: 'the Awakened One', sourceName: 'S', volume: '1', rationale: null }),
+        makeTranslation({ id: 't2', term: 'the Awakened One', sourceName: 'S', volume: '1', rationale: null }),
       ],
     }),
-    makeGlossary({ id: 'g2', glossary: '法', translations: [makeTranslation({ id: 't3', glossary: 'Dharma' })] }),
+    makeGlossary({ id: 'g2', glossary: '法', translations: [makeTranslation({ id: 't3', term: 'Dharma' })] }),
   ];
 
   // What importing the file over the same entries would do to each translation.
@@ -226,7 +226,7 @@ describe('export → import round trip', () => {
     const merged = reimport(parseGlossaryCSV(csv));
     // groupRows orders terms by Chinese collation, so compare by translation id.
     const byId = merged
-      .map((m) => [m.translation.id, m.translation.glossary, m.status])
+      .map((m) => [m.translation.id, m.translation.term, m.status])
       .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
     expect(byId).toEqual([
       ['t1', 'Buddha', 'kept'],

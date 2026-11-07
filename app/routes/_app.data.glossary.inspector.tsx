@@ -1490,7 +1490,7 @@ function TrashRow({
               ·{' '}
               {translations
                 .slice(0, 3)
-                .map((translation) => translation.glossary)
+                .map((translation) => translation.term)
                 .join('; ')}
               {translations.length > 3 && '…'}
             </span>

@@ -94,8 +94,8 @@ const db = vi.hoisted(() => {
 
 vi.mock('~/lib/db.server', () => ({ getDb: () => db.client }));
 
-const translation = (glossary: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
-  glossary,
+const translation = (term: string, extra: Partial<GlossaryTranslation> = {}): GlossaryTranslation => ({
+  term,
   language: 'english',
   sourceName: '華嚴經',
   volume: '1',
@@ -175,7 +175,7 @@ describe('GlossaryStore reads', () => {
       translationRow('t1', 'a', 0, 'first'),
     ];
     const [a, b] = await GlossaryStore.findByIds(['a', 'b']);
-    expect(a.translations.map((t) => [t.id, t.glossary])).toEqual([
+    expect(a.translations.map((t) => [t.id, t.term])).toEqual([
       ['t1', 'first'],
       ['t2', 'second'],
     ]);
@@ -220,7 +220,7 @@ describe('GlossaryStore reads', () => {
     db.state.translations = [translationRow('t1', 'a', 0, 'Buddha', { metadata: { partOfSpeech: 'noun' } })];
     const [entry] = await read();
     expect(entry.translations).toEqual([
-      expect.objectContaining({ id: 't1', glossary: 'Buddha', sourceName: '華嚴經', partOfSpeech: 'noun' }),
+      expect.objectContaining({ id: 't1', term: 'Buddha', sourceName: '華嚴經', partOfSpeech: 'noun' }),
     ]);
   });
 
@@ -264,7 +264,7 @@ describe('GlossaryStore.create', () => {
       }),
       expect.objectContaining({ glossaryId: 'new-term', position: 1, term: 'the Awakened One' }),
     ]);
-    expect(created.translations.map((t) => [t.id, t.glossary])).toEqual([
+    expect(created.translations.map((t) => [t.id, t.term])).toEqual([
       ['new-1', 'Buddha'],
       ['new-2', 'the Awakened One'],
     ]);
@@ -372,7 +372,7 @@ describe('GlossaryStore.revive', () => {
     });
     expect(db.state.calls[0].set).not.toHaveProperty('translations');
     expect(db.translationWrites().map((call) => call.op)).toEqual(['delete', 'insert']);
-    expect(revived?.translations.map((t) => t.glossary)).toEqual(['Buddha']);
+    expect(revived?.translations.map((t) => t.term)).toEqual(['Buddha']);
   });
 
   it('keeps the row’s uuid when the term carries a new one (the create form’s)', async () => {

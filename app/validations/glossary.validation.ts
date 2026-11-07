@@ -58,7 +58,7 @@ export const glossaryEditFormSchema = z.object({
       // The stored translation this row edits. Carried from the form's default values (no
       // input), so a save updates translations in place instead of replacing them all.
       id: z.string().uuid().optional(),
-      glossary: z.string(),
+      term: z.string(),
       language: z.enum(LANG_VALUES),
       sourceName: z.string(),
       volume: z.string(),
@@ -74,7 +74,7 @@ export const glossaryEditFormSchema = z.object({
 
 export const glossaryInsertFormSchema = z.object({
   id: z.string(),
-  glossary: z.string(),
+  term: z.string(),
   language: z.enum(GLOSSARY_TRANSLATION_LANGUAGES).default(DEFAULT_TARGET_LANG),
   sourceName: z.string().transform((val) => (val.length > 0 ? val : '佛教常用詞')),
   volume: z.string().transform((val) => (val.length > 0 ? val : '-')),

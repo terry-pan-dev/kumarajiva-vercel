@@ -67,7 +67,7 @@ describe('glossaryInsertFormSchema', () => {
   it('parses required fields and applies defaults for blank optional strings', () => {
     const result = glossaryInsertFormSchema.parse({
       id: 'glossary-uuid-123',
-      glossary: 'vocabulary',
+      term: 'vocabulary',
       language: 'english',
       sourceName: '',
       volume: '',
@@ -76,7 +76,7 @@ describe('glossaryInsertFormSchema', () => {
 
     expect(result).toMatchObject({
       id: 'glossary-uuid-123',
-      glossary: 'vocabulary',
+      term: 'vocabulary',
       language: 'english',
       sourceName: '佛教常用詞',
       volume: '-',
@@ -87,7 +87,7 @@ describe('glossaryInsertFormSchema', () => {
   it('parses all fields when provided', () => {
     const result = glossaryInsertFormSchema.parse({
       id: 'glossary-uuid-456',
-      glossary: 'impermanence',
+      term: 'impermanence',
       language: 'english',
       sourceName: 'Diamond Sutra',
       volume: '2a',
@@ -100,7 +100,7 @@ describe('glossaryInsertFormSchema', () => {
 
     expect(result).toMatchObject({
       id: 'glossary-uuid-456',
-      glossary: 'impermanence',
+      term: 'impermanence',
       language: 'english',
       sourceName: 'Diamond Sutra',
       volume: '2a',
@@ -126,7 +126,7 @@ describe('glossaryEditFormSchema', () => {
       discussion: 'a key Buddhist concept',
       translations: [
         {
-          glossary: 'prajna',
+          term: 'prajna',
           language: 'english',
           sourceName: 'Heart Sutra',
           volume: '1a',
@@ -150,7 +150,7 @@ describe('glossaryEditFormSchema', () => {
     expect(result.translations).toHaveLength(1);
     const [translation] = result.translations;
     expect(translation).toMatchObject({
-      glossary: 'prajna',
+      term: 'prajna',
       language: 'english',
       sourceName: 'Heart Sutra',
       volume: '1a',
@@ -169,7 +169,7 @@ describe('glossaryEditFormSchema', () => {
       phonetic: 'fǎ',
       translations: [
         {
-          glossary: 'dharma',
+          term: 'dharma',
           language: 'english',
           sourceName: '佛教常用詞',
           volume: '-',
@@ -193,7 +193,7 @@ describe('glossaryEditFormSchema', () => {
     id: 'glossary-uuid-000',
     glossary: '法',
     phonetic: 'fǎ',
-    translations: [{ glossary: 'dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', ...extra }],
+    translations: [{ term: 'dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', ...extra }],
   });
 
   it('keeps each translation’s id', () => {
@@ -230,13 +230,41 @@ describe('a form posting the old field names', () => {
       id: 'glossary-uuid-000',
       glossary: '法',
       phonetic: 'fǎ',
-      translations: [{ glossary: 'dharma', language: 'english', volume: '-', ...old }],
+      translations: [{ term: 'dharma', language: 'english', volume: '-', ...old }],
     });
     expect(result.success).toBe(false);
   });
 
   it('is refused by the insert form', () => {
-    const result = glossaryInsertFormSchema.safeParse({ id: 'g1', glossary: 'Dharma', volume: '', author: '', ...old });
+    const result = glossaryInsertFormSchema.safeParse({ id: 'g1', term: 'Dharma', volume: '', author: '', ...old });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── Field name before PR 8b ─────────────────────────────────────────────────
+// A page loaded before that deploy posts the rendering as `glossary`, not `term`. It must be
+// refused, not saved without its rendering. (The edit form's own `glossary`, the headword, is
+// unchanged.)
+
+describe('a form posting the rendering as glossary', () => {
+  it('is refused by the edit form', () => {
+    const result = glossaryEditFormSchema.safeParse({
+      id: 'glossary-uuid-000',
+      glossary: '法',
+      phonetic: 'fǎ',
+      translations: [{ glossary: 'dharma', language: 'english', sourceName: '佛教常用詞', volume: '-' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('is refused by the insert form', () => {
+    const result = glossaryInsertFormSchema.safeParse({
+      id: 'g1',
+      glossary: 'Dharma',
+      sourceName: '',
+      volume: '',
+      author: '',
+    });
     expect(result.success).toBe(false);
   });
 });
@@ -245,7 +273,7 @@ describe('a form posting the old field names', () => {
 
 describe('glossary translation language', () => {
   const entry = { glossaryChinese: '法', phoneticChinese: 'fǎ', glossary: 'Dharma' };
-  const insert = { id: 'g1', glossary: 'Dharma', sourceName: '', volume: '', author: '' };
+  const insert = { id: 'g1', term: 'Dharma', sourceName: '', volume: '', author: '' };
 
   it('a new entry is in English unless another language is chosen', () => {
     expect(glossaryFormSchema.parse(entry).language).toBe('english');
@@ -273,7 +301,7 @@ describe('rationale', () => {
   const insert = (rationale?: unknown) =>
     glossaryInsertFormSchema.safeParse({
       id: 'g1',
-      glossary: 'Dharma',
+      term: 'Dharma',
       sourceName: '',
       volume: '',
       author: '',
@@ -284,7 +312,7 @@ describe('rationale', () => {
       id: 'g1',
       glossary: '法',
       phonetic: 'fǎ',
-      translations: [{ glossary: 'Dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', rationale }],
+      translations: [{ term: 'Dharma', language: 'english', sourceName: '佛教常用詞', volume: '-', rationale }],
     });
   const rationaleOf = {
     create: (value?: unknown) => {

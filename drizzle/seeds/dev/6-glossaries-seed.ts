@@ -7,7 +7,7 @@ export const glossaries = [
     cbetaFrequency: '1',
     translations: [
       {
-        glossary: 'Buddha Demeanor of the Dragon',
+        term: 'Buddha Demeanor of the Dragon',
         language: 'english' as const,
         sourceName: '萬佛寶懺',
         volume: '10a',
@@ -32,7 +32,7 @@ export const glossaries = [
     cbetaFrequency: '108312',
     translations: [
       {
-        glossary: 'merit',
+        term: 'merit',
         language: 'english' as const,
         targetText:
           'Within one of its seeds of worlds, there is a land named Bringing Forth Excellent Nutrients for Sustaining Life. The Buddha there is named Adorned with Fragrant Flames, Meritorious Virtue, and Jewels',
@@ -58,7 +58,7 @@ export const glossaries = [
     cbetaFrequency: '9323',
     translations: [
       {
-        glossary: 'Mount Merit',
+        term: 'Mount Merit',
         language: 'english' as const,
         targetText: 'Buddha Majestic Mount Merit and Virtue of All-Pervading Light',
         sourceName: '萬佛寶懺',
@@ -83,7 +83,7 @@ export const glossaries = [
     cbetaFrequency: '1129',
     translations: [
       {
-        glossary: 'Merit and Virtue of Jnana / Jnana of Merit and Virtue',
+        term: 'Merit and Virtue of Jnana / Jnana of Merit and Virtue',
         language: 'english' as const,
         targetText: 'Namo Buddha Merit and Virtue of Jnana / Namo Buddha Jnana of Merit and Virtue',
         sourceName: '萬佛寶懺',
@@ -108,7 +108,7 @@ export const glossaries = [
     cbetaFrequency: '1',
     translations: [
       {
-        glossary: 'Buddha Joy of the Buddhas',
+        term: 'Buddha Joy of the Buddhas',
         language: 'english' as const,
         targetText: 'Namo Buddha Joy of the Buddhas',
         sourceName: '萬佛寶懺',
@@ -133,7 +133,7 @@ export const glossaries = [
     cbetaFrequency: '160861',
     translations: [
       {
-        glossary: 'People',
+        term: 'People',
         language: 'english' as const,
         targetText:
           'People with faith and understanding, Who have made great vows Will have deep wisdom to Thoroughly understand the Dharma',
@@ -160,7 +160,7 @@ export const glossaries = [
     translations: [
       {
         sourceName: '楞嚴經',
-        glossary: 'Good People',
+        term: 'Good People',
         language: 'english' as const,
         volume: '10',
         targetText: null,
@@ -184,7 +184,7 @@ export const glossaries = [
     cbetaFrequency: '1',
     translations: [
       {
-        glossary: 'Buddha Great Dragon',
+        term: 'Buddha Great Dragon',
         language: 'english' as const,
         targetText: 'Namo Buddha Great Dragon',
         sourceName: '萬佛寶懺',
@@ -209,7 +209,7 @@ export const glossaries = [
     cbetaFrequency: '984',
     translations: [
       {
-        glossary: `Buddha's treasury`,
+        term: `Buddha's treasury`,
         language: 'english' as const,
         targetText: `Adorned everywhere by the Buddha's treasury of maṇi They are purified by the strength of the Tathāgata's vows`,
         sourceName: '華嚴經',
@@ -234,7 +234,7 @@ export const glossaries = [
     cbetaFrequency: '354',
     translations: [
       {
-        glossary: `Buddha Treasury of Jewels / Treasure Trove`,
+        term: `Buddha Treasury of Jewels / Treasure Trove`,
         language: 'english' as const,
         targetText: `Namo Buddha Treasury of Jewels / Treasure Trove`,
         sourceName: '萬佛寶懺',
@@ -259,7 +259,7 @@ export const glossaries = [
     cbetaFrequency: '354',
     translations: [
       {
-        glossary: `mani wheel`,
+        term: `mani wheel`,
         language: 'english' as const,
         targetText: `It is rectangular and covered with clouds of curtains of mani wheel topknots`,
         sourceName: '華嚴經',
@@ -284,7 +284,7 @@ export const glossaries = [
     cbetaFrequency: '94',
     translations: [
       {
-        glossary: `Vajra of Joy / Vajra Joy`,
+        term: `Vajra of Joy / Vajra Joy`,
         language: 'english' as const,
         targetText: `Namo Buddha Vajra of Joy / Vajra Joy`,
         sourceName: '萬佛寶懺',
@@ -309,7 +309,7 @@ export const glossaries = [
     cbetaFrequency: '2a',
     translations: [
       {
-        glossary: `spiritual powers`,
+        term: `spiritual powers`,
         language: 'english' as const,
         targetText: `With the awe-inspiring spiritual powers of Samanthabhadra's vows and practices`,
         sourceName: '佛說佛名經',

@@ -5,7 +5,7 @@ import { type GlossaryTranslation } from '~/services/glossary.types';
 
 type StoredTranslation = GlossaryTranslation;
 
-function makeTranslation(overrides: Partial<StoredTranslation> & { glossary: string }): StoredTranslation {
+function makeTranslation(overrides: Partial<StoredTranslation> & { term: string }): StoredTranslation {
   return {
     language: 'english',
     sourceName: '佛教常用詞',
@@ -43,7 +43,7 @@ describe('glossaryIndexRecord', () => {
     id: '0b3f1c2d-0000-4000-8000-000000000001',
     glossary: '法',
     phonetic: 'dhárma',
-    translations: [makeTranslation({ glossary: 'dharma', sourceText: '諸法', targetText: 'all dharmas' })],
+    translations: [makeTranslation({ term: 'dharma', sourceText: '諸法', targetText: 'all dharmas' })],
   };
 
   it('keys the record on the row uuid, so re-indexing overwrites rather than duplicates', () => {

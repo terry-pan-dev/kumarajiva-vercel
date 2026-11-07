@@ -106,7 +106,7 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
           {glossary.translations?.map((translation, index) => {
             return (
               <p key={index} className="text-muted-foreground line-clamp-2 text-sm">
-                {translation.glossary}
+                {translation.term}
               </p>
             );
           })}
@@ -293,7 +293,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
             const sourceText = highlightKeyword({ text: translation.sourceText, keyword: glossary.glossary });
             const targetText = highlightKeyword({
               text: translation.targetText,
-              keyword: translation.glossary,
+              keyword: translation.term,
             });
             return (
               <div key={`${glossary.id}-${index}`}>
@@ -309,7 +309,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                 )}
                 <Spacer />
                 <h2 className="text-primary mb-2 text-xl font-semibold tracking-tight lg:text-2xl">
-                  {translation.glossary}
+                  {translation.term}
                 </h2>
                 {targetText && (
                   <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
             </Can>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <FormInput required label="Translation Term" name={`translations.${index}.glossary`} />
+            <FormInput required label="Translation Term" name={`translations.${index}.term`} />
             <FormInput
               label="Phonetic"
               description="The phonetic of the term"
@@ -456,7 +456,7 @@ const GlossaryInsertForm = ({ id }: { id: string }) => {
           options={languageOptions}
           description="The language of the new translation"
         />
-        <FormInput required name={`glossary`} label="New Translation" description="The term you want to insert" />
+        <FormInput required name={`term`} label="New Translation" description="The term you want to insert" />
         <FormInput
           name={'sourceName'}
           label="Document Name"

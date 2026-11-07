@@ -31,7 +31,7 @@ export const glossaryIndexRecord = (row: WithTranslations<Pick<GlossaryTerm, 'id
   phonetic: searchablePhonetic(row.phonetic),
   glossary: row.glossary,
   translations: row.translations?.map((translation) => ({
-    glossary: translation.glossary,
+    glossary: translation.term,
     language: translation.language,
   })),
 });

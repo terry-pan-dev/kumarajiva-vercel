@@ -112,7 +112,7 @@ function GlossaryTermCard({ group }: { group: GroupedTerm }) {
         <div className="space-y-1.5 pt-0.5">
           {translations.map((tr, i) => (
             <div key={i} className="bg-background text-foreground space-y-0.5 rounded border p-2 text-xs">
-              <p className="font-medium">{tr.glossary}</p>
+              <p className="font-medium">{tr.term}</p>
               {(tr.sourceName || tr.volume) && (
                 <p className="text-muted-foreground">{[tr.sourceName, tr.volume].filter(Boolean).join(' · ')}</p>
               )}

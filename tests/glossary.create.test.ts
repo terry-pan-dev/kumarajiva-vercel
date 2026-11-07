@@ -53,7 +53,7 @@ describe('entryFromCreateForm', () => {
     } = entryFromCreateForm(form(), { id: 'user-1' }, at);
     expect(term).toMatchObject({ author: '翻譯團隊', cbetaFrequency: '0', discussion: '' });
     expect(translation).toMatchObject({
-      glossary: 'Dharma',
+      term: 'Dharma',
       language: 'english',
       sourceName: '佛教常用詞',
       volume: '-',

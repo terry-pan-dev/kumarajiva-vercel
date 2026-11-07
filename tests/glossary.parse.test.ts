@@ -214,7 +214,7 @@ describe('translationFromRow', () => {
       ),
     ).toEqual({
       id: 't1',
-      glossary: 'Dharma',
+      term: 'Dharma',
       sourceName: 'S',
       volume: '1',
       sourceText: '法',

@@ -47,7 +47,7 @@ type ExistingGlossary = {
   translations?:
     | Array<{
         id?: string | null;
-        glossary: string;
+        term: string;
         language: string;
         sourceName: string;
         volume: string;
@@ -172,7 +172,7 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
 
   const stored = (group.existing?.translations ?? []).map((t) => ({
     id: t.id ?? undefined,
-    glossary: t.glossary,
+    term: t.term,
     sourceName: t.sourceName,
     volume: t.volume,
     sourceText: t.sourceText ?? null,
@@ -224,7 +224,7 @@ function GlossaryTermCard({ group, variant }: TermCardProps) {
           {translations.map((tr, i) => (
             <div key={i} className="bg-background text-foreground space-y-0.5 rounded border p-2 text-xs">
               <div className="flex items-start justify-between gap-2">
-                <p className="font-medium">{tr.glossary}</p>
+                <p className="font-medium">{tr.term}</p>
                 <div className="flex shrink-0 gap-1">
                   {/* Appended all the same: only a TranslationUUID makes a row an update. */}
                   {tr.duplicate && (

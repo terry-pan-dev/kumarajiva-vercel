@@ -1,6 +1,6 @@
 # Glossary refactor: translations out of the JSON blob
 
-Written 2026-11-04, updated 2026-11-06 (PR 7 merged; PR 8a renames the source fields). **Start with "Where we are" below.**
+Written 2026-11-04, updated 2026-11-06 (PR 7 merged; PR 8a renames the source fields, 8b the rendering). **Start with "Where we are" below.**
 
 ## Where we are (hand-over, 2026-11-06)
 
@@ -8,7 +8,8 @@ Written 2026-11-04, updated 2026-11-06 (PR 7 merged; PR 8a renames the source fi
 freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
 during the freeze; the prod comparison (step 5) passed. The app reads and writes
 `glossary_translations` only. PR 6 (#212), PR 7a (#213), PR 7b (#214, drops the old
-columns) and the cleanup (#215) are merged. PR 8a is in the working tree (see below).
+columns) and the cleanup (#215) are merged. PR 8a is committed on branch `rename-labels`
+(e01324617, not merged yet); PR 8b is in the working tree on that branch (see below).
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
@@ -87,7 +88,7 @@ deleted_at, subscribers, translations` for all 15,027 prod terms (19,325 JSON tr
 - Checked: tsc, 495 tests, eslint and prettier on the touched files; `pnpm db:generate`
   afterwards reports no further changes. Dev and prod are migrated.
 
-**PR 8a (in the working tree on `main`): source fields renamed** in the read shape and the
+**PR 8a (committed on `rename-labels`, e01324617): source fields renamed** in the read shape and the
 edit and insert forms: `sutraName` → `sourceName`, `originSutraText` → `sourceText`,
 `targetSutraText` → `targetText` (the table's names). 8b (`glossary` → `term` for the
 rendering) is separate, because `glossary` also means the term, the page and the feature.
@@ -118,11 +119,36 @@ rendering) is separate, because `glossary` also means the term, the page and the
   create, trash and revive, import by TranslationUUID plus a new entry, export → re-import):
   the stored rows are identical between the trees. The re-import changes no translation; it
   only bumps each term's `updated_at` (the store stamps every term update, in both trees).
-- **Not checked by any test:** that the forms show and save the renamed fields in a browser.
-  Worth one pass: open Edit on an entry (Sutra Name and both passages filled in), change
-  them and save; add a translation with Insert.
+- **Checked in a browser by the user:** editing an entry and adding a translation with Insert.
 
-Then PR 8b (`glossary` → `term` in the read shape).
+**PR 8b (in the working tree on `rename-labels`): the rendering renamed** `glossary` → `term`
+in the read shape (`GlossaryTranslation`, `MergeableTranslation`), the edit form's
+`translations[]`, the insert form and the import preview's `ExistingGlossary`. That completes
+step 8: the translation fields now carry the table's names.
+
+- **Renamed by symbol, as in 8a:** the TypeScript language service's rename on those five
+  declarations (86 locations); tsc then pointed at the key lists in `glossary.diff.ts` /
+  `glossary.merge.ts`, `translationFromRow`, the import preview's mapping, the replace
+  preview, the dev seed and the test helpers. Form names in `GlossaryList.tsx`
+  (`translations.${index}.term`, insert `term`) by hand, checked against the schema keys.
+- **Kept, on purpose:** the term's own `glossary` (the headword: `glossaries.glossary`, the
+  edit form's top-level `glossary`, `GlossaryTerm`); the create form's fields
+  (`glossaryFormSchema.glossary`, mapped to `term` in `glossary.create.ts`); the file column
+  `EnglishTerm` and `GlossaryImportRow.englishTerm`; the Algolia record and the edit's
+  partial update (`translations[{glossary, language}]`, so no re-index); the assistant's
+  `definitions` from `searchGlossaries`.
+- **Deploy window:** a page loaded before the deploy posts the rendering as `glossary`. `term`
+  is required in the edit form's translations and in the insert form, so such a post is
+  refused, never saved without its rendering. Tests pin this (edit and insert).
+- **Checked:** tsc, 500 tests, eslint and prettier on the touched files, 13 mutation checks (12
+  killed). The survivor: dropping `term` from `translationKey` fails no test. Older than 8b, and
+  `translationKey` has had no caller outside its tests since data script 08 was removed in 7b
+  (the `glossary_translations` table comment still names it as the identity). Candidate for
+  removal.
+- **Not checked:** no dev run (old tree against new) as 8a had; the change is a field rename
+  only, and the read and write mappings (`glossary.rows.ts`) are unit-tested and mutation-
+  checked. Worth one browser pass like 8a's: open Edit on an entry, change a translation's
+  term and save; add a translation with Insert; the import preview shows the translations.
 
 The sections below, down to "Known issues", are the PR 3–4 record.
 
