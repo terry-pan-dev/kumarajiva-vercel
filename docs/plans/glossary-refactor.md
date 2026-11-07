@@ -8,10 +8,12 @@ Written 2026-11-04, updated 2026-11-06 (PR 7 merged; PR 8a renames the source fi
 freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
 during the freeze; the prod comparison (step 5) passed. The app reads and writes
 `glossary_translations` only. PR 6 (#212), PR 7a (#213), PR 7b (#214, drops the old
-columns), the cleanup (#215), PR 8a + 8b (#216) and PR 9 (#217) are merged. PR 11 is
-committed on branch `var-term` (3ed5eebca). **Column move deploy A** (the headword's column
-`glossary` → `source_term`, in three deploys) is in the working tree on `var-term`, not
-applied anywhere yet: see "Column move" below. PR 10 waits (the user wants to think it over).
+columns), the cleanup (#215), PR 8a + 8b (#216), PR 9 (#217) and PR 11 (#218) are merged.
+**Column move** (the headword's column `glossary` → `source_term`, three deploys): deploy A is
+committed on branch `switch-term` (2b9fdfc04, PR open, not merged); deploy B is in the working
+tree on top of it. Neither is applied on dev or prod. The user merges A and B close together
+to keep the time between them short, but **A must be live on prod before B is merged** (see
+"Column move"). PR 10 waits (the user wants to think it over).
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
@@ -272,7 +274,8 @@ Accepted by the user: a term created during the build minute of A or B can fail 
   NULL on `temp_term`), its reads are unaffected. After A, new terms have `glossary` null.
 - Checked: tsc, 503 tests (new: the term select reads `temp_term` and never `glossary`,
   mutation-checked), eslint/prettier on touched files.
-- **Still to do, each needs the user's yes:** apply 0027 on dev (`pnpm db:migrate`), then
+- Committed on `switch-term` (2b9fdfc04), PR open. **Still to do, each needs the user's
+  yes:** apply 0027 on dev (`pnpm db:migrate`), then
   read-only: old tree (HEAD) and new tree give the identical export and search records on the
   migrated DB (the old one simulates the code live during the build); `temp_term = glossary`
   on every row. Writes on ZZTEST fixtures with the new code (create, revive, import): new
@@ -280,7 +283,31 @@ Accepted by the user: a term created during the build minute of A or B can fail 
   index. Before prod (merging runs 0027): a Neon restore point or a read-only dump of `id,
   glossary`.
 
-**Deploy B (after A is live on prod).**
+**Deploy B (in the working tree on `switch-term`, 2026-11-07; merge only after A is live on
+prod).** Done as specified below, with these details:
+
+- `glossary.ts`: `sourceTerm: text('source_term')`, `legacyTempTerm: text('temp_term')`;
+  `LegacyGlossaryColumn = 'legacyTempTerm'`; inspector label `source_term`; the store test now
+  checks that the select reads `source_term` and never `temp_term`.
+- `--custom` copies the **previous** snapshot, not the schema: 0028's snapshot was edited by
+  hand (`glossary` → `source_term` NOT NULL, second; `temp_term` optional;
+  `unique_glossary_idx` on `source_term`). Only `public.glossaries` differs from 0027's (the
+  rest is key-order noise from drizzle-kit); `pnpm db:generate` reports no changes.
+- 0028 drops `unique_glossary_idx` before the copy-back and recreates it after: a row-by-row
+  UPDATE checks uniqueness per row, so a clash midway could fail it; the recreate still
+  refuses real duplicates (and rolls the batch back, so the deploy fails safely).
+- **Tested on a throwaway local Postgres 16** (docker `postgres:16-alpine`, migrations
+  0000–0026 applied with psql, one transaction each): three terms (one trashed) → 0027
+  (`temp_term = glossary` on all) → a term written as A's code would (`temp_term` only) →
+  0028: `source_term` second and NOT NULL, all four terms right, `temp_term` optional, both
+  unique indexes in place. Refused as expected: the old code's insert during A's build
+  (`glossary` only), A's code's insert during B's build (`temp_term` only), duplicates in
+  both phases. B's code's insert (`source_term` only) works.
+- **Merge order matters.** If A and B were deployed as one, 0027 and 0028 would run while the
+  pre-A code is live, and the rename would break its reads until the new code is up: merge B
+  only once A's deployment is live (minutes are enough).
+
+The original spec:
 
 - Definition: `sourceTerm: text('source_term').notNull()` under `unique_glossary_idx` (the
   index follows the renamed column; renaming the index itself is optional and cosmetic);
