@@ -61,7 +61,7 @@ export type EntryIndexRecord = IndexRecord & {
 // (the live entry has its own record, so search is unaffected), or a term that has gone from
 // the glossary altogether, where this record is the last trace of it.
 export type OrphanIndexRecord = IndexRecord & {
-  liveRowWithSameTerm: { id: string; glossary: string } | null;
+  liveRowWithSameTerm: { id: string; sourceTerm: string } | null;
   // The uuid belongs to a row in the trash, which still holds everything the record says.
   inTrash: boolean;
 };
@@ -192,13 +192,13 @@ export function analyseGlossary({
   // Rows sharing a normalised term: near-duplicates the unique index cannot catch, and the
   // lookup that tells an orphaned record whether its term still exists elsewhere.
   const idsByNormalisedTerm = new Map<string, string[]>();
-  const rowByNormalisedTerm = new Map<string, { id: string; glossary: string }>();
+  const rowByNormalisedTerm = new Map<string, { id: string; sourceTerm: string }>();
   for (const row of rows) {
-    const key = normaliseTerm(row.glossary);
+    const key = normaliseTerm(row.sourceTerm);
     const list = idsByNormalisedTerm.get(key) ?? [];
     list.push(row.id);
     idsByNormalisedTerm.set(key, list);
-    if (!rowByNormalisedTerm.has(key)) rowByNormalisedTerm.set(key, { id: row.id, glossary: row.glossary });
+    if (!rowByNormalisedTerm.has(key)) rowByNormalisedTerm.set(key, { id: row.id, sourceTerm: row.sourceTerm });
   }
 
   const issueCounts = emptyIssueCounts();
@@ -267,7 +267,7 @@ export function analyseGlossary({
       }
     }
 
-    const sameTerm = (idsByNormalisedTerm.get(normaliseTerm(row.glossary)) ?? []).filter((id) => id !== row.id);
+    const sameTerm = (idsByNormalisedTerm.get(normaliseTerm(row.sourceTerm)) ?? []).filter((id) => id !== row.id);
     if (sameTerm.length > 0) {
       issues.push({
         code: 'near-duplicate-term',
@@ -277,7 +277,7 @@ export function analyseGlossary({
       });
     }
 
-    const invisible = findInvisible(row.glossary);
+    const invisible = findInvisible(row.sourceTerm);
     if (invisible) {
       issues.push({
         code: 'term-has-invisible-characters',

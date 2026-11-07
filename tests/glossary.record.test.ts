@@ -41,7 +41,7 @@ describe('searchablePhonetic', () => {
 describe('glossaryIndexRecord', () => {
   const row = {
     id: '0b3f1c2d-0000-4000-8000-000000000001',
-    glossary: '法',
+    sourceTerm: '法',
     phonetic: 'dhárma',
     translations: [makeTranslation({ term: 'dharma', sourceText: '諸法', targetText: 'all dharmas' })],
   };

@@ -17,7 +17,7 @@ export function entryFromCreateForm(
   return {
     term: {
       id,
-      glossary: form.glossaryChinese,
+      sourceTerm: form.glossaryChinese,
       phonetic: form.phoneticChinese,
       author: user.username || '翻譯團隊',
       cbetaFrequency: form.cbetaFrequencyChinese || '0',

@@ -102,7 +102,7 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
     <Card className="w-full cursor-pointer transition-all duration-300 ease-in-out hover:shadow-md">
       <CardContent className="flex items-center space-x-4 p-4 sm:p-6">
         <div className="min-w-0 flex-1">
-          <h3 className="text-primary mb-2 truncate text-lg font-semibold sm:text-xl">{glossary.glossary}</h3>
+          <h3 className="text-primary mb-2 truncate text-lg font-semibold sm:text-xl">{glossary.sourceTerm}</h3>
           {glossary.translations?.map((translation, index) => {
             return (
               <p key={index} className="text-muted-foreground line-clamp-2 text-sm">
@@ -216,7 +216,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                   }
                   defaultValues={{
                     id: glossary?.id,
-                    glossary: glossary.glossary,
+                    sourceTerm: glossary.sourceTerm,
                     author: glossary.author || '',
                     cbetaFrequency: glossary.cbetaFrequency || '',
                     phonetic: glossary.phonetic || '',
@@ -260,8 +260,8 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                     intent="delete-glossary"
                     // Also rendered on /settings, whose action knows nothing about glossaries.
                     action="/glossary?index"
-                    label={glossary.glossary}
-                    description={`This moves “${glossary.glossary}” and all ${glossary.translations?.length ?? 0} of its translations to the trash. It disappears from the glossary and search; an admin can restore it or delete it for good from the Glossary Inspector.`}
+                    label={glossary.sourceTerm}
+                    description={`This moves “${glossary.sourceTerm}” and all ${glossary.translations?.length ?? 0} of its translations to the trash. It disappears from the glossary and search; an admin can restore it or delete it for good from the Glossary Inspector.`}
                   />
                 </span>
               </Can>
@@ -270,7 +270,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
         )}
         <CardContent className="flex-grow px-4">
           <div className="my-2 flex items-end justify-start gap-2">
-            <h2 className="text-primary text-xl font-semibold tracking-tight lg:text-3xl">{glossary.glossary}</h2>
+            <h2 className="text-primary text-xl font-semibold tracking-tight lg:text-3xl">{glossary.sourceTerm}</h2>
             {glossary.phonetic && (
               <h2 className="text-md text-secondary-foreground font-mono">({glossary.phonetic})</h2>
             )}
@@ -290,7 +290,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
           </div>
 
           {glossary.translations?.map((translation, index) => {
-            const sourceText = highlightKeyword({ text: translation.sourceText, keyword: glossary.glossary });
+            const sourceText = highlightKeyword({ text: translation.sourceText, keyword: glossary.sourceTerm });
             const targetText = highlightKeyword({
               text: translation.targetText,
               keyword: translation.term,
@@ -365,7 +365,7 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
       <HiddenInput name="id" value={id} />
       <Divider>CHINESE</Divider>
       <div className="grid grid-cols-2 gap-4">
-        <FormInput required label="Term" disabled={true} name={`glossary`} description="The term in Chinese" />
+        <FormInput required label="Term" disabled={true} name={`sourceTerm`} description="The term in Chinese" />
         <FormInput required label="Phonetic" name={`phonetic`} description="The phonetic of the term" />
         <FormInput label="Author" name={`author`} description="The author of the term" />
         <FormInput label="CBETA Frequency" name={`cbetaFrequency`} description="The cbeta frequency of the term" />

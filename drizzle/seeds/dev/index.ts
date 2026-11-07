@@ -80,7 +80,7 @@ const main = async () => {
     objects: glossaries.map((glossary) => ({
       id: glossary.id,
       phonetic: glossary.phonetic,
-      glossary: glossary.glossary,
+      glossary: glossary.sourceTerm,
       translations: glossary.translations,
     })),
   });

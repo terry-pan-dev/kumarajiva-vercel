@@ -8,7 +8,9 @@ export const glossariesTable = pgTable(
   'glossaries',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    glossary: text('glossary').notNull(),
+    // The headword. Named like the translation's `term` / `sourceText` (PR 11); the column keeps
+    // its old name, so no migration. File column ChineseTerm, Algolia record `glossary`.
+    sourceTerm: text('glossary').notNull(),
     phonetic: text('phonetic'),
     author: text('author'),
     cbetaFrequency: text('cbeta_frequency'),
@@ -18,7 +20,7 @@ export const glossariesTable = pgTable(
     ...auditByFields,
   },
   (t) => ({
-    uniqueGlossaryIdx: uniqueIndex('unique_glossary_idx').on(t.glossary),
+    uniqueGlossaryIdx: uniqueIndex('unique_glossary_idx').on(t.sourceTerm),
   }),
 );
 

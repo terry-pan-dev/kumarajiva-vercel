@@ -73,7 +73,7 @@ export type GlossaryPage = {
   totalCount: number;
 };
 
-export type IndexableGlossary = Pick<GlossaryEntry, 'id' | 'glossary' | 'phonetic' | 'translations'>;
+export type IndexableGlossary = Pick<GlossaryEntry, 'id' | 'sourceTerm' | 'phonetic' | 'translations'>;
 
 // Writes `diff` to term `glossaryId`'s rows. A translation whose content changed is stamped
 // as edited by its updatedBy, now; one that only moved keeps who and when, since nobody edited it.
@@ -129,7 +129,7 @@ export const GlossaryStore = {
     return withTranslations(
       await selectTerms()
         .where(and(inArray(glossariesTable.id, ids), notTrashed))
-        .orderBy(desc(glossariesTable.glossary)),
+        .orderBy(desc(glossariesTable.sourceTerm)),
     );
   },
 
@@ -142,14 +142,14 @@ export const GlossaryStore = {
 
   findByTerms: async (terms: string[]): Promise<GlossaryEntry[]> => {
     if (!terms.length) return [];
-    return withTranslations(await selectTerms().where(and(inArray(glossariesTable.glossary, terms), notTrashed)));
+    return withTranslations(await selectTerms().where(and(inArray(glossariesTable.sourceTerm, terms), notTrashed)));
   },
 
   // The term stays unique across the trash — the unique index covers every row — so anything
   // about to create a term has to see trashed rows too, or it collides with one.
   findByTermsIncludingTrash: async (terms: string[]): Promise<GlossaryEntry[]> => {
     if (!terms.length) return [];
-    return withTranslations(await selectTerms().where(inArray(glossariesTable.glossary, terms)));
+    return withTranslations(await selectTerms().where(inArray(glossariesTable.sourceTerm, terms)));
   },
 
   findByIdsIncludingTrash: async (ids: string[]): Promise<GlossaryEntry[]> => {
@@ -158,7 +158,7 @@ export const GlossaryStore = {
   },
 
   findAll: async (): Promise<GlossaryEntry[]> => {
-    return withTranslations(await selectTerms().where(notTrashed).orderBy(desc(glossariesTable.glossary)), 'all');
+    return withTranslations(await selectTerms().where(notTrashed).orderBy(desc(glossariesTable.sourceTerm)), 'all');
   },
 
   // The glossary page: most recently edited first.
@@ -166,7 +166,7 @@ export const GlossaryStore = {
     const [terms, [{ count }]] = await Promise.all([
       selectTerms()
         .where(notTrashed)
-        .orderBy(desc(glossariesTable.updatedAt), desc(glossariesTable.createdAt), desc(glossariesTable.glossary))
+        .orderBy(desc(glossariesTable.updatedAt), desc(glossariesTable.createdAt), desc(glossariesTable.sourceTerm))
         .limit(limit)
         .offset((page - 1) * limit),
       db
@@ -180,7 +180,7 @@ export const GlossaryStore = {
   // The trash, most recently deleted first, capped at `limit`.
   findTrashed: async (limit: number): Promise<{ rows: GlossaryEntry[]; total: number }> => {
     const [terms, [{ count }]] = await Promise.all([
-      selectTerms().where(trashed).orderBy(desc(glossariesTable.deletedAt), glossariesTable.glossary).limit(limit),
+      selectTerms().where(trashed).orderBy(desc(glossariesTable.deletedAt), glossariesTable.sourceTerm).limit(limit),
       db
         .select({ count: sql<number>`count(*)` })
         .from(glossariesTable)
@@ -197,7 +197,7 @@ export const GlossaryStore = {
 
   // Every row, trash included, for the Glossary Inspector.
   findAllIncludingTrash: async (): Promise<GlossaryEntry[]> => {
-    return withTranslations(await selectTerms().orderBy(glossariesTable.glossary), 'all');
+    return withTranslations(await selectTerms().orderBy(glossariesTable.sourceTerm), 'all');
   },
 
   // The inspector's search box: an exact uuid, or a term, search_id or translation containing
@@ -232,12 +232,12 @@ export const GlossaryStore = {
       await selectTerms()
         .where(
           or(
-            ilike(glossariesTable.glossary, pattern),
+            ilike(glossariesTable.sourceTerm, pattern),
             eq(glossariesTable.searchId, trimmed),
             exists(translationMatches),
           ),
         )
-        .orderBy(glossariesTable.glossary)
+        .orderBy(glossariesTable.sourceTerm)
         .limit(limit),
     );
   },
@@ -253,7 +253,7 @@ export const GlossaryStore = {
     const terms = await db
       .select({
         id: glossariesTable.id,
-        glossary: glossariesTable.glossary,
+        sourceTerm: glossariesTable.sourceTerm,
         phonetic: glossariesTable.phonetic,
       })
       .from(glossariesTable)

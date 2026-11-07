@@ -23,7 +23,7 @@ function makeTranslation(overrides: Partial<StoredTranslation> & { term: string 
   };
 }
 
-function makeRow(overrides: Partial<InspectedRow> & { id: string; glossary: string }): InspectedRow {
+function makeRow(overrides: Partial<InspectedRow> & { id: string; sourceTerm: string }): InspectedRow {
   return {
     phonetic: null,
     author: null,
@@ -44,7 +44,7 @@ function makeRow(overrides: Partial<InspectedRow> & { id: string; glossary: stri
 // The healthy pairing: one record per row, carrying that row's uuid, with the objectID the
 // row's search_id points at.
 function recordFor(row: InspectedRow, overrides: Partial<IndexRecord> = {}): IndexRecord {
-  return { objectID: row.searchId ?? `obj-${row.id}`, id: row.id, glossary: row.glossary, ...overrides };
+  return { objectID: row.searchId ?? `obj-${row.id}`, id: row.id, glossary: row.sourceTerm, ...overrides };
 }
 
 function codesFor(inspection: ReturnType<typeof analyseGlossary>, id: string): GlossaryIssueCode[] {
@@ -55,7 +55,7 @@ function codesFor(inspection: ReturnType<typeof analyseGlossary>, id: string): G
 
 describe('analyseGlossary', () => {
   it('reports nothing for a row correctly paired with one index record', () => {
-    const row = makeRow({ id: 'a', glossary: '法' });
+    const row = makeRow({ id: 'a', sourceTerm: '法' });
     const inspection = analyseGlossary({ rows: [row], indexRecords: [recordFor(row)] });
 
     expect(inspection.entries).toEqual([]);
@@ -72,8 +72,8 @@ describe('analyseGlossary', () => {
   // ─── The bug that prompted the inspector ───────────────────────────────────
 
   it('flags a second index record carrying the same uuid', () => {
-    const row = makeRow({ id: 'a', glossary: '法' });
-    const stale: IndexRecord = { objectID: 'obj-from-an-earlier-import', id: row.id, glossary: row.glossary };
+    const row = makeRow({ id: 'a', sourceTerm: '法' });
+    const stale: IndexRecord = { objectID: 'obj-from-an-earlier-import', id: row.id, glossary: row.sourceTerm };
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: [recordFor(row), stale] });
 
@@ -84,7 +84,7 @@ describe('analyseGlossary', () => {
   });
 
   it('marks the duplicate removable and the record search_id points at canonical', () => {
-    const row = makeRow({ id: 'a', glossary: '法', searchId: 'obj-a' });
+    const row = makeRow({ id: 'a', sourceTerm: '法', searchId: 'obj-a' });
     const canonical: IndexRecord = { objectID: 'obj-a', id: 'a', glossary: '法' };
     const duplicate: IndexRecord = { objectID: 'obj-duplicate', id: 'a', glossary: '法' };
 
@@ -100,7 +100,7 @@ describe('analyseGlossary', () => {
   it('refuses to mark anything removable when no record is canonical', () => {
     // Two records, neither of them the one search_id names: deleting either is a guess, and
     // deleting both would drop the entry out of search entirely.
-    const row = makeRow({ id: 'a', glossary: '法', searchId: 'obj-missing' });
+    const row = makeRow({ id: 'a', sourceTerm: '法', searchId: 'obj-missing' });
     const first: IndexRecord = { objectID: 'obj-1', id: 'a', glossary: '法' };
     const second: IndexRecord = { objectID: 'obj-2', id: 'a', glossary: '法' };
 
@@ -112,7 +112,7 @@ describe('analyseGlossary', () => {
   });
 
   it('offers orphans for removal, including past the display cap', () => {
-    const row = makeRow({ id: 'a', glossary: '法' });
+    const row = makeRow({ id: 'a', sourceTerm: '法' });
     const orphans = Array.from({ length: 205 }, (_, index) => ({ objectID: `orphan-${index}`, id: 'gone' }));
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: [recordFor(row), ...orphans] });
@@ -125,7 +125,7 @@ describe('analyseGlossary', () => {
   });
 
   it('counts a record no row points at as an orphan', () => {
-    const row = makeRow({ id: 'a', glossary: '法' });
+    const row = makeRow({ id: 'a', sourceTerm: '法' });
     const orphan: IndexRecord = { objectID: 'obj-orphan', id: 'deleted-row-uuid', glossary: '舊' };
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: [recordFor(row), orphan] });
@@ -138,7 +138,7 @@ describe('analyseGlossary', () => {
   it('tells apart an orphan whose term survives under a new uuid from one whose term is gone', () => {
     // The live entry, re-created by an import that minted a new uuid, and the record left
     // behind by the version it replaced.
-    const live = makeRow({ id: 'new-uuid', glossary: '法', searchId: 'obj-live' });
+    const live = makeRow({ id: 'new-uuid', sourceTerm: '法', searchId: 'obj-live' });
     const leftOver: IndexRecord = { objectID: 'obj-old', id: 'old-uuid', glossary: '法' };
     const vanished: IndexRecord = { objectID: 'obj-vanished', id: 'gone-uuid', glossary: '菩提' };
 
@@ -151,7 +151,7 @@ describe('analyseGlossary', () => {
     expect(orphans.map((o) => o.objectID).sort()).toEqual(['obj-old', 'obj-vanished']);
     expect(orphans.find((o) => o.objectID === 'obj-old')?.liveRowWithSameTerm).toEqual({
       id: 'new-uuid',
-      glossary: '法',
+      sourceTerm: '法',
     });
     expect(orphans.find((o) => o.objectID === 'obj-vanished')?.liveRowWithSameTerm).toBeNull();
     expect(inspection.stats.orphansWithLiveTerm).toBe(1);
@@ -160,7 +160,7 @@ describe('analyseGlossary', () => {
   });
 
   it('never counts a duplicate as an orphan, since its uuid resolves to a row', () => {
-    const row = makeRow({ id: 'a', glossary: '法', searchId: 'obj-a' });
+    const row = makeRow({ id: 'a', sourceTerm: '法', searchId: 'obj-a' });
     const duplicate: IndexRecord = { objectID: 'obj-duplicate', id: 'a', glossary: '法' };
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: [recordFor(row), duplicate] });
@@ -170,7 +170,7 @@ describe('analyseGlossary', () => {
   });
 
   it('flags a search_id pointing at a record that no longer exists', () => {
-    const row = makeRow({ id: 'a', glossary: '法', searchId: 'obj-gone' });
+    const row = makeRow({ id: 'a', sourceTerm: '法', searchId: 'obj-gone' });
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: [] });
 
@@ -178,7 +178,7 @@ describe('analyseGlossary', () => {
   });
 
   it('flags a row whose record is not the one search_id points at', () => {
-    const row = makeRow({ id: 'a', glossary: '法', searchId: 'obj-a' });
+    const row = makeRow({ id: 'a', sourceTerm: '法', searchId: 'obj-a' });
     const pointedAt: IndexRecord = { objectID: 'obj-a', id: 'some-other-row', glossary: '別' };
     const actual: IndexRecord = { objectID: 'obj-b', id: 'a', glossary: '法' };
 
@@ -188,7 +188,7 @@ describe('analyseGlossary', () => {
   });
 
   it('flags a row that was never indexed', () => {
-    const row = makeRow({ id: 'a', glossary: '法', searchId: null });
+    const row = makeRow({ id: 'a', sourceTerm: '法', searchId: null });
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: [] });
 
@@ -197,7 +197,7 @@ describe('analyseGlossary', () => {
   });
 
   it('skips index checks when the index was not read at all', () => {
-    const row = makeRow({ id: 'a', glossary: '法', searchId: 'obj-a' });
+    const row = makeRow({ id: 'a', sourceTerm: '法', searchId: 'obj-a' });
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: null });
 
@@ -207,8 +207,8 @@ describe('analyseGlossary', () => {
   });
 
   it('skips index checks but still reports missing search_id when the index cannot be read', () => {
-    const indexed = makeRow({ id: 'a', glossary: '法', searchId: 'obj-a' });
-    const unindexed = makeRow({ id: 'b', glossary: '心', searchId: null });
+    const indexed = makeRow({ id: 'a', sourceTerm: '法', searchId: 'obj-a' });
+    const unindexed = makeRow({ id: 'b', sourceTerm: '心', searchId: null });
 
     const inspection = analyseGlossary({
       rows: [indexed, unindexed],
@@ -225,7 +225,7 @@ describe('analyseGlossary', () => {
   // ─── Row-level checks ──────────────────────────────────────────────────────
 
   it('flags two rows whose terms differ only by case, width or surrounding space', () => {
-    const rows = [makeRow({ id: 'a', glossary: 'Dharma' }), makeRow({ id: 'b', glossary: ' dharma ' })];
+    const rows = [makeRow({ id: 'a', sourceTerm: 'Dharma' }), makeRow({ id: 'b', sourceTerm: ' dharma ' })];
 
     const inspection = analyseGlossary({ rows, indexRecords: rows.map((row) => recordFor(row)) });
 
@@ -236,7 +236,7 @@ describe('analyseGlossary', () => {
   });
 
   it('flags a zero-width character hiding in a term', () => {
-    const row = makeRow({ id: 'a', glossary: '法​' });
+    const row = makeRow({ id: 'a', sourceTerm: '法​' });
 
     const inspection = analyseGlossary({ rows: [row], indexRecords: [recordFor(row)] });
 
@@ -246,8 +246,8 @@ describe('analyseGlossary', () => {
   // ─── Trash ─────────────────────────────────────────────────────────────────
 
   it('leaves a trashed row out of the checks and the entry count, and counts it as trashed', () => {
-    const live = makeRow({ id: 'a', glossary: '法' });
-    const trashed = makeRow({ id: 'b', glossary: '佛', searchId: null, deletedAt: new Date('2026-02-02') });
+    const live = makeRow({ id: 'a', sourceTerm: '法' });
+    const trashed = makeRow({ id: 'b', sourceTerm: '佛', searchId: null, deletedAt: new Date('2026-02-02') });
 
     const inspection = analyseGlossary({ rows: [live, trashed], indexRecords: [recordFor(live)] });
 
@@ -257,7 +257,7 @@ describe('analyseGlossary', () => {
   });
 
   it('treats a record left on a trashed row as an orphan, marked as in the trash', () => {
-    const trashed = makeRow({ id: 'b', glossary: '佛', deletedAt: new Date('2026-02-02') });
+    const trashed = makeRow({ id: 'b', sourceTerm: '佛', deletedAt: new Date('2026-02-02') });
 
     const inspection = analyseGlossary({ rows: [trashed], indexRecords: [recordFor(trashed)] });
 
@@ -267,7 +267,7 @@ describe('analyseGlossary', () => {
   });
 
   it('does not let a trashed row count as the live term for an orphan', () => {
-    const trashed = makeRow({ id: 'b', glossary: '佛', deletedAt: new Date('2026-02-02') });
+    const trashed = makeRow({ id: 'b', sourceTerm: '佛', deletedAt: new Date('2026-02-02') });
     const orphan = { objectID: 'stray', id: 'gone', glossary: '佛' };
 
     const inspection = analyseGlossary({ rows: [trashed], indexRecords: [orphan] });
@@ -283,7 +283,7 @@ describe('analyseGlossary', () => {
     // importer no longer merges them, so there is nothing to warn about.
     const row = makeRow({
       id: 'a',
-      glossary: '法',
+      sourceTerm: '法',
       translations: [
         makeTranslation({ term: 'dharma', sourceName: 'Lotus', volume: '1', sourceText: '諸法' }),
         makeTranslation({ term: 'dharma', sourceName: 'Lotus', volume: '1', sourceText: '法門' }),
@@ -298,7 +298,7 @@ describe('analyseGlossary', () => {
   it('keeps translations from different sources apart', () => {
     const row = makeRow({
       id: 'a',
-      glossary: '法',
+      sourceTerm: '法',
       translations: [
         makeTranslation({ term: 'dharma', sourceName: 'Lotus', volume: '1' }),
         makeTranslation({ term: 'dharma', sourceName: 'Diamond', volume: '1' }),
@@ -311,8 +311,8 @@ describe('analyseGlossary', () => {
   });
 
   it('flags empty and missing translations', () => {
-    const empty = makeRow({ id: 'a', glossary: '法', translations: [] });
-    const blank = makeRow({ id: 'b', glossary: '心', translations: [makeTranslation({ term: '  ' })] });
+    const empty = makeRow({ id: 'a', sourceTerm: '法', translations: [] });
+    const blank = makeRow({ id: 'b', sourceTerm: '心', translations: [makeTranslation({ term: '  ' })] });
 
     const inspection = analyseGlossary({
       rows: [empty, blank],
@@ -328,7 +328,7 @@ describe('analyseGlossary', () => {
 
   it('counts every issue, including those on entries beyond the reported cap', () => {
     const rows = Array.from({ length: 302 }, (_, index) =>
-      makeRow({ id: `row-${index}`, glossary: `term-${index}`, translations: [] }),
+      makeRow({ id: `row-${index}`, sourceTerm: `term-${index}`, translations: [] }),
     );
 
     const inspection = analyseGlossary({ rows, indexRecords: rows.map((row) => recordFor(row)) });

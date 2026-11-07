@@ -8,8 +8,9 @@ Written 2026-11-04, updated 2026-11-06 (PR 7 merged; PR 8a renames the source fi
 freeze (#210), PR 4 (#211, the switch), then the freeze reverted. 08 was applied on prod
 during the freeze; the prod comparison (step 5) passed. The app reads and writes
 `glossary_translations` only. PR 6 (#212), PR 7a (#213), PR 7b (#214, drops the old
-columns), the cleanup (#215) and PR 8a + 8b (#216, `rename-labels`) are merged. PR 9 is in
-the working tree on `main` (see "Next" below).
+columns), the cleanup (#215) and PR 8a + 8b (#216, `rename-labels`) are merged. PR 9 is
+committed on `main` (93d08da32). PR 11 is in the working tree; PR 10 waits (the user wants to
+think it over), so 11 went first (see "Next" below).
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three
@@ -191,7 +192,36 @@ PR each, in this order:
   term's takes `phonetic`). Old details: The create form keeps its own
   old field names (`glossaryChinese`, `glossary`, `sutraName`, `sutraText`,
   `sutraTextChinese`); move them to the source/target names while reorganizing.
-- **PR 11: the headword `glossary` → `sourceTerm`** (the user's choice, 2026-11-06: `term`
+- **PR 11 (done in the working tree, 2026-11-06, before PR 10).** The headword is
+  `sourceTerm` in code; the column is still `glossary` (`sourceTerm: text('glossary')`), so
+  `pnpm db:generate` reports no change and no migration exists.
+  - **How:** the language service's rename on three declarations (the table column, the edit
+    form schema's `glossary`, the import preview's `ExistingGlossary.glossary`; 19 sites; it
+    does not follow the column through Drizzle's `$inferSelect`). Then a script took tsc's
+    errors (`Property 'glossary' does not exist`, excess `glossary` in a literal, `'glossary'`
+    in a `Pick<GlossaryTerm, …>`) and renamed exactly the flagged tokens, skipping shorthand and
+    destructuring (there were none). By hand: the inspector's column list (key `sourceTerm`,
+    label still `glossary`, the column name), select aliases in `findIndexPage` and
+    `glossary.inspect.ts`'s `TERM_KEYS`, `liveRowWithSameTerm` / `rowByNormalisedTerm` in
+    `glossary.analyse.ts`, the dev seed data, the edit form's disabled Term input
+    (`name="sourceTerm"`), and test literals that casts had hidden from tsc.
+  - **Kept, on purpose:** the Algolia record and anything reading it (`IndexRecord.glossary`,
+    `glossaryIndexRecord`'s `glossary` key, `attributesToRetrieve: ['glossary']`, the fixture
+    cleanup's `hit.glossary`, the seed's `saveObjects`), so there is no re-index; the create form's
+    `glossary` (the translation, PR 10 renames it); the file column `ChineseTerm`; the
+    assistant's prompt (keyed by the headword's value); `translations[].glossary` in the
+    Algolia partial update.
+  - **Deploy window:** a page loaded before the deploy posts the edit form's headword as
+    `glossary`; `sourceTerm` is required, so the post is refused (reload, redo). The edit action
+    never saved the headword anyway (the input is disabled). Tests pin both.
+  - **Checked:** tsc, 502 tests, eslint/prettier on the 25 touched files (all were clean
+    before), `pnpm db:generate` (no change). On dev, read-only, old tree against new: the
+    full CSV export, every search record and an index page are byte-identical (13,924 terms).
+    Not checked in a browser: open Edit on an entry (Term shows the headword) and save; the
+    inspector's term table and orphan list.
+
+  The original plan text:
+  **the headword `glossary` → `sourceTerm`** (the user's choice, 2026-11-06: `term`
   would clash with the translation's `term`; `sourceTerm` fits the source/target rule and the
   `ChineseTerm` / `EnglishTerm` file columns). The term-level field on `GlossaryTerm` /
   `GlossaryEntry`, the edit form's top-level `glossary`, the import preview, the store's
@@ -530,9 +560,9 @@ Every manual apply (dev or prod) needs the user's yes.
    `originSutraText` → `sourceText`, `targetSutraText` → `targetText` (see "Where we are").
    8b: `glossary` → `term` for the rendering. File columns, the Algolia record and the
    assistant's prompt shape keep their names.
-9. **PR 9 (working tree):** forms stop filling in `佛教常用詞`, `-` and `翻譯團隊` (see "Where we are").
+9. **PR 9 (committed, 93d08da32):** forms stop filling in `佛教常用詞`, `-` and `翻譯團隊` (see "Where we are").
 10. **PR 10:** reorganize the add-new-entry form.
-11. **PR 11:** the headword `glossary` → `sourceTerm`, code-only.
+11. **PR 11 (working tree, done before PR 10):** the headword `glossary` → `sourceTerm`, code-only.
 
 ## Code map: everything that reads or writes `translations`
 

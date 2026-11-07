@@ -44,7 +44,7 @@ export const glossaryFormSchema = z.object({
 
 export const glossaryEditFormSchema = z.object({
   id: z.string(),
-  glossary: z.string(),
+  sourceTerm: z.string(),
   phonetic: z.string(),
   author: z.string().nullish(),
   cbetaFrequency: z.string().nullish(),

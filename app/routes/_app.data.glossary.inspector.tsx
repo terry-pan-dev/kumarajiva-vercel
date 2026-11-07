@@ -196,7 +196,7 @@ const SUBTLE = 'text-muted-foreground';
 // silently going unseen.
 const COLUMNS: { key: keyof GlossaryTerm; label: string }[] = [
   { key: 'id', label: 'id' },
-  { key: 'glossary', label: 'glossary' },
+  { key: 'sourceTerm', label: 'glossary' },
   { key: 'phonetic', label: 'phonetic' },
   { key: 'author', label: 'author' },
   { key: 'cbetaFrequency', label: 'cbeta_frequency' },
@@ -462,7 +462,7 @@ function EntryCard({ entry, canCleanUp }: { entry: InspectedEntry; canCleanUp: b
     <Card>
       <CardHeader className="gap-2 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-primary text-xl">{row.glossary}</CardTitle>
+          <CardTitle className="text-primary text-xl">{row.sourceTerm}</CardTitle>
           <Button size="sm" variant="secondary" onClick={() => setOpen((value) => !value)}>
             {t(open ? 'inspector.entry.hideColumns' : 'inspector.entry.showColumns')}
           </Button>
@@ -502,7 +502,7 @@ function LookupCard({ row }: { row: InspectedRow }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-primary text-xl">{row.glossary}</CardTitle>
+        <CardTitle className="text-primary text-xl">{row.sourceTerm}</CardTitle>
         <div className={`flex items-center gap-2 ${MONO}`}>
           <span>{row.id}</span>
           <CopyButton value={row.id} />
@@ -1314,7 +1314,7 @@ function TrashCard({ rows, total, canCleanUp }: { rows: TrashedRow[]; total: num
   const purgeCount = confirmingPurge?.length ?? 0;
   const purgeLabel =
     purgeCount === 1
-      ? `“${rows.find((row) => row.id === confirmingPurge?.[0])?.glossary ?? ''}”`
+      ? `“${rows.find((row) => row.id === confirmingPurge?.[0])?.sourceTerm ?? ''}”`
       : entryCount(purgeCount);
 
   return (
@@ -1473,13 +1473,13 @@ function TrashRow({
               className="h-4 w-4"
               disabled={disabled}
               onChange={onToggleSelected}
-              aria-label={t('inspector.selection.selectItem', { item: row.glossary })}
+              aria-label={t('inspector.selection.selectItem', { item: row.sourceTerm })}
             />
           </td>
         )}
         <td className="py-1 pr-3">
           <button type="button" onClick={onToggleExpanded} className="text-primary text-left text-sm hover:underline">
-            {row.glossary}
+            {row.sourceTerm}
           </button>
         </td>
         <td className={`py-1 pr-3 ${MONO}`}>
@@ -1506,7 +1506,7 @@ function TrashRow({
                 onClick={onRestore}
                 disabled={disabled}
                 title={t('inspector.trash.restore')}
-                aria-label={t('inspector.trash.restoreLabel', { term: row.glossary })}
+                aria-label={t('inspector.trash.restoreLabel', { term: row.sourceTerm })}
                 className={`${SUBTLE} hover:text-foreground disabled:pointer-events-none disabled:opacity-60`}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -1516,7 +1516,7 @@ function TrashRow({
                 onClick={onPurge}
                 disabled={disabled}
                 title={t('inspector.trash.purge')}
-                aria-label={t('inspector.trash.purgeLabel', { term: row.glossary })}
+                aria-label={t('inspector.trash.purgeLabel', { term: row.sourceTerm })}
                 className={`${SUBTLE} hover:text-destructive disabled:pointer-events-none disabled:opacity-60`}
               >
                 <Trash2 className="h-3.5 w-3.5" />

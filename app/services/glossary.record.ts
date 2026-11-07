@@ -25,11 +25,11 @@ export const searchablePhonetic = (phonetic: string | null | undefined): string 
 //
 // Only the fields search needs are carried. The sutra citations on a translation are
 // deliberately left out: they are shown from the row once a hit resolves back to it.
-export const glossaryIndexRecord = (row: WithTranslations<Pick<GlossaryTerm, 'id' | 'glossary' | 'phonetic'>>) => ({
+export const glossaryIndexRecord = (row: WithTranslations<Pick<GlossaryTerm, 'id' | 'sourceTerm' | 'phonetic'>>) => ({
   objectID: row.id,
   id: row.id,
   phonetic: searchablePhonetic(row.phonetic),
-  glossary: row.glossary,
+  glossary: row.sourceTerm,
   translations: row.translations?.map((translation) => ({
     glossary: translation.term,
     language: translation.language,

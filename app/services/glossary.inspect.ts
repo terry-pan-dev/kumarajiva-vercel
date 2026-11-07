@@ -76,7 +76,11 @@ export type RecordDeletionResult = {
 export type SkipReason = 'not-in-index' | 'canonical' | 'last-record';
 
 // The only columns the cleanup needs of a row.
-const TERM_KEYS = { id: glossariesTable.id, glossary: glossariesTable.glossary, searchId: glossariesTable.searchId };
+const TERM_KEYS = {
+  id: glossariesTable.id,
+  sourceTerm: glossariesTable.sourceTerm,
+  searchId: glossariesTable.searchId,
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -159,8 +163,8 @@ export async function deleteIndexRecords(objectIDs: string[]): Promise<RecordDel
         skipped.push({
           objectID,
           code: 'last-record',
-          term: owner.glossary,
-          reason: `“${owner.glossary}” has no other index record, so deleting this one would drop it from search`,
+          term: owner.sourceTerm,
+          reason: `“${owner.sourceTerm}” has no other index record, so deleting this one would drop it from search`,
         });
         continue;
       }
