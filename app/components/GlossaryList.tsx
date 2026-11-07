@@ -298,9 +298,11 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
             return (
               <div key={`${glossary.id}-${index}`}>
                 <Divider className="text-primary py-1 lg:py-3">{translation.language.toUpperCase()}</Divider>
-                <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
-                  {translation.sourceName} | {translation.volume}
-                </Badge>
+                {(translation.sourceName || translation.volume) && (
+                  <Badge variant="default" className="mb-2 w-fit font-mono text-xs font-medium">
+                    {[translation.sourceName, translation.volume].filter(Boolean).join(' | ')}
+                  </Badge>
+                )}
                 {sourceText && (
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
@@ -460,24 +462,13 @@ const GlossaryInsertForm = ({ id }: { id: string }) => {
         <FormInput
           name={'sourceName'}
           label="Document Name"
-          placeholder="佛教常用詞(default)"
           description="The work this translation is from, e.g. a sutra"
         />
-        <FormInput
-          label="Section"
-          name={'volume'}
-          placeholder="-(default)"
-          description="Where in the document, e.g. a volume or chapter"
-        />
+        <FormInput label="Section" name={'volume'} description="Where in the document, e.g. a volume or chapter" />
         <FormInput name={'sourceText'} label="Origin Text" description="The passage in the original language" />
         <FormInput name={'targetText'} label="Target Text" description="The passage in the target language" />
         <FormInput label="Phonetic" name={`phonetic`} description="The phonetic of the term" />
-        <FormInput
-          label="Author"
-          name={`author`}
-          placeholder="翻譯團隊(default)"
-          description="The author of the new term"
-        />
+        <FormInput label="Author" name={`author`} description="The author of the new term" />
         <span className="col-span-2">
           <FormTextarea name="rationale" label="Rationale" description={RATIONALE_DESCRIPTION} />
         </span>

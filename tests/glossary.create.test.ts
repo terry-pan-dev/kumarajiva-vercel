@@ -46,7 +46,9 @@ describe('entryFromCreateForm', () => {
     });
   });
 
-  it('fills the same defaults as before', () => {
+  // PR 9: no placeholder source (佛教常用詞) or section ('-'); the term's author still
+  // falls back to 翻譯團隊.
+  it('leaves source and section blank, and keeps the term defaults', () => {
     const {
       term,
       translations: [translation],
@@ -55,8 +57,9 @@ describe('entryFromCreateForm', () => {
     expect(translation).toMatchObject({
       term: 'Dharma',
       language: 'english',
-      sourceName: '佛教常用詞',
-      volume: '-',
+      sourceName: '',
+      volume: '',
+      author: '',
       updatedBy: 'user-1',
       updatedAt: '2026-11-06T00:00:00.000Z',
     });

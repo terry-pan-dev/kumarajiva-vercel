@@ -34,7 +34,7 @@ export const glossaryFormSchema = z.object({
   // The language of the translation term; the form offers English first.
   language: z.enum(GLOSSARY_TRANSLATION_LANGUAGES).default(DEFAULT_TARGET_LANG),
   sutraText: z.string().optional(),
-  sutraName: z.string().optional().default('佛教常用詞'),
+  sutraName: z.string().optional(),
   volume: z.string().optional(),
   author: z.string().optional(),
   partOfSpeech: z.string().optional(),
@@ -76,11 +76,13 @@ export const glossaryInsertFormSchema = z.object({
   id: z.string(),
   term: z.string(),
   language: z.enum(GLOSSARY_TRANSLATION_LANGUAGES).default(DEFAULT_TARGET_LANG),
-  sourceName: z.string().transform((val) => (val.length > 0 ? val : '佛教常用詞')),
-  volume: z.string().transform((val) => (val.length > 0 ? val : '-')),
+  // Blank is stored as blank: no placeholder source, section or author (PR 9, the user's
+  // decision, 2026-11-06). Still required, so a post without them is refused.
+  sourceName: z.string(),
+  volume: z.string(),
   sourceText: z.string().nullish(),
   targetText: z.string().nullish(),
-  author: z.string().transform((val) => (val.length > 0 ? val : '翻譯團隊')),
+  author: z.string(),
   partOfSpeech: z.string().nullish(),
   phonetic: z.string().nullish(),
   rationale: rationaleSchema,
