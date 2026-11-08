@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from '@vercel/remix';
 
-import { Link, Outlet, redirect, useLoaderData } from '@remix-run/react';
+import { Outlet, redirect, useLoaderData } from '@remix-run/react';
 import { json } from '@vercel/remix';
 import { v4 as uuidv4 } from 'uuid';
 import { type z } from 'zod';
@@ -9,7 +9,6 @@ import { assertAuthUser } from '~/auth.server';
 import { Can } from '~/authorisation';
 import { FormModal } from '~/components/FormModal';
 import { newTranslation, SourceTermFields, TranslationsFields } from '~/components/GlossaryForm';
-import { Icons } from '~/components/icons';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Button } from '~/components/ui/button';
 import { Separator } from '~/components/ui/separator';
@@ -74,11 +73,6 @@ export default function GlossaryLayout() {
             Glossary
           </div>
           <div className="flex items-center gap-2">
-            <Can I="Maintain" this="GlossaryData">
-              <Link reloadDocument to="/glossary/download" download="glossary.xlsx">
-                <Icons.Download className="h-6 w-6 text-slate-800" />
-              </Link>
-            </Can>
             <Can I="Maintain" this="Glossary">
               <GlossaryCreateModal />
             </Can>

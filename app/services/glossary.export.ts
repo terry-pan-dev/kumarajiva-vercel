@@ -76,7 +76,7 @@ export function glossariesToCSV(glossaries: ExportableGlossary[]): string {
 // ─── XLSX ─────────────────────────────────────────────────────────────────────
 
 // Builds an .xlsx workbook as bytes. SheetJS is dynamically imported so this module carries no
-// static dependency on it — only the download loaders that call this pull it in, on the server.
+// static dependency on it — only the download loader that calls this pulls it in, on the server.
 export async function glossariesToXLSX(glossaries: ExportableGlossary[]): Promise<Uint8Array> {
   const { utils, write } = await import('xlsx');
 
@@ -112,7 +112,7 @@ export function parseExportFormat(value: string | null | undefined): GlossaryExp
   return value === 'csv' ? 'csv' : 'xlsx';
 }
 
-// Shared Response so both download routes agree on content type, filename and body per format.
+// The download Response: content type, filename and body per format.
 export async function glossaryDownloadResponse(
   glossaries: ExportableGlossary[],
   format: GlossaryExportFormat,
