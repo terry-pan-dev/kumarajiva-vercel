@@ -32,9 +32,10 @@ export type GlossaryImportRow = {
 export type GroupedTerm = {
   // The Chinese term. This is the group's identity — see groupRows.
   key: string;
-  // First non-empty UUID among the rows; '' when the file supplied none.
+  // First non-empty SourceTermUUID (UUID in older files) among the rows; '' when the file
+  // supplied none.
   uuid: string;
-  // Set when the rows for this term disagree on UUID, which makes the file ambiguous.
+  // Set when the rows for this term disagree on SourceTermUUID, which makes the file ambiguous.
   uuidConflict: boolean;
   rows: GlossaryImportRow[];
 };
@@ -45,6 +46,9 @@ export class GlossaryParseError extends LocalizedError {}
 
 // Maps lowercase header variants to canonical GlossaryImportRow field names.
 const XLSX_COLUMNS: Record<string, keyof GlossaryImportRow> = {
+  sourcetermuuid: 'uuid',
+  'source term uuid': 'uuid',
+  // The column's name in exports before it was renamed (2026-11-07).
   uuid: 'uuid',
   chineseterm: 'chineseTerm',
   'chinese term': 'chineseTerm',
@@ -77,7 +81,8 @@ export function parseGlossaryCSV(csvText: string): GlossaryImportRow[] {
   return result.data
     .filter((row) => row.ChineseTerm?.trim())
     .map((row) => ({
-      uuid: row.UUID?.trim() ?? '',
+      // SourceTermUUID, or UUID in a file exported before the rename (2026-11-07).
+      uuid: (row.SourceTermUUID ?? row.UUID)?.trim() ?? '',
       chineseTerm: row.ChineseTerm?.trim() ?? '',
       englishTerm: row.EnglishTerm?.trim() ?? '',
       chineseSutraText: row.ChineseSutraText?.trim() ?? '',

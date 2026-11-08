@@ -1,13 +1,13 @@
-// What the Create Glossary Entry form becomes: the new term and its first translation. Pure (no
+// What the Create Glossary Entry form becomes: the new term and its translations. Pure (no
 // database), so the mapping from form fields to stored fields is unit-tested.
 import { type z } from 'zod';
 
-import { type glossaryFormSchema } from '~/validations/glossary.validation';
+import { type glossaryCreateFormSchema } from '~/validations/glossary.validation';
 
 import { type GlossaryTermInput } from './glossary.store';
 import { type GlossaryTranslation } from './glossary.types';
 
-export type GlossaryCreateForm = z.infer<typeof glossaryFormSchema>;
+export type GlossaryCreateForm = z.infer<typeof glossaryCreateFormSchema>;
 
 export function entryFromCreateForm(
   form: GlossaryCreateForm,
@@ -17,32 +17,30 @@ export function entryFromCreateForm(
   return {
     term: {
       id,
-      sourceTerm: form.glossaryChinese,
-      phonetic: form.phoneticChinese,
+      sourceTerm: form.sourceTerm,
+      phonetic: form.phonetic,
+      // Who created the entry; the form does not ask for it.
       author: user.username || '翻譯團隊',
-      cbetaFrequency: form.cbetaFrequencyChinese || '0',
-      discussion: form.discussionChinese || '',
+      cbetaFrequency: form.cbetaFrequency || '0',
+      discussion: '',
       createdBy: user.id,
       updatedBy: user.id,
     },
-    translations: [
-      {
-        term: form.glossary,
-        language: form.language,
-        // Blank stays blank: no placeholder source or section (PR 9).
-        sourceName: form.sutraName || '',
-        volume: form.volume || '',
-        updatedBy: user.id,
-        updatedAt: now.toISOString(),
-        // The Chinese section's Sutra Text is the source passage, the translation section's
-        // the target one. (Until PR 6a both got the translation section's text.)
-        sourceText: form.sutraTextChinese || '',
-        targetText: form.sutraText || '',
-        author: form.author || '',
-        partOfSpeech: form.partOfSpeech || '',
-        phonetic: form.phonetic || '',
-        discussion: form.discussion,
-      },
-    ],
+    translations: form.translations.map((translation) => ({
+      term: translation.term,
+      language: translation.language,
+      // Blank stays blank: no placeholder source or section (PR 9).
+      sourceName: translation.sourceName,
+      volume: translation.volume,
+      sourceText: translation.sourceText || '',
+      targetText: translation.targetText || '',
+      // The translated document's author, as given; blank when not.
+      author: translation.author || '',
+      partOfSpeech: translation.partOfSpeech || '',
+      phonetic: translation.phonetic || '',
+      discussion: translation.discussion,
+      updatedBy: user.id,
+      updatedAt: now.toISOString(),
+    })),
   };
 }

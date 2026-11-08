@@ -1,23 +1,16 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from '@vercel/remix';
-import type { PropsWithChildren } from 'react';
 
-import { Link, Outlet, redirect, useLoaderData } from '@remix-run/react';
+import { Outlet, redirect, useLoaderData } from '@remix-run/react';
 import { json } from '@vercel/remix';
-import { ChevronDown } from 'lucide-react';
-import { pinyin } from 'pinyin-pro';
-import { useCallback, useState } from 'react';
-import { useFormContext } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { type z } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
 import { Can } from '~/authorisation';
-import { FormInput, FormModal, FormSelect, FormTextarea } from '~/components/FormModal';
-import { DISCUSSION_DESCRIPTION } from '~/components/GlossaryList';
-import { Icons } from '~/components/icons';
+import { FormModal } from '~/components/FormModal';
+import { newTranslation, SourceTermFields, TranslationsFields } from '~/components/GlossaryForm';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
 import { Button } from '~/components/ui/button';
-import { Divider } from '~/components/ui/divider';
 import { Separator } from '~/components/ui/separator';
 import { Toaster } from '~/components/ui/toaster';
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
@@ -25,11 +18,7 @@ import { entryFromCreateForm } from '~/services/glossary.create';
 import { createGlossaryAndIndexInAlgolia, reviveTrashedGlossary } from '~/services/glossary.service';
 import { GlossaryStore } from '~/services/glossary.store';
 import { readUsers } from '~/services/user.service';
-import { DEFAULT_TARGET_LANG } from '~/utils/constants';
-import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
-import { glossaryFormSchema } from '~/validations/glossary.validation';
-
-const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+import { glossaryCreateFormSchema } from '~/validations/glossary.validation';
 
 export const config = {
   memory: 3009,
@@ -51,13 +40,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return redirect('/login');
   }
 
-  const formData = Object.fromEntries(await request.formData());
-  const validatedData = validatePayloadOrThrow({ schema: glossaryFormSchema, formData });
+  // FormModal posts a form with a list (the translations) as JSON in `data`.
+  const formData = await request.formData();
+  const validatedData = validatePayloadOrThrow({
+    schema: glossaryCreateFormSchema,
+    formData: JSON.parse(String(formData.get('data') ?? '{}')),
+  });
   // The trash is checked too: a trashed row still holds the term under the unique index.
-  const [existing] = await GlossaryStore.findByTermsIncludingTrash([validatedData.glossaryChinese]);
+  const [existing] = await GlossaryStore.findByTermsIncludingTrash([validatedData.sourceTerm]);
   if (existing && !existing.deletedAt) {
     return json(
-      { errors: [{ glossaryChinese: 'This term already exists, please search glossary by this term first' }] },
+      { errors: [{ sourceTerm: 'This term already exists, please search glossary by this term first' }] },
       { status: 400 },
     );
   }
@@ -80,11 +73,6 @@ export default function GlossaryLayout() {
             Glossary
           </div>
           <div className="flex items-center gap-2">
-            <Can I="Maintain" this="GlossaryData">
-              <Link reloadDocument to="/glossary/download" download="glossary.xlsx">
-                <Icons.Download className="h-6 w-6 text-slate-800" />
-              </Link>
-            </Can>
             <Can I="Maintain" this="Glossary">
               <GlossaryCreateModal />
             </Can>
@@ -98,171 +86,22 @@ export default function GlossaryLayout() {
   );
 }
 
+// One blank translation to start with. A constant, as FormModal resets to it on every close.
+// FormModal types defaultValues as a whole form.
+const CREATE_DEFAULTS = { translations: [newTranslation()] } as unknown as z.infer<typeof glossaryCreateFormSchema>;
+
 const GlossaryCreateModal = () => {
   return (
     <FormModal
-      schema={glossaryFormSchema}
       title="Create Glossary Entry"
+      defaultValues={CREATE_DEFAULTS}
+      schema={glossaryCreateFormSchema}
       trigger={<Button variant="default">Add New Entry</Button>}
-      // Only the language starts filled in; FormModal types defaultValues as a whole form.
-      defaultValues={{ language: DEFAULT_TARGET_LANG } as z.infer<typeof glossaryFormSchema>}
     >
-      <GlossaryCreateForm />
+      <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
+        <SourceTermFields isNew />
+        <TranslationsFields keepOne />
+      </div>
     </FormModal>
   );
 };
-
-const GlossaryCreateForm = () => {
-  const [chineseAccordionOpen, setChineseAccordionOpen] = useState(false);
-  const [targetLangAccordionOpen, setTargetLangAccordionOpen] = useState(false);
-  const anyAccordionOpen = chineseAccordionOpen || targetLangAccordionOpen;
-  const { watch, setValue } = useFormContext();
-  const glossaryChinese = watch('glossaryChinese');
-  const languageName = capitalise(watch('language') ?? DEFAULT_TARGET_LANG);
-  const phoneticChinese = watch('phoneticChinese');
-  const handleGlossaryChineseOnBlur = useCallback(() => {
-    if (glossaryChinese && !phoneticChinese) {
-      // Example: Transform glossaryChinese to phonetic (replace with your logic, e.g., pinyin)
-      const phoneticValue = pinyin(glossaryChinese); // Placeholder logic
-      setValue('phoneticChinese', phoneticValue, {
-        shouldValidate: true, // Trigger validation
-        shouldDirty: true, // Mark field as dirty
-      });
-    }
-  }, [glossaryChinese, phoneticChinese, setValue]);
-  return (
-    <div
-      className="px-2 transition-[height] duration-300"
-      style={{
-        height: anyAccordionOpen ? '80vh' : '45vh',
-        overflowY: 'auto',
-      }}
-    >
-      <div className="grid grid-cols-2 gap-4">
-        <FormInput
-          required
-          label="Chinese Term"
-          name="glossaryChinese"
-          onBlur={handleGlossaryChineseOnBlur}
-          description="The Chinese glossary term."
-        />
-        <FormInput required label="Phonetic" name="phoneticChinese" description="The phonetic of the glossary term." />
-        <div className="col-span-2">
-          <CustomAccordion onToggle={setChineseAccordionOpen} title="Optional Fields For Chinese">
-            <div className="grid grid-cols-2 gap-4">
-              <FormTextarea
-                label="Origin Text"
-                name="sutraTextChinese"
-                description="The Chinese passage the term comes from."
-              />
-              <FormTextarea
-                label="Section"
-                name="volumeChinese"
-                description="Where in the document, e.g. a volume or chapter."
-              />
-              <FormTextarea
-                label="CBETA Frequency"
-                name="cbetaFrequencyChinese"
-                description="The frequency of the sutra in CBETA."
-              />
-              <FormTextarea label="Author" name="authorChinese" description="The author of the glossary term." />
-              <span className="col-span-2">
-                <FormTextarea
-                  label="Discussion"
-                  name="discussionChinese"
-                  description="Any additional discussion about the glossary term."
-                />
-              </span>
-            </div>
-          </CustomAccordion>
-        </div>
-      </div>
-      <Divider className="my-4 lg:py-3">
-        <span className="text-md">{languageName.toUpperCase()}</span>
-      </Divider>
-      <div className="grid grid-cols-1 gap-4">
-        <FormSelect
-          required
-          name="language"
-          label="Translation Language"
-          description="The language of the translation term."
-          options={GLOSSARY_TRANSLATION_LANGUAGES.map((lang) => ({ value: lang, label: capitalise(lang) }))}
-        />
-        <FormInput
-          required
-          name="glossary"
-          label={`${languageName} Term`}
-          description={`The ${languageName} translation of the Chinese term.`}
-        />
-        <FormTextarea name="discussion" label="Discussion" description={DISCUSSION_DESCRIPTION} />
-        <CustomAccordion onToggle={setTargetLangAccordionOpen} title={`Optional Fields For ${languageName}`}>
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput name="phonetic" label="Phonetic" description="The phonetic of the glossary." />
-            <FormInput
-              name="sutraName"
-              label="Document Name"
-              description="The work this translation is from, e.g. a sutra."
-            />
-            <FormTextarea
-              name="partOfSpeech"
-              label="Part of Speech"
-              description="The part of speech of the glossary term."
-            />
-            <FormTextarea
-              name="sutraText"
-              label="Target Text"
-              description={`The ${languageName} translation of that passage.`}
-            />
-            <FormTextarea
-              name="volume"
-              label="Section"
-              description="Where in the document, e.g. a volume or chapter."
-            />
-            <FormTextarea name="author" label="Author" description="The author of the glossary." />
-          </div>
-        </CustomAccordion>
-      </div>
-    </div>
-  );
-}; // or any icon library
-
-export function CustomAccordion({
-  title = 'More Details',
-  children,
-  onToggle,
-}: PropsWithChildren<{ title?: string; onToggle?: (open: boolean) => void }>) {
-  const [open, setOpen] = useState(false);
-
-  const handleToggle = () => {
-    setOpen((o) => {
-      const newOpen = !o;
-      if (onToggle) onToggle(newOpen);
-      return newOpen;
-    });
-  };
-
-  return (
-    <div className="mx-auto w-full bg-white">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={handleToggle}
-        className="flex w-full flex-col items-center focus:outline-none"
-      >
-        <div className="flex w-full items-center">
-          <div className="flex-1 border-t border-dashed border-blue-600" />
-          <span className="mx-4 text-center text-sm font-semibold whitespace-nowrap">{title}</span>
-          <div className="flex-1 border-t border-dashed border-blue-600" />
-        </div>
-        <div className="flex w-full justify-center">
-          <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-        </div>
-      </button>
-      {open && (
-        <div className="mt-4" aria-hidden={!open}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}

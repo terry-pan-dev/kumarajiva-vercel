@@ -39,8 +39,6 @@
     "cbeta": "CBETA：{{frequency}}",
     "columnsHeading": "CSV／XLSX 欄位（須有標題列）",
     "columns": {
-      "uuidImport": "選填；將資料列連結到資料庫中既有的條目（使用下載的匯出檔可保留 ID）",
-      "uuidReplace": "選填；將多列歸為同一條目，並保留該條目的 ID",
       "chineseTerm": "<strong>必填</strong>；詞彙的主條目",
       "englishTermImport": "英文譯詞；沒有此欄位的資料列只用於更新條目資訊",
       "englishTermReplace": "英文譯詞；沒有此欄位的資料列只提供條目資訊",
@@ -53,7 +51,9 @@
       "englishSutraText": "此譯詞的英文例句",
       "translationUuidImport": "選填；下載的匯出檔中該譯詞的 ID。若資料列的 TranslationUUID 對應到條目中的某個譯詞，會<strong>更新該譯詞</strong>；其他資料列一律新增為新譯詞",
       "translationUuidReplace": "選填；會被忽略，因為所有譯詞都會重新寫入",
-      "discussion": "選填；關於此譯詞的討論，例如選用此譯法的理由。資料列更新譯詞時，空白儲存格會清除已儲存的討論；省略此欄則全部保留。舊匯出檔的 Rationale 欄視同 Discussion"
+      "discussion": "選填；關於此譯詞的討論，例如選用此譯法的理由。資料列更新譯詞時，空白儲存格會清除已儲存的討論；省略此欄則全部保留。舊匯出檔的 Rationale 欄視同 Discussion",
+      "sourceTermUuidImport": "選填；下載的匯出檔中該條目的 ID，同一詞彙的每一列皆相同。將這些資料列連結到資料庫中既有的條目。舊匯出檔的 UUID 欄視同 SourceTermUUID",
+      "sourceTermUuidReplace": "選填；將多列歸為同一條目，並保留該條目的 ID。舊匯出檔的 UUID 欄視同 SourceTermUUID"
     },
     "stepUpload": "<strong>上傳</strong> — 選擇 CSV 或 XLSX 檔案並點選<em>預覽</em>。兩種檔案都在您的瀏覽器中解析，不會將檔案資料傳送到伺服器，因此大型檔案也不會超過上傳大小限制。",
     "stepRepeat": "<strong>重複</strong>上述步驟，直到所有批次都已{{done}}。頂端的進度列會顯示目前進度。",
@@ -84,14 +84,14 @@
     "openInspector": "開啟詞彙檢查",
     "instructions": {
       "title": "檔案格式與匯入說明",
-      "mergedRows": "具有相同 UUID 或中文詞條的多列 CSV，會合併為一個帶有多個譯詞的詞彙條目。",
+      "mergedRows": "具有相同 SourceTermUUID 或中文詞條的多列 CSV，會合併為一個帶有多個譯詞的詞彙條目。",
       "processHeading": "分批匯入流程",
       "stepChunks": "<strong>分批顯示</strong> — 檔案會分成每批 <strong>{{chunkSize}} 個詞條</strong>（而非列數）。一個詞條若有多個譯詞，可能佔用多列 CSV。",
       "stepReview": "<strong>檢查</strong> — 左欄顯示資料庫目前的內容；右欄顯示合併後將儲存的條目。綠色卡片為新增條目，琥珀色卡片為更新。卡片中每個譯詞會標示<em>保留</em>、<em>更新</em>或<em>新增</em>。",
       "stepImport": "<strong>匯入此批</strong> — 點選按鈕將目前批次寫入資料庫，之後會自動顯示下一批。",
       "repeatDone": "匯入",
       "conflictHeading": "衝突處理",
-      "conflictMatching": "有 UUID 的資料列依主鍵與既有紀錄配對；沒有 UUID 的資料列依中文詞條配對。新條目會自動建立並在 Algolia 建立索引。",
+      "conflictMatching": "有 SourceTermUUID 的資料列依主鍵與既有紀錄配對；沒有 SourceTermUUID 的資料列依中文詞條配對。新條目會自動建立並在 Algolia 建立索引。",
       "conflictMerge": "找到配對時，條目的譯詞會<strong>合併</strong>而非取代 — 資料庫中已有的譯詞即使檔案未提及也會保留，因此匯入檔只需包含要新增或修正的詞條。只有 <code>TranslationUUID</code> 能使資料列成為更新：若資料列的 <code>TranslationUUID</code> 對應到條目中的某個譯詞，會以檔案內容取代該譯詞（<em>更新</em>；若無變更則為<em>保留</em>）。其他資料列一律新增（<em>新增</em>），即使與已儲存的譯詞逐字相同；這類資料列在預覽中會標示為<em>重複</em>。因此重新匯入下載的匯出檔不會造成任何變更，但重新匯入沒有 <code>TranslationUUID</code> 的檔案會再次新增其譯詞。",
       "conflictMetadata": "條目層級的資訊（讀音、譯者、CBETA 出現次數）若檔案有提供，會被檔案覆寫；儲存格留空則保留原值。若要移除譯詞，請直接編輯該條目 — 匯入無法刪除譯詞。"
     }
@@ -101,7 +101,7 @@
     "description": "上傳 CSV 或 XLSX 檔案以取代整個詞彙表。第一次寫入會清除所有既有條目，之後以每批 {{chunkSize}} 個詞條的方式匯入檔案。",
     "warning": "開始匯入後，會在寫入檔案前永久刪除所有既有詞彙條目。此操作無法復原 — 請先下載 CSV 備份。",
     "confirmWipe": "此操作會在匯入前永久刪除所有既有詞彙條目。要繼續嗎？",
-    "uuidConflicts_other": "此檔案中有 {{count}} 個詞條帶有多個 UUID（{{terms}}）。每個詞條只能是一個條目，因此會保留第一個 UUID，其餘捨棄。若這些 ID 很重要，請修正檔案。",
+    "uuidConflicts_other": "此檔案中有 {{count}} 個詞條帶有多個 SourceTermUUID（{{terms}}）。每個詞條只能是一個條目，因此會保留第一個 SourceTermUUID，其餘捨棄。若這些 ID 很重要，請修正檔案。",
     "complete": "取代完成",
     "completeTitle": "取代完成",
     "completeSummary": "檔案中 {{terms}} · 已寫入 {{rows}}",
@@ -109,7 +109,7 @@
     "writing": "正在寫入 {{terms}}（{{rows}}）。在上方上傳新檔案即可重新開始。",
     "instructions": {
       "title": "檔案格式與取代說明",
-      "mergedRows": "具有相同 UUID 或中文詞條的多列資料，會合併為一個帶有多個譯詞的詞彙條目。",
+      "mergedRows": "具有相同 SourceTermUUID 或中文詞條的多列資料，會合併為一個帶有多個譯詞的詞彙條目。",
       "processHeading": "分批取代流程",
       "stepChunks": "<strong>分批顯示</strong> — 檔案會分成每批 <strong>{{chunkSize}} 個詞條</strong>（而非列數）。一個詞條若有多個譯詞，可能佔用多列。",
       "stepReview": "<strong>檢查</strong> — 每一批會列出將寫入的條目。由於既有詞彙表會被捨棄而非合併，因此沒有並排對照。",

@@ -62,7 +62,12 @@ describe('glossariesToExportRows', () => {
     ]);
 
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ UUID: 'abc', ChineseTerm: '菩薩', EnglishTerm: 'bodhisattva', Phonetic: 'púsà' });
+    expect(rows[0]).toMatchObject({
+      SourceTermUUID: 'abc',
+      ChineseTerm: '菩薩',
+      EnglishTerm: 'bodhisattva',
+      Phonetic: 'púsà',
+    });
     expect(rows[1]).toMatchObject({ ChineseTerm: '菩薩', EnglishTerm: 'enlightened being', CBetaFrequency: '500' });
   });
 
@@ -91,6 +96,11 @@ describe('glossariesToExportRows', () => {
 // ─── glossariesToCSV ─────────────────────────────────────────────────────────
 
 describe('glossariesToCSV', () => {
+  it('puts the translation’s id first and the entry’s id last', () => {
+    expect(GLOSSARY_EXPORT_HEADERS[0]).toBe('TranslationUUID');
+    expect(GLOSSARY_EXPORT_HEADERS.at(-1)).toBe('SourceTermUUID');
+  });
+
   it('starts with the fixed header row', () => {
     const csv = glossariesToCSV([]);
     expect(csv).toBe(GLOSSARY_EXPORT_HEADERS.join(','));
@@ -136,7 +146,7 @@ describe('glossariesToXLSX', () => {
     expect(parsed).toHaveLength(1);
     expect(Object.keys(parsed[0])).toEqual([...GLOSSARY_EXPORT_HEADERS]);
     expect(parsed[0]).toMatchObject({
-      UUID: 'abc',
+      SourceTermUUID: 'abc',
       ChineseTerm: '菩薩',
       EnglishTerm: 'bodhisattva',
       SutraName: 'Lotus',
