@@ -214,6 +214,53 @@ describe('parseGlossaryXLSX — TranslationUUID and Discussion', () => {
   });
 });
 
+// The entry's id was the UUID column, first, until 2026-11-07; it is now SourceTermUUID, last.
+describe('the entry id column — SourceTermUUID, or UUID in older files', () => {
+  const xlsxFile = async (aoa: string[][]) => {
+    const { utils, write } = await import('xlsx');
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, utils.aoa_to_sheet(aoa), 'Glossary');
+    return new File([write(workbook, { type: 'array', bookType: 'xlsx' })], 'glossary.xlsx');
+  };
+
+  it('reads SourceTermUUID from a CSV, wherever the column is', () => {
+    const [row] = parseGlossaryCSV('TranslationUUID,ChineseTerm,EnglishTerm,SourceTermUUID\nt1,法,Dharma, g1 \n');
+    expect(row).toMatchObject({ uuid: 'g1', translationUuid: 't1' });
+  });
+
+  it('reads an older CSV’s UUID column as the entry id', () => {
+    const [row] = parseGlossaryCSV('UUID,ChineseTerm,EnglishTerm\ng1,法,Dharma\n');
+    expect(row.uuid).toBe('g1');
+  });
+
+  it('reads SourceTermUUID from an XLSX, under either header spelling', async () => {
+    const rows = await parseGlossaryXLSX(
+      await xlsxFile([
+        ['ChineseTerm', 'EnglishTerm', 'Source Term UUID'],
+        ['法', 'Dharma', 'g1'],
+      ]),
+    );
+    expect(rows[0].uuid).toBe('g1');
+    const [row] = await parseGlossaryXLSX(
+      await xlsxFile([
+        ['TranslationUUID', 'ChineseTerm', 'SourceTermUUID'],
+        ['t1', '法', 'g1'],
+      ]),
+    );
+    expect(row).toMatchObject({ uuid: 'g1', translationUuid: 't1' });
+  });
+
+  it('reads an older XLSX’s UUID column as the entry id', async () => {
+    const [row] = await parseGlossaryXLSX(
+      await xlsxFile([
+        ['UUID', 'ChineseTerm', 'EnglishTerm'],
+        ['g1', '法', 'Dharma'],
+      ]),
+    );
+    expect(row.uuid).toBe('g1');
+  });
+});
+
 describe('translationFromRow', () => {
   it('reads a row as the translation it describes', () => {
     expect(

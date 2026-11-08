@@ -10,10 +10,15 @@ during the freeze; the prod comparison (step 5) passed. The app reads and writes
 `glossary_translations` only. PR 6 (#212), PR 7a (#213), PR 7b (#214, drops the old
 columns), the cleanup (#215), PR 8a + 8b (#216), PR 9 (#217) and PR 11 (#218) are merged.
 **Column move** (the headword's column `glossary` → `source_term`, three deploys): deploy A is
-merged (#219, 0027 ran on prod). Deploy B is committed on `switch-term` (5ccf90b55), not merged
-(the user is pausing). Deploy C (drop `temp_term`, plus rationale → discussion) is in the working
-tree on top of B. **Merge C only after B is live.** PR 10 waits (the user wants to think it
-over).
+merged (#219, 0027 ran on prod), then deploy B (#220) and deploy C (#221: drop `temp_term`,
+rationale → discussion, migration 0029). PR 10 waits (the user wants to think it over).
+
+**File id columns (2026-11-07, working tree):** a row is one translation, so the export now
+leads with `TranslationUUID`, and the entry's id, renamed `UUID` → `SourceTermUUID`, is the
+last column. The parsers find columns by header, so the order changes nothing on import; both
+still read `UUID` (and `Rationale`) from older files. The id names stay distinct on purpose: had
+`UUID` become the translation id, an older file's entry ids would match no translation and
+every row would be added again.
 
 **PR 6 is merged (#212), tested by the user with real data and export/import.** PR 6a (Rationale): Rationale in the create, edit and insert forms and on the translation display
 (`GlossaryDetail`, used by the glossary page and the search dialog). One rule for all three

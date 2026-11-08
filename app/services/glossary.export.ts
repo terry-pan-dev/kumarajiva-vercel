@@ -5,13 +5,14 @@ export type ExportableGlossary = WithTranslations<
   Pick<GlossaryTerm, 'id' | 'sourceTerm' | 'cbetaFrequency' | 'phonetic'>
 >;
 
-// Column order and names must match what the import parser reads (see XLSX_COLUMNS /
-// parseGlossaryCSV in glossary.parse.ts), so a downloaded file round-trips back through import.
-// TranslationUUID and Discussion (Rationale until 2026-11-07; the import reads both) came last
-// (PR 6b), after the columns older files already had,
-// so those keep their positions.
+// Column names must match what the import parser reads (see XLSX_COLUMNS / parseGlossaryCSV in
+// glossary.parse.ts), so a downloaded file round-trips back through import. Both parsers find
+// columns by header, so the order is for people reading the file: a row is one translation, so
+// its own id comes first, and the headword's id, shared by all of that term's rows, comes last.
+// SourceTermUUID was UUID and came first until 2026-11-07; Discussion was Rationale until the
+// same day. The import reads all four names.
 export const GLOSSARY_EXPORT_HEADERS = [
-  'UUID',
+  'TranslationUUID',
   'ChineseTerm',
   'EnglishTerm',
   'ChineseSutraText',
@@ -21,8 +22,8 @@ export const GLOSSARY_EXPORT_HEADERS = [
   'CBetaFrequency',
   'Author',
   'Phonetic',
-  'TranslationUUID',
   'Discussion',
+  'SourceTermUUID',
 ] as const;
 
 export type GlossaryExportRow = Record<(typeof GLOSSARY_EXPORT_HEADERS)[number], string>;
@@ -35,7 +36,8 @@ export type GlossaryExportFormat = 'csv' | 'xlsx';
 export function glossariesToExportRows(glossaries: ExportableGlossary[]): GlossaryExportRow[] {
   return glossaries.flatMap((glossary) =>
     (glossary.translations ?? []).map((t) => ({
-      UUID: glossary.id ?? '',
+      // Re-imported, it makes a row an update of this translation rather than a new one.
+      TranslationUUID: t.id ?? '',
       ChineseTerm: glossary.sourceTerm ?? '',
       EnglishTerm: t.term ?? '',
       ChineseSutraText: t.sourceText ?? '',
@@ -45,9 +47,9 @@ export function glossariesToExportRows(glossaries: ExportableGlossary[]): Glossa
       CBetaFrequency: glossary.cbetaFrequency ?? '',
       Author: t.author ?? '',
       Phonetic: glossary.phonetic ?? '',
-      // Re-imported, it makes a row an update of this translation rather than a new one.
-      TranslationUUID: t.id ?? '',
       Discussion: t.discussion ?? '',
+      // Picks the entry the row belongs to; replace keeps it as the entry's id.
+      SourceTermUUID: glossary.id ?? '',
     })),
   );
 }
