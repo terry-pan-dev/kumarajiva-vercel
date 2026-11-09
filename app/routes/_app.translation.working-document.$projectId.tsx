@@ -51,6 +51,10 @@ export function ErrorBoundary() {
   return <ErrorInfo error={error} />;
 }
 
+// A document's short code, or its title when it has none.
+const describeDocument = (document: { key: string | null; title: string } | undefined) =>
+  document ? (document.key ?? document.title) : '';
+
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const user = await assertAuthUser(request);
   if (!user) return redirect('/login');
@@ -83,11 +87,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     },
     sections,
     format: getWorkingDocumentFormat(project),
-    // What each text is, for the format panel.
+    // What each text is, for the format panel, since labels can be changed
+    // freely.
     names: {
-      source: `Source — ${sourceDocument?.title ?? ''}`,
-      target: `Translation — ${targetDocument?.title ?? ''}`,
-      ...Object.fromEntries(project.references.map((r) => [`reference:${r.documentId}`, r.document.title])),
+      source: `Source: ${describeDocument(sourceDocument)}`,
+      target: `Translation: ${describeDocument(targetDocument)}`,
+      ...Object.fromEntries(project.references.map((r) => [`reference:${r.documentId}`, describeDocument(r.document)])),
     } as Record<string, string>,
     start,
     lastExported,
@@ -363,6 +368,12 @@ export default function WorkingDocumentPage() {
 
   const startCard = start ? cardsBySection[start.sectionId]?.[start.position] : undefined;
 
+  // The cards list each text the document shows once, under its first label.
+  const cardBlocks = useMemo(
+    () => blocks.filter((block, i) => block.visible && blocks.findIndex((b) => b.visible && b.key === block.key) === i),
+    [blocks],
+  );
+
   // The download carries the format on screen, so the file matches it even
   // before the autosave lands.
   const downloadHref =
@@ -383,7 +394,7 @@ export default function WorkingDocumentPage() {
   }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto pb-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="grid h-full min-h-0 grid-cols-1 gap-4 overflow-y-auto pb-4 lg:grid-cols-[minmax(0,1fr)_440px]">
       <div className="space-y-2">
         <div className="mb-3">
           <Link to="/translation" className="text-muted-foreground flex items-center gap-1 text-xs hover:underline">
@@ -404,9 +415,9 @@ export default function WorkingDocumentPage() {
           <SectionPanel
             range={range}
             start={start}
-            blocks={blocks}
             key={section.id}
             section={section}
+            blocks={cardBlocks}
             sections={sections}
             projectId={project.id}
             isOpen={openSectionId === section.id}
@@ -473,7 +484,8 @@ export default function WorkingDocumentPage() {
             )}
           </div>
           <p className="text-muted-foreground text-xs">
-            Drag to set the order of the texts in each paragraph. Changes are saved for this project.
+            Drag to set the order of the texts in each paragraph, hide the ones you don’t need, or add a text again to
+            print it twice. Changes are saved for this project.
           </p>
           <div className="flex items-center gap-2">
             <Switch checked={showPages} onCheckedChange={setShowPages} id="working-document-show-pages" />

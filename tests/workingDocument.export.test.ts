@@ -62,4 +62,23 @@ describe('reconcileWorkingDocumentFormat', () => {
     expect(result.blocks.map((b) => b.key)).toEqual(['target', 'source', 'reference:ref-a', 'reference:ref-b']);
     expect(result.blocks[0].font).toBe('Palatino Linotype');
   });
+
+  it('keeps extra and hidden entries for the same text', () => {
+    const [source, target, refA, refB] = defaults.blocks;
+    const saved: WorkingDocumentFormat = {
+      blocks: [source, { ...target, visible: false }, refA, refB, { ...source, id: 'source#2', size: 14 }],
+    };
+
+    const result = reconcileWorkingDocumentFormat(saved, defaults);
+
+    expect(result.blocks.map((b) => b.id)).toEqual([
+      'source',
+      'target',
+      'reference:ref-a',
+      'reference:ref-b',
+      'source#2',
+    ]);
+    expect(result.blocks[1].visible).toBe(false);
+    expect(result.blocks[4].size).toBe(14);
+  });
 });

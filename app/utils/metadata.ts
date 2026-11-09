@@ -4,7 +4,7 @@
 // columns and without stepping on each other. Values are checked with a zod
 // schema on the way out: anything missing or malformed reads as undefined
 // rather than breaking the page. Writing lives in lib/metadata.server.ts.
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 
 export type Metadata = Record<string, unknown> | null | undefined;
 
@@ -15,7 +15,13 @@ export const metadataSection = (metadata: Metadata, section: string): Record<str
 };
 
 // One field of a section, validated; undefined when missing or invalid.
-export const metadataField = <T>(metadata: Metadata, section: string, field: string, schema: ZodType<T>) => {
+// The schema may fill in defaults, so its input type is left open.
+export const metadataField = <T>(
+  metadata: Metadata,
+  section: string,
+  field: string,
+  schema: ZodType<T, ZodTypeDef, unknown>,
+) => {
   const parsed = schema.safeParse(metadataSection(metadata, section)[field]);
   return parsed.success ? parsed.data : undefined;
 };

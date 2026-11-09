@@ -1,5 +1,5 @@
-// The working document's format: how each text — the source, the translation
-// and each of the project's references — appears, and in what order. Checked
+// The working document's format: which texts — the source, the translation
+// and each of the project's references — appear, how, and in what order. Checked
 // when the page autosaves it, when a download passes it along, and when it is
 // read back from projects.metadata.
 import { z } from 'zod';
@@ -18,15 +18,33 @@ export const WORKING_DOCUMENT_FONTS = [
   'Garamond',
 ] as const;
 
-export const workingDocumentBlockSchema = z.object({
-  // 'source', 'target' or 'reference:<documentId>'.
-  key: z.string().min(1),
-  label: z.string().max(60),
-  font: z.enum(WORKING_DOCUMENT_FONTS),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  bold: z.boolean(),
-  italic: z.boolean(),
-});
+// Font sizes offered, in points.
+export const WORKING_DOCUMENT_FONT_SIZES = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24] as const;
+export const DEFAULT_WORKING_DOCUMENT_FONT_SIZE = 11;
+
+// One entry in the document: which text it prints (`key`) and how. The same
+// text may appear in more than one entry, so each entry has its own `id`.
+// `id`, `size`, `visible` and `labelBreak` are optional on the way in so
+// formats saved before they existed still load: the id falls back to the key
+// (keys were unique then), the size to the default, and the entry is shown
+// with its label inline.
+export const workingDocumentBlockSchema = z
+  .object({
+    id: z.string().min(1).optional(),
+    // 'source', 'target' or 'reference:<documentId>'.
+    key: z.string().min(1),
+    label: z.string().max(60),
+    font: z.enum(WORKING_DOCUMENT_FONTS),
+    size: z.number().int().min(6).max(72).default(DEFAULT_WORKING_DOCUMENT_FONT_SIZE),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    bold: z.boolean(),
+    italic: z.boolean(),
+    // Whether the entry is printed; a hidden entry keeps its look for later.
+    visible: z.boolean().default(true),
+    // Put the label (and page) on a line of its own above the text.
+    labelBreak: z.boolean().default(false),
+  })
+  .transform(({ id, ...block }) => ({ ...block, id: id ?? block.key }));
 
 export const workingDocumentFormatSchema = z.object({
   blocks: z.array(workingDocumentBlockSchema),
