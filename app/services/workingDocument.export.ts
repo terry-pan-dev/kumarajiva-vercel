@@ -13,7 +13,12 @@
 import { z } from 'zod';
 
 import { metadataField, type Metadata } from '~/utils/metadata';
-import { workingDocumentFormatSchema, type WorkingDocumentFormat } from '~/validations/workingDocument.validation';
+import {
+  DEFAULT_WORKING_DOCUMENT_FONT_SIZE,
+  workingDocumentFormatSchema,
+  type WorkingDocumentBlock,
+  type WorkingDocumentFormat,
+} from '~/validations/workingDocument.validation';
 
 import { mergeProjectMetadata } from './project.service';
 import {
@@ -244,43 +249,49 @@ const REFERENCE_COLORS = ['#6b7280', '#047857', '#b45309', '#7c3aed', '#be123c']
 
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-// Source (Chinese serif, black), translation (Times New Roman, blue), then each
-// reference in the project's order, labelled by its capitalised document key
-// (or title).
+const defaultWorkingDocumentBlock = (
+  key: string,
+  label: string,
+  font: WorkingDocumentBlock['font'],
+  color: string,
+): WorkingDocumentBlock => ({
+  id: key,
+  key,
+  label,
+  font,
+  size: DEFAULT_WORKING_DOCUMENT_FONT_SIZE,
+  color,
+  bold: false,
+  italic: false,
+  visible: true,
+  labelBreak: false,
+});
+
+// One entry per text, shown, at the default size: source (Chinese serif,
+// black), translation (Times New Roman, blue), then each reference in the
+// project's order, labelled by its capitalised document key (or title).
 export const defaultWorkingDocumentFormat = (project: { references: ReferenceDocument[] }): WorkingDocumentFormat => ({
   blocks: [
-    {
-      key: 'source',
-      label: 'Source',
-      font: 'Noto Serif TC',
-      color: '#000000',
-      bold: false,
-      italic: false,
-    },
-    {
-      key: 'target',
-      label: 'Translation',
-      font: 'Times New Roman',
-      color: '#1d4ed8',
-      bold: false,
-      italic: false,
-    },
-    ...project.references.map((ref, i) => ({
-      key: `reference:${ref.documentId}`,
-      label: capitalise(ref.document.key ?? ref.document.title),
-      font: 'Times New Roman' as const,
-      color: REFERENCE_COLORS[i % REFERENCE_COLORS.length],
-      bold: false,
-      italic: false,
-    })),
+    defaultWorkingDocumentBlock('source', 'Source', 'Noto Serif TC', '#000000'),
+    defaultWorkingDocumentBlock('target', 'Translation', 'Times New Roman', '#1d4ed8'),
+    ...project.references.map((ref, i) =>
+      defaultWorkingDocumentBlock(
+        `reference:${ref.documentId}`,
+        capitalise(ref.document.key ?? ref.document.title),
+        'Times New Roman',
+        REFERENCE_COLORS[i % REFERENCE_COLORS.length],
+      ),
+    ),
   ],
   showPages: true,
   showNumbers: true,
 });
 
 // Fits a saved format to the project as it is now: the page and number
-// settings carry over, saved blocks keep their order and look; references removed since are dropped, references added since
-// are appended with their defaults. Anything unusable falls back to defaults.
+// settings carry over, saved entries keep their order and look (including
+// extra entries for the same text); entries for references removed since are
+// dropped, and each text with no entry — a reference added since — is
+// appended with its defaults. Anything unusable falls back to defaults.
 export const reconcileWorkingDocumentFormat = (
   saved: WorkingDocumentFormat | undefined,
   defaults: WorkingDocumentFormat,
@@ -288,7 +299,7 @@ export const reconcileWorkingDocumentFormat = (
   if (!saved) return defaults;
   const available = new Set(defaults.blocks.map((b) => b.key));
   const kept = saved.blocks.filter(
-    (block, i, all) => available.has(block.key) && all.findIndex((b) => b.key === block.key) === i,
+    (block, i, all) => available.has(block.key) && all.findIndex((b) => b.id === block.id) === i,
   );
   const keptKeys = new Set(kept.map((b) => b.key));
   return {

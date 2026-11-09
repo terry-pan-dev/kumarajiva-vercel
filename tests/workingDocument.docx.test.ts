@@ -16,12 +16,20 @@ import {
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const plain = { bold: false, italic: false };
+const shown = { size: 11, visible: true, labelBreak: false, ...plain };
 const defaults: WorkingDocumentFormat = {
   blocks: [
-    { key: 'source', label: 'Source', font: 'Noto Serif TC', color: '#000000', ...plain },
-    { key: 'target', label: 'Translation', font: 'Times New Roman', color: '#1d4ed8', ...plain },
-    { key: 'reference:ref-a', label: 'Btts', font: 'Times New Roman', color: '#6b7280', ...plain },
-    { key: 'reference:ref-b', label: 'Commentary', font: 'Times New Roman', color: '#047857', ...plain },
+    { id: 'source', key: 'source', label: 'Source', font: 'Noto Serif TC', color: '#000000', ...shown },
+    { id: 'target', key: 'target', label: 'Translation', font: 'Times New Roman', color: '#1d4ed8', ...shown },
+    { id: 'ref-a', key: 'reference:ref-a', label: 'Btts', font: 'Times New Roman', color: '#6b7280', ...shown },
+    {
+      id: 'ref-b',
+      key: 'reference:ref-b',
+      label: 'Commentary',
+      font: 'Times New Roman',
+      color: '#047857',
+      ...shown,
+    },
   ],
 };
 
@@ -85,6 +93,42 @@ describe('buildWorkingDocument', () => {
 
     expect(inOrder(xml, ['Draft: ', 'Thus I have heard', 'Source: ', '如是我聞'])).toBe(true);
     expect(xml).toContain('<w:i/>');
+  });
+
+  it('writes each entry at its font size', async () => {
+    const [source, ...rest] = defaults.blocks;
+    const xml = await documentXml([passage()], { blocks: [{ ...source, size: 14 }, ...rest] });
+
+    expect(xml).toContain('<w:sz w:val="28"/>');
+    expect(xml).toContain('<w:sz w:val="22"/>');
+  });
+
+  it('starts the text on a new line after the label when asked', async () => {
+    const [source, ...rest] = defaults.blocks;
+    const xml = await documentXml([passage()], { blocks: [{ ...source, labelBreak: true }, ...rest] });
+
+    expect(xml).toMatch(/>Source:<\/w:t><\/w:r><w:r>.*?<w:br\/>.*?如是我聞/);
+    expect(xml).toContain('Translation: ');
+  });
+
+  it('leaves hidden entries out', async () => {
+    const [source, target, ...refs] = defaults.blocks;
+    const xml = await documentXml([passage()], { blocks: [source, { ...target, visible: false }, ...refs] });
+
+    expect(xml).not.toContain('Translation: ');
+    expect(xml).not.toContain('Thus I have heard');
+    expect(inOrder(xml, ['Source: ', '如是我聞', 'Btts: ', 'Thus have I'])).toBe(true);
+  });
+
+  it('prints a text once for each of its entries', async () => {
+    const [source, target, ...refs] = defaults.blocks;
+    const xml = await documentXml([passage()], {
+      blocks: [source, target, ...refs, { ...source, id: 'source#2', label: 'Again', bold: true }],
+    });
+
+    expect(xml.split('如是我聞').length - 1).toBe(2);
+    expect(inOrder(xml, ['Source: ', 'Btts: ', 'Again: '])).toBe(true);
+    expect(xml.lastIndexOf('如是我聞')).toBeGreaterThan(xml.indexOf('Again: '));
   });
 
   it('heads each new section with its title in both languages', async () => {
@@ -175,6 +219,15 @@ describe('workingDocumentFormatSchema', () => {
   it('still accepts a saved format from before the page and number switches', () => {
     const saved = { blocks: [{ key: 'source', label: 'Source', font: 'Noto Serif TC', color: '#000000', ...plain }] };
     expect(workingDocumentFormatSchema.safeParse(saved).success).toBe(true);
+  });
+
+  it('gives entries saved before ids, sizes and hiding their key as id, the default size, and shows them', () => {
+    const saved = { blocks: [{ key: 'source', label: 'Source', font: 'Noto Serif TC', color: '#000000', ...plain }] };
+    expect(workingDocumentFormatSchema.parse(saved).blocks[0]).toMatchObject({
+      id: 'source',
+      size: 11,
+      visible: true,
+    });
   });
 });
 

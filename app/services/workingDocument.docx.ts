@@ -41,21 +41,30 @@ const bilingualParagraph = (
   });
 
 // Paragraph text may carry line breaks; docx needs them as explicit breaks.
-// The label (with the page, when shown) leads in bold.
+// The label (with the page, when shown) leads in bold, on its own line if the
+// entry asks for it.
 const blockParagraph = (
   block: WorkingDocumentBlock,
   text: string,
   page: string | null | undefined,
   showPages: boolean,
 ) => {
-  const style = { color: docxColor(block.color), font: docxFont(block.font), italics: block.italic };
-  const prefix = workingDocumentBlockPrefix(block.label, page, showPages);
+  // docx sizes are in half-points.
+  const style = {
+    color: docxColor(block.color),
+    font: docxFont(block.font),
+    size: block.size * 2,
+    italics: block.italic,
+  };
+  const inline = workingDocumentBlockPrefix(block.label, page, showPages);
+  const prefix = block.labelBreak ? inline.trimEnd() : inline;
+  const textBreak = (i: number) => (i > 0 || (prefix && block.labelBreak) ? 1 : 0);
   return new Paragraph({
     children: [
       ...(prefix ? [new TextRun({ text: prefix, ...style, bold: true })] : []),
       ...text
         .split('\n')
-        .map((line, i) => new TextRun({ text: line, break: i > 0 ? 1 : 0, ...style, bold: block.bold })),
+        .map((line, i) => new TextRun({ text: line, break: textBreak(i), ...style, bold: block.bold })),
     ],
   });
 };
@@ -66,13 +75,15 @@ const blank = () => new Paragraph({ text: '' });
 // section, the paragraph number in small grey above each passage (unless
 // switched off), then its
 // texts in block order with a blank line between them, and two blank lines to
-// separate passages. Texts a passage doesn't have yet are left out.
+// separate passages. Hidden entries, and texts a passage doesn't have yet, are
+// left out.
 const passageParagraphs = (
   passages: WorkingDocumentPassage[],
   blocks: WorkingDocumentBlock[],
   { showPages, showNumbers }: { showPages: boolean; showNumbers: boolean },
 ): Paragraph[] => {
   const paragraphs: Paragraph[] = [];
+  const shown = blocks.filter((block) => block.visible);
   let currentSectionId: string | null = null;
 
   for (const passage of passages) {
@@ -86,7 +97,7 @@ const passageParagraphs = (
     if (showNumbers) {
       paragraphs.push(new Paragraph({ children: [new TextRun({ text: passage.number, color: '808080', size: 16 })] }));
     }
-    const texts = blocks.flatMap((block) => {
+    const texts = shown.flatMap((block) => {
       const text = passage.texts[block.key]?.trim();
       return text ? [blockParagraph(block, text, passage.pages?.[block.key], showPages)] : [];
     });
