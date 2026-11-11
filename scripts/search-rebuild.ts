@@ -44,6 +44,13 @@ async function main() {
     );
   }
 
+  if (result.tooBig.length > 0) {
+    console.warn(
+      `\n${result.tooBig.length} row(s) are over the ${result.maxBytes}-byte record limit and are not indexed: ` +
+        sample(result.tooBig.map((r) => `${r.passageKey ?? r.id} (${r.bytes} bytes)`)),
+    );
+  }
+
   if (!apply) console.log('\nRun again with --apply to rebuild.');
 }
 

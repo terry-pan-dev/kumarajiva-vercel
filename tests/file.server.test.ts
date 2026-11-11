@@ -4,7 +4,7 @@ import type { ExcelTranslationRow, ImportOptions } from '~/services/file.service
 
 // ─── Import after mocks ───────────────────────────────────────────────────────
 
-import { buildImportData, replaceRollData } from '~/services/file.server';
+import { buildImportData, findIndexedSource, replaceRollData } from '~/services/file.server';
 
 // ─── DB mock (must be hoisted before any imports that touch ~/lib/db.server) ─
 
@@ -307,5 +307,26 @@ describe('replaceRollData', () => {
       expect(result.errors).toHaveLength(1);
       vi.restoreAllMocks();
     });
+  });
+});
+
+describe('findIndexedSource', () => {
+  const sources = [
+    { searchId: 'aaa-111', row: 3, key: 'T0262.1.3', document: 'origin' },
+    { searchId: '90d67a97-c68c-44b5-94cb-8099e68e728e', row: 236, key: 'T0262.2.236', document: 'translation' },
+  ];
+
+  it('maps the objectID in an Algolia record-size error back to the file row', () => {
+    const message =
+      'Record at the position 235 objectID=90d67a97-c68c-44b5-94cb-8099e68e728e is too big: size: 13010 byte(s), maximum allowed: 10000 byte(s).';
+    expect(findIndexedSource(message, sources)).toEqual({ row: 236, key: 'T0262.2.236', document: 'translation' });
+  });
+
+  it('returns null when the message names no objectID', () => {
+    expect(findIndexedSource('Network error', sources)).toBeNull();
+  });
+
+  it('returns null when the objectID is not one this import sent', () => {
+    expect(findIndexedSource('Record objectID=zzz is too big', sources)).toBeNull();
   });
 });

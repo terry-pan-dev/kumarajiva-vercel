@@ -19,6 +19,8 @@ const report = (apply: boolean) => ({
   records: 3,
   withoutSearchId: [],
   duplicateSearchId: [],
+  tooBig: [],
+  maxBytes: 10000,
   recordsBefore: 5,
   settingsChanged: ['typoTolerance'],
   liveSettings: { advancedSyntax: true },

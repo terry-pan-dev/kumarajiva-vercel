@@ -206,6 +206,8 @@
         "skippedSuffix": "略過的欄位：{{columns}}。",
         "failed": "取代資料失敗：{{error}}",
         "searchSyncFailed": "搜尋索引同步失敗：{{error}}",
+        "searchSyncFailedAt": "搜尋索引同步失敗，第 {{row}} 列（段落鍵「{{key}}」，{{document}}）：{{error}}",
+        "searchTooBig": "第 {{row}} 列（段落鍵「{{key}}」，{{document}}）已儲存，但無法搜尋：其大小為 {{bytes}} 位元組，超過搜尋索引每段 {{limit}} 位元組的上限。請縮短或拆分此段落，使其可被搜尋。",
         "conflictNewKey": "第 {{row}} 列：段落鍵「{{key}}」是新的，但位置 {{position}} 已有段落鍵為「{{existingKey}}」的段落。請先在資料庫中（透過資料管理／檢查工具）調整段落鍵或列序，使檔案與既有資料一致，再重新匯入。",
         "conflictDisagree": "第 {{row}} 列（位置 {{position}}）：既有文本在此位置的段落鍵不一致（{{keys}}）。請先在資料庫中調整，使每個位置只有一個段落鍵，再重新匯入。",
         "metadataWithoutParagraph_other": "{{document}}：有 {{count}} 列含有後設資料，但沒有可附加的段落，已略過。"
@@ -255,6 +257,7 @@
         "submit": "新增段落",
         "added_other": "已於順序 {{order}}（{{key}}）新增 {{count}} 個段落。",
         "searchSyncFailed": " 段落已儲存，但尚無法搜尋：{{error}}。請重建搜尋索引以修正。",
+        "searchTooBig": "有段落已儲存，但無法搜尋：其大小為 {{bytes}} 位元組，超過搜尋索引每段 {{limit}} 位元組的上限。請縮短或拆分，使其可被搜尋。",
         "sourceRequired": "請輸入原文。",
         "noTargetSection": "{{title}} 在此順序尚無章節，因此無法新增譯文。請先在資料管理 → 翻譯專案中建立該章節。",
         "keyTaken": "段落鍵 {{key}} 已在其中一個文件中使用。請先修正現有的資料列（見文本檢查）。",
@@ -339,6 +342,7 @@
       "recordsAfter": "重建後的記錄",
       "withoutSearchId_other": "{{count}} 個段落沒有 search_id，無法被搜尋",
       "duplicateSearchId_other": "{{count}} 個段落與其他段落共用 search_id；只有第一個會被索引",
+      "tooBig_other": "{{count}} 個段落超過每筆 {{limit}} 位元組的上限，未被索引；請縮短或拆分",
       "andMore_other": "…還有 {{count}} 個"
     },
     "settings": {
