@@ -26,7 +26,11 @@ const mocks = vi.hoisted(() => ({
   createMany: vi.fn(),
   findAllBySectionIdForDebug: vi.fn(),
 }));
-const searchMocks = vi.hoisted(() => ({ indexParagraphs: vi.fn(), deleteParagraphsFromAlgolia: vi.fn() }));
+const searchMocks = vi.hoisted(() => ({
+  indexParagraphs: vi.fn().mockResolvedValue([]),
+  deleteParagraphsFromAlgolia: vi.fn(),
+  maxRecordBytes: () => 10000,
+}));
 const sectionMocks = vi.hoisted(() => ({ findByDocumentId: vi.fn(), updateOrders: vi.fn() }));
 const projectMocks = vi.hoisted(() => ({
   DbProjects: { findByIds: vi.fn(), findByDocumentId: vi.fn() },
@@ -477,5 +481,13 @@ describe('appendPassage', () => {
     const result = await appendPassage({ context, source: 'a', userId: 'u1' });
     expect(mocks.createMany).toHaveBeenCalled();
     expect(result.searchError).toBe('Algolia down');
+  });
+
+  // Saved, but not searchable: reported so the admin can shorten or split it.
+  it('reports a paragraph too big for the search index', async () => {
+    searchMocks.indexParagraphs.mockResolvedValueOnce([{ id: 'x', searchId: 'sx', bytes: 12000 }]);
+    const result = await appendPassage({ context, source: 'a', userId: 'u1' });
+    expect(result.searchTooBig).toEqual({ bytes: 12000, limit: 10000 });
+    expect(result.searchError).toBeNull();
   });
 });

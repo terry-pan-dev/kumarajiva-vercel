@@ -56,6 +56,35 @@ export function paragraphIndexRecord(row: IndexableParagraph): ParagraphIndexRec
   };
 }
 
+// Algolia rejects a record over its plan's size limit, and with it the whole batch the record was
+// sent in, so one long paragraph would leave every other paragraph of that batch unsearchable.
+// Records over the limit are therefore left out and reported instead. The limit depends on the
+// Algolia plan (10 KB on the free plan, more on paid ones); search.server reads it from the
+// environment.
+export const DEFAULT_MAX_RECORD_BYTES = 10_000;
+
+// A record's size as Algolia measures it: the bytes of its JSON.
+export function recordBytes(record: ParagraphIndexRecord): number {
+  return new TextEncoder().encode(JSON.stringify(record)).length;
+}
+
+export type OversizedRecord = { id: string; searchId: string; bytes: number };
+
+// Splits records into those that fit under the limit and those that don't.
+export function splitOversized(
+  records: ParagraphIndexRecord[],
+  maxBytes: number,
+): { records: ParagraphIndexRecord[]; tooBig: OversizedRecord[] } {
+  const fit: ParagraphIndexRecord[] = [];
+  const tooBig: OversizedRecord[] = [];
+  for (const record of records) {
+    const bytes = recordBytes(record);
+    if (bytes > maxBytes) tooBig.push({ id: record.id, searchId: record.objectID, bytes });
+    else fit.push(record);
+  }
+  return { records: fit, tooBig };
+}
+
 export type IndexRecordSet = {
   records: ParagraphIndexRecord[];
   // Rows with no search_id: they cannot be indexed and need one assigned first.
@@ -63,12 +92,17 @@ export type IndexRecordSet = {
   // Rows whose search_id an earlier row already uses. Indexing both would make the second
   // overwrite the first, silently dropping a paragraph from search, so only the first is kept.
   duplicateSearchId: { id: string; searchId: string }[];
+  // Rows whose record is over the size limit: left out, since Algolia would reject them.
+  tooBig: (OversizedRecord & { passageKey: string | null })[];
 };
 
 // Every record a full rebuild writes, from every row, with the rows that cannot be indexed
 // reported rather than dropped silently.
-export function buildIndexRecords(rows: Iterable<IndexableParagraph>): IndexRecordSet {
-  const set: IndexRecordSet = { records: [], withoutSearchId: [], duplicateSearchId: [] };
+export function buildIndexRecords(
+  rows: Iterable<IndexableParagraph & { passageKey?: string | null }>,
+  maxBytes: number,
+): IndexRecordSet {
+  const set: IndexRecordSet = { records: [], withoutSearchId: [], duplicateSearchId: [], tooBig: [] };
   const usedSearchIds = new Set<string>();
   for (const row of rows) {
     const record = paragraphIndexRecord(row);
@@ -78,7 +112,12 @@ export function buildIndexRecords(rows: Iterable<IndexableParagraph>): IndexReco
       set.duplicateSearchId.push({ id: row.id, searchId: record.objectID });
     } else {
       usedSearchIds.add(record.objectID);
-      set.records.push(record);
+      const bytes = recordBytes(record);
+      if (bytes > maxBytes) {
+        set.tooBig.push({ id: row.id, searchId: record.objectID, bytes, passageKey: row.passageKey ?? null });
+      } else {
+        set.records.push(record);
+      }
     }
   }
   return set;

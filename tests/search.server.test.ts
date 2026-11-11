@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type IndexableParagraph } from '~/services/paragraph.record';
-import { REBUILD_PAGE, rebuildParagraphIndex, searchAlgolia } from '~/services/search.server';
+import { indexParagraphs, REBUILD_PAGE, rebuildParagraphIndex, searchAlgolia } from '~/services/search.server';
 
 // Algolia and the database are mocked. What's worth testing here is the glue the pure modules
 // can't see — which rows a search asks for counterparts of — and the rebuild's use of Algolia,
@@ -11,6 +11,7 @@ const algolia = vi.hoisted(() => ({
   search: vi.fn(),
   searchSingleIndex: vi.fn(),
   saveObjects: vi.fn(),
+  deleteObjects: vi.fn(),
   replaceAllObjects: vi.fn(),
   getSettings: vi.fn(),
   setSettings: vi.fn(),
@@ -84,6 +85,30 @@ describe('searchAlgolia — paragraphs', () => {
   });
 });
 
+// ─── indexParagraphs ─────────────────────────────────────────────────────────
+
+describe('indexParagraphs', () => {
+  const huge = indexable('big', { content: 'x'.repeat(10_001) });
+
+  afterEach(() => {
+    delete process.env.ALGOLIA_MAX_RECORD_BYTES;
+  });
+
+  // One record over the limit makes Algolia reject the whole batch, so it must not be sent.
+  it('sends only records under the limit, deletes any old record of the rest, and returns them', async () => {
+    const tooBig = await indexParagraphs([indexable('a'), huge]);
+    expect(algolia.saveObjects.mock.calls[0][0].objects.map((o: { id: string }) => o.id)).toEqual(['a']);
+    expect(algolia.deleteObjects).toHaveBeenCalledWith({ indexName: 'paragraphs', objectIDs: ['search-big'] });
+    expect(tooBig).toEqual([{ id: 'big', searchId: 'search-big', bytes: expect.any(Number) }]);
+  });
+
+  it('reads the limit from ALGOLIA_MAX_RECORD_BYTES', async () => {
+    process.env.ALGOLIA_MAX_RECORD_BYTES = '100000';
+    expect(await indexParagraphs([huge])).toEqual([]);
+    expect(algolia.deleteObjects).not.toHaveBeenCalled();
+  });
+});
+
 // ─── rebuildParagraphIndex ───────────────────────────────────────────────────
 
 describe('rebuildParagraphIndex', () => {
@@ -116,6 +141,8 @@ describe('rebuildParagraphIndex', () => {
       records: REBUILD_PAGE + 1,
       withoutSearchId: ['q2'],
       duplicateSearchId: [{ id: 'q3', searchId: 'search-q1' }],
+      tooBig: [],
+      maxBytes: 10000,
       recordsBefore: 21897,
       settingsChanged: ['searchableAttributes', 'typoTolerance'],
       liveSettings: { advancedSyntax: true },
@@ -152,6 +179,17 @@ describe('rebuildParagraphIndex', () => {
     await rebuildParagraphIndex({ apply: true });
     expect(algolia.replaceAllObjects).not.toHaveBeenCalled();
     expect(algolia.saveObjects.mock.calls[0][0].objects).toHaveLength(REBUILD_PAGE + 1);
+  });
+
+  it('leaves out and reports rows over the record limit', async () => {
+    paragraphs.findPageForIndex
+      .mockReset()
+      .mockResolvedValueOnce([{ ...indexable('big', { content: 'x'.repeat(10_001) }), passageKey: 'k.7' }]);
+    const result = await rebuildParagraphIndex({ apply: true });
+    expect(result.tooBig).toEqual([
+      { id: 'big', searchId: 'search-big', bytes: expect.any(Number), passageKey: 'k.7' },
+    ]);
+    expect(algolia.replaceAllObjects.mock.calls[0][0].objects).toEqual([]);
   });
 
   // An empty table means an empty index: the stale records still have to go.

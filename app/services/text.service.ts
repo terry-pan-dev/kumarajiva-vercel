@@ -14,9 +14,10 @@ import type { ReadUser } from '~/drizzle/tables';
 import { LocalizedError } from '~/i18n/errors';
 
 import { nextPassage } from './paragraph.pairing';
+import { type OversizedRecord } from './paragraph.record';
 import { DbProjectReferences, DbProjects } from './project.crud';
 import { resolveSectionContext, type SectionContext } from './project.service';
-import { deleteParagraphsFromAlgolia, indexParagraphs } from './search.server';
+import { deleteParagraphsFromAlgolia, indexParagraphs, maxRecordBytes } from './search.server';
 import { DbContributors, DbDocuments, DbParagraphsNew, DbSections, DbWorks } from './text.crud';
 
 export const getWorks = async () => {
@@ -427,6 +428,12 @@ export const getSectionIdsWithParagraphs = async (sectionIds: string[]) => {
   return DbParagraphsNew.findSectionIdsWithParagraphs(sectionIds);
 };
 
+// The editor saves paragraphs one at a time and has no channel for a search warning, so a
+// paragraph too big for the search index is only logged. It is saved, just not searchable.
+const warnTooBig = (tooBig: OversizedRecord[]) => {
+  if (tooBig.length) console.warn('Paragraph too big for the search index; saved but not searchable:', tooBig);
+};
+
 // Legacy updateParagraph analog — same signature. The search record is saved
 // whole from the updated row (see indexParagraphs), which also repairs a record
 // that had gone missing.
@@ -450,7 +457,7 @@ export const updateParagraph = async ({
   };
 
   const result = await DbParagraphsNew.updateById(existingParagraph.id, paragraphData);
-  await indexParagraphs([{ ...existingParagraph, ...paragraphData }]);
+  warnTooBig(await indexParagraphs([{ ...existingParagraph, ...paragraphData }]));
 
   return result;
 };
@@ -485,7 +492,7 @@ export const insertParagraph = async ({
   } satisfies CreateParagraphNew;
 
   const result = await DbParagraphsNew.create(newParagraphData);
-  await indexParagraphs([newParagraphData]);
+  warnTooBig(await indexParagraphs([newParagraphData]));
 
   return result;
 };
@@ -650,14 +657,16 @@ export const appendPassage = async ({
   await DbParagraphsNew.createMany(rows);
 
   let searchError: string | null = null;
+  let searchTooBig: { bytes: number; limit: number } | null = null;
   try {
-    await indexParagraphs(rows);
+    const tooBig = await indexParagraphs(rows);
+    if (tooBig.length) searchTooBig = { bytes: Math.max(...tooBig.map((r) => r.bytes)), limit: maxRecordBytes() };
   } catch (error) {
     searchError = error instanceof Error ? error.message : String(error);
     console.error('Search sync failed after adding a passage:', error);
   }
 
-  return { order, passageKey, created: rows.length, searchError };
+  return { order, passageKey, created: rows.length, searchError, searchTooBig };
 };
 
 // Legacy deleteParagraphCleanly analog. No parent/child rows to cascade here;

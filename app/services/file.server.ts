@@ -39,7 +39,7 @@ import {
 } from './file.service';
 import { type IndexableParagraph } from './paragraph.record';
 import { readParagraphsByRollIdForLanguage } from './paragraph.service';
-import { indexParagraphs } from './search.server';
+import { indexParagraphs, maxRecordBytes } from './search.server';
 import { readParagraphsBySectionId, type ReferenceDocument } from './text.service';
 
 export const db = getDb();
@@ -362,6 +362,25 @@ const metadataCellsFor =
   (row: ExcelTranslationRow): ParagraphMetadataCell[] =>
     documentKey ? (row.metadata ?? []).filter((m) => normaliseKey(m.documentKey) === normaliseKey(documentKey)) : [];
 
+// The file row behind one search record written by an import. `row` is numbered as in the
+// import's other row errors (the first data row is 1).
+type IndexedSource = { searchId: string | null; row: number; key: string; document: string };
+
+// The file row a search record (addressed by its objectID, the row's search_id) came from; null
+// for one this import didn't send.
+function sourceOf(objectID: string | undefined, sources: IndexedSource[]): Omit<IndexedSource, 'searchId'> | null {
+  const source = objectID ? sources.find((s) => s.searchId === objectID) : undefined;
+  if (!source) return null;
+  const { searchId: _searchId, ...location } = source;
+  return location;
+}
+
+// Algolia names the offending record in some errors ("… objectID=<id> is too big …"). Maps that
+// id back to the file row it came from; null when the message names none, or one we didn't send.
+export function findIndexedSource(message: string, sources: IndexedSource[]): Omit<IndexedSource, 'searchId'> | null {
+  return sourceOf(/objectID=([^\s,;]+)/.exec(message)?.[1], sources);
+}
+
 /**
  * Import a spreadsheet into the new data model, where every column is a document
  * (origin, translation, and reference documents are all documents now). Columns
@@ -510,7 +529,7 @@ export async function replaceSectionData(
     // whether or not it is being written (existing data anchors the row keys).
     const anchorSectionIds = [...new Set(involved.map((d) => d.sectionId).filter((s): s is string => !!s))];
 
-    const { counts, toIndex, metadataSkipped } = await db.transaction(async (tx) => {
+    const { counts, toIndex, indexedFrom, metadataSkipped } = await db.transaction(async (tx) => {
       const existingBySection = new Map<string, ReadParagraphNew[]>();
       for (const sid of anchorSectionIds) {
         existingBySection.set(
@@ -591,6 +610,9 @@ export async function replaceSectionData(
         // Search records are saved whole (see indexParagraphs), so updated rows
         // carry the stored row with the file's changes applied.
         const toIndex: IndexableParagraph[] = [];
+        // Where each indexed record came from, so a search failure that names an objectID
+        // (e.g. a record over Algolia's size limit) can be reported as a file row.
+        const indexedFrom: IndexedSource[] = [];
         let metadataWithoutParagraph = 0;
 
         for (let idx = 0; idx < rows.length; idx++) {
@@ -622,7 +644,10 @@ export async function replaceSectionData(
               updatedBy: userId,
             };
             updates.push({ id: match.id, data });
-            if (hasContent) toIndex.push({ ...match, ...contentData });
+            if (hasContent) {
+              toIndex.push({ ...match, ...contentData });
+              indexedFrom.push({ searchId: match.searchId, row: idx + 1, key, document: doc.label });
+            }
           } else if (hasContent) {
             const newRow = {
               id: uuidv4(),
@@ -638,12 +663,13 @@ export async function replaceSectionData(
             const metadata = mergeParagraphMetadata(null, metadataCells);
             inserts.push(metadata ? { ...newRow, metadata } : newRow);
             toIndex.push(newRow);
+            indexedFrom.push({ searchId: newRow.searchId, row: idx + 1, key, document: doc.label });
           } else if (metadataCells.some((m) => m.value)) {
             metadataWithoutParagraph++;
           }
         }
 
-        return { updates, inserts, toIndex, metadataWithoutParagraph };
+        return { updates, inserts, toIndex, indexedFrom, metadataWithoutParagraph };
       };
 
       const results = writeDocs.map((doc) => reconcile(doc, existingBySection.get(doc.sectionId as string) ?? []));
@@ -651,6 +677,7 @@ export async function replaceSectionData(
       const updateOps = results.flatMap((r) => r.updates);
       const insertRows = results.flatMap((r) => r.inserts);
       const toIndex = results.flatMap((r) => r.toIndex);
+      const indexedFrom = results.flatMap((r) => r.indexedFrom);
       const metadataSkipped = writeDocs
         .map((doc, i) => ({ label: doc.label, count: results[i].metadataWithoutParagraph }))
         .filter((d) => d.count > 0);
@@ -666,6 +693,7 @@ export async function replaceSectionData(
       return {
         counts: { updatedCount: updateOps.length, insertedCount: insertRows.length },
         toIndex,
+        indexedFrom,
         metadataSkipped,
       };
     });
@@ -674,9 +702,19 @@ export async function replaceSectionData(
     // A search failure is reported, never thrown: the committed DB data stands.
     const searchErrors: string[] = [];
     try {
-      await indexParagraphs(toIndex);
+      const tooBig = await indexParagraphs(toIndex);
+      // Every record sent came from a file row, so each one has a source.
+      for (const record of tooBig) {
+        const source = sourceOf(record.searchId, indexedFrom);
+        if (source) searchErrors.push(r('searchTooBig', { ...source, bytes: record.bytes, limit: maxRecordBytes() }));
+      }
+      if (tooBig.length) console.warn('Paragraphs too big for the search index after import:', tooBig);
     } catch (error) {
-      searchErrors.push(r('searchSyncFailed', { error: error instanceof Error ? error.message : String(error) }));
+      const message = error instanceof Error ? error.message : String(error);
+      const source = findIndexedSource(message, indexedFrom);
+      searchErrors.push(
+        source ? r('searchSyncFailedAt', { ...source, error: message }) : r('searchSyncFailed', { error: message }),
+      );
       console.error('Algolia sync errors after import:', searchErrors);
     }
 

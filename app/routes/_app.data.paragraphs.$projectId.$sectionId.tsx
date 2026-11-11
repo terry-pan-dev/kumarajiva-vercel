@@ -111,7 +111,8 @@ export async function action({ params, request }: ActionFunctionArgs) {
       });
       const message =
         t('data:paragraphs.section.add.added', { count: added.created, order: added.order, key: added.passageKey }) +
-        (added.searchError ? t('data:paragraphs.section.add.searchSyncFailed', { error: added.searchError }) : '');
+        (added.searchError ? t('data:paragraphs.section.add.searchSyncFailed', { error: added.searchError }) : '') +
+        (added.searchTooBig ? t('data:paragraphs.section.add.searchTooBig', added.searchTooBig) : '');
       return json({ success: true, intent, message });
     } catch (error) {
       if (!(error instanceof LocalizedError)) console.error('Error adding passage:', error);

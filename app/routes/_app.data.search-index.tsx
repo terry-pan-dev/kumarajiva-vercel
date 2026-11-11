@@ -148,7 +148,8 @@ export default function SearchIndexPage() {
     report.recordsBefore === report.records &&
     report.settingsChanged.length === 0 &&
     report.withoutSearchId.length === 0 &&
-    report.duplicateSearchId.length === 0;
+    report.duplicateSearchId.length === 0 &&
+    report.tooBig.length === 0;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -194,6 +195,10 @@ export default function SearchIndexPage() {
             <IdList
               ids={report.duplicateSearchId.map((d) => `${d.id} (${d.searchId})`)}
               title={t('searchIndex.report.duplicateSearchId', { count: report.duplicateSearchId.length })}
+            />
+            <IdList
+              ids={report.tooBig.map((r) => `${r.passageKey ?? r.id} (${r.bytes} bytes)`)}
+              title={t('searchIndex.report.tooBig', { count: report.tooBig.length, limit: report.maxBytes })}
             />
           </CardContent>
         </Card>

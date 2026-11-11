@@ -61,7 +61,9 @@ const mocks = vi.hoisted(() => {
     updates,
     inserts,
     db: { transaction: vi.fn((fn: (t: typeof tx) => unknown) => fn(tx)) },
-    indexParagraphs: vi.fn(async (_: Record<string, unknown>[]) => undefined),
+    indexParagraphs: vi.fn(
+      async (_: Record<string, unknown>[]): Promise<{ id: string; searchId: string; bytes: number }[]> => [],
+    ),
   };
 });
 
@@ -74,6 +76,7 @@ vi.mock('~/lib/db.server', () => ({ getDb: () => mocks.db }));
 vi.mock('~/services/paragraph.service', () => ({ readParagraphsByRollIdForLanguage: vi.fn() }));
 vi.mock('~/services/search.server', () => ({
   indexParagraphs: mocks.indexParagraphs,
+  maxRecordBytes: () => 10000,
   // The legacy roll import's; never reached by the section import under test.
 }));
 vi.mock('~/services/text.service', () => ({ readParagraphsBySectionId: vi.fn() }));
@@ -189,6 +192,17 @@ describe('replaceSectionData — paragraph metadata', () => {
     const indexed = mocks.indexParagraphs.mock.calls[0][0];
     expect(indexed).toHaveLength(1);
     expect(indexed[0]).toMatchObject({ id: 'o1', searchId: 'so1', content: '如是我聞', passageKey: 'k.1', order: 1 });
+  });
+
+  // The paragraph is saved; only search is missing it, and the admin needs to know which row.
+  it('reports a paragraph too big for the search index by its file row and passage key', async () => {
+    mocks.indexParagraphs.mockResolvedValueOnce([{ id: 'o1', searchId: 'so1', bytes: 13010 }]);
+    const result = await replaceSectionData([row({ passageKey: 'k.1', origin: '如是我聞' })]);
+
+    expect(result.success).toBe(true);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors?.[0]).toMatch(/^Row 1 \(passage_key "k\.1", .+\) is saved but not searchable: at 13010 bytes/);
+    expect(result.errors?.[0]).toContain('limit of 10000 bytes');
   });
 
   it('a page-only update sends nothing to search', async () => {

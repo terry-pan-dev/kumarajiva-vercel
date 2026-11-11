@@ -8,12 +8,16 @@ import algoliaClient from '~/providers/algolia';
 import { GlossaryStore } from './glossary.store';
 import {
   buildIndexRecords,
+  DEFAULT_MAX_RECORD_BYTES,
   type IndexableParagraph,
+  type IndexRecordSet,
+  type OversizedRecord,
   PARAGRAPH_INDEX,
   PARAGRAPH_INDEX_SETTINGS,
   paragraphIndexRecord,
   type ParagraphIndexSetting,
   settingsToChange,
+  splitOversized,
 } from './paragraph.record';
 import { assembleParagraphSearchResults, type ParagraphSearchResult } from './paragraph.search';
 import { DbParagraphsNew } from './text.crud';
@@ -101,12 +105,27 @@ export const searchAlgolia = async ({
 // A whole-record save is an upsert: it also repairs a record that is missing or out of date,
 // where a partial update would create a record holding only the changed fields.
 
+// The largest record the Algolia plan accepts, in bytes (ALGOLIA_MAX_RECORD_BYTES; 10 KB, the
+// free plan's limit, when unset or not a positive number).
+export const maxRecordBytes = (): number => {
+  const configured = Number(process.env.ALGOLIA_MAX_RECORD_BYTES);
+  return Number.isInteger(configured) && configured > 0 ? configured : DEFAULT_MAX_RECORD_BYTES;
+};
+
 // Saves the index record of each row. Rows without a search_id are skipped (there is nothing
 // to address their record by); a full rebuild reports them.
-export const indexParagraphs = async (rows: IndexableParagraph[]): Promise<void> => {
-  const objects = rows.map(paragraphIndexRecord).filter((record) => record !== null);
-  if (!objects.length) return;
-  await algoliaClient.saveObjects({ indexName: PARAGRAPH_INDEX, objects });
+//
+// Records over the size limit are not sent — Algolia would reject the whole batch — and are
+// returned so the caller can report them. Any earlier record of theirs is deleted: it holds
+// content the row no longer has, and would match searches the paragraph doesn't.
+export const indexParagraphs = async (rows: IndexableParagraph[]): Promise<OversizedRecord[]> => {
+  const all = rows.map(paragraphIndexRecord).filter((record) => record !== null);
+  const { records: objects, tooBig } = splitOversized(all, maxRecordBytes());
+  if (objects.length) await algoliaClient.saveObjects({ indexName: PARAGRAPH_INDEX, objects });
+  if (tooBig.length) {
+    await algoliaClient.deleteObjects({ indexName: PARAGRAPH_INDEX, objectIDs: tooBig.map((r) => r.searchId) });
+  }
+  return tooBig;
 };
 
 // Removes the records of deleted paragraphs.
@@ -126,6 +145,9 @@ export type ParagraphIndexRebuild = {
   records: number;
   withoutSearchId: string[];
   duplicateSearchId: { id: string; searchId: string }[];
+  // Rows left out because their record is over maxBytes.
+  tooBig: IndexRecordSet['tooBig'];
+  maxBytes: number;
   // Records in the index before the rebuild; 0 when the index did not exist.
   recordsBefore: number;
   // Index settings that differ from PARAGRAPH_INDEX_SETTINGS (and are set, when applied).
@@ -145,15 +167,17 @@ export type ParagraphIndexRebuild = {
 //
 // Without `apply` nothing is written: the result says what a rebuild would do.
 export const rebuildParagraphIndex = async ({ apply }: { apply: boolean }): Promise<ParagraphIndexRebuild> => {
-  const rows: IndexableParagraph[] = [];
+  type RebuildRow = IndexableParagraph & { passageKey: string | null };
+  const rows: RebuildRow[] = [];
   let afterId: string | null = null;
   for (;;) {
-    const page: IndexableParagraph[] = await DbParagraphsNew.findPageForIndex(afterId, REBUILD_PAGE);
+    const page: RebuildRow[] = await DbParagraphsNew.findPageForIndex(afterId, REBUILD_PAGE);
     rows.push(...page);
     if (page.length < REBUILD_PAGE) break;
     afterId = page[page.length - 1].id;
   }
-  const { records, withoutSearchId, duplicateSearchId } = buildIndexRecords(rows);
+  const maxBytes = maxRecordBytes();
+  const { records, withoutSearchId, duplicateSearchId, tooBig } = buildIndexRecords(rows, maxBytes);
 
   const indexExists = await algoliaClient.indexExists({ indexName: PARAGRAPH_INDEX });
   const recordsBefore = indexExists
@@ -201,6 +225,8 @@ export const rebuildParagraphIndex = async ({ apply }: { apply: boolean }): Prom
     records: records.length,
     withoutSearchId,
     duplicateSearchId,
+    tooBig,
+    maxBytes,
     recordsBefore,
     settingsChanged,
     liveSettings,
