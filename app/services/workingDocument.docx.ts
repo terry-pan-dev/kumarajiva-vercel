@@ -5,7 +5,12 @@
 // from the project's format (validations/workingDocument.validation.ts).
 import { AlignmentType, Document, HeadingLevel, Paragraph, TextRun } from 'docx';
 
-import { workingDocumentBlockPrefix, type WorkingDocumentBlock } from '~/validations/workingDocument.validation';
+import {
+  NUMBER_BLOCK_KEY,
+  workingDocumentBlockPrefix,
+  workingDocumentBlockText,
+  type WorkingDocumentBlock,
+} from '~/validations/workingDocument.validation';
 
 // One source paragraph with its aligned texts, keyed by block key. A null text
 // means that document has no paragraph for this passage yet. `pages` holds
@@ -72,15 +77,14 @@ const blockParagraph = (
 const blank = () => new Paragraph({ text: '' });
 
 // A heading (in both languages) whenever the passages cross into a new
-// section, the paragraph number in small grey above each passage (unless
-// switched off), then its
-// texts in block order with a blank line between them, and two blank lines to
-// separate passages. Hidden entries, and texts a passage doesn't have yet, are
-// left out.
+// section, then each passage's entries in block order with a blank line
+// between them — except straight after a paragraph number, which sits on the
+// entry below it — and two blank lines to separate passages. Hidden entries,
+// and texts a passage doesn't have yet, are left out.
 const passageParagraphs = (
   passages: WorkingDocumentPassage[],
   blocks: WorkingDocumentBlock[],
-  { showPages, showNumbers }: { showPages: boolean; showNumbers: boolean },
+  { showPages }: { showPages: boolean },
 ): Paragraph[] => {
   const paragraphs: Paragraph[] = [];
   const shown = blocks.filter((block) => block.visible);
@@ -94,14 +98,14 @@ const passageParagraphs = (
     }
     currentSectionId = passage.sectionId;
 
-    if (showNumbers) {
-      paragraphs.push(new Paragraph({ children: [new TextRun({ text: passage.number, color: '808080', size: 16 })] }));
-    }
-    const texts = shown.flatMap((block) => {
-      const text = passage.texts[block.key]?.trim();
-      return text ? [blockParagraph(block, text, passage.pages?.[block.key], showPages)] : [];
+    const entries = shown.flatMap((block) => {
+      const text = workingDocumentBlockText(block.key, passage)?.trim();
+      return text ? [{ block, paragraph: blockParagraph(block, text, passage.pages?.[block.key], showPages) }] : [];
     });
-    texts.forEach((text, i) => paragraphs.push(...(i > 0 ? [blank()] : []), text));
+    entries.forEach(({ paragraph }, i) => {
+      const afterNumber = entries[i - 1]?.block.key === NUMBER_BLOCK_KEY;
+      paragraphs.push(...(i > 0 && !afterNumber ? [blank()] : []), paragraph);
+    });
     paragraphs.push(blank(), blank());
   }
   return paragraphs;
@@ -110,13 +114,11 @@ const passageParagraphs = (
 export const buildWorkingDocument = (
   passages: WorkingDocumentPassage[],
   blocks: WorkingDocumentBlock[],
-  // showPages: print page numbers after the labels; showNumbers: print each
-  // paragraph's number above it (both default on).
+  // showPages: print page numbers after the labels (default on).
   meta: {
     titles: (string | null | undefined)[];
     subtitle?: string | null;
     showPages?: boolean;
-    showNumbers?: boolean;
   },
 ): Document =>
   new Document({
@@ -126,10 +128,7 @@ export const buildWorkingDocument = (
           bilingualParagraph(meta.titles, { heading: HeadingLevel.HEADING_1, center: true }),
           ...(meta.subtitle ? [new Paragraph({ alignment: AlignmentType.CENTER, text: meta.subtitle })] : []),
           blank(),
-          ...passageParagraphs(passages, blocks, {
-            showPages: meta.showPages !== false,
-            showNumbers: meta.showNumbers !== false,
-          }),
+          ...passageParagraphs(passages, blocks, { showPages: meta.showPages !== false }),
         ],
       },
     ],

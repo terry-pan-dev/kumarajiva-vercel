@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { metadataField, type Metadata } from '~/utils/metadata';
 import {
   DEFAULT_WORKING_DOCUMENT_FONT_SIZE,
+  NUMBER_BLOCK_KEY,
   workingDocumentFormatSchema,
   type WorkingDocumentBlock,
   type WorkingDocumentFormat,
@@ -254,12 +255,13 @@ const defaultWorkingDocumentBlock = (
   label: string,
   font: WorkingDocumentBlock['font'],
   color: string,
+  size: number = DEFAULT_WORKING_DOCUMENT_FONT_SIZE,
 ): WorkingDocumentBlock => ({
   id: key,
   key,
   label,
   font,
-  size: DEFAULT_WORKING_DOCUMENT_FONT_SIZE,
+  size,
   color,
   bold: false,
   italic: false,
@@ -267,11 +269,17 @@ const defaultWorkingDocumentBlock = (
   labelBreak: false,
 });
 
-// One entry per text, shown, at the default size: source (Chinese serif,
-// black), translation (Times New Roman, blue), then each reference in the
-// project's order, labelled by its capitalised document key (or title).
+// The paragraph number, small, grey and unlabelled, as it was printed before
+// it could be formatted.
+const defaultNumberBlock = () => defaultWorkingDocumentBlock(NUMBER_BLOCK_KEY, '', 'Times New Roman', '#808080', 8);
+
+// The paragraph number, then one entry per text, shown, at the default size:
+// source (Chinese serif, black), translation (Times New Roman, blue), then
+// each reference in the project's order, labelled by its capitalised document
+// key (or title).
 export const defaultWorkingDocumentFormat = (project: { references: ReferenceDocument[] }): WorkingDocumentFormat => ({
   blocks: [
+    defaultNumberBlock(),
     defaultWorkingDocumentBlock('source', 'Source', 'Noto Serif TC', '#000000'),
     defaultWorkingDocumentBlock('target', 'Translation', 'Times New Roman', '#1d4ed8'),
     ...project.references.map((ref, i) =>
@@ -284,14 +292,15 @@ export const defaultWorkingDocumentFormat = (project: { references: ReferenceDoc
     ),
   ],
   showPages: true,
-  showNumbers: true,
 });
 
-// Fits a saved format to the project as it is now: the page and number
-// settings carry over, saved entries keep their order and look (including
-// extra entries for the same text); entries for references removed since are
-// dropped, and each text with no entry — a reference added since — is
-// appended with its defaults. Anything unusable falls back to defaults.
+// Fits a saved format to the project as it is now: the page setting carries
+// over, saved entries keep their order and look (including extra entries for
+// the same text); entries for references removed since are dropped, and each
+// text with no entry — a reference added since — is appended with its
+// defaults. A format saved before the paragraph number was an entry gets it
+// back first, shown or hidden as its old switch said. Anything unusable falls
+// back to defaults.
 export const reconcileWorkingDocumentFormat = (
   saved: WorkingDocumentFormat | undefined,
   defaults: WorkingDocumentFormat,
@@ -302,10 +311,13 @@ export const reconcileWorkingDocumentFormat = (
     (block, i, all) => available.has(block.key) && all.findIndex((b) => b.id === block.id) === i,
   );
   const keptKeys = new Set(kept.map((b) => b.key));
+  const missing = defaults.blocks.filter((b) => !keptKeys.has(b.key));
+  const number = missing
+    .filter((b) => b.key === NUMBER_BLOCK_KEY)
+    .map((b) => ({ ...b, visible: saved.showNumbers !== false }));
   return {
-    blocks: [...kept, ...defaults.blocks.filter((b) => !keptKeys.has(b.key))],
+    blocks: [...number, ...kept, ...missing.filter((b) => b.key !== NUMBER_BLOCK_KEY)],
     showPages: saved.showPages ?? defaults.showPages,
-    showNumbers: saved.showNumbers ?? defaults.showNumbers,
   };
 };
 

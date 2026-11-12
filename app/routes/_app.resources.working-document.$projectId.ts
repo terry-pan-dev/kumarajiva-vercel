@@ -62,7 +62,6 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     titles: [project.sourceDocument.title, project.targetDocument.title],
     subtitle: 'Translation group working document',
     showPages: format.showPages,
-    showNumbers: format.showNumbers,
   });
   const buffer = await Packer.toBuffer(doc);
   const last = passages[passages.length - 1];

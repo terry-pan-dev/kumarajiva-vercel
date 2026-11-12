@@ -40,6 +40,7 @@ import {
 } from '~/services/workingDocument.export';
 import {
   MAX_WORKING_DOCUMENT_PARAGRAPHS,
+  NUMBER_BLOCK_KEY,
   workingDocumentFormatSchema,
   type WorkingDocumentBlock,
 } from '~/validations/workingDocument.validation';
@@ -90,6 +91,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     // What each text is, for the format panel, since labels can be changed
     // freely.
     names: {
+      [NUMBER_BLOCK_KEY]: 'Paragraph number',
       source: `Source: ${describeDocument(sourceDocument)}`,
       target: `Translation: ${describeDocument(targetDocument)}`,
       ...Object.fromEntries(project.references.map((r) => [`reference:${r.documentId}`, describeDocument(r.document)])),
@@ -314,7 +316,6 @@ export default function WorkingDocumentPage() {
   const [count, setCount] = useState(String(DEFAULT_COUNT));
   const [blocks, setBlocks] = useState<WorkingDocumentBlock[]>(savedFormat.blocks);
   const [showPages, setShowPages] = useState(savedFormat.showPages !== false);
-  const [showNumbers, setShowNumbers] = useState(savedFormat.showNumbers !== false);
   // Loaded sections' cards, for the preview of the start paragraph.
   const [cardsBySection, setCardsBySection] = useState<Record<string, WorkingDocumentCard[]>>({});
 
@@ -325,12 +326,11 @@ export default function WorkingDocumentPage() {
     JSON.stringify({
       blocks: savedFormat.blocks,
       showPages: savedFormat.showPages !== false,
-      showNumbers: savedFormat.showNumbers !== false,
     }),
   );
   const [pendingSave, setPendingSave] = useState(false);
   useEffect(() => {
-    const format = JSON.stringify({ blocks, showPages, showNumbers });
+    const format = JSON.stringify({ blocks, showPages });
     if (format === lastSaved.current) return setPendingSave(false);
     setPendingSave(true);
     const timer = setTimeout(() => {
@@ -340,7 +340,7 @@ export default function WorkingDocumentPage() {
     }, AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, showPages, showNumbers]);
+  }, [blocks, showPages]);
   const saveStatus =
     pendingSave || saveFetcher.state !== 'idle'
       ? 'Saving…'
@@ -368,9 +368,16 @@ export default function WorkingDocumentPage() {
 
   const startCard = start ? cardsBySection[start.sectionId]?.[start.position] : undefined;
 
-  // The cards list each text the document shows once, under its first label.
+  // The cards list each text the document shows once, under its first label
+  // (they show the paragraph number anyway).
   const cardBlocks = useMemo(
-    () => blocks.filter((block, i) => block.visible && blocks.findIndex((b) => b.visible && b.key === block.key) === i),
+    () =>
+      blocks.filter(
+        (block, i) =>
+          block.visible &&
+          block.key !== NUMBER_BLOCK_KEY &&
+          blocks.findIndex((b) => b.visible && b.key === block.key) === i,
+      ),
     [blocks],
   );
 
@@ -381,7 +388,7 @@ export default function WorkingDocumentPage() {
       ? `/resources/working-document/${project.id}?${new URLSearchParams({
           start: start.paragraphId,
           count,
-          format: JSON.stringify({ blocks, showPages, showNumbers }),
+          format: JSON.stringify({ blocks, showPages }),
         })}`
       : undefined;
 
@@ -484,19 +491,13 @@ export default function WorkingDocumentPage() {
             )}
           </div>
           <p className="text-muted-foreground text-xs">
-            Drag to set the order of the texts in each paragraph, hide the ones you don’t need, or add a text again to
-            print it twice. Changes are saved for this project.
+            Drag to set the order of the paragraph number and texts in each paragraph, hide the ones you don’t need, or
+            add a text again to print it twice. Changes are saved for this project.
           </p>
           <div className="flex items-center gap-2">
             <Switch checked={showPages} onCheckedChange={setShowPages} id="working-document-show-pages" />
             <Label className="font-normal" htmlFor="working-document-show-pages">
               Show page numbers
-            </Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch checked={showNumbers} onCheckedChange={setShowNumbers} id="working-document-show-numbers" />
-            <Label className="font-normal" htmlFor="working-document-show-numbers">
-              Show paragraph numbers
             </Label>
           </div>
           <WorkingDocumentFormatEditor names={names} blocks={blocks} onChange={setBlocks} />
@@ -508,7 +509,7 @@ export default function WorkingDocumentPage() {
                 showPages={showPages}
                 texts={startCard.texts}
                 pages={startCard.pages}
-                number={showNumbers ? startCard.number : null}
+                number={startCard.number}
               />
             </div>
           )}

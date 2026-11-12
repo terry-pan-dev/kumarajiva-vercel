@@ -5,9 +5,11 @@ import { useState } from 'react';
 import { Button, Input } from '~/components/ui';
 import {
   DEFAULT_WORKING_DOCUMENT_FONT_SIZE,
+  NUMBER_BLOCK_KEY,
   WORKING_DOCUMENT_FONT_SIZES,
   WORKING_DOCUMENT_FONTS,
   workingDocumentBlockPrefix,
+  workingDocumentBlockText,
   type WorkingDocumentBlock,
 } from '~/validations/workingDocument.validation';
 
@@ -174,8 +176,8 @@ function BlockRow({
   );
 }
 
-// One row per entry in each paragraph — by default one for each text: the
-// source, the translation and each reference. Each row names the text it
+// One row per entry in each paragraph — by default the paragraph number, then
+// one for each text: the source, the translation and each reference. Each row names the text it
 // prints (the label is free to change) and sets its label, colour, emphasis,
 // font and size, and whether it is shown; drag to set the order. A text can be
 // added again, e.g. to print it twice in different styles.
@@ -237,8 +239,9 @@ export function WorkingDocumentFormatEditor({
 }
 
 // How one paragraph will look in the document, using the start paragraph's
-// excerpts. Fonts fall back to similar ones where the document's aren't
-// installed.
+// number and excerpts. Fonts fall back to similar ones where the document's
+// aren't installed. As in the .docx, a paragraph number sits on the entry
+// below it.
 export function WorkingDocumentPreview({
   number,
   blocks,
@@ -246,24 +249,23 @@ export function WorkingDocumentPreview({
   pages,
   showPages,
 }: {
-  // null when paragraph numbers are switched off.
-  number: string | null;
+  number: string;
   blocks: WorkingDocumentBlock[];
   texts: Record<string, string | null>;
   pages: Record<string, string | null>;
   showPages: boolean;
 }) {
-  const present = blocks.filter((block) => block.visible && texts[block.key]?.trim());
+  const paragraph = { number, texts };
+  const present = blocks.filter((block) => block.visible && workingDocumentBlockText(block.key, paragraph)?.trim());
   return (
     <div className="rounded-md border bg-white p-3 text-sm text-black">
-      {number && <div className="text-xs text-gray-500">{number}</div>}
       {present.map((block, i) => {
         const inline = workingDocumentBlockPrefix(block.label, pages[block.key], showPages);
         const prefix = block.labelBreak ? inline.trimEnd() : inline;
         return (
           <p
             key={block.id}
-            className={`line-clamp-3 ${i > 0 ? 'mt-3' : ''}`}
+            className={`line-clamp-3 ${i > 0 && present[i - 1].key !== NUMBER_BLOCK_KEY ? 'mt-3' : ''}`}
             style={{
               color: block.color,
               fontFamily: PREVIEW_FONT_STACKS[block.font],
@@ -274,7 +276,7 @@ export function WorkingDocumentPreview({
             }}
           >
             {prefix && <span className={`font-bold ${block.labelBreak ? 'block' : ''}`}>{prefix}</span>}
-            {texts[block.key]}
+            {workingDocumentBlockText(block.key, paragraph)}
           </p>
         );
       })}
