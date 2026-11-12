@@ -17,8 +17,18 @@ import {
 
 const plain = { bold: false, italic: false };
 const shown = { size: 11, visible: true, labelBreak: false, ...plain };
+const number = {
+  id: 'number',
+  key: 'number',
+  label: '',
+  font: 'Times New Roman' as const,
+  color: '#808080',
+  ...shown,
+  size: 8,
+};
 const defaults: WorkingDocumentFormat = {
   blocks: [
+    number,
     { id: 'source', key: 'source', label: 'Source', font: 'Noto Serif TC', color: '#000000', ...shown },
     { id: 'target', key: 'target', label: 'Translation', font: 'Times New Roman', color: '#1d4ed8', ...shown },
     { id: 'ref-a', key: 'reference:ref-a', label: 'Btts', font: 'Times New Roman', color: '#6b7280', ...shown },
@@ -54,7 +64,6 @@ const documentXml = async (passages: WorkingDocumentPassage[], format: WorkingDo
     titles: ['妙法蓮華經', 'The Lotus Sutra'],
     subtitle: 'Translation group working document',
     showPages: format.showPages,
-    showNumbers: format.showNumbers,
   });
   const entry = CFB.find(CFB.read(await Packer.toBuffer(doc), { type: 'buffer' }), '/word/document.xml');
   return Buffer.from(entry!.content as Uint8Array).toString('utf8');
@@ -86,7 +95,7 @@ describe('buildWorkingDocument', () => {
   });
 
   it('follows a reordered, restyled format', async () => {
-    const [source, target, ...refs] = defaults.blocks;
+    const [, source, target, ...refs] = defaults.blocks;
     const xml = await documentXml([passage()], {
       blocks: [{ ...target, label: 'Draft', italic: true }, source, ...refs],
     });
@@ -96,7 +105,7 @@ describe('buildWorkingDocument', () => {
   });
 
   it('writes each entry at its font size', async () => {
-    const [source, ...rest] = defaults.blocks;
+    const [, source, ...rest] = defaults.blocks;
     const xml = await documentXml([passage()], { blocks: [{ ...source, size: 14 }, ...rest] });
 
     expect(xml).toContain('<w:sz w:val="28"/>');
@@ -104,7 +113,7 @@ describe('buildWorkingDocument', () => {
   });
 
   it('starts the text on a new line after the label when asked', async () => {
-    const [source, ...rest] = defaults.blocks;
+    const [, source, ...rest] = defaults.blocks;
     const xml = await documentXml([passage()], { blocks: [{ ...source, labelBreak: true }, ...rest] });
 
     expect(xml).toMatch(/>Source:<\/w:t><\/w:r><w:r>.*?<w:br\/>.*?如是我聞/);
@@ -112,7 +121,7 @@ describe('buildWorkingDocument', () => {
   });
 
   it('leaves hidden entries out', async () => {
-    const [source, target, ...refs] = defaults.blocks;
+    const [, source, target, ...refs] = defaults.blocks;
     const xml = await documentXml([passage()], { blocks: [source, { ...target, visible: false }, ...refs] });
 
     expect(xml).not.toContain('Translation: ');
@@ -121,7 +130,7 @@ describe('buildWorkingDocument', () => {
   });
 
   it('prints a text once for each of its entries', async () => {
-    const [source, target, ...refs] = defaults.blocks;
+    const [, source, target, ...refs] = defaults.blocks;
     const xml = await documentXml([passage()], {
       blocks: [source, target, ...refs, { ...source, id: 'source#2', label: 'Again', bold: true }],
     });
@@ -151,15 +160,32 @@ describe('buildWorkingDocument', () => {
 });
 
 describe('paragraph numbers', () => {
-  it('prints each passage’s number above its texts', async () => {
-    expect(inOrder(await documentXml([passage({ number: '7' })]), ['>7<', 'Source: '])).toBe(true);
+  const [, ...texts] = defaults.blocks;
+
+  it('prints each passage’s number where its entry is, directly above the next entry', async () => {
+    const xml = await documentXml([passage({ number: '7' })]);
+
+    expect(inOrder(xml, ['>7<', 'Source: '])).toBe(true);
+    expect(xml).toMatch(/>7<\/w:t><\/w:r><\/w:p><w:p><w:r>.*?Source: /);
   });
 
-  it('leaves the numbers out when switched off', async () => {
-    const xml = await documentXml([passage({ number: '7' })], { ...defaults, showNumbers: false });
+  it('formats the number like any entry, label included', async () => {
+    const xml = await documentXml([passage({ number: '7' })], {
+      blocks: [...texts, { ...number, label: '§', color: '#ff0000', size: 12, bold: true }],
+    });
 
-    expect(xml).not.toContain('>7<');
-    expect(xml).toContain('Source: ');
+    expect(inOrder(xml, ['Thus have I', '§: ', '>7<'])).toBe(true);
+    expect(xml).toContain('w:val="ff0000"');
+    expect(xml).toContain('<w:sz w:val="24"/>');
+  });
+
+  it('leaves the number out when its entry is hidden or missing', async () => {
+    const hidden = await documentXml([passage({ number: '7' })], { blocks: [{ ...number, visible: false }, ...texts] });
+    const missing = await documentXml([passage({ number: '7' })], { blocks: texts });
+
+    expect(hidden).not.toContain('>7<');
+    expect(missing).not.toContain('>7<');
+    expect(hidden).toContain('Source: ');
   });
 });
 
@@ -182,7 +208,7 @@ describe('page numbers', () => {
   });
 
   it('prints the page alone when the label is blank', async () => {
-    const [source, ...rest] = defaults.blocks;
+    const [, source, ...rest] = defaults.blocks;
     const xml = await documentXml([withPages], { blocks: [{ ...source, label: '' }, ...rest] });
 
     expect(inOrder(xml, ['(p. 0026c01) ', '如是我聞'])).toBe(true);
