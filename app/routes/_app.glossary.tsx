@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { type z } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
-import { Can } from '~/authorisation';
+import { Can, defineAbilityFor } from '~/authorisation';
 import { FormModal } from '~/components/FormModal';
 import { newTranslation, SourceTermFields, TranslationsFields } from '~/components/GlossaryForm';
 import { SideBarTrigger } from '~/components/SideBarTrigger';
@@ -38,6 +38,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const user = await assertAuthUser(request);
   if (!user) {
     return redirect('/login');
+  }
+  // Creating a term is additive, so it asks for Maintain. The <Can> around the create button only
+  // hides it; without this check any signed-in user could POST here directly. Interim: the
+  // suggestions work (docs/plans/glossary-suggestions.md, step 3) replaces this route.
+  if (defineAbilityFor(user).cannot('Maintain', 'Glossary')) {
+    return json({ success: false, errors: ['You are not allowed to create glossary entries.'] }, { status: 403 });
   }
 
   // FormModal posts a form with a list (the translations) as JSON in `data`.
