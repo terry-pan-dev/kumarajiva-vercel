@@ -349,5 +349,38 @@
     "parseFailed": "無法解析檔案。",
     "invalidFileType": "檔案類型無效。請上傳 CSV 或 XLSX 檔案。",
     "noValidRows": "找不到有效的資料列。請確認檔案有 ChineseTerm 欄位。"
+  },
+  "suggest": {
+    "send": "送出建議",
+    "sending": "送出中…",
+    "sent": "建議已送出",
+    "sentDescription": "謝謝。審核通過後才會變更詞彙表。",
+    "translation": "譯詞",
+    "language": "語言",
+    "notes": "備註",
+    "notePrompt": "例如：為何如此翻譯、出處、使用此譯詞的引文、引文位置等。",
+    "term": {
+      "title": "建議新詞彙",
+      "description": "請提供詞彙及其譯詞。審核期間，團隊會補齊條目的完整資料。",
+      "chineseTerm": "中文詞彙",
+      "pinyin": "拼音",
+      "fromPassage": "來自此段落",
+      "recordSource": "記錄出處：{{source}}",
+      "page": "第 {{page}} 頁",
+      "attachOrigin": "附上原文段落",
+      "attachTarget": "附上譯文段落",
+      "asTranslation": "改為建議此條目的新譯詞"
+    },
+    "change": {
+      "button": "建議修改",
+      "title": "建議修改",
+      "description": "請說明上方譯詞需要更正之處，團隊會進行審核。",
+      "placeholder": "例如：錯字、出處或頁碼有誤、引文有誤…"
+    },
+    "newTranslation": {
+      "button": "建議譯詞",
+      "title": "建議「{{term}}」的譯詞",
+      "description": "請提供新的譯詞，以及盡可能多的相關資訊。審核期間，團隊會補齊條目的完整資料。"
+    }
   }
 }

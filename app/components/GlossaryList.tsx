@@ -18,7 +18,8 @@ import {
 import { Divider } from '~/components/ui/divider';
 import { type GlossaryEntry } from '~/services/glossary.types';
 
-import { FlagTranslationButton } from './glossary/FlagTranslationButton';
+import { SuggestChangeButton, SuggestChangePanel } from './glossary/SuggestChangeButton';
+import { SuggestTranslationButton } from './glossary/SuggestTranslationButton';
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
@@ -105,8 +106,15 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
   );
 }
 
-// The same prompt wherever a translation's discussion is entered: create, edit and insert.
+// The entry's card, the same for every role: its content, and "Suggest a change" on each
+// translation and "Suggest a translation" for the entry (docs/plans/glossary-suggestions.md).
+// Direct edits are in Data Management.
 export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
+  // The translation whose "Suggest a change" panel is open, one at a time. It belongs to the
+  // entry it was opened on, so choosing another entry closes it.
+  const [changing, setChanging] = useState<{ glossaryId: string; translationId: string } | null>(null);
+  const changingId = changing?.glossaryId === glossary.id ? changing.translationId : null;
+  const closeChange = useCallback(() => setChanging(null), []);
   // Regex cache to avoid recompilation
   const regexCache = useRef<Map<string, RegExp>>(new Map());
 
@@ -229,12 +237,11 @@ export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
                 <Spacer />
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <h2 className="text-primary text-xl font-semibold tracking-tight lg:text-2xl">{translation.term}</h2>
-                  {/* Anyone signed in may flag a stored translation (docs/plans/glossary-suggestions.md). */}
+                  {/* Anyone signed in may suggest a change to a stored translation
+                      (docs/plans/glossary-suggestions.md). */}
                   {translation.id && (
-                    <FlagTranslationButton
-                      term={translation.term}
-                      glossaryId={glossary.id}
-                      translationId={translation.id}
+                    <SuggestChangeButton
+                      onClick={() => setChanging({ glossaryId: glossary.id, translationId: translation.id ?? '' })}
                     />
                   )}
                 </div>
@@ -252,9 +259,16 @@ export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
                     <p className="text-sm whitespace-pre-wrap">{translation.discussion}</p>
                   </div>
                 )}
+                {/* Below the translation, so it stays in view while the suggestion is written. */}
+                {translation.id && changingId === translation.id && (
+                  <SuggestChangePanel onDone={closeChange} glossaryId={glossary.id} translationId={translation.id} />
+                )}
               </div>
             );
           })}
+          <div className="flex justify-center pt-4">
+            <SuggestTranslationButton glossaryId={glossary.id} sourceTerm={glossary.sourceTerm} />
+          </div>
         </CardContent>
         <Separator className="px-2" />
         <CardFooter className="text-muted-foreground flex items-center justify-between p-2 text-sm lg:flex-row lg:justify-around lg:p-6 lg:pt-6">

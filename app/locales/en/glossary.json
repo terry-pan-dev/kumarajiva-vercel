@@ -366,5 +366,38 @@
     "parseFailed": "Failed to parse file.",
     "invalidFileType": "Invalid file type. Please upload a CSV or XLSX file.",
     "noValidRows": "No valid rows found. Ensure the file has a ChineseTerm column."
+  },
+  "suggest": {
+    "send": "Send suggestion",
+    "sending": "Sending…",
+    "sent": "Suggestion sent",
+    "sentDescription": "Thank you. It will be reviewed before it changes the glossary.",
+    "translation": "Translation",
+    "language": "Language",
+    "notes": "Notes",
+    "notePrompt": "For example, why this translation, what is the source, a quote where it is used, location of the quote, etc.",
+    "term": {
+      "title": "Suggest a new glossary term",
+      "description": "Please provide the term and a translation. During the review process, the entry will be fully fleshed out by the team.",
+      "chineseTerm": "Chinese term",
+      "pinyin": "Pinyin",
+      "fromPassage": "From this passage",
+      "recordSource": "Record the source: {{source}}",
+      "page": "p. {{page}}",
+      "attachOrigin": "Attach the source passage",
+      "attachTarget": "Attach the translated passage",
+      "asTranslation": "Suggest it as a new translation of that entry"
+    },
+    "change": {
+      "button": "Suggest a change",
+      "title": "Suggest a change",
+      "description": "Say what needs correcting in the translation above; the team will review it.",
+      "placeholder": "e.g. a typo, the wrong source or page, a misquoted passage…"
+    },
+    "newTranslation": {
+      "button": "Suggest a translation",
+      "title": "Suggest a translation of “{{term}}”",
+      "description": "Please provide a new translation and as much relevant information as possible. During the review process, the entry will be fully fleshed out by the team."
+    }
   }
 }

@@ -2,11 +2,12 @@
 
 Written 2026-11-17. **Design agreed with the user. The schema below was approved by the user on
 2026-11-17.** Steps 0–3 and the removal of "Add New Entry" are committed on `glossary-input`.
-Step 4 is done in the working tree. Migration 0030 is applied to the shared dev database (with
-the user's go-ahead), not yet to prod. Steps 5+ are not started.
+Step 4 is committed too. Step 5 is done in the working tree. Migration 0030 is applied to the
+shared dev database (with the user's go-ahead), not yet to prod. Steps 6+ are not started.
 
-**Don't merge into main yet.** Until step 5, editors, managers and leaders can only flag
-translations, not suggest edits. Hold the merge until at least step 5 is done.
+**Merging into main:** step 5 was the minimum (everyone can now suggest changes and translations).
+Until step 6, suggestions are stored but not shown on the glossary page, and until step 7 only
+the database shows them to admins.
 
 ## Why
 
@@ -223,15 +224,11 @@ export const suggestionsTable = pgTable('suggestions', {
 
 ### Suggest a translation, suggest an edit (on the display card)
 
-- **"Suggest an edit"** turns `GlossaryDetail`'s translation block into edit mode, with the same
-  layout and type sizes:
-  - Click any text to edit it.
-  - Empty fields show as faint prompts ("+ add source passage").
-  - Changed fields are marked, each with a reset link.
-  - Part of speech, author and phonetic sit behind "More details".
-  - At the bottom: "Why this change?" (the note) and **Submit suggestion**.
-- **"Suggest a translation"** adds an empty block in the same style at the end of the card.
-- **"Flag"** (⚑) on each translation asks for a note only.
+- **Superseded (2026-11-18), see step 5:** the card was to turn into an editable copy of
+  itself. Instead:
+  - **"Suggest a change"** on each translation: one text box, stored as a note-only
+    suggestion (the former flag).
+  - **"Suggest a translation"** on the entry: the rendering, its language and notes.
 - The `GlossaryForm` edit modal leaves the glossary page in step 4, when direct editing moves to
   the Data Management entry editor.
 
@@ -432,8 +429,37 @@ Each step is its own PR, run through typecheck, eslint and vitest.
    - **Dev check (read-only):** a trashed entry is found by the inspector's search but not the
      editor's; a live one is found by the editor's.
    - `pnpm build` passes. **Not yet tried in a browser.**
-5. **Suggest an edit / a translation on the glossary card**, the same for everyone: the card's
-   translation block becomes editable in place (see "Suggest a translation, suggest an edit").
+5. **Suggest a change / a translation on the glossary card. Done (working tree, 2026-11-18).**
+   The same for every role, wherever `GlossaryDetail` shows (the glossary page and the sidebar
+   search).
+   - **Redesigned with the user (2026-11-18):** a first version put an editable copy of the
+     card in place, field by field. Even in the card's layout it read like the old full form,
+     and the ⚑ and pencil icons weren't clear. Replaced by two small dialogs, like "Suggest a
+     term"; the structured editing is the enrichers' job, in Data Management.
+   - **The glossary's translations are historical** (user): they are the renderings of
+     published books. A change to one is a correction, never a "better translation"; a
+     different rendering comes in as a new translation.
+   - **"Suggest a change"** (`SuggestChangeButton`): a labelled button beside each stored
+     translation's rendering, replacing ⚑ (`FlagTranslationButton`, removed). It opens a panel
+     (`SuggestChangePanel`) just below that translation, not a dialog, so the suggester can read
+     what they are correcting while writing (user, 2026-11-18). One text box, "what needs
+     correcting". Stored as a note-only suggestion (action `flag`), so the admin's
+     outcomes are the flag's: dismiss, turn into an edit, remove the translation. No schema
+     change. **In the step 7 queue, show these as "change request", not "flag".**
+   - **"Suggest a translation"** (`SuggestTranslationButton`): under the last translation. The
+     rendering, its language (English by default) and notes (the "Suggest a term" prompt,
+     `NOTE_PROMPT`, in the user's wording). Nothing else.
+   - **`useSuggestionSubmit`:** the two dialogs' shared submit and answer handling.
+   - **No `edit` suggestions from the glossary page** now. The `edit` kind stays: an admin
+     turns a change request into one, and the endpoint still accepts it.
+   - **Texts are translated** (en, zh-Hant): `glossary:suggest.*`, for the card's button, panel
+     and dialog and for the "Suggest a term" dialog (`NOTE_PROMPT` became
+     `suggest.notePrompt`). Language names use `common:languages`. Still English: the page
+     header (title and "Suggest a Term"), the translation page's context menu, and the
+     server's error messages (`SuggestionError`).
+   - **Tests:** no new logic outside the dialogs (the payloads are built inline; the server
+     side is already tested). The repo has no component-test setup, so the dialogs are untested.
+   - `pnpm build` passes. **Not yet tried in a browser.**
 6. **Pending display on the glossary page:** card blocks, markers, the "Proposed" label in
    search and its database lookup, the colour tokens, the show switch, the leaders' review
    buttons, and edit or withdraw on one's own pending suggestions.

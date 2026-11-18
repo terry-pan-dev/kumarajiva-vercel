@@ -8,6 +8,7 @@
 import { useFetcher } from '@remix-run/react';
 import { pinyin } from 'pinyin-pro';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useToast } from '~/hooks/use-toast';
 import { DEFAULT_TARGET_LANG } from '~/utils/constants';
@@ -69,6 +70,7 @@ export function SuggestTermDialog({
   initial?: SuggestTermInitial;
 }) {
   const id = useId();
+  const { t } = useTranslation(['glossary', 'common']);
   const { toast } = useToast();
   const fetcher = useFetcher<SuggestionResponse>();
   const submitting = fetcher.state !== 'idle';
@@ -110,14 +112,14 @@ export function SuggestTermDialog({
     if (fetcher.state !== 'idle' || !data || handled.current === data) return;
     handled.current = data;
     if (data.success) {
-      toast({ title: 'Suggestion sent', description: 'Thank you. It will be reviewed before it joins the glossary.' });
+      toast({ title: t('suggest.sent'), description: t('suggest.sentDescription') });
       onOpenChange(false);
     } else if (data.code === 'term-exists' && data.glossaryId) {
       setExisting({ glossaryId: data.glossaryId, message: data.message });
     } else {
       setError(data.message);
     }
-  }, [fetcher.state, fetcher.data, toast, onOpenChange]);
+  }, [fetcher.state, fetcher.data, toast, onOpenChange, t]);
 
   const translation = {
     term: term.trim(),
@@ -167,10 +169,8 @@ export function SuggestTermDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Suggest a glossary term</DialogTitle>
-          <DialogDescription>
-            Just the term and a translation is enough. It will show as under review until it is checked.
-          </DialogDescription>
+          <DialogTitle>{t('suggest.term.title')}</DialogTitle>
+          <DialogDescription>{t('suggest.term.description')}</DialogDescription>
         </DialogHeader>
 
         <form
@@ -182,7 +182,7 @@ export function SuggestTermDialog({
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${id}-source`}>Chinese term</Label>
+              <Label htmlFor={`${id}-source`}>{t('suggest.term.chineseTerm')}</Label>
               <Input
                 value={sourceTerm}
                 id={`${id}-source`}
@@ -195,7 +195,7 @@ export function SuggestTermDialog({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor={`${id}-phonetic`} className="text-muted-foreground">
-                Pinyin
+                {t('suggest.term.pinyin')}
               </Label>
               <Input value={phonetic} id={`${id}-phonetic`} onChange={(event) => setPhonetic(event.target.value)} />
             </div>
@@ -203,19 +203,19 @@ export function SuggestTermDialog({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${id}-term`}>Translation</Label>
+              <Label htmlFor={`${id}-term`}>{t('suggest.translation')}</Label>
               <Input value={term} id={`${id}-term`} onChange={(event) => setTerm(event.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label className="text-muted-foreground">Language</Label>
+              <Label className="text-muted-foreground">{t('suggest.language')}</Label>
               <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger aria-label="Language">
+                <SelectTrigger aria-label={t('suggest.language')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {GLOSSARY_TRANSLATION_LANGUAGES.map((value) => (
                     <SelectItem key={value} value={value} className="capitalize">
-                      {value}
+                      {t(`common:languages.${value}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -224,19 +224,21 @@ export function SuggestTermDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${id}-note`}>Notes</Label>
+            <Label htmlFor={`${id}-note`}>{t('suggest.notes')}</Label>
             <Textarea
               rows={3}
               value={note}
               id={`${id}-note`}
+              placeholder={t('suggest.notePrompt')}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Anything that helps: why this translation, where you saw it, alternatives…"
             />
           </div>
 
           {passage && (
             <fieldset className="border-border flex flex-col gap-2 rounded-md border p-3 text-sm">
-              <legend className="text-muted-foreground px-1 text-xs font-medium uppercase">From this passage</legend>
+              <legend className="text-muted-foreground px-1 text-xs font-medium uppercase">
+                {t('suggest.term.fromPassage')}
+              </legend>
               {passage.documentTitle && (
                 <label className="flex items-start gap-2">
                   <input
@@ -246,8 +248,11 @@ export function SuggestTermDialog({
                     onChange={(event) => setAttachSource(event.target.checked)}
                   />
                   <span>
-                    Record the source: {passage.documentTitle}
-                    {passage.page ? ` · p. ${passage.page}` : ''}
+                    {t('suggest.term.recordSource', {
+                      source: [passage.documentTitle, passage.page && t('suggest.term.page', { page: passage.page })]
+                        .filter(Boolean)
+                        .join(' · '),
+                    })}
                   </span>
                 </label>
               )}
@@ -260,7 +265,7 @@ export function SuggestTermDialog({
                     onChange={(event) => setAttachOrigin(event.target.checked)}
                   />
                   <span>
-                    Attach the source passage{' '}
+                    {t('suggest.term.attachOrigin')}{' '}
                     <span className="text-muted-foreground">“{clip(passage.originText)}”</span>
                   </span>
                 </label>
@@ -274,7 +279,7 @@ export function SuggestTermDialog({
                     onChange={(event) => setAttachTarget(event.target.checked)}
                   />
                   <span>
-                    Attach the translated passage{' '}
+                    {t('suggest.term.attachTarget')}{' '}
                     <span className="text-muted-foreground">“{clip(passage.targetText)}”</span>
                   </span>
                 </label>
@@ -291,7 +296,7 @@ export function SuggestTermDialog({
                 disabled={!term.trim() || submitting}
                 onClick={() => submitAsTranslation(existing.glossaryId)}
               >
-                Suggest it as a new translation of that entry
+                {t('suggest.term.asTranslation')}
               </Button>
             </div>
           )}
@@ -303,10 +308,10 @@ export function SuggestTermDialog({
 
           <DialogFooter className="gap-2">
             <Button type="button" variant="secondary" disabled={submitting} onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('common:actions.cancel')}
             </Button>
             <Button type="submit" disabled={!canSubmit}>
-              {submitting ? 'Sending…' : 'Send suggestion'}
+              {submitting ? t('suggest.sending') : t('suggest.send')}
             </Button>
           </DialogFooter>
         </form>
