@@ -1,8 +1,8 @@
 # Glossary suggestions: edits become reviewed submissions
 
 Written 2026-11-17. **Design agreed with the user. The schema below was approved by the user on
-2026-11-17.** Steps 0 and 1 are done (working tree, 2026-11-17). Migration 0030 is **not yet
-applied** to the shared dev database: that waits for the user. Steps 2+ are not started.
+2026-11-17.** Steps 0–2 are done (working tree, 2026-11-17). Migration 0030 is applied to the
+shared dev database (with the user's go-ahead), not yet to prod. Steps 3+ are not started.
 
 ## Why
 
@@ -103,7 +103,10 @@ pending ──(enrich, mark ready, review: any order, all optional)──┬─ 
 - **Flag:** the admin chooses one of:
   - dismiss it, with a note
   - turn it into an edit (opens the editable card, and the flag's note goes with it)
-  - move the translation to the trash, using the existing soft delete
+  - remove the translation. **Correction (step 2):** there is no trash for single translations
+    (the soft delete takes a whole term), so this removes the row for good. The flag's `base`
+    keeps its content. Removing a term's last translation is refused: trash the term instead.
+    *(Awaiting the user's confirmation.)*
 - **Audit fields:**
   - New rows: `created_by` = the submitter, `updated_by` = the admin who finalized. This fits
     "term author = created-by" (see the glossary author semantics).
@@ -284,14 +287,39 @@ Each step is its own PR, run through typecheck, eslint and vitest.
      - an unknown enum value is refused
      - a hard delete of a term (which cascades to its translations) keeps its suggestions,
        with `glossary_id` / `translation_id` set to null and `base` intact
-   - **Not applied** to the shared dev database or prod. Deploys run `db:migrate` themselves.
-2. **Store, validation and service:**
-   - zod shapes
-   - `SuggestionStore`
-   - the transitions (submit, edit own, withdraw, enrich, mark ready, review, accept, reject,
-     dismiss, merge)
-   - applying, with the out-of-date check
-   - unit tests per transition and permission
+   - Applied to the shared dev database on 2026-11-17, with the user's go-ahead (only 0030 was
+     pending there). Prod gets it on the next deploy, which runs `db:migrate`.
+2. **Store, validation and service. Done (working tree, 2026-11-17).**
+   - `app/validations/suggestion.validation.ts`: the proposal shapes (new term, new
+     translation, edit, context, note). Blank means "not given". An edit keeps only the fields
+     it mentions, and a field given as blank is null, meaning "clear it".
+   - `app/services/suggestion.rules.ts` (pure):
+     - the permission checks (`canEnrich`, `canReview`, `canFinalize` on the existing subjects)
+     - the submitter's lock (they can't edit once enriched or reviewed; they can still withdraw)
+     - `snapshotOf`, `changedFields`, `staleFields`, `applyEdit`
+     - `SuggestionError`, with codes the routes will map to HTTP statuses
+   - `app/services/suggestion.store.ts`: the only module touching the table. Every write is
+     conditional on `status = 'pending'` in the same statement. `releaseClaim` only reopens an
+     `accepted` row that has no `applied_id`.
+   - `app/services/suggestion.service.ts`: submit, edit own, withdraw, enrich, mark ready,
+     review, reject, dismiss, merge into a term, flag → edit, remove a flagged translation, and
+     accept.
+     - Accepting claims the row first, then writes through the glossary service, so Algolia
+       stays in sync. If that write fails, the claim is released.
+     - An edit accepted after the stored translation changed is refused as `stale`, naming the
+       fields, until `confirmStale`.
+   - **Audit on accept:**
+     - New term: `created_by` and `author` = the submitter, `updated_by` = the admin.
+     - New and edited translations: the admin for both, because `newTranslationRow` takes both
+       from `updatedBy`. The submitter stays on the suggestion row.
+   - **Tests:** `tests/suggestion.{validation,rules,service}.test.ts`, 49 tests.
+     - Mutation checks: 16 rules broken, each caught. A 17th turned out to be dead code, now
+       removed.
+     - Store reads run read-only against dev (empty table): all valid SQL, including the jsonb
+       headword search.
+     - Store writes haven't run against a real database yet. They will in step 3's dev run.
+   - **Until step 3's permission change,** editors and managers still pass `canReview` (they
+     hold Glossary Update). Nothing calls the service yet.
 3. **Suggest-a-term form and flag,** server actions included. **The permission change ships
    here**, together with:
    - removing the direct create, add and remove paths from the glossary page
