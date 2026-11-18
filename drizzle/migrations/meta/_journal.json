@@ -204,6 +204,13 @@
       "when": 1794060996263,
       "tag": "0029_glossary-drop-temp-term-rename-discussion",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794951439704,
+      "tag": "0030_add-suggestions",
+      "breakpoints": true
     }
   ]
 }
