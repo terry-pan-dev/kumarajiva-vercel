@@ -55,7 +55,7 @@ const SuggestTermButton = () => {
   return (
     <>
       <Button variant="default" onClick={() => setOpen(true)}>
-        Suggest a Term
+        Add a New Entry
       </Button>
       <SuggestTermDialog open={open} onOpenChange={setOpen} />
     </>

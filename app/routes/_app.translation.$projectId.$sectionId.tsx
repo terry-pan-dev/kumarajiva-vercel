@@ -218,7 +218,7 @@ export default function TranslationSection() {
     }
   }, [paragraphs, actionData]);
 
-  // What "Suggest Glossary Term" knows: the document and section here, and per paragraph its
+  // What "Add Glossary Entry" knows: the document and section here, and per paragraph its
   // passages and page (docs/plans/glossary-suggestions.md).
   const { projectId } = useParams();
   const suggestSource = useMemo(

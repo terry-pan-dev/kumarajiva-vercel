@@ -115,3 +115,11 @@ export const submitRequestSchema = z.discriminatedUnion('kind', [
     context: z.unknown().optional(),
   }),
 ]);
+
+// The submitter's own pending suggestion: edit it (`proposed` and `note` are checked by the
+// service, by the suggestion's kind) or withdraw it.
+export const ownRequestSchema = z.object({
+  id: z.string().uuid(),
+  proposed: z.unknown().optional(),
+  note: z.unknown().optional(),
+});

@@ -2,12 +2,12 @@
 
 Written 2026-11-17. **Design agreed with the user. The schema below was approved by the user on
 2026-11-17.** Steps 0–3 and the removal of "Add New Entry" are committed on `glossary-input`.
-Step 4 is committed too. Step 5 is done in the working tree. Migration 0030 is applied to the
-shared dev database (with the user's go-ahead), not yet to prod. Steps 6+ are not started.
+Steps 4 and 5 are committed too. Step 6 is done in the working tree. Migration 0030 is applied to the
+shared dev database (with the user's go-ahead), not yet to prod. Steps 7+ are not started.
 
 **Merging into main:** step 5 was the minimum (everyone can now suggest changes and translations).
-Until step 6, suggestions are stored but not shown on the glossary page, and until step 7 only
-the database shows them to admins.
+Since step 6 the glossary page shows pending suggestions; until step 7 only the database shows
+them to admins.
 
 ## Why
 
@@ -22,8 +22,11 @@ the glossary at once, marked as under review, until an admin finalizes it.
 - **Anyone signed in can suggest**, readers included. Suggesting needs no permission level.
 - **Tech and admin enrich**: they fill in a suggestion's missing fields. Managers are for
   translations and only suggest, like everyone else.
-- **Leaders review** from the glossary page: "looks right" or "needs work", with a note. They
-  are short on time, so reviewing is optional and happens on the card itself.
+- **Leaders review informally** (user, 2026-11-18): no review buttons anywhere. They see the
+  pending suggestions on the glossary page like everyone else. The review columns
+  (`review_verdict`, `review_note`, `reviewed_by`, `reviewed_at`), `reviewSuggestion` and
+  `canReview` (Glossary Update, held by leader and admin) stay but nothing calls them. *(Earlier
+  plan: "looks right" / "needs work" on the card.)*
 - **Admins finalize**: accept, reject, dismiss a flag. An admin may finalize something no leader
   has reviewed. **Finalizing happens in the Data Management queue** (user, 2026-11-17).
 - **No direct path for leaders**, not even for urgent needs: they suggest like everyone.
@@ -36,14 +39,16 @@ the glossary at once, marked as under review, until an admin finalizes it.
     glossary cards, because Data Management had no editor for a single entry. That was a wrong
     call on my part. Step 4 moves them to Data Management.
 - **The glossary page is the same for every role** (user, 2026-11-17): browse, suggest, flag,
-  and see pending suggestions. The one addition is the leaders' review buttons, since leaders
-  have no Data Management access.
+  and see pending suggestions. No role-specific controls (leaders' review buttons dropped,
+  2026-11-18).
 - **One way to add, for every role (user, 2026-11-17):** on the glossary page everyone suggests
   new terms the same way, admins and tech included. Admins and tech normally add entries by
   import, so the direct "Add New Entry" form and its create route were removed.
 - **Everyone sees pending suggestions.**
 - **"Ready for review"** is a mark enrichers can set. It is information only, never required.
-- **People can edit or withdraw their own suggestions** while pending.
+- **People can edit or withdraw their own suggestions** while pending. A new term's Chinese
+  headword can change too (user, 2026-11-18). A changed headword is checked for uniqueness
+  again, as on submit; the same goes for an enricher's change.
 - **The submitter's note stays on the suggestion**, as review history. It is never merged into
   the translation's `discussion`, which may already hold text.
 - **No delete suggestions.** You flag a translation as wrong, with a note.
@@ -64,7 +69,8 @@ direct edits in **Data Management → Glossary**.
 No new permission subject. The existing ones map onto the jobs:
 
 - **Enrich = GlossaryData Maintain** (tech, admin). It takes the same trust as a direct edit.
-- **Review = Glossary Update** (leader, admin).
+- **Review = Glossary Update** (leader, admin). Unused since 2026-11-18: leaders review informally, so the
+  Review column above is informal too.
 - **Finalize = Glossary Administrate** (admin).
 - **Glossary Maintain is retired.** `LEVELS` in `app/authorisation/ability.ts` changes:
   - leader: Glossary `Maintain` → `Update`
@@ -235,21 +241,21 @@ export const suggestionsTable = pgTable('suggestions', {
 ### Pending suggestions in the glossary
 
 - **Accepted values stay the main content.** A pending edit never replaces them on screen.
-- **Pending edit:** a "1 suggested change" marker on the translation, opening an old → new view
-  (old struck through).
+- **Pending change to a stored translation** (change request or edit): only an "under review"
+  marker on the translation (user, 2026-11-18). A change request is a free note, not values,
+  so there is nothing specific to show in place. These are expected to be rarer than new terms
+  and translations. *(Earlier plan: an old → new view.)*
 - **Pending new translation:** shown inline as a block with a dashed border and a tinted
   background, labelled "Under review · suggested by X, 3 days ago". Review state and "ready" show
   when set.
-- **Pending new term:** listed in search results with a "Proposed" label, so it isn't suggested a
-  second time. Algolia knows nothing about suggestions, so search adds a database lookup of
-  pending new terms by headword (and possibly rendering). Don't index suggestions in Algolia.
-- **Flags:** "⚑ flagged · 1" on the translation, opening the notes.
+- **Pending new term:** listed in the glossary page's search results with a "Proposed" label, so
+  it isn't suggested a second time. Algolia knows nothing about suggestions, so search adds a
+  database lookup of pending new terms by headword. Don't index suggestions in Algolia.
 - **Colour:** yellow-600 is already used for selection and search highlights, so it can't be
   used here. Use a dashed border plus a distinct hue (violet or sky blue), defined once as
   shared classes or tokens. The dashed border also keeps it readable for colour-blind users.
 - **A "Show suggestions" switch,** on by default.
-- **For leaders (and admins):** "Looks right" and "Needs work" (with an optional note) on each
-  pending block. These are the only role-specific controls on the glossary page.
+- **No review buttons** (user, 2026-11-18): leaders review informally.
 - No enrich or finalize controls here: those are in Data Management (below).
 
 ### Data Management → Glossary: entry editor (step 4)
@@ -460,9 +466,47 @@ Each step is its own PR, run through typecheck, eslint and vitest.
    - **Tests:** no new logic outside the dialogs (the payloads are built inline; the server
      side is already tested). The repo has no component-test setup, so the dialogs are untested.
    - `pnpm build` passes. **Not yet tried in a browser.**
-6. **Pending display on the glossary page:** card blocks, markers, the "Proposed" label in
-   search and its database lookup, the colour tokens, the show switch, the leaders' review
-   buttons, and edit or withdraw on one's own pending suggestions.
+6. **Pending display on the glossary page. Done (working tree, 2026-11-18).**
+   - **Changed with the user (2026-11-18):** no review buttons (leaders review informally), and
+     a change to a stored translation shows only as "under review".
+   - **What each viewer sees** (`app/services/suggestion.view.ts`, pure):
+     `pendingSuggestionView` gives everyone the kind, submitter name and date; the proposal only
+     for new terms and translations; the submitter's note and `editable` (not yet enriched or
+     reviewed) only to the submitter. `groupPendingForEntry` splits a card's new translations
+     from the changes per translation.
+   - **Endpoint** (`_app.resources.suggestions.ts`): a loader, GET `?glossaryId=`, answering
+     `readPendingSuggestionViews`; and intents `edit-own` (`{ id, proposed?, note? }`) and
+     `withdraw` (`{ id }`), `ownRequestSchema`, calling the existing service operations.
+   - **The card** (`GlossaryDetail`) loads its entry's pending suggestions itself
+     (`usePendingSuggestions`, a fetcher), so it works on the glossary page and in the sidebar
+     search alike. Remix reloads it after every suggestion request, so new, edited and
+     withdrawn suggestions show at once.
+     - **New translation:** a dashed violet block after the stored translations, "Under review ·
+       suggested by X, 3 days ago", the rendering and any proposed source or passages.
+     - **Change under review:** a dashed line under the translation ("A change to this
+       translation is under review", or "N changes").
+     - **The submitter's own:** their note, Edit (rendering, language, note; a change request's
+       note only) while editable, and Withdraw with a confirm.
+     - **"Show suggestions" switch** in the card header when anything is pending; on by default,
+       remembered in localStorage.
+   - **Proposed new terms in search:** the glossary page's search loader adds
+     `searchPendingTermViews` (headword match, `findPendingNewTerms`) as `proposedTerms`; the list
+     shows them after the entries with a "Proposed" label and opens `ProposedTermDetail`, where
+     the submitter can edit the headword, rendering, language and note, or withdraw. A changed
+     headword gets its pinyin filled in again. Not in the sidebar search, nor in browse (paged)
+     mode.
+   - **Headword changes re-checked:** `editOwnSuggestion` and `enrichSuggestion` call
+     `assertChangedHeadwordFree`, which looks the headword up (as on submit, `term-exists`) only
+     if it changed. Pending new terms aren't checked against each other.
+   - **Colour:** tokens `--suggestion` / `--suggestion-muted` in `app/tailwind.css` (light and
+     dark), Tailwind `suggestion` / `suggestion-muted`; `pendingBlockClass` is the shared style.
+   - **Header button renamed** "Suggest a Term" → "Add a New Entry" (user, 2026-11-18): the most
+     understandable wording, even though it still opens the suggestion dialog and adds nothing
+     directly. The translation page's context menu item followed: "Suggest Glossary Term" → "Add
+     Glossary Entry".
+   - **Texts:** `glossary:suggest.pending.*` in en and zh-Hant.
+   - **Tests:** `tests/suggestion.view.test.ts` (6), `tests/suggestions.route.test.ts` (+8). The
+     components are untested (no component-test setup).
 7. **Data Management suggestions queue:** list, filters, enrich (the step 4 editor), mark
    ready, and the admin finalize screen.
 8. **Notifications:** badges, digest cron, submitter emails.
@@ -475,4 +519,3 @@ Each step is its own PR, run through typecheck, eslint and vitest.
   enriched or reviewed.
 - Audit fields on accept: suggested as `created_by` = submitter, `updated_by` = the finalizing
   admin.
-- Whether pending new terms are also matched by their rendering in search, or by headword only.

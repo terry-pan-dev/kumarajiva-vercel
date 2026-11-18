@@ -17,37 +17,60 @@ import {
 } from '~/components/ui';
 import { Divider } from '~/components/ui/divider';
 import { type GlossaryEntry } from '~/services/glossary.types';
+import { groupPendingForEntry, type PendingSuggestionView } from '~/services/suggestion.view';
 
+import {
+  ChangesUnderReview,
+  PendingTranslationBlock,
+  ProposedTermDetail,
+  ProposedTermItem,
+  ShowSuggestionsSwitch,
+  usePendingSuggestions,
+  useShowSuggestions,
+} from './glossary/PendingSuggestions';
 import { SuggestChangeButton, SuggestChangePanel } from './glossary/SuggestChangeButton';
 import { SuggestTranslationButton } from './glossary/SuggestTranslationButton';
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
   glossaries: GlossaryEntry[];
-  // ShowEdit is useful when in the screen that people not allowed to edit glossary
+  // Pending new terms matching the search, listed after the entries with a "Proposed" label
+  // (docs/plans/glossary-suggestions.md, step 6).
+  proposedTerms?: PendingSuggestionView[];
 }
 
-export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(({ glossaries }, ref) => {
-  const [selectedIndex, setSelectedIndex] = useState<number>(0);
+type ListItem = { kind: 'entry'; entry: GlossaryEntry } | { kind: 'proposed'; view: PendingSuggestionView };
 
-  const selectedGlossary = useMemo(() => {
-    // Clamped so deleting the last entry in the list selects its predecessor.
-    return glossaries[Math.min(selectedIndex, glossaries.length - 1)];
-  }, [glossaries, selectedIndex]);
+export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
+  ({ glossaries, proposedTerms }, ref) => {
+    const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
-  if (!glossaries.length) {
-    return null;
-  }
+    const items = useMemo<ListItem[]>(
+      () => [
+        ...glossaries.map((entry) => ({ kind: 'entry' as const, entry })),
+        ...(proposedTerms ?? []).map((view) => ({ kind: 'proposed' as const, view })),
+      ],
+      [glossaries, proposedTerms],
+    );
 
-  if (glossaries.length) {
+    // Clamped so an item leaving the list (e.g. a withdrawn proposal) selects its predecessor.
+    const selected = items[Math.min(selectedIndex, items.length - 1)];
+
+    if (!items.length) return null;
     return (
       <div className="flex flex-col gap-4 pb-0 lg:flex-row lg:gap-4">
         <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-11rem)] lg:w-1/2">
           <ScrollArea className="h-full lg:pr-4">
             <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
-              {selectedGlossary ? (
+              {selected ? (
                 <ClientOnly fallback={<div>Loading...</div>}>
-                  {() => <GlossaryDetail glossary={selectedGlossary} />}
+                  {() =>
+                    selected.kind === 'entry' ? (
+                      <GlossaryDetail glossary={selected.entry} />
+                    ) : (
+                      <ProposedTermDetail view={selected.view} />
+                    )
+                  }
                 </ClientOnly>
               ) : (
                 <div>No glossary selected</div>
@@ -58,27 +81,26 @@ export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
         <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-11rem)] lg:w-1/2">
           <ScrollArea ref={ref} className="h-full lg:pr-4">
             <ul>
-              {glossaries.length > 0 ? (
-                glossaries.map((glossary, index) => (
-                  <li
-                    key={glossary.id}
-                    onClick={() => setSelectedIndex(index)}
-                    className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
-                  >
-                    <GlossaryItem glossary={glossary} />
-                  </li>
-                ))
-              ) : (
-                <div>No glossaries found</div>
-              )}
+              {items.map((item, index) => (
+                <li
+                  onClick={() => setSelectedIndex(index)}
+                  key={item.kind === 'entry' ? item.entry.id : item.view.id}
+                  className={`mb-2 ${selected === item ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+                >
+                  {item.kind === 'entry' ? (
+                    <GlossaryItem glossary={item.entry} />
+                  ) : (
+                    <ProposedTermItem view={item.view} />
+                  )}
+                </li>
+              ))}
             </ul>
           </ScrollArea>
         </div>
       </div>
     );
-  }
-  return null;
-});
+  },
+);
 
 GlossaryList.displayName = 'GlossaryList';
 
@@ -106,10 +128,13 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
   );
 }
 
-// The entry's card, the same for every role: its content, and "Suggest a change" on each
-// translation and "Suggest a translation" for the entry (docs/plans/glossary-suggestions.md).
-// Direct edits are in Data Management.
+// The entry's card, the same for every role: its content, "Suggest a change" on each
+// translation and "Suggest a translation" for the entry, and what is pending on it
+// (docs/plans/glossary-suggestions.md). Direct edits are in Data Management.
 export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
+  const pending = usePendingSuggestions(glossary.id);
+  const [showSuggestions, setShowSuggestions] = useShowSuggestions();
+  const { newTranslations, changesByTranslation } = useMemo(() => groupPendingForEntry(pending), [pending]);
   // The translation whose "Suggest a change" panel is open, one at a time. It belongs to the
   // entry it was opened on, so choosing another entry closes it.
   const [changing, setChanging] = useState<{ glossaryId: string; translationId: string } | null>(null);
@@ -200,6 +225,7 @@ export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
               <h2 className="text-md text-secondary-foreground font-mono">({glossary.phonetic})</h2>
             )}
             <div className="ml-auto" />
+            {pending.length > 0 && <ShowSuggestionsSwitch show={showSuggestions} onChange={setShowSuggestions} />}
             {glossary.discussion && (
               <Tooltip>
                 <span className="inline-block align-middle">
@@ -259,6 +285,9 @@ export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
                     <p className="text-sm whitespace-pre-wrap">{translation.discussion}</p>
                   </div>
                 )}
+                {showSuggestions && translation.id && (
+                  <ChangesUnderReview views={changesByTranslation.get(translation.id) ?? []} />
+                )}
                 {/* Below the translation, so it stays in view while the suggestion is written. */}
                 {translation.id && changingId === translation.id && (
                   <SuggestChangePanel onDone={closeChange} glossaryId={glossary.id} translationId={translation.id} />
@@ -266,6 +295,7 @@ export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
               </div>
             );
           })}
+          {showSuggestions && newTranslations.map((view) => <PendingTranslationBlock view={view} key={view.id} />)}
           <div className="flex justify-center pt-4">
             <SuggestTranslationButton glossaryId={glossary.id} sourceTerm={glossary.sourceTerm} />
           </div>

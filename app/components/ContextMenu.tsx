@@ -16,7 +16,7 @@ import { type SuggestPassage } from './glossary/SuggestTermDialog';
 import { Icons } from './icons';
 import { useSearchContext } from './SearchContext';
 
-// `passage`: the paragraph this menu belongs to, offered to "Suggest Glossary Term" (with the
+// `passage`: the paragraph this menu belongs to, offered to "Add Glossary Entry" (with the
 // document and section the page provides). The item shows only inside a GlossarySuggestProvider.
 export default function ContextMenuWrapper({ children, passage }: PropsWithChildren<{ passage?: SuggestPassage }>) {
   const [selectedText, setSelectedText] = useState('');
@@ -79,7 +79,7 @@ export default function ContextMenuWrapper({ children, passage }: PropsWithChild
             onClick={() => openSuggest({ selection: selectedText.slice(0, 50), passage })}
           >
             <Icons.Add className="mr-2 h-4 w-4" />
-            Suggest Glossary Term
+            Add Glossary Entry
           </ContextMenuItem>
         )}
         <Can I="Update" this="Translation">

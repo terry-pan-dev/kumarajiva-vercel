@@ -1,8 +1,9 @@
 import { Form, Link, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
-import { json, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
+import { json, redirect, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 
+import { assertAuthUser } from '~/auth.server';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { GlossaryList } from '~/components/GlossaryList';
 import { Button, Input } from '~/components/ui';
@@ -16,12 +17,15 @@ import {
 } from '~/components/ui/pagination';
 import { readGlossaries } from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
+import { searchPendingTermViews } from '~/services/suggestion.service';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const user = await assertAuthUser(request);
+  if (!user) return redirect('/login');
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -29,13 +33,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     if (searchTerm) {
       console.log('searchTerm', searchTerm);
-      const glossaries = await searchGlossaries(searchTerm);
-      return json({ success: true, glossaries, page: 1, totalPages: 1 });
+      // Pending new terms aren't in the search index; they are listed after the entries, marked
+      // "Proposed", so the same term isn't suggested twice (docs/plans/glossary-suggestions.md).
+      const [glossaries, proposedTerms] = await Promise.all([
+        searchGlossaries(searchTerm),
+        searchPendingTermViews(user, searchTerm),
+      ]);
+      return json({ success: true, glossaries, proposedTerms, page: 1, totalPages: 1 });
     }
 
     const { glossaries, totalPages } = await readGlossaries({ page });
 
-    return json({ success: true, glossaries, page: glossaries.length ? page : 1, totalPages });
+    return json({ success: true, glossaries, proposedTerms: [], page: glossaries.length ? page : 1, totalPages });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
@@ -49,7 +58,7 @@ export function ErrorBoundary() {
 }
 
 export default function GlossaryIndex() {
-  const { glossaries } = useLoaderData<typeof loader>();
+  const { glossaries, proposedTerms } = useLoaderData<typeof loader>();
 
   const glossariesState = useMemo(() => {
     return glossaries.map((glossary) => ({
@@ -68,9 +77,9 @@ export default function GlossaryIndex() {
     <div>
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       <div className="h-4" />
-      {glossariesState.length > 0 ? (
+      {glossariesState.length > 0 || proposedTerms.length > 0 ? (
         <>
-          <GlossaryList ref={glossaryListRef} glossaries={glossariesState} />
+          <GlossaryList ref={glossaryListRef} glossaries={glossariesState} proposedTerms={proposedTerms} />
           <PaginationControls />
         </>
       ) : (

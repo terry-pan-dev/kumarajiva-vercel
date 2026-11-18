@@ -398,6 +398,24 @@
       "button": "Suggest a translation",
       "title": "Suggest a translation of “{{term}}”",
       "description": "Please provide a new translation and as much relevant information as possible. During the review process, the entry will be fully fleshed out by the team."
+    },
+    "pending": {
+      "show": "Show suggestions",
+      "underReview": "Under review",
+      "by": "suggested by {{name}}, {{when}}",
+      "byYou": "suggested by you, {{when}}",
+      "changeUnderReview_one": "A change to this translation is under review",
+      "changeUnderReview_other": "{{count}} changes to this translation are under review",
+      "yourNote": "Your note:",
+      "edit": "Edit",
+      "save": "Save",
+      "withdraw": "Withdraw",
+      "withdrawConfirm": "Withdraw this suggestion?",
+      "locked": "The team has started on it, so it can no longer be edited.",
+      "updated": "Suggestion updated",
+      "withdrawn": "Suggestion withdrawn",
+      "proposed": "Proposed",
+      "proposedDescription": "A suggested new term. It isn't in the glossary until the team has reviewed it."
     }
   }
 }

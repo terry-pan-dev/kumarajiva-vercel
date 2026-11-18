@@ -242,6 +242,25 @@ describe('editOwnSuggestion and withdrawSuggestion', () => {
     expect(await codeOf(() => editOwnSuggestion(admin, 's1', { note: 'x' }))).toBe('forbidden');
   });
 
+  it('lets the submitter change a new term’s headword, checking it is not in the glossary yet', async () => {
+    const term = { sourceTerm: '般若', translation: { term: 'wisdom' } };
+    suggestions.findById.mockResolvedValue(
+      suggestion({ targetKind: 'glossary_term', glossaryId: null, proposed: term, submitted: term }),
+    );
+    // The same headword is not looked up again.
+    await editOwnSuggestion(editor, 's1', { proposed: { ...term, translation: { term: 'insight' } } });
+    expect(glossaryStore.findByTerms).not.toHaveBeenCalled();
+    // A new one is, and refused if taken.
+    await editOwnSuggestion(editor, 's1', { proposed: { ...term, sourceTerm: '菩提' } });
+    expect(glossaryStore.findByTerms).toHaveBeenCalledWith(['菩提']);
+    expect(lastPatch()).toMatchObject({ proposed: { sourceTerm: '菩提' } });
+    glossaryStore.findByTerms.mockResolvedValue([entry([])]);
+    suggestions.updatePending.mockClear();
+    const taken = () => editOwnSuggestion(editor, 's1', { proposed: { ...term, sourceTerm: '菩提' } });
+    expect(await codeOf(taken)).toBe('term-exists');
+    expect(suggestions.updatePending).not.toHaveBeenCalled();
+  });
+
   it('keeps a flag from losing its note', async () => {
     suggestions.findById.mockResolvedValue(suggestion({ action: 'flag', note: 'wrong' }));
     expect(await codeOf(() => editOwnSuggestion(editor, 's1', { note: '' }))).toBe('invalid');
@@ -270,6 +289,17 @@ describe('enrichSuggestion and reviewSuggestion', () => {
     const patch = lastPatch();
     expect(patch).toMatchObject({ enrichedBy: 'u-tech', proposed: expect.objectContaining({ sourceName: '金剛經' }) });
     expect(patch).not.toHaveProperty('submitted');
+  });
+
+  it('checks a headword changed by enrichment', async () => {
+    const term = { sourceTerm: '般若', translation: { term: 'wisdom' } };
+    suggestions.findById.mockResolvedValue(
+      suggestion({ targetKind: 'glossary_term', glossaryId: null, proposed: term }),
+    );
+    glossaryStore.findByTerms.mockResolvedValue([entry([])]);
+    const run = () => enrichSuggestion(as('tech'), 's1', { ...term, sourceTerm: '菩提' });
+    expect(await codeOf(run)).toBe('term-exists');
+    expect(suggestions.updatePending).not.toHaveBeenCalled();
   });
 
   it('refuses enrichment from a leader or manager, and on a flag', async () => {

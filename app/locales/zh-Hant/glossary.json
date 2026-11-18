@@ -381,6 +381,23 @@
       "button": "建議譯詞",
       "title": "建議「{{term}}」的譯詞",
       "description": "請提供新的譯詞，以及盡可能多的相關資訊。審核期間，團隊會補齊條目的完整資料。"
+    },
+    "pending": {
+      "show": "顯示建議",
+      "underReview": "審核中",
+      "by": "由 {{name}} 建議，{{when}}",
+      "byYou": "由你建議，{{when}}",
+      "changeUnderReview_other": "此翻譯有 {{count}} 項修改建議正在審核中",
+      "yourNote": "你的備註：",
+      "edit": "編輯",
+      "save": "儲存",
+      "withdraw": "撤回",
+      "withdrawConfirm": "要撤回這項建議嗎？",
+      "locked": "團隊已開始處理，無法再編輯。",
+      "updated": "建議已更新",
+      "withdrawn": "建議已撤回",
+      "proposed": "建議中",
+      "proposedDescription": "這是建議的新詞條，經團隊審核後才會加入詞彙表。"
     }
   }
 }

@@ -44,6 +44,7 @@ import {
   type TranslationSnapshot,
 } from './suggestion.rules';
 import { SuggestionStore } from './suggestion.store';
+import { pendingSuggestionView, type PendingSuggestionView } from './suggestion.view';
 import { readUsers } from './user.service';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -90,6 +91,26 @@ const parseProposal = (suggestion: Pick<ReadSuggestion, 'targetKind' | 'action'>
   if (suggestion.action === 'create') return parse(proposedTranslationSchema, value);
   if (suggestion.action === 'edit') return parse(proposedEditSchema, value);
   throw new SuggestionError('wrong-kind', 'A flag has no values to change.');
+};
+
+// A new term's headword must not be in the glossary yet: checked on submit, and again whenever
+// an edit or enrichment changes it. (Accepting checks once more, trash included.)
+const assertHeadwordFree = async (sourceTerm: string) => {
+  const [existing] = await GlossaryStore.findByTerms([sourceTerm]);
+  if (existing) {
+    throw new SuggestionError(
+      'term-exists',
+      `“${sourceTerm}” is already in the glossary. Suggest a translation for it instead.`,
+      { glossaryId: existing.id },
+    );
+  }
+};
+
+// Re-checks the headword of a new term's proposal if it differs from the current one.
+const assertChangedHeadwordFree = async (suggestion: ReadSuggestion, proposal: unknown) => {
+  if (suggestion.targetKind !== 'glossary_term') return;
+  const next = (proposal as ProposedTerm).sourceTerm;
+  if (next !== (suggestion.proposed as ProposedTerm | null)?.sourceTerm) await assertHeadwordFree(next);
 };
 
 // An edit must change something, compared with the translation as it was when suggested.
@@ -162,14 +183,7 @@ export const submitSuggestion = async (user: SuggestionUser, input: SubmitInput)
 
   if (input.kind === 'new-term') {
     const proposed = parse(proposedTermSchema, input.proposed);
-    const [existing] = await GlossaryStore.findByTerms([proposed.sourceTerm]);
-    if (existing) {
-      throw new SuggestionError(
-        'term-exists',
-        `“${proposed.sourceTerm}” is already in the glossary. Suggest a translation for it instead.`,
-        { glossaryId: existing.id },
-      );
-    }
+    await assertHeadwordFree(proposed.sourceTerm);
     return SuggestionStore.create({
       targetKind: 'glossary_term',
       action: 'create',
@@ -231,6 +245,7 @@ export const editOwnSuggestion = async (
   if (changes.proposed !== undefined) {
     const proposed = parseProposal(suggestion, changes.proposed);
     if (suggestion.action === 'edit') assertChanges(suggestion.base ?? {}, proposed as ProposedEdit);
+    await assertChangedHeadwordFree(suggestion, proposed);
     // Nobody has worked on it yet, so what was submitted is still all the submitter's own.
     patch.proposed = proposed;
     patch.submitted = proposed;
@@ -256,6 +271,7 @@ export const enrichSuggestion = async (
   assertPending(suggestion);
   const value = parseProposal(suggestion, proposed);
   if (suggestion.action === 'edit') assertChanges(suggestion.base ?? {}, value as ProposedEdit);
+  await assertChangedHeadwordFree(suggestion, value);
   return updatePending(id, { proposed: value, enrichedBy: user.id, enrichedAt: new Date(), updatedBy: user.id });
 };
 
@@ -509,3 +525,34 @@ export const listSuggestions = SuggestionStore.list;
 export const readPendingSuggestionsForGlossaries = SuggestionStore.findPendingByGlossaryIds;
 export const searchPendingNewTerms = SuggestionStore.findPendingNewTerms;
 export const readSuggestionHistory = SuggestionStore.findByGlossaryId;
+
+// ─── The glossary page's view (step 6) ───────────────────────────────────────
+
+const userNames = async (): Promise<Map<string, string>> => {
+  const users = await readUsers();
+  return new Map(users.map((u) => [u.id, u.username || u.email]));
+};
+
+// The pending suggestions about one entry, as the given viewer sees them.
+export const readPendingSuggestionViews = async (
+  viewer: SuggestionUser,
+  glossaryId: string,
+): Promise<PendingSuggestionView[]> => {
+  const rows = await SuggestionStore.findPendingByGlossaryIds([glossaryId]);
+  if (!rows.length) return [];
+  const names = await userNames();
+  return rows.map((row) => pendingSuggestionView(row, viewer.id, names));
+};
+
+// Pending new terms matching a glossary search, as the given viewer sees them: they are not in
+// the search index, and listing them keeps the same term from being suggested twice.
+export const searchPendingTermViews = async (
+  viewer: SuggestionUser,
+  query: string,
+  limit = 10,
+): Promise<PendingSuggestionView[]> => {
+  const rows = await SuggestionStore.findPendingNewTerms(query, limit);
+  if (!rows.length) return [];
+  const names = await userNames();
+  return rows.map((row) => pendingSuggestionView(row, viewer.id, names));
+};
