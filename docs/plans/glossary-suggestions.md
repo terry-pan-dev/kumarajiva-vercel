@@ -1,8 +1,13 @@
 # Glossary suggestions: edits become reviewed submissions
 
 Written 2026-11-17. **Design agreed with the user. The schema below was approved by the user on
-2026-11-17.** Steps 0–3 are done (working tree, 2026-11-17). Migration 0030 is applied to the
-shared dev database (with the user's go-ahead), not yet to prod. Steps 4+ are not started.
+2026-11-17.** Steps 0–3 are committed on `glossary-input`, along with the removal of "Add New
+Entry" (pending the user's commit). Migration 0030 is applied to the shared dev database (with
+the user's go-ahead), not yet to prod. Steps 4+ are not started.
+
+**Don't merge into main yet.** Until step 4, tech and admin still edit directly from the glossary
+cards. Until step 5, editors, managers and leaders can only flag translations, not suggest
+edits. Hold the merge until at least steps 4 and 5 are done.
 
 ## Why
 
@@ -20,13 +25,22 @@ the glossary at once, marked as under review, until an admin finalizes it.
 - **Leaders review** from the glossary page: "looks right" or "needs work", with a note. They
   are short on time, so reviewing is optional and happens on the card itself.
 - **Admins finalize**: accept, reject, dismiss a flag. An admin may finalize something no leader
-  has reviewed.
+  has reviewed. **Finalizing happens in the Data Management queue** (user, 2026-11-17).
 - **No direct path for leaders**, not even for urgent needs: they suggest like everyone.
 - **Direct edits stay direct** for tech and admin (typo fixes and so on): trust, not review.
   Their existing `updated_by` / `updated_at` stamps are the record.
-  - **Step 3 adjustment:** Data Management has no editor for a single entry, so the direct tools
-    stay on the glossary page (create, the edit form, add or remove translations, trash). They
-    are gated on GlossaryData Maintain.
+- **Direct edits and enrichment both happen in Data Management**, not on the glossary page
+  (user's correction, 2026-11-17). One editor serves both: on an entry it saves directly, on a
+  suggestion it changes the proposal.
+  - In step 3 I kept the direct tools (the edit form, add or remove translations, trash) on the
+    glossary cards, because Data Management had no editor for a single entry. That was a wrong
+    call on my part. Step 4 moves them to Data Management.
+- **The glossary page is the same for every role** (user, 2026-11-17): browse, suggest, flag,
+  and see pending suggestions. The one addition is the leaders' review buttons, since leaders
+  have no Data Management access.
+- **One way to add, for every role (user, 2026-11-17):** on the glossary page everyone suggests
+  new terms the same way, admins and tech included. Admins and tech normally add entries by
+  import, so the direct "Add New Entry" form and its create route were removed.
 - **Everyone sees pending suggestions.**
 - **"Ready for review"** is a mark enrichers can set. It is information only, never required.
 - **People can edit or withdraw their own suggestions** while pending.
@@ -36,6 +50,9 @@ the glossary at once, marked as under review, until an admin finalizes it.
 - **Translation paragraphs may get suggestions later.** The table must allow it.
 
 ## Roles and permissions
+
+Where each job happens: suggest, flag and review on the **glossary page**; enrich, finalize and
+direct edits in **Data Management → Glossary**.
 
 | Role | Suggest, flag, withdraw own | Enrich, mark ready | Review | Finalize | Direct edit (Data Management) |
 |---|---|---|---|---|---|
@@ -216,8 +233,8 @@ export const suggestionsTable = pgTable('suggestions', {
   - At the bottom: "Why this change?" (the note) and **Submit suggestion**.
 - **"Suggest a translation"** adds an empty block in the same style at the end of the card.
 - **"Flag"** (⚑) on each translation asks for a note only.
-- The current `GlossaryForm` edit modal goes away from the glossary page. Data Management's
-  direct editing is unaffected.
+- The `GlossaryForm` edit modal leaves the glossary page in step 4, when direct editing moves to
+  the Data Management entry editor.
 
 ### Pending suggestions in the glossary
 
@@ -235,29 +252,51 @@ export const suggestionsTable = pgTable('suggestions', {
   used here. Use a dashed border plus a distinct hue (violet or sky blue), defined once as
   shared classes or tokens. The dashed border also keeps it readable for colour-blind users.
 - **A "Show suggestions" switch,** on by default.
-- **For leaders:** "Looks right" and "Needs work" (with an optional note) on each pending block.
-- **For tech and admin:** "Enrich", which opens the same editable card on `proposed`, and
-  "Mark ready".
+- **For leaders (and admins):** "Looks right" and "Needs work" (with an optional note) on each
+  pending block. These are the only role-specific controls on the glossary page.
+- No enrich or finalize controls here: those are in Data Management (below).
 
-### Suggestions tab (`/glossary/suggestions`)
+### Data Management → Glossary: entry editor (step 4)
 
-- **Visible to everyone.** The buttons depend on permission.
+- **For tech and admin** (GlossaryData Maintain). This is where direct edits happen.
+- **Find an entry:** search by headword or translation (live entries only, not the trash), then
+  open it in the editor.
+- **Editor:** the entry's fields and its translations; add, edit or remove a translation; Save
+  writes directly to the glossary. Trash moves the whole entry to the trash, as the glossary
+  card's trash does today.
+- **Reuses** the glossary edit form's fields and its save rules (the whole list by id, and an
+  out-of-date check against the ids it was opened with) and `updateGlossaryTranslations`, so
+  search stays in sync.
+- **The same editor is used to enrich suggestions** (step 7), saving into the suggestion's
+  `proposed` instead.
+- **Removed from the glossary cards:** the edit form, remove-translation button and trash, and
+  their actions in `_app.glossary._index.tsx`.
+
+### Data Management → Glossary: suggestions queue (step 7)
+
+- **For tech and admin** (GlossaryData Maintain to see it and enrich; Glossary Administrate to
+  finalize). Leaders don't use it: they review on the glossary page.
 - **List:** kind, term, submitter, age, completeness (how many optional fields are filled),
   ready, review verdict.
 - **Filters:** kind, status (pending by default), mine, ready, reviewed.
 - **Admin sort:** reviewed-as-good and ready first, then oldest.
+- **Enrich:** the step 4 editor, opened on the suggestion's `proposed`. Plus "Mark ready".
 - **Detail / finalize screen:** card layout with old → new changes. It shows the out-of-date
   warning when the stored values changed since the suggestion was made, and the
   duplicate-headword check for new terms. Actions: accept, reject (with a note), merge as a new
   translation, and for flags the three outcomes above. Finalizing something no leader has
   reviewed takes one extra confirmation.
 - **History:** each term's card links to its accepted and rejected suggestions.
+- **The submitter's own suggestions** (edit or withdraw while pending): from the glossary page,
+  on the pending block itself (step 6). No queue access is needed.
 
 ## Notifications
 
-- **Store first.** Email only points to the Suggestions tab.
-- **Badge** on the Suggestions tab: pending count for admins, unreviewed count for leaders,
-  not-yet-enriched count for tech.
+- **Store first.** Email only points to where the work is: the Data Management queue for tech
+  and admin, the glossary page for leaders.
+- **Badges:**
+  - on the Data Management queue: pending count for admins, not-yet-enriched count for tech
+  - for leaders, on the glossary page: unreviewed count
 - **Daily digest email** through Resend (`app/providers/resend.ts`, already used by the admin
   page):
   - to admins and leaders: "N waiting, M reviewed, K ready"
@@ -272,8 +311,8 @@ Each step is its own PR, run through typecheck, eslint and vitest.
 
 0. **Close the create hole now. Done (working tree, 2026-11-17).** The create action in
    `app/routes/_app.glossary.tsx` checked only sign-in. It now refuses a role without
-   `Maintain`/`Glossary` with a 403, until step 3 replaces the route. Covered by
-   `tests/glossary.create.route.test.ts`.
+   `Maintain`/`Glossary` with a 403, until step 3 replaces the route. (The route was removed
+   later in step 3, with "Add New Entry".)
 1. **Schema. Done (working tree, 2026-11-17).** As drafted above.
    - Enum values in `app/utils/constants.ts` (`SUGGESTION_*_VALUES`, `REVIEW_VERDICT_VALUES`,
      with their types), Postgres enums in `drizzle/tables/enums.ts`.
@@ -341,8 +380,8 @@ Each step is its own PR, run through typecheck, eslint and vitest.
        translated passage, each with its own checkbox
      - on `term-exists`, offers "Suggest it as a new translation of that entry"
    - **Where it opens:**
-     - the glossary header ("Suggest a Term", for everyone without GlossaryData Maintain;
-       tech and admin keep "Add New Entry")
+     - the glossary header: "Suggest a Term" for every role. "Add New Entry" was removed (see
+       below).
      - "Suggest Glossary Term" in the translation page's context menu: `GlossarySuggestProvider`
        on the page, plus a `passage` prop on `ContextMenuWrapper`. The loader's `sectionInfo`
        now carries `documentId` and `sectionId`.
@@ -352,25 +391,38 @@ Each step is its own PR, run through typecheck, eslint and vitest.
      a translation with a note describing the fix.
    - **Tests:**
      - `tests/suggestions.route.test.ts`, `tests/glossary.index.route.test.ts` (new)
-     - `ability`, `glossary.create.route`, `suggestion.rules`, `suggestion.service` (updated)
+     - `ability`, `suggestion.rules`, `suggestion.service` (updated)
      - mutation checks: 9 rules broken, all caught
+   - **"Add New Entry" removed (user's decision, 2026-11-17):** one interface for every role.
+     - Removed: the create action and `GlossaryCreateModal` (`_app.glossary.tsx`, now just the
+       header with "Suggest a Term"), `glossary.create.ts`, `glossaryCreateFormSchema`, and
+       `GlossaryForm`'s create-only options (`isNew`, `keepOne`; "Add translation" now always
+       shows at the top too).
+     - Removed their tests: `glossary.create.test.ts`, `glossary.create.route.test.ts`, and the
+       create cases in `glossary.validation.test.ts`. The shared field rules stay tested through
+       the edit form. "English by default" is tested in the suggestion schema.
+     - Entries are added directly only by import now.
    - `pnpm build` passes.
    - **Dev run (service level, 2026-11-17):** against the dev DB, as user `claude-smoke`:
      - submit term and flag, edit own, withdraw
      - a second withdraw refused (`not-pending`), an existing headword refused (`term-exists`)
      - test rows deleted afterwards
    - **The UI hasn't been tried in a browser** (it needs a signed-in session).
-4. **Edit-as-card** on `GlossaryDetail`, and suggest-a-translation. The edit modal is removed
-   from the glossary page.
-5. **Pending display:** card blocks, markers, the "Proposed" label in search and its database
-   lookup, the colour tokens, the show switch, and the leader review buttons.
-6. **Suggestions tab:** list, filters, finalize screen, enrich, mark ready, history link.
-7. **Notifications:** badge, digest cron, submitter emails.
-8. **Later:** paragraph suggestions (adding the `paragraph_id` column and the `paragraph` enum
-   value) if and when translation paragraphs need them.
+**Revised order (user, 2026-11-17):**
 
-Steps 3 and 4 may merge if editors would otherwise be left with neither an edit button nor a
-suggest button for a while.
+4. **Data Management entry editor**, and the direct tools removed from the glossary cards
+   (see "Data Management → Glossary: entry editor"). Done first, so tech and admin never lose
+   quick typo fixes.
+5. **Suggest an edit / a translation on the glossary card**, the same for everyone: the card's
+   translation block becomes editable in place (see "Suggest a translation, suggest an edit").
+6. **Pending display on the glossary page:** card blocks, markers, the "Proposed" label in
+   search and its database lookup, the colour tokens, the show switch, the leaders' review
+   buttons, and edit or withdraw on one's own pending suggestions.
+7. **Data Management suggestions queue:** list, filters, enrich (the step 4 editor), mark
+   ready, and the admin finalize screen.
+8. **Notifications:** badges, digest cron, submitter emails.
+9. **Later:** paragraph suggestions (adding the `paragraph_id` column and the `paragraph` enum
+   value) if and when translation paragraphs need them.
 
 ## To confirm when building
 

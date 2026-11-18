@@ -346,7 +346,7 @@ const GlossaryEditForm = ({ id }: { id: string }) => {
     <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
       <HiddenInput name="id" value={id} />
       <SourceTermFields />
-      <TranslationsFields addAtTop />
+      <TranslationsFields />
     </div>
   );
 };

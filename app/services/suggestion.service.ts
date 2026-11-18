@@ -129,8 +129,8 @@ const writeTranslations = async (
   }
 };
 
-// A proposed translation as a glossary translation, last edited by `by`. Blank stays blank, as
-// on the create form (entryFromCreateForm).
+// A proposed translation as a glossary translation, last edited by `by`. Blank stays blank: no
+// placeholder source or section (PR 9).
 export const translationFromProposal = (proposal: ProposedTranslation, by: string): GlossaryTranslation => ({
   term: proposal.term,
   language: proposal.language,

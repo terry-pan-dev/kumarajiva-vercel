@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-import { chineseRegex } from '~/lib/utils';
-import { DEFAULT_TARGET_LANG, LANG_VALUES } from '~/utils/constants';
+import { LANG_VALUES } from '~/utils/constants';
 import { GLOSSARY_TRANSLATION_LANGUAGES } from '~/utils/lang';
 
 // A translation's discussion (notes, e.g. why a rendering was chosen; `rationale` until
@@ -14,8 +13,7 @@ export const discussionSchema = z
   .nullish()
   .transform((value) => value || null);
 
-// One translation as the glossary forms send it: the create form's, an existing one in the edit
-// form, or one added there. Only the rendering is required; everything else is optional and
+// One translation as the edit form sends it: an existing one, or one added there. Only the rendering is required; everything else is optional and
 // blank is stored as blank (the user's decision, 2026-11-07). `author` is the author of the
 // translated document, not whoever enters the translation (that is `updatedBy`).
 const translationFormFields = {
@@ -31,27 +29,6 @@ const translationFormFields = {
   phonetic: z.string().nullish(),
   discussion: discussionSchema,
 };
-
-// The create form: a new term and its translations, in the same shape as the edit form. The
-// term's author is not asked for: it records who created the entry and is set from the user.
-export const glossaryCreateFormSchema = z.object({
-  sourceTerm: z
-    .string()
-    .trim()
-    .min(1, { message: 'The Chinese term is required.' })
-    .regex(chineseRegex, { message: 'The term must be Chinese.' }),
-  phonetic: z.string(),
-  cbetaFrequency: z.string().nullish(),
-  translations: z
-    .array(
-      z.object({
-        ...translationFormFields,
-        // The form offers English first.
-        language: z.enum(GLOSSARY_TRANSLATION_LANGUAGES).default(DEFAULT_TARGET_LANG),
-      }),
-    )
-    .min(1, { message: 'Add at least one translation.' }),
-});
 
 // The edit form. The term's author (who created the entry) and its discussion (only ever blank,
 // to be dropped) are not edited here; a page that still posts them has them ignored.
