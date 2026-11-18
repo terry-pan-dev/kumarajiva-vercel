@@ -323,6 +323,24 @@
       "scanFailed": "掃描搜尋索引失敗。"
     }
   },
+  "entries": {
+    "title": "編輯詞彙條目",
+    "description": "找到條目後直接修改。在此儲存的變更會直接寫入詞彙表，不經審核。",
+    "search": "搜尋",
+    "searchPlaceholder": "中文詞彙、譯詞、出處或 ID",
+    "searchHint": "搜尋要編輯的條目。",
+    "noResults": "沒有符合「{{query}}」的條目。",
+    "resultCount_one": "{{count}} 個條目",
+    "resultCount_other": "{{count}} 個條目",
+    "selectHint": "選擇一個條目進行編輯。",
+    "notFound": "此條目已不在詞彙表中，可能已移至垃圾桶。",
+    "save": "儲存變更",
+    "saved": "已儲存「{{term}}」。",
+    "stale": "此條目已被他人修改。請重新載入後再編輯。",
+    "trashed": "已將「{{term}}」移至垃圾桶。",
+    "trashDescription_one": "這會將「{{term}}」及其譯詞移至垃圾桶。它會從詞彙表和搜尋中消失；管理員可在詞彙檢查頁面還原或永久刪除。",
+    "trashDescription_other": "這會將「{{term}}」及其全部 {{count}} 個譯詞移至垃圾桶。它會從詞彙表和搜尋中消失；管理員可在詞彙檢查頁面還原或永久刪除。"
+  },
   "errors": {
     "notAllowed": "不允許此操作。",
     "noRows": "未提供任何資料列。",

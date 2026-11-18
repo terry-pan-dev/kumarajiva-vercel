@@ -2,16 +2,12 @@ import { ChevronRight } from 'lucide-react';
 import React, { useCallback, useMemo, useState, useRef } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { Can } from '~/authorisation';
-import { DeleteEntityButton } from '~/components/data/DeleteEntityButton';
 import { Icons } from '~/components/icons';
 import {
   Badge,
-  Button,
   Card,
   CardContent,
   CardFooter,
-  CardHeader,
   ScrollArea,
   Separator,
   Tooltip,
@@ -21,73 +17,67 @@ import {
 } from '~/components/ui';
 import { Divider } from '~/components/ui/divider';
 import { type GlossaryEntry } from '~/services/glossary.types';
-import { glossaryEditFormSchema } from '~/validations/glossary.validation';
 
-import { FormModal, HiddenInput } from './FormModal';
 import { FlagTranslationButton } from './glossary/FlagTranslationButton';
-import { SourceTermFields, TranslationsFields } from './GlossaryForm';
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
   glossaries: GlossaryEntry[];
   // ShowEdit is useful when in the screen that people not allowed to edit glossary
-  showEdit?: boolean;
 }
 
-export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
-  ({ glossaries, showEdit = true }, ref) => {
-    const [selectedIndex, setSelectedIndex] = useState<number>(0);
+export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(({ glossaries }, ref) => {
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
-    const selectedGlossary = useMemo(() => {
-      // Clamped so deleting the last entry in the list selects its predecessor.
-      return glossaries[Math.min(selectedIndex, glossaries.length - 1)];
-    }, [glossaries, selectedIndex]);
+  const selectedGlossary = useMemo(() => {
+    // Clamped so deleting the last entry in the list selects its predecessor.
+    return glossaries[Math.min(selectedIndex, glossaries.length - 1)];
+  }, [glossaries, selectedIndex]);
 
-    if (!glossaries.length) {
-      return null;
-    }
-
-    if (glossaries.length) {
-      return (
-        <div className="flex flex-col gap-4 pb-0 lg:flex-row lg:gap-4">
-          <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-11rem)] lg:w-1/2">
-            <ScrollArea className="h-full lg:pr-4">
-              <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
-                {selectedGlossary ? (
-                  <ClientOnly fallback={<div>Loading...</div>}>
-                    {() => <GlossaryDetail showEdit={showEdit} glossary={selectedGlossary} />}
-                  </ClientOnly>
-                ) : (
-                  <div>No glossary selected</div>
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-          <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-11rem)] lg:w-1/2">
-            <ScrollArea ref={ref} className="h-full lg:pr-4">
-              <ul>
-                {glossaries.length > 0 ? (
-                  glossaries.map((glossary, index) => (
-                    <li
-                      key={glossary.id}
-                      onClick={() => setSelectedIndex(index)}
-                      className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
-                    >
-                      <GlossaryItem glossary={glossary} />
-                    </li>
-                  ))
-                ) : (
-                  <div>No glossaries found</div>
-                )}
-              </ul>
-            </ScrollArea>
-          </div>
-        </div>
-      );
-    }
+  if (!glossaries.length) {
     return null;
-  },
-);
+  }
+
+  if (glossaries.length) {
+    return (
+      <div className="flex flex-col gap-4 pb-0 lg:flex-row lg:gap-4">
+        <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-11rem)] lg:w-1/2">
+          <ScrollArea className="h-full lg:pr-4">
+            <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
+              {selectedGlossary ? (
+                <ClientOnly fallback={<div>Loading...</div>}>
+                  {() => <GlossaryDetail glossary={selectedGlossary} />}
+                </ClientOnly>
+              ) : (
+                <div>No glossary selected</div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+        <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-11rem)] lg:w-1/2">
+          <ScrollArea ref={ref} className="h-full lg:pr-4">
+            <ul>
+              {glossaries.length > 0 ? (
+                glossaries.map((glossary, index) => (
+                  <li
+                    key={glossary.id}
+                    onClick={() => setSelectedIndex(index)}
+                    className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+                  >
+                    <GlossaryItem glossary={glossary} />
+                  </li>
+                ))
+              ) : (
+                <div>No glossaries found</div>
+              )}
+            </ul>
+          </ScrollArea>
+        </div>
+      </div>
+    );
+  }
+  return null;
+});
 
 GlossaryList.displayName = 'GlossaryList';
 
@@ -116,7 +106,7 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
 }
 
 // The same prompt wherever a translation's discussion is entered: create, edit and insert.
-export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: GlossaryEntry; showEdit?: boolean }) => {
+export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
   // Regex cache to avoid recompilation
   const regexCache = useRef<Map<string, RegExp>>(new Map());
 
@@ -195,56 +185,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
   return (
     <TooltipProvider>
       <Card className="flex h-full flex-col">
-        {showEdit && (
-          <CardHeader className="flex-row items-center justify-end px-2 py-4">
-            <div className="flex">
-              <Can I="Maintain" this="GlossaryData">
-                <FormModal
-                  kind="edit"
-                  fetcherKey="edit-glossary"
-                  title="Update Glossary Entry"
-                  schema={glossaryEditFormSchema}
-                  trigger={
-                    <Button size="icon" variant="ghost" aria-label="edit-glossary">
-                      <Icons.SquarePen className="h-6 w-6 text-slate-800" />
-                    </Button>
-                  }
-                  defaultValues={{
-                    id: glossary?.id,
-                    sourceTerm: glossary.sourceTerm,
-                    cbetaFrequency: glossary.cbetaFrequency || '',
-                    phonetic: glossary.phonetic || '',
-                    // Each translation keeps its id from here to the save (glossaryEditFormSchema
-                    // passes it through), so the save edits it in place. No input needed for it.
-                    translations: (glossary.translations || []).map((translation) => ({
-                      ...translation,
-                      discussion: translation.discussion ?? null,
-                    })),
-                    baseTranslationIds: glossary.translations.flatMap((translation) => translation.id ?? []),
-                  }}
-                >
-                  <GlossaryEditForm id={glossary.id} />
-                </FormModal>
-              </Can>
-              <Can I="Maintain" this="GlossaryData">
-                <span className="flex h-10 w-10 items-center justify-center">
-                  <DeleteEntityButton
-                    size={24}
-                    id={glossary.id}
-                    idName="glossaryId"
-                    entity="glossaryEntry"
-                    intent="delete-glossary"
-                    // Also rendered on /settings, whose action knows nothing about glossaries.
-                    action="/glossary?index"
-                    label={glossary.sourceTerm}
-                    description={`This moves “${glossary.sourceTerm}” and all ${glossary.translations?.length ?? 0} of its translations to the trash. It disappears from the glossary and search; an admin can restore it or delete it for good from the Glossary Inspector.`}
-                  />
-                </span>
-              </Can>
-            </div>
-          </CardHeader>
-        )}
-        <CardContent className="flex-grow px-4">
+        <CardContent className="flex-grow px-4 pt-4">
           <div className="my-2 flex items-end justify-start gap-2">
             <h2 className="text-primary text-xl font-semibold tracking-tight lg:text-3xl">{glossary.sourceTerm}</h2>
             {glossary.phonetic && (
@@ -337,16 +278,5 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
         </CardFooter>
       </Card>
     </TooltipProvider>
-  );
-};
-
-// Adding a translation is part of the edit: "+ Add translation" appends one, saved with the rest.
-const GlossaryEditForm = ({ id }: { id: string }) => {
-  return (
-    <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
-      <HiddenInput name="id" value={id} />
-      <SourceTermFields />
-      <TranslationsFields />
-    </div>
   );
 };

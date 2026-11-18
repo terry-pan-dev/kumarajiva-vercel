@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { glossaryEditFormSchema } from '~/validations/glossary.validation';
 
-// ─── glossaryEditFormSchema (Update Glossary Entry) ──────────────────────────
+// ─── glossaryEditFormSchema (the Data Management entry editor) ───────────────
 
 describe('glossaryEditFormSchema', () => {
   it('parses a glossary entry with one translation', () => {

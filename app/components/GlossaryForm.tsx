@@ -1,7 +1,7 @@
-// The fields of the Update Glossary Entry form (glossaryEditFormSchema): the source term, and the
-// list of translations with buttons to add and remove one. It is a direct change, shown only to
-// the trusted roles (GlossaryData Maintain: tech, admin; the save checks it too). Everyone else
-// suggests (docs/plans/glossary-suggestions.md); new entries come in by suggestion or import.
+// The fields of the glossary entry editor in Data Management (glossaryEditFormSchema): the source
+// term, and the list of translations with buttons to add and remove one. A direct change, for the
+// trusted roles only (GlossaryData Maintain: tech, admin; the save checks it too). Everyone else
+// suggests from the glossary page (docs/plans/glossary-suggestions.md).
 import { Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useFieldArray, useWatch } from 'react-hook-form';
@@ -35,6 +35,27 @@ const NEW_TRANSLATION = {
 };
 
 export const newTranslation = () => ({ ...NEW_TRANSLATION });
+
+// The edit form's starting values for an entry (glossaryEditFormSchema). Each translation keeps
+// its id to the save, so the save edits it in place; baseTranslationIds are the ids the form was
+// opened with, so a translation someone else adds meanwhile is kept, not read as a removal.
+export const editFormValues = (glossary: {
+  id: string;
+  sourceTerm: string;
+  phonetic?: string | null;
+  cbetaFrequency?: string | null;
+  translations: ({ id?: string; discussion?: string | null } & Record<string, unknown>)[];
+}) => ({
+  id: glossary.id,
+  sourceTerm: glossary.sourceTerm,
+  cbetaFrequency: glossary.cbetaFrequency || '',
+  phonetic: glossary.phonetic || '',
+  translations: glossary.translations.map((translation) => ({
+    ...translation,
+    discussion: translation.discussion ?? null,
+  })),
+  baseTranslationIds: glossary.translations.flatMap((translation) => translation.id ?? []),
+});
 
 // The headword is fixed: an entry is edited, never renamed.
 export function SourceTermFields() {

@@ -1,10 +1,8 @@
 import { Form, Link, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
+import { json, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { assertAuthUser } from '~/auth.server';
-import { defineAbilityFor } from '~/authorisation';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { GlossaryList } from '~/components/GlossaryList';
 import { Button, Input } from '~/components/ui';
@@ -16,11 +14,8 @@ import {
   PaginationNext,
   PaginationEllipsis,
 } from '~/components/ui/pagination';
-import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import { readGlossaries, readGlossariesByIds, trashGlossaryById, updateGlossaryTranslations } from '~/services';
+import { readGlossaries } from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
-import { TranslationListError } from '~/services/glossary.diff';
-import { glossaryEditFormSchema } from '~/validations/glossary.validation';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
@@ -45,89 +40,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     console.error(error);
     throw new Error('Internal Server Error');
   }
-};
-
-// The form was built from translations that have changed since: one it names is gone.
-const staleEdit = () =>
-  json(
-    { success: false, errors: ['This entry was changed by someone else. Reload the page and edit it again.'] },
-    { status: 409 },
-  );
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const user = await assertAuthUser(request);
-  if (!user) {
-    return redirect('/login');
-  }
-  const ability = defineAbilityFor(user);
-  const formData = Object.fromEntries(await request.formData());
-  const kind = formData.kind;
-
-  // Posted by the trash button on GlossaryDetail: a direct change, so for the trusted roles
-  // (GlossaryData Maintain: tech, admin). Everyone else flags a translation instead
-  // (docs/plans/glossary-suggestions.md). The hidden button is cosmetic; this check is what holds.
-  if (formData.intent === 'delete-glossary') {
-    if (ability.cannot('Maintain', 'GlossaryData')) {
-      return json({ success: false, error: 'Not allowed.' }, { status: 403 });
-    }
-    const deletion = await trashGlossaryById(formData.glossaryId as string, user.id);
-    if (!deletion) {
-      return json({ success: false, error: 'Glossary not found.' }, { status: 404 });
-    }
-    return json({
-      success: true,
-      message: `Moved “${deletion.term}” to the trash.`,
-    });
-  }
-
-  // The edit form is a direct change (edit, add and remove translations), so for the trusted
-  // roles only (GlossaryData Maintain: tech, admin); everyone else suggests. This mirrors the
-  // <Can> gates in GlossaryDetail and its form, which only hide the buttons.
-  if (kind === 'edit') {
-    if (ability.cannot('Maintain', 'GlossaryData')) {
-      return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
-    }
-    const data = JSON.parse(formData.data as string);
-    const validatedData = validatePayloadOrThrow({ schema: glossaryEditFormSchema, formData: data });
-    // The edit form sends the whole translations list, each stored one with its id, and the ids
-    // it was opened with. Matched by id against what is stored, one of those the list leaves out
-    // is a removal and one without an id an addition (one added by someone else meanwhile is
-    // neither, and is kept).
-    const [existing] = await readGlossariesByIds([validatedData.id]);
-    if (!existing) {
-      return json({ success: false, errors: ['Glossary not found.'] }, { status: 404 });
-    }
-    // Who and when, for the store: it stamps only the translations whose content changed.
-    const now = new Date().toISOString();
-    const validatedDataWithUpdatedBy = validatedData.translations.map((translation) => ({
-      ...translation,
-      updatedBy: user.id,
-      updatedAt: now,
-    }));
-    const { id, phonetic = null, cbetaFrequency = null } = validatedData;
-    try {
-      await updateGlossaryTranslations({
-        id,
-        phonetic,
-        // The term's author records who created the entry, and its discussion is only ever
-        // blank (to be dropped): the form edits neither, and null leaves both as stored.
-        author: null,
-        discussion: null,
-        cbetaFrequency,
-        updatedBy: phonetic || cbetaFrequency ? user.id : null,
-        translations: validatedDataWithUpdatedBy,
-        basis: validatedData.baseTranslationIds,
-      });
-    } catch (error) {
-      // Someone else removed one of these translations since the form was opened.
-      if (error instanceof TranslationListError) return staleEdit();
-      throw error;
-    }
-    return json({ success: true, kind: 'edit' });
-  }
-
-  // Nothing else posts here: creating an entry is the layout route's action (_app.glossary.tsx).
-  return json({ success: false, errors: ['Unknown request.'] }, { status: 400 });
 };
 
 export function ErrorBoundary() {

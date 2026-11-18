@@ -52,6 +52,11 @@ export const readGlossariesByIds = async (ids: string[]) => {
   return GlossaryStore.findByIds(ids);
 };
 
+// The Data Management entry editor's search: an exact uuid, or a headword, search_id or
+// translation containing the query, among live entries only (a trashed one is not edited).
+export const searchGlossaryEntriesForEditing = (query: string, limit = 50): Promise<GlossaryEntry[]> =>
+  GlossaryStore.findForInspection(query, limit, { includeTrash: false });
+
 type ReturnType<T> = T extends string ? number[] : T extends string[] ? number[][] : never;
 export const generateEmbedding = async <T extends string | string[]>(text: T): Promise<ReturnType<T>> => {
   if (typeof text === 'string') {

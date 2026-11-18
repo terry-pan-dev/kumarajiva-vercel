@@ -1,13 +1,12 @@
 # Glossary suggestions: edits become reviewed submissions
 
 Written 2026-11-17. **Design agreed with the user. The schema below was approved by the user on
-2026-11-17.** Steps 0–3 are committed on `glossary-input`, along with the removal of "Add New
-Entry" (pending the user's commit). Migration 0030 is applied to the shared dev database (with
-the user's go-ahead), not yet to prod. Steps 4+ are not started.
+2026-11-17.** Steps 0–3 and the removal of "Add New Entry" are committed on `glossary-input`.
+Step 4 is done in the working tree. Migration 0030 is applied to the shared dev database (with
+the user's go-ahead), not yet to prod. Steps 5+ are not started.
 
-**Don't merge into main yet.** Until step 4, tech and admin still edit directly from the glossary
-cards. Until step 5, editors, managers and leaders can only flag translations, not suggest
-edits. Hold the merge until at least steps 4 and 5 are done.
+**Don't merge into main yet.** Until step 5, editors, managers and leaders can only flag
+translations, not suggest edits. Hold the merge until at least step 5 is done.
 
 ## Why
 
@@ -410,9 +409,29 @@ Each step is its own PR, run through typecheck, eslint and vitest.
    - **The UI hasn't been tried in a browser** (it needs a signed-in session).
 **Revised order (user, 2026-11-17):**
 
-4. **Data Management entry editor**, and the direct tools removed from the glossary cards
-   (see "Data Management → Glossary: entry editor"). Done first, so tech and admin never lose
-   quick typo fixes.
+4. **Data Management entry editor. Done (working tree, 2026-11-17).** Done first, so tech and
+   admin never lose quick typo fixes.
+   - **Route** `app/routes/_app.data.glossary.entries.tsx` (`/data/glossary/entries`, sidebar
+     "Glossary Editor", subtitle `glossaryEntries`). Loader and action check GlossaryData
+     Maintain.
+     - Search: `?q=`, via `searchGlossaryEntriesForEditing`, which is
+       `GlossaryStore.findForInspection` with the new `includeTrash: false`.
+     - Open an entry: `?id=`.
+     - The editor uses the existing `SourceTermFields` / `TranslationsFields` and the new shared
+       `editFormValues` helper (`GlossaryForm.tsx`).
+     - Save: intent `edit`, the same save rules as before. Trash: intent `delete-glossary`,
+       through `DeleteEntityButton`.
+     - Messages are translated: `glossary:entries.*` in en and zh-Hant. The form's field labels
+       (`GlossaryForm`) are still English only, as they were.
+   - **Removed from the glossary page:**
+     - the edit modal and trash on `GlossaryDetail`, and its `showEdit` prop (so the card no
+       longer has a header)
+     - the glossary page route's action (`_app.glossary._index.tsx`), which only served those
+   - **Tests:** `tests/glossary.entries.route.test.ts` (16) replaces
+     `tests/glossary.index.route.test.ts`. Mutation checks: 6 rules broken, all caught.
+   - **Dev check (read-only):** a trashed entry is found by the inspector's search but not the
+     editor's; a live one is found by the editor's.
+   - `pnpm build` passes. **Not yet tried in a browser.**
 5. **Suggest an edit / a translation on the glossary card**, the same for everyone: the card's
    translation block becomes editable in place (see "Suggest a translation, suggest an edit").
 6. **Pending display on the glossary page:** card blocks, markers, the "Proposed" label in

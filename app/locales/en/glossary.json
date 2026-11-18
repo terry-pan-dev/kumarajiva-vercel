@@ -340,6 +340,24 @@
       "scanFailed": "Failed to scan the search index."
     }
   },
+  "entries": {
+    "title": "Edit glossary entries",
+    "description": "Find an entry and change it directly. Changes saved here go straight into the glossary, without review.",
+    "search": "Search",
+    "searchPlaceholder": "Chinese term, translation, source or id",
+    "searchHint": "Search for the entry you want to edit.",
+    "noResults": "No entries match “{{query}}”.",
+    "resultCount_one": "{{count}} entry",
+    "resultCount_other": "{{count}} entries",
+    "selectHint": "Choose an entry to edit it.",
+    "notFound": "This entry is no longer in the glossary. It may have been moved to the trash.",
+    "save": "Save changes",
+    "saved": "“{{term}}” was saved.",
+    "stale": "This entry was changed by someone else. Reload it and edit it again.",
+    "trashed": "Moved “{{term}}” to the trash.",
+    "trashDescription_one": "This moves “{{term}}” and its translation to the trash. It disappears from the glossary and search; an admin can restore it, or delete it for good, from the Glossary Inspector.",
+    "trashDescription_other": "This moves “{{term}}” and all {{count}} of its translations to the trash. It disappears from the glossary and search; an admin can restore it, or delete it for good, from the Glossary Inspector."
+  },
   "errors": {
     "notAllowed": "Not allowed.",
     "noRows": "No rows provided.",
