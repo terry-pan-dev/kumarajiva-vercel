@@ -24,6 +24,7 @@ import { type GlossaryEntry } from '~/services/glossary.types';
 import { glossaryEditFormSchema } from '~/validations/glossary.validation';
 
 import { FormModal, HiddenInput } from './FormModal';
+import { FlagTranslationButton } from './glossary/FlagTranslationButton';
 import { SourceTermFields, TranslationsFields } from './GlossaryForm';
 import { Spacer } from './ui/spacer';
 
@@ -197,7 +198,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
         {showEdit && (
           <CardHeader className="flex-row items-center justify-end px-2 py-4">
             <div className="flex">
-              <Can I="Update" this="Glossary">
+              <Can I="Maintain" this="GlossaryData">
                 <FormModal
                   kind="edit"
                   fetcherKey="edit-glossary"
@@ -225,7 +226,7 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                   <GlossaryEditForm id={glossary.id} />
                 </FormModal>
               </Can>
-              <Can I="Maintain" this="Glossary">
+              <Can I="Maintain" this="GlossaryData">
                 <span className="flex h-10 w-10 items-center justify-center">
                   <DeleteEntityButton
                     size={24}
@@ -285,9 +286,17 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                   </div>
                 )}
                 <Spacer />
-                <h2 className="text-primary mb-2 text-xl font-semibold tracking-tight lg:text-2xl">
-                  {translation.term}
-                </h2>
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <h2 className="text-primary text-xl font-semibold tracking-tight lg:text-2xl">{translation.term}</h2>
+                  {/* Anyone signed in may flag a stored translation (docs/plans/glossary-suggestions.md). */}
+                  {translation.id && (
+                    <FlagTranslationButton
+                      term={translation.term}
+                      glossaryId={glossary.id}
+                      translationId={translation.id}
+                    />
+                  )}
+                </div>
                 {targetText && (
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />

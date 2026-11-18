@@ -172,6 +172,12 @@ describe('submitSuggestion', () => {
 
   it('refuses a new term already in the glossary', async () => {
     glossaryStore.findByTerms.mockResolvedValue([entry([])]);
+    const error = await submitSuggestion(editor, {
+      kind: 'new-term',
+      proposed: { sourceTerm: '般若', translation: { term: 'x' } },
+    }).catch((e) => e);
+    // The entry's id goes with it, so the form can offer to suggest a translation of it instead.
+    expect(error).toMatchObject({ code: 'term-exists', glossaryId: 'g1' });
     const run = () =>
       submitSuggestion(editor, { kind: 'new-term', proposed: { sourceTerm: '般若', translation: { term: 'x' } } });
     expect(await codeOf(run)).toBe('term-exists');

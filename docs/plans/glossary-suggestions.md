@@ -1,8 +1,8 @@
 # Glossary suggestions: edits become reviewed submissions
 
 Written 2026-11-17. **Design agreed with the user. The schema below was approved by the user on
-2026-11-17.** Steps 0–2 are done (working tree, 2026-11-17). Migration 0030 is applied to the
-shared dev database (with the user's go-ahead), not yet to prod. Steps 3+ are not started.
+2026-11-17.** Steps 0–3 are done (working tree, 2026-11-17). Migration 0030 is applied to the
+shared dev database (with the user's go-ahead), not yet to prod. Steps 4+ are not started.
 
 ## Why
 
@@ -22,8 +22,11 @@ the glossary at once, marked as under review, until an admin finalizes it.
 - **Admins finalize**: accept, reject, dismiss a flag. An admin may finalize something no leader
   has reviewed.
 - **No direct path for leaders**, not even for urgent needs: they suggest like everyone.
-- **Direct edits stay direct in Data Management** for tech and admin (typo fixes and so on):
-  trust, not review. Their existing `updated_by` / `updated_at` stamps are the record.
+- **Direct edits stay direct** for tech and admin (typo fixes and so on): trust, not review.
+  Their existing `updated_by` / `updated_at` stamps are the record.
+  - **Step 3 adjustment:** Data Management has no editor for a single entry, so the direct tools
+    stay on the glossary page (create, the edit form, add or remove translations, trash). They
+    are gated on GlossaryData Maintain.
 - **Everyone sees pending suggestions.**
 - **"Ready for review"** is a mark enrichers can set. It is information only, never required.
 - **People can edit or withdraw their own suggestions** while pending.
@@ -106,7 +109,7 @@ pending ──(enrich, mark ready, review: any order, all optional)──┬─ 
   - remove the translation. **Correction (step 2):** there is no trash for single translations
     (the soft delete takes a whole term), so this removes the row for good. The flag's `base`
     keeps its content. Removing a term's last translation is refused: trash the term instead.
-    *(Awaiting the user's confirmation.)*
+    *(Confirmed by the user, 2026-11-17.)*
 - **Audit fields:**
   - New rows: `created_by` = the submitter, `updated_by` = the admin who finalized. This fits
     "term author = created-by" (see the glossary author semantics).
@@ -317,13 +320,46 @@ Each step is its own PR, run through typecheck, eslint and vitest.
        removed.
      - Store reads run read-only against dev (empty table): all valid SQL, including the jsonb
        headword search.
-     - Store writes haven't run against a real database yet. They will in step 3's dev run.
-   - **Until step 3's permission change,** editors and managers still pass `canReview` (they
-     hold Glossary Update). Nothing calls the service yet.
-3. **Suggest-a-term form and flag,** server actions included. **The permission change ships
-   here**, together with:
-   - removing the direct create, add and remove paths from the glossary page
-   - the context-menu entry in the working document
+     - Store writes were checked against the dev database in step 3.
+3. **Suggest-a-term form, flag, permission change. Done (working tree, 2026-11-17).**
+   - **Permissions** (`app/authorisation/ability.ts`, with its header comment):
+     - leader: Glossary `Update`
+     - tech, manager, editor: no Glossary level
+     - Glossary Maintain is held by admin alone
+   - **Direct glossary changes** (create, edit form, add or remove translations, trash) now check
+     **GlossaryData Maintain**, in the UI (`<Can>`) and the server (`_app.glossary.tsx`,
+     `_app.glossary._index.tsx`). `addsOrRemoves` (glossary.diff.ts) was only there to split
+     Update from Maintain, so it's removed.
+   - **Endpoint:** `app/routes/_app.resources.suggestions.ts` takes POST JSON
+     `{ intent: 'submit', kind, ... }` (`submitRequestSchema`). It maps SuggestionError codes to
+     400/403/404/409. `term-exists` carries the existing `glossaryId`.
+     - Route modules keep any export other than action/loader in the client bundle, so its
+       helper isn't exported. Exporting it broke `pnpm build`.
+   - **`SuggestTermDialog`** (`app/components/glossary/`):
+     - asks for the term, pinyin (filled in automatically), translation, language and a note
+     - from a paragraph, offers the source (document title + page), the source passage and the
+       translated passage, each with its own checkbox
+     - on `term-exists`, offers "Suggest it as a new translation of that entry"
+   - **Where it opens:**
+     - the glossary header ("Suggest a Term", for everyone without GlossaryData Maintain;
+       tech and admin keep "Add New Entry")
+     - "Suggest Glossary Term" in the translation page's context menu: `GlossarySuggestProvider`
+       on the page, plus a `passage` prop on `ContextMenuWrapper`. The loader's `sectionInfo`
+       now carries `documentId` and `sectionId`.
+   - **`FlagTranslationButton`** (⚑) next to each stored translation's rendering in
+     `GlossaryDetail`: a note, then submit.
+   - **Interim, until step 4:** editors, managers and leaders have no edit form. They can flag
+     a translation with a note describing the fix.
+   - **Tests:**
+     - `tests/suggestions.route.test.ts`, `tests/glossary.index.route.test.ts` (new)
+     - `ability`, `glossary.create.route`, `suggestion.rules`, `suggestion.service` (updated)
+     - mutation checks: 9 rules broken, all caught
+   - `pnpm build` passes.
+   - **Dev run (service level, 2026-11-17):** against the dev DB, as user `claude-smoke`:
+     - submit term and flag, edit own, withdraw
+     - a second withdraw refused (`not-pending`), an existing headword refused (`term-exists`)
+     - test rows deleted afterwards
+   - **The UI hasn't been tried in a browser** (it needs a signed-in session).
 4. **Edit-as-card** on `GlossaryDetail`, and suggest-a-translation. The edit modal is removed
    from the glossary page.
 5. **Pending display:** card blocks, markers, the "Proposed" label in search and its database

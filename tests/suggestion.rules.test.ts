@@ -40,13 +40,8 @@ describe('permissions', () => {
     expect(rolesWhere(canFinalize)).toEqual(['admin']);
   });
 
-  it('lets leaders and admins review, not readers or assistants', () => {
-    const reviewers = rolesWhere(canReview);
-    expect(reviewers).toEqual(expect.arrayContaining(['admin', 'leader']));
-    expect(reviewers).not.toContain('reader');
-    expect(reviewers).not.toContain('assistant');
-    // Editors and managers still hold Glossary Update until the permission change of step 3
-    // (docs/plans/glossary-suggestions.md), which leaves exactly ['admin', 'leader'].
+  it('lets leaders and admins review', () => {
+    expect(rolesWhere(canReview)).toEqual(['admin', 'leader']);
   });
 });
 

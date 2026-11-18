@@ -98,3 +98,20 @@ export type SuggestionContext = z.infer<typeof suggestionContextSchema>;
 
 // The submitter's note, a review note, a decision note: optional free text.
 export const noteSchema = optionalText;
+
+// What the suggestion endpoint (/resources/suggestions) accepts to submit one. The values
+// (`proposed`, `note`, `context`) are checked by the schemas above, in the service, according to
+// the kind; here only the kind and the ids it names.
+const values = { proposed: z.unknown(), note: z.unknown().optional(), context: z.unknown().optional() };
+export const submitRequestSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('new-term'), ...values }),
+  z.object({ kind: z.literal('new-translation'), glossaryId: z.string().uuid(), ...values }),
+  z.object({ kind: z.literal('edit'), glossaryId: z.string().uuid(), translationId: z.string().uuid(), ...values }),
+  z.object({
+    kind: z.literal('flag'),
+    glossaryId: z.string().uuid(),
+    translationId: z.string().uuid(),
+    note: z.unknown(),
+    context: z.unknown().optional(),
+  }),
+]);

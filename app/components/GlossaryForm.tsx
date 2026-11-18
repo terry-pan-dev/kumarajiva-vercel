@@ -65,8 +65,9 @@ export function SourceTermFields({ isNew = false }: { isNew?: boolean }) {
 }
 
 // `keepOne`: the create form, where an entry needs at least one translation, so the last one
-// cannot be removed. Adding and removing need Maintain (the save checks it too); Update may
-// only edit the translations there are.
+// cannot be removed. These forms are direct changes, shown only to the trusted roles
+// (GlossaryData Maintain: tech, admin; the save checks it too). Everyone else suggests
+// (docs/plans/glossary-suggestions.md).
 // `addAtTop`: also offer "Add translation" above the list (just after the source term), for the
 // edit form, where the existing translations can push the bottom button out of view. Not on the
 // create form, whose blank first translation is there to be filled in. Either way the new
@@ -103,7 +104,7 @@ export function TranslationsFields({ keepOne = false, addAtTop = false }: { keep
               </Divider>
               {/* Removal takes effect on Save, like every other edit in this form. */}
               {!(keepOne && fields.length === 1) && (
-                <Can I="Maintain" this="Glossary">
+                <Can I="Maintain" this="GlossaryData">
                   <Button
                     size="icon"
                     type="button"
@@ -128,7 +129,7 @@ export function TranslationsFields({ keepOne = false, addAtTop = false }: { keep
 
 function AddTranslationButton({ onClick }: { onClick: () => void }) {
   return (
-    <Can I="Maintain" this="Glossary">
+    <Can I="Maintain" this="GlossaryData">
       <div className="flex justify-center">
         <Button type="button" onClick={onClick} variant="secondary">
           <Plus className="mr-1 h-4 w-4" />

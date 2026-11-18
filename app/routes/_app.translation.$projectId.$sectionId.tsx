@@ -7,16 +7,17 @@
 // Comments and history still hang off the legacy tables (viewable via the
 // legacy /data/paragraphs debug page) and return here once they migrate.
 import { useAbility } from '@casl/react';
-import { useActionData, useLoaderData, useRouteError } from '@remix-run/react';
+import { useActionData, useLoaderData, useParams, useRouteError } from '@remix-run/react';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { motion } from 'framer-motion';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ZodError } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
 import { AbilityContext, defineAbilityFor } from '~/authorisation';
 import ContextMenuWrapper from '~/components/ContextMenu';
 import { ErrorInfo } from '~/components/ErrorInfo';
+import { GlossarySuggestProvider } from '~/components/glossary/GlossarySuggestContext';
 import { Paragraph } from '~/components/Paragraph';
 import { DragPanel, LeftPanel, RightPanel } from '~/components/translation/panels';
 import { Workspace } from '~/components/translation/Workspace';
@@ -62,7 +63,12 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     references: contextReferences(context),
   });
 
-  const sectionInfo = { documentTitle: context.origin.document.title, sectionTitle: context.origin.section.title };
+  const sectionInfo = {
+    documentId: context.origin.document.id,
+    documentTitle: context.origin.document.title,
+    sectionId: context.origin.section.id,
+    sectionTitle: context.origin.section.title,
+  };
 
   return json({ success: true, paragraphs: paragraphs ?? [], sectionInfo });
 }
@@ -212,6 +218,25 @@ export default function TranslationSection() {
     }
   }, [paragraphs, actionData]);
 
+  // What "Suggest Glossary Term" knows: the document and section here, and per paragraph its
+  // passages and page (docs/plans/glossary-suggestions.md).
+  const { projectId } = useParams();
+  const suggestSource = useMemo(
+    () => ({
+      projectId,
+      documentId: sectionInfo.documentId,
+      sectionId: sectionInfo.sectionId,
+      documentTitle: sectionInfo.documentTitle,
+    }),
+    [projectId, sectionInfo.documentId, sectionInfo.sectionId, sectionInfo.documentTitle],
+  );
+  const passageOf = (paragraph: (typeof paragraphs)[number]) => ({
+    paragraphId: paragraph.id,
+    originText: paragraph.origin,
+    targetText: paragraph.target,
+    page: paragraph.metadata?.page ?? null,
+  });
+
   const Paragraphs = paragraphs.map((paragraph, index) => (
     <div key={paragraph.id} className="flex items-center gap-6 px-4">
       {paragraph?.target ? (
@@ -223,7 +248,7 @@ export default function TranslationSection() {
           }`}
         >
           <div onDoubleClick={() => canEdit && setSelectedParagraphIndex(paragraph.id)}>
-            <ContextMenuWrapper>
+            <ContextMenuWrapper passage={passageOf(paragraph)}>
               <div className="relative">
                 <span className="absolute top-4 left-1.5 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
                 <Paragraph isOrigin comments={[]} id={paragraph.id} text={paragraph.origin} />
@@ -235,7 +260,7 @@ export default function TranslationSection() {
             ref={selectedParagraphIndex === paragraph.id ? divRef : undefined}
             onDoubleClick={() => canEdit && setSelectedParagraphIndex(paragraph.id)}
           >
-            <ContextMenuWrapper>
+            <ContextMenuWrapper passage={passageOf(paragraph)}>
               <div className="relative h-full">
                 <Paragraph
                   comments={[]}
@@ -269,7 +294,7 @@ export default function TranslationSection() {
             className="text-md w-full font-normal"
             ref={selectedParagraphIndex === paragraph.id ? labelRef : undefined}
           >
-            <ContextMenuWrapper>
+            <ContextMenuWrapper passage={passageOf(paragraph)}>
               <div className="relative">
                 <span className="absolute top-4 left-1.5 z-10 text-sm font-medium text-yellow-600">{index + 1}</span>
                 <Paragraph
@@ -288,7 +313,7 @@ export default function TranslationSection() {
 
   if (selectedParagraph) {
     return (
-      <Fragment>
+      <GlossarySuggestProvider source={suggestSource}>
         <DragPanel orientation={panelOrientation}>
           <LeftPanel>
             <ScrollArea className="h-full w-full lg:pr-4">
@@ -308,12 +333,12 @@ export default function TranslationSection() {
             </ScrollArea>
           </RightPanel>
         </DragPanel>
-      </Fragment>
+      </GlossarySuggestProvider>
     );
   }
 
   return (
-    <Fragment>
+    <GlossarySuggestProvider source={suggestSource}>
       <ScrollArea className="h-full px-0 lg:px-4">
         <RadioGroup
           className="gap-4"
@@ -333,6 +358,6 @@ export default function TranslationSection() {
           )}
         </RadioGroup>
       </ScrollArea>
-    </Fragment>
+    </GlossarySuggestProvider>
   );
 }

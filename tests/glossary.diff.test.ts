@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  addsOrRemoves,
   diffTranslations,
   isStored,
   sameContent,
@@ -128,30 +127,6 @@ describe('sameContent', () => {
   });
 });
 
-// The edit form's permission rule: Update edits, Maintain also adds and removes.
-describe('addsOrRemoves', () => {
-  it('is false for edits and moves only', () => {
-    expect(addsOrRemoves([a, b], [{ ...a, term: 'the Buddha' }, b])).toBe(false);
-    expect(addsOrRemoves([a, b], [b, a])).toBe(false);
-  });
-
-  it('is true when a translation is left out', () => {
-    expect(addsOrRemoves([a, b], [a])).toBe(true);
-  });
-
-  it('is true when a translation without an id is added', () => {
-    expect(addsOrRemoves([a], [a, translation('new')])).toBe(true);
-  });
-
-  it('is true when one translation replaces another and the list keeps its length', () => {
-    expect(addsOrRemoves([a, b], [a, translation('Dharma')])).toBe(true);
-  });
-
-  it('refuses a list built from other translations', () => {
-    expect(() => addsOrRemoves([a], [stored('other', 'Buddha')])).toThrow(TranslationListError);
-  });
-});
-
 // The ids the list was built from: a stored translation outside them was added meanwhile.
 describe('diffTranslations with a basis', () => {
   it('keeps a translation added since the list was built, after the listed ones', () => {
@@ -188,8 +163,8 @@ describe('diffTranslations with a basis', () => {
     expect(() => diffTranslations([a], [stored('gone', 'x')], ['a', 'gone'])).toThrow(TranslationListError);
   });
 
-  it('a translation added meanwhile is no removal for the edit permission', () => {
-    expect(addsOrRemoves([a, b, c], [a, b], ['a', 'b'])).toBe(false);
-    expect(addsOrRemoves([a, b, c], [a, b], undefined)).toBe(true);
+  it('a translation added meanwhile is no removal', () => {
+    expect(diffTranslations([a, b, c], [a, b], ['a', 'b']).remove).toEqual([]);
+    expect(diffTranslations([a, b, c], [a, b], undefined).remove).toEqual(['c']);
   });
 });

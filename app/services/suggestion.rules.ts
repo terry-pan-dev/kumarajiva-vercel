@@ -32,13 +32,19 @@ export type SuggestionErrorCode =
 
 export class SuggestionError extends Error {
   name = 'SuggestionError';
+  // For 'stale': the fields that changed on both sides.
+  readonly fields?: readonly string[];
+  // For 'term-exists': the entry that has the headword, so the user can be offered to suggest a
+  // translation of it (or the admin to merge into it) instead.
+  readonly glossaryId?: string;
   constructor(
     readonly code: SuggestionErrorCode,
     message: string,
-    // For 'stale': the fields that changed on both sides.
-    readonly fields?: readonly string[],
+    details: { fields?: readonly string[]; glossaryId?: string } = {},
   ) {
     super(message);
+    this.fields = details.fields;
+    this.glossaryId = details.glossaryId;
   }
 }
 

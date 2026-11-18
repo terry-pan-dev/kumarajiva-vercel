@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { newTranslation } from '~/components/GlossaryForm';
 import { action } from '~/routes/_app.glossary';
 
-// The Create Glossary Entry action's permission check: the create button is hidden from roles
-// without Maintain on Glossary, and this is what stops a direct POST. Services are mocked;
-// permissions are the real role table (leader, tech, admin: Maintain; editor, manager: Update).
+// The Create Glossary Entry action's permission check: creating directly is for the trusted roles
+// (GlossaryData Maintain: tech, admin); everyone else suggests a term. The create button is hidden
+// from the others, and this is what stops a direct POST. Services are mocked; permissions are the
+// real role table.
 const mocks = vi.hoisted(() => ({
   assertAuthUser: vi.fn(),
   findByTermsIncludingTrash: vi.fn(),
@@ -47,17 +48,20 @@ beforeEach(() => {
 });
 
 describe('create action', () => {
-  it.each(['editor', 'manager', 'assistant', 'reader'])('refuses %s with 403 and writes nothing', async (role) => {
-    mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role });
-    const response = await runAction();
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({ success: false });
-    expect(mocks.findByTermsIncludingTrash).not.toHaveBeenCalled();
-    expect(mocks.createGlossaryAndIndexInAlgolia).not.toHaveBeenCalled();
-    expect(mocks.reviveTrashedGlossary).not.toHaveBeenCalled();
-  });
+  it.each(['leader', 'editor', 'manager', 'assistant', 'reader'])(
+    'refuses %s with 403 and writes nothing',
+    async (role) => {
+      mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role });
+      const response = await runAction();
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ success: false });
+      expect(mocks.findByTermsIncludingTrash).not.toHaveBeenCalled();
+      expect(mocks.createGlossaryAndIndexInAlgolia).not.toHaveBeenCalled();
+      expect(mocks.reviveTrashedGlossary).not.toHaveBeenCalled();
+    },
+  );
 
-  it.each(['leader', 'tech', 'admin'])('lets %s create a term', async (role) => {
+  it.each(['tech', 'admin'])('lets %s create a term', async (role) => {
     mocks.assertAuthUser.mockResolvedValue({ id: 'u1', role });
     const response = await runAction();
     expect(response.status).toBe(200);

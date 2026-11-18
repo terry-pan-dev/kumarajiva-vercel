@@ -148,11 +148,12 @@ export const translationFromProposal = (proposal: ProposedTranslation, by: strin
 
 // ─── Submitting (anyone signed in) ───────────────────────────────────────────
 
+// The values are unknown (from a request): each is checked here, by the schema for its kind.
 export type SubmitInput =
-  | { kind: 'new-term'; proposed: unknown; note?: unknown; context?: unknown }
-  | { kind: 'new-translation'; glossaryId: string; proposed: unknown; note?: unknown; context?: unknown }
-  | { kind: 'edit'; glossaryId: string; translationId: string; proposed: unknown; note?: unknown; context?: unknown }
-  | { kind: 'flag'; glossaryId: string; translationId: string; note: unknown; context?: unknown };
+  | { kind: 'new-term'; proposed?: unknown; note?: unknown; context?: unknown }
+  | { kind: 'new-translation'; glossaryId: string; proposed?: unknown; note?: unknown; context?: unknown }
+  | { kind: 'edit'; glossaryId: string; translationId: string; proposed?: unknown; note?: unknown; context?: unknown }
+  | { kind: 'flag'; glossaryId: string; translationId: string; note?: unknown; context?: unknown };
 
 export const submitSuggestion = async (user: SuggestionUser, input: SubmitInput): Promise<ReadSuggestion> => {
   const note = parse(noteSchema, input.note);
@@ -166,6 +167,7 @@ export const submitSuggestion = async (user: SuggestionUser, input: SubmitInput)
       throw new SuggestionError(
         'term-exists',
         `“${proposed.sourceTerm}” is already in the glossary. Suggest a translation for it instead.`,
+        { glossaryId: existing.id },
       );
     }
     return SuggestionStore.create({
@@ -413,6 +415,7 @@ const acceptNewTerm = async (user: SuggestionUser, suggestion: ReadSuggestion, n
     throw new SuggestionError(
       'term-exists',
       `“${proposal.sourceTerm}” is already in the glossary. Merge this suggestion into it instead.`,
+      { glossaryId: existing.id },
     );
   }
   // The term's author is who created the entry: the submitter (see the glossary author semantics).
@@ -466,7 +469,7 @@ const acceptEdit = async (user: SuggestionUser, suggestion: ReadSuggestion, note
     throw new SuggestionError(
       'stale',
       'The translation was changed after this suggestion was made. Compare the versions and confirm.',
-      stale,
+      { fields: stale },
     );
   }
   const basis = entry.translations.flatMap((t) => t.id ?? []);

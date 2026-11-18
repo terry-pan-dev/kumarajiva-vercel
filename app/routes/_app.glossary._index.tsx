@@ -19,7 +19,7 @@ import {
 import { validatePayloadOrThrow } from '~/lib/payload.validation';
 import { readGlossaries, readGlossariesByIds, trashGlossaryById, updateGlossaryTranslations } from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
-import { addsOrRemoves, isStored, TranslationListError } from '~/services/glossary.diff';
+import { TranslationListError } from '~/services/glossary.diff';
 import { glossaryEditFormSchema } from '~/validations/glossary.validation';
 
 export const meta: MetaFunction = () => {
@@ -63,10 +63,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = Object.fromEntries(await request.formData());
   const kind = formData.kind;
 
-  // Posted by the trash button on GlossaryDetail. A soft delete can be undone from the trash, so
-  // it asks for Maintain. The hidden button is cosmetic; this check is what holds.
+  // Posted by the trash button on GlossaryDetail: a direct change, so for the trusted roles
+  // (GlossaryData Maintain: tech, admin). Everyone else flags a translation instead
+  // (docs/plans/glossary-suggestions.md). The hidden button is cosmetic; this check is what holds.
   if (formData.intent === 'delete-glossary') {
-    if (ability.cannot('Maintain', 'Glossary')) {
+    if (ability.cannot('Maintain', 'GlossaryData')) {
       return json({ success: false, error: 'Not allowed.' }, { status: 403 });
     }
     const deletion = await trashGlossaryById(formData.glossaryId as string, user.id);
@@ -79,11 +80,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
   }
 
-  // The edit mirrors the <Can> gates in GlossaryDetail and its form (edit, add and remove
-  // translation). Those only hide the buttons; without these checks any signed-in user could
-  // POST here directly.
+  // The edit form is a direct change (edit, add and remove translations), so for the trusted
+  // roles only (GlossaryData Maintain: tech, admin); everyone else suggests. This mirrors the
+  // <Can> gates in GlossaryDetail and its form, which only hide the buttons.
   if (kind === 'edit') {
-    if (ability.cannot('Update', 'Glossary')) {
+    if (ability.cannot('Maintain', 'GlossaryData')) {
       return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
     }
     const data = JSON.parse(formData.data as string);
@@ -91,7 +92,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // The edit form sends the whole translations list, each stored one with its id, and the ids
     // it was opened with. Matched by id against what is stored, one of those the list leaves out
     // is a removal and one without an id an addition (one added by someone else meanwhile is
-    // neither, and is kept). Both need Maintain; Update may only edit the ones that exist.
+    // neither, and is kept).
     const [existing] = await readGlossariesByIds([validatedData.id]);
     if (!existing) {
       return json({ success: false, errors: ['Glossary not found.'] }, { status: 404 });
@@ -103,20 +104,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       updatedBy: user.id,
       updatedAt: now,
     }));
-    let needsMaintain;
-    try {
-      needsMaintain = addsOrRemoves(
-        existing.translations.filter(isStored),
-        validatedDataWithUpdatedBy,
-        validatedData.baseTranslationIds,
-      );
-    } catch (error) {
-      if (error instanceof TranslationListError) return staleEdit();
-      throw error;
-    }
-    if (needsMaintain && ability.cannot('Maintain', 'Glossary')) {
-      return json({ success: false, errors: ['You are not allowed to add or remove translations.'] }, { status: 403 });
-    }
     const { id, phonetic = null, cbetaFrequency = null } = validatedData;
     try {
       await updateGlossaryTranslations({
@@ -132,7 +119,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         basis: validatedData.baseTranslationIds,
       });
     } catch (error) {
-      // Someone else removed one of these translations between the check above and the save.
+      // Someone else removed one of these translations since the form was opened.
       if (error instanceof TranslationListError) return staleEdit();
       throw error;
     }
