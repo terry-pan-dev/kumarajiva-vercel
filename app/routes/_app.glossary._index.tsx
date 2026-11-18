@@ -1,10 +1,9 @@
 import { Form, Link, useLoaderData, useNavigation, useRouteError } from '@remix-run/react';
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
+import { json, redirect, type LoaderFunctionArgs, type MetaFunction } from '@vercel/remix';
 import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 
 import { assertAuthUser } from '~/auth.server';
-import { defineAbilityFor } from '~/authorisation';
 import { ErrorInfo } from '~/components/ErrorInfo';
 import { GlossaryList } from '~/components/GlossaryList';
 import { Button, Input } from '~/components/ui';
@@ -16,17 +15,17 @@ import {
   PaginationNext,
   PaginationEllipsis,
 } from '~/components/ui/pagination';
-import { validatePayloadOrThrow } from '~/lib/payload.validation';
-import { readGlossaries, readGlossariesByIds, trashGlossaryById, updateGlossaryTranslations } from '~/services';
+import { readGlossaries } from '~/services';
 import { searchGlossaries } from '~/services/edge.only';
-import { addsOrRemoves, isStored, TranslationListError } from '~/services/glossary.diff';
-import { glossaryEditFormSchema } from '~/validations/glossary.validation';
+import { searchPendingTermViews } from '~/services/suggestion.service';
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Glossary' }];
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const user = await assertAuthUser(request);
+  if (!user) return redirect('/login');
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -34,113 +33,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     if (searchTerm) {
       console.log('searchTerm', searchTerm);
-      const glossaries = await searchGlossaries(searchTerm);
-      return json({ success: true, glossaries, page: 1, totalPages: 1 });
+      // Pending new terms aren't in the search index; they are listed after the entries, marked
+      // "Proposed", so the same term isn't suggested twice (docs/plans/glossary-suggestions.md).
+      const [glossaries, proposedTerms] = await Promise.all([
+        searchGlossaries(searchTerm),
+        searchPendingTermViews(user, searchTerm),
+      ]);
+      return json({ success: true, glossaries, proposedTerms, page: 1, totalPages: 1 });
     }
 
     const { glossaries, totalPages } = await readGlossaries({ page });
 
-    return json({ success: true, glossaries, page: glossaries.length ? page : 1, totalPages });
+    return json({ success: true, glossaries, proposedTerms: [], page: glossaries.length ? page : 1, totalPages });
   } catch (error) {
     console.error(error);
     throw new Error('Internal Server Error');
   }
-};
-
-// The form was built from translations that have changed since: one it names is gone.
-const staleEdit = () =>
-  json(
-    { success: false, errors: ['This entry was changed by someone else. Reload the page and edit it again.'] },
-    { status: 409 },
-  );
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const user = await assertAuthUser(request);
-  if (!user) {
-    return redirect('/login');
-  }
-  const ability = defineAbilityFor(user);
-  const formData = Object.fromEntries(await request.formData());
-  const kind = formData.kind;
-
-  // Posted by the trash button on GlossaryDetail. A soft delete can be undone from the trash, so
-  // it asks for Maintain. The hidden button is cosmetic; this check is what holds.
-  if (formData.intent === 'delete-glossary') {
-    if (ability.cannot('Maintain', 'Glossary')) {
-      return json({ success: false, error: 'Not allowed.' }, { status: 403 });
-    }
-    const deletion = await trashGlossaryById(formData.glossaryId as string, user.id);
-    if (!deletion) {
-      return json({ success: false, error: 'Glossary not found.' }, { status: 404 });
-    }
-    return json({
-      success: true,
-      message: `Moved “${deletion.term}” to the trash.`,
-    });
-  }
-
-  // The edit mirrors the <Can> gates in GlossaryDetail and its form (edit, add and remove
-  // translation). Those only hide the buttons; without these checks any signed-in user could
-  // POST here directly.
-  if (kind === 'edit') {
-    if (ability.cannot('Update', 'Glossary')) {
-      return json({ success: false, errors: ['Not allowed.'] }, { status: 403 });
-    }
-    const data = JSON.parse(formData.data as string);
-    const validatedData = validatePayloadOrThrow({ schema: glossaryEditFormSchema, formData: data });
-    // The edit form sends the whole translations list, each stored one with its id, and the ids
-    // it was opened with. Matched by id against what is stored, one of those the list leaves out
-    // is a removal and one without an id an addition (one added by someone else meanwhile is
-    // neither, and is kept). Both need Maintain; Update may only edit the ones that exist.
-    const [existing] = await readGlossariesByIds([validatedData.id]);
-    if (!existing) {
-      return json({ success: false, errors: ['Glossary not found.'] }, { status: 404 });
-    }
-    // Who and when, for the store: it stamps only the translations whose content changed.
-    const now = new Date().toISOString();
-    const validatedDataWithUpdatedBy = validatedData.translations.map((translation) => ({
-      ...translation,
-      updatedBy: user.id,
-      updatedAt: now,
-    }));
-    let needsMaintain;
-    try {
-      needsMaintain = addsOrRemoves(
-        existing.translations.filter(isStored),
-        validatedDataWithUpdatedBy,
-        validatedData.baseTranslationIds,
-      );
-    } catch (error) {
-      if (error instanceof TranslationListError) return staleEdit();
-      throw error;
-    }
-    if (needsMaintain && ability.cannot('Maintain', 'Glossary')) {
-      return json({ success: false, errors: ['You are not allowed to add or remove translations.'] }, { status: 403 });
-    }
-    const { id, phonetic = null, cbetaFrequency = null } = validatedData;
-    try {
-      await updateGlossaryTranslations({
-        id,
-        phonetic,
-        // The term's author records who created the entry, and its discussion is only ever
-        // blank (to be dropped): the form edits neither, and null leaves both as stored.
-        author: null,
-        discussion: null,
-        cbetaFrequency,
-        updatedBy: phonetic || cbetaFrequency ? user.id : null,
-        translations: validatedDataWithUpdatedBy,
-        basis: validatedData.baseTranslationIds,
-      });
-    } catch (error) {
-      // Someone else removed one of these translations between the check above and the save.
-      if (error instanceof TranslationListError) return staleEdit();
-      throw error;
-    }
-    return json({ success: true, kind: 'edit' });
-  }
-
-  // Nothing else posts here: creating an entry is the layout route's action (_app.glossary.tsx).
-  return json({ success: false, errors: ['Unknown request.'] }, { status: 400 });
 };
 
 export function ErrorBoundary() {
@@ -150,7 +58,7 @@ export function ErrorBoundary() {
 }
 
 export default function GlossaryIndex() {
-  const { glossaries } = useLoaderData<typeof loader>();
+  const { glossaries, proposedTerms } = useLoaderData<typeof loader>();
 
   const glossariesState = useMemo(() => {
     return glossaries.map((glossary) => ({
@@ -169,9 +77,9 @@ export default function GlossaryIndex() {
     <div>
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       <div className="h-4" />
-      {glossariesState.length > 0 ? (
+      {glossariesState.length > 0 || proposedTerms.length > 0 ? (
         <>
-          <GlossaryList ref={glossaryListRef} glossaries={glossariesState} />
+          <GlossaryList ref={glossaryListRef} glossaries={glossariesState} proposedTerms={proposedTerms} />
           <PaginationControls />
         </>
       ) : (

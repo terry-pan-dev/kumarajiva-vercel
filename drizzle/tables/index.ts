@@ -15,3 +15,4 @@ export * from './enums';
 export * from './notification';
 export * from './systemConfig';
 export * from './comment';
+export * from './suggestion';

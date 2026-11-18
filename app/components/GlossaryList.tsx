@@ -2,16 +2,12 @@ import { ChevronRight } from 'lucide-react';
 import React, { useCallback, useMemo, useState, useRef } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
 
-import { Can } from '~/authorisation';
-import { DeleteEntityButton } from '~/components/data/DeleteEntityButton';
 import { Icons } from '~/components/icons';
 import {
   Badge,
-  Button,
   Card,
   CardContent,
   CardFooter,
-  CardHeader,
   ScrollArea,
   Separator,
   Tooltip,
@@ -21,70 +17,88 @@ import {
 } from '~/components/ui';
 import { Divider } from '~/components/ui/divider';
 import { type GlossaryEntry } from '~/services/glossary.types';
-import { glossaryEditFormSchema } from '~/validations/glossary.validation';
+import { groupPendingForEntry, type PendingSuggestionView } from '~/services/suggestion.view';
 
-import { FormModal, HiddenInput } from './FormModal';
-import { SourceTermFields, TranslationsFields } from './GlossaryForm';
+import {
+  ChangesUnderReview,
+  PendingTranslationBlock,
+  ProposedTermDetail,
+  ProposedTermItem,
+  ShowSuggestionsSwitch,
+  usePendingSuggestions,
+  useShowSuggestions,
+} from './glossary/PendingSuggestions';
+import { SuggestChangeButton, SuggestChangePanel } from './glossary/SuggestChangeButton';
+import { SuggestTranslationButton } from './glossary/SuggestTranslationButton';
 import { Spacer } from './ui/spacer';
 
 interface GlossaryListProps {
   glossaries: GlossaryEntry[];
-  // ShowEdit is useful when in the screen that people not allowed to edit glossary
-  showEdit?: boolean;
+  // Pending new terms matching the search, listed after the entries with a "Proposed" label
+  // (docs/plans/glossary-suggestions.md, step 6).
+  proposedTerms?: PendingSuggestionView[];
 }
 
+type ListItem = { kind: 'entry'; entry: GlossaryEntry } | { kind: 'proposed'; view: PendingSuggestionView };
+
 export const GlossaryList = React.forwardRef<HTMLDivElement, GlossaryListProps>(
-  ({ glossaries, showEdit = true }, ref) => {
+  ({ glossaries, proposedTerms }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
-    const selectedGlossary = useMemo(() => {
-      // Clamped so deleting the last entry in the list selects its predecessor.
-      return glossaries[Math.min(selectedIndex, glossaries.length - 1)];
-    }, [glossaries, selectedIndex]);
+    const items = useMemo<ListItem[]>(
+      () => [
+        ...glossaries.map((entry) => ({ kind: 'entry' as const, entry })),
+        ...(proposedTerms ?? []).map((view) => ({ kind: 'proposed' as const, view })),
+      ],
+      [glossaries, proposedTerms],
+    );
 
-    if (!glossaries.length) {
-      return null;
-    }
+    // Clamped so an item leaving the list (e.g. a withdrawn proposal) selects its predecessor.
+    const selected = items[Math.min(selectedIndex, items.length - 1)];
 
-    if (glossaries.length) {
-      return (
-        <div className="flex flex-col gap-4 pb-0 lg:flex-row lg:gap-4">
-          <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-11rem)] lg:w-1/2">
-            <ScrollArea className="h-full lg:pr-4">
-              <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
-                {selectedGlossary ? (
-                  <ClientOnly fallback={<div>Loading...</div>}>
-                    {() => <GlossaryDetail showEdit={showEdit} glossary={selectedGlossary} />}
-                  </ClientOnly>
-                ) : (
-                  <div>No glossary selected</div>
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-          <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-11rem)] lg:w-1/2">
-            <ScrollArea ref={ref} className="h-full lg:pr-4">
-              <ul>
-                {glossaries.length > 0 ? (
-                  glossaries.map((glossary, index) => (
-                    <li
-                      key={glossary.id}
-                      onClick={() => setSelectedIndex(index)}
-                      className={`mb-2 ${selectedIndex === index ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
-                    >
-                      <GlossaryItem glossary={glossary} />
-                    </li>
-                  ))
-                ) : (
-                  <div>No glossaries found</div>
-                )}
-              </ul>
-            </ScrollArea>
-          </div>
+    if (!items.length) return null;
+    return (
+      <div className="flex flex-col gap-4 pb-0 lg:flex-row lg:gap-4">
+        <div className="order-1 h-[calc(50vh-6rem)] w-full lg:order-2 lg:h-[calc(100vh-11rem)] lg:w-1/2">
+          <ScrollArea className="h-full lg:pr-4">
+            <div className="h-full rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5">
+              {selected ? (
+                <ClientOnly fallback={<div>Loading...</div>}>
+                  {() =>
+                    selected.kind === 'entry' ? (
+                      <GlossaryDetail glossary={selected.entry} />
+                    ) : (
+                      <ProposedTermDetail view={selected.view} />
+                    )
+                  }
+                </ClientOnly>
+              ) : (
+                <div>No glossary selected</div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
-      );
-    }
-    return null;
+        <div className="order-2 h-[calc(50vh-6rem)] w-full lg:order-1 lg:h-[calc(100vh-11rem)] lg:w-1/2">
+          <ScrollArea ref={ref} className="h-full lg:pr-4">
+            <ul>
+              {items.map((item, index) => (
+                <li
+                  onClick={() => setSelectedIndex(index)}
+                  key={item.kind === 'entry' ? item.entry.id : item.view.id}
+                  className={`mb-2 ${selected === item ? 'rounded-lg bg-gradient-to-r from-yellow-600 to-slate-700 p-0.5' : ''}`}
+                >
+                  {item.kind === 'entry' ? (
+                    <GlossaryItem glossary={item.entry} />
+                  ) : (
+                    <ProposedTermItem view={item.view} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
+        </div>
+      </div>
+    );
   },
 );
 
@@ -114,8 +128,18 @@ export function GlossaryItem({ glossary }: GlossaryItemProps) {
   );
 }
 
-// The same prompt wherever a translation's discussion is entered: create, edit and insert.
-export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: GlossaryEntry; showEdit?: boolean }) => {
+// The entry's card, the same for every role: its content, "Suggest a change" on each
+// translation and "Suggest a translation" for the entry, and what is pending on it
+// (docs/plans/glossary-suggestions.md). Direct edits are in Data Management.
+export const GlossaryDetail = ({ glossary }: { glossary: GlossaryEntry }) => {
+  const pending = usePendingSuggestions(glossary.id);
+  const [showSuggestions, setShowSuggestions] = useShowSuggestions();
+  const { newTranslations, changesByTranslation } = useMemo(() => groupPendingForEntry(pending), [pending]);
+  // The translation whose "Suggest a change" panel is open, one at a time. It belongs to the
+  // entry it was opened on, so choosing another entry closes it.
+  const [changing, setChanging] = useState<{ glossaryId: string; translationId: string } | null>(null);
+  const changingId = changing?.glossaryId === glossary.id ? changing.translationId : null;
+  const closeChange = useCallback(() => setChanging(null), []);
   // Regex cache to avoid recompilation
   const regexCache = useRef<Map<string, RegExp>>(new Map());
 
@@ -194,62 +218,14 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
   return (
     <TooltipProvider>
       <Card className="flex h-full flex-col">
-        {showEdit && (
-          <CardHeader className="flex-row items-center justify-end px-2 py-4">
-            <div className="flex">
-              <Can I="Update" this="Glossary">
-                <FormModal
-                  kind="edit"
-                  fetcherKey="edit-glossary"
-                  title="Update Glossary Entry"
-                  schema={glossaryEditFormSchema}
-                  trigger={
-                    <Button size="icon" variant="ghost" aria-label="edit-glossary">
-                      <Icons.SquarePen className="h-6 w-6 text-slate-800" />
-                    </Button>
-                  }
-                  defaultValues={{
-                    id: glossary?.id,
-                    sourceTerm: glossary.sourceTerm,
-                    cbetaFrequency: glossary.cbetaFrequency || '',
-                    phonetic: glossary.phonetic || '',
-                    // Each translation keeps its id from here to the save (glossaryEditFormSchema
-                    // passes it through), so the save edits it in place. No input needed for it.
-                    translations: (glossary.translations || []).map((translation) => ({
-                      ...translation,
-                      discussion: translation.discussion ?? null,
-                    })),
-                    baseTranslationIds: glossary.translations.flatMap((translation) => translation.id ?? []),
-                  }}
-                >
-                  <GlossaryEditForm id={glossary.id} />
-                </FormModal>
-              </Can>
-              <Can I="Maintain" this="Glossary">
-                <span className="flex h-10 w-10 items-center justify-center">
-                  <DeleteEntityButton
-                    size={24}
-                    id={glossary.id}
-                    idName="glossaryId"
-                    entity="glossaryEntry"
-                    intent="delete-glossary"
-                    // Also rendered on /settings, whose action knows nothing about glossaries.
-                    action="/glossary?index"
-                    label={glossary.sourceTerm}
-                    description={`This moves “${glossary.sourceTerm}” and all ${glossary.translations?.length ?? 0} of its translations to the trash. It disappears from the glossary and search; an admin can restore it or delete it for good from the Glossary Inspector.`}
-                  />
-                </span>
-              </Can>
-            </div>
-          </CardHeader>
-        )}
-        <CardContent className="flex-grow px-4">
+        <CardContent className="flex-grow px-4 pt-4">
           <div className="my-2 flex items-end justify-start gap-2">
             <h2 className="text-primary text-xl font-semibold tracking-tight lg:text-3xl">{glossary.sourceTerm}</h2>
             {glossary.phonetic && (
               <h2 className="text-md text-secondary-foreground font-mono">({glossary.phonetic})</h2>
             )}
             <div className="ml-auto" />
+            {pending.length > 0 && <ShowSuggestionsSwitch show={showSuggestions} onChange={setShowSuggestions} />}
             {glossary.discussion && (
               <Tooltip>
                 <span className="inline-block align-middle">
@@ -285,9 +261,16 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                   </div>
                 )}
                 <Spacer />
-                <h2 className="text-primary mb-2 text-xl font-semibold tracking-tight lg:text-2xl">
-                  {translation.term}
-                </h2>
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <h2 className="text-primary text-xl font-semibold tracking-tight lg:text-2xl">{translation.term}</h2>
+                  {/* Anyone signed in may suggest a change to a stored translation
+                      (docs/plans/glossary-suggestions.md). */}
+                  {translation.id && (
+                    <SuggestChangeButton
+                      onClick={() => setChanging({ glossaryId: glossary.id, translationId: translation.id ?? '' })}
+                    />
+                  )}
+                </div>
                 {targetText && (
                   <div className="flex items-center gap-2">
                     <Icons.Book className="h-4 w-4 flex-shrink-0 text-slate-800" />
@@ -302,9 +285,20 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
                     <p className="text-sm whitespace-pre-wrap">{translation.discussion}</p>
                   </div>
                 )}
+                {showSuggestions && translation.id && (
+                  <ChangesUnderReview views={changesByTranslation.get(translation.id) ?? []} />
+                )}
+                {/* Below the translation, so it stays in view while the suggestion is written. */}
+                {translation.id && changingId === translation.id && (
+                  <SuggestChangePanel onDone={closeChange} glossaryId={glossary.id} translationId={translation.id} />
+                )}
               </div>
             );
           })}
+          {showSuggestions && newTranslations.map((view) => <PendingTranslationBlock view={view} key={view.id} />)}
+          <div className="flex justify-center pt-4">
+            <SuggestTranslationButton glossaryId={glossary.id} sourceTerm={glossary.sourceTerm} />
+          </div>
         </CardContent>
         <Separator className="px-2" />
         <CardFooter className="text-muted-foreground flex items-center justify-between p-2 text-sm lg:flex-row lg:justify-around lg:p-6 lg:pt-6">
@@ -328,16 +322,5 @@ export const GlossaryDetail = ({ glossary, showEdit = false }: { glossary: Gloss
         </CardFooter>
       </Card>
     </TooltipProvider>
-  );
-};
-
-// Adding a translation is part of the edit: "+ Add translation" appends one, saved with the rest.
-const GlossaryEditForm = ({ id }: { id: string }) => {
-  return (
-    <div className="flex max-h-[66vh] flex-col gap-4 overflow-y-auto px-4">
-      <HiddenInput name="id" value={id} />
-      <SourceTermFields />
-      <TranslationsFields addAtTop />
-    </div>
   );
 };

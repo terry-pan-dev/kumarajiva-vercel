@@ -21,11 +21,11 @@ import { References } from './References';
 // Date-typed relation arrays (empty until they migrate) are not part of it.
 export type WorkspaceParagraph = Pick<
   IParagraphNew,
-  'id' | 'origin' | 'target' | 'sectionId' | 'targetId' | 'references'
+  'id' | 'origin' | 'target' | 'sectionId' | 'targetId' | 'references' | 'metadata'
 >;
 
 export const Workspace = ({ paragraph }: { paragraph: WorkspaceParagraph }) => {
-  const { id, origin, target, sectionId, targetId, references } = paragraph;
+  const { id, origin, target, sectionId, targetId, references, metadata } = paragraph;
 
   const { translation, pasteTranslation, disabledEdit, cleanTranslation } = useTranslation({ originId: id, target });
 
@@ -81,7 +81,9 @@ export const Workspace = ({ paragraph }: { paragraph: WorkspaceParagraph }) => {
         exit={{ opacity: 0, x: '100%' }}
         initial={{ opacity: 0, x: '100%' }}
       >
-        <ContextMenuWrapper>
+        <ContextMenuWrapper
+          passage={{ paragraphId: id, originText: origin, targetText: target, page: metadata?.page ?? null }}
+        >
           <div className="relative">
             {isEditingOrigin ? (
               <Form method="post" onSubmit={() => setIsEditingOrigin(false)}>

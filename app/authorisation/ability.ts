@@ -12,10 +12,18 @@ import { type ReadUser } from '~/drizzle/schema';
 //   Administrate — anything irreversible or wholesale: replacing the glossary, purging the
 //                  trash, hard deletes in the data pages, and the raw-data inspectors.
 // Merely being signed in is enough to read, so there is no Read level.
+//
+// The glossary is the exception: its changes go through suggestions
+// (docs/plans/glossary-suggestions.md), which anyone signed in may make. On it:
+//   Glossary Update        — review suggestions (leader, admin)
+//   Glossary Administrate  — finalize them: accept, reject, dismiss (admin)
+//   GlossaryData Maintain  — enrich suggestions, and change the glossary directly: create, edit,
+//                            add or remove translations, trash (tech, admin; trusted, unreviewed)
+// Glossary Maintain is not used.
 type Actions = 'Update' | 'Maintain' | 'Administrate';
 // Glossary and Translation are the everyday pages; GlossaryData and TranslationData are the same
-// data seen through Data Management, which is kept apart so that people who add glossary entries
-// or edit origin text need not be handed the import and cleanup tools as well.
+// data seen through Data Management, kept apart so that people who edit origin text need not be
+// handed the import and cleanup tools as well.
 type Subjects = 'Glossary' | 'GlossaryData' | 'Translation' | 'TranslationData' | 'Users';
 
 export type AppAbility = PureAbility<[Actions, Subjects]>;
@@ -37,16 +45,17 @@ const LEVELS: Record<UserRole, Partial<Record<Subjects, Actions>>> = {
     TranslationData: 'Administrate',
     Users: 'Administrate',
   },
+  // No Glossary level: tech enriches and edits the glossary through GlossaryData, and does not
+  // review or finalize suggestions.
   tech: {
-    Glossary: 'Maintain',
     GlossaryData: 'Maintain',
     Translation: 'Maintain',
     TranslationData: 'Maintain',
     Users: 'Maintain',
   },
-  manager: { Glossary: 'Update', Translation: 'Maintain', TranslationData: 'Maintain' },
-  leader: { Glossary: 'Maintain', Translation: 'Maintain' },
-  editor: { Glossary: 'Update', Translation: 'Update' },
+  manager: { Translation: 'Maintain', TranslationData: 'Maintain' },
+  leader: { Glossary: 'Update', Translation: 'Maintain' },
+  editor: { Translation: 'Update' },
   assistant: { Translation: 'Update' },
   reader: {},
 };

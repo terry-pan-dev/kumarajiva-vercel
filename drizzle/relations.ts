@@ -10,6 +10,7 @@ import { projectReferencesTable } from './tables/projectReference';
 import { referencesTable } from './tables/reference';
 import { rollsTable } from './tables/roll';
 import { sectionsTable } from './tables/section';
+import { suggestionsTable } from './tables/suggestion';
 import { sutrasTable } from './tables/sutra';
 import { teamsTable } from './tables/team';
 import { usersTable } from './tables/user';
@@ -197,11 +198,24 @@ export const projectReferencesTableRelations = relations(projectReferencesTable,
 
 export const glossariesTableRelations = relations(glossariesTable, ({ many }) => ({
   translations: many(glossaryTranslationsTable),
+  suggestions: many(suggestionsTable),
 }));
 
-export const glossaryTranslationsTableRelations = relations(glossaryTranslationsTable, ({ one }) => ({
+export const glossaryTranslationsTableRelations = relations(glossaryTranslationsTable, ({ one, many }) => ({
   glossary: one(glossariesTable, {
     fields: [glossaryTranslationsTable.glossaryId],
     references: [glossariesTable.id],
+  }),
+  suggestions: many(suggestionsTable),
+}));
+
+export const suggestionsTableRelations = relations(suggestionsTable, ({ one }) => ({
+  glossary: one(glossariesTable, {
+    fields: [suggestionsTable.glossaryId],
+    references: [glossariesTable.id],
+  }),
+  translation: one(glossaryTranslationsTable, {
+    fields: [suggestionsTable.translationId],
+    references: [glossaryTranslationsTable.id],
   }),
 }));

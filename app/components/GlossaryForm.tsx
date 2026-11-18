@@ -1,10 +1,10 @@
-// The fields the Create and Update Glossary Entry forms share: the source term, and the list of
-// translations with a button to add one. Both forms send the same shape (glossaryCreateFormSchema,
-// glossaryEditFormSchema), so a translation looks the same wherever it is entered.
+// The fields of the glossary entry editor in Data Management (glossaryEditFormSchema): the source
+// term, and the list of translations with buttons to add and remove one. A direct change, for the
+// trusted roles only (GlossaryData Maintain: tech, admin; the save checks it too). Everyone else
+// suggests from the glossary page (docs/plans/glossary-suggestions.md).
 import { Plus, Trash2 } from 'lucide-react';
-import { pinyin } from 'pinyin-pro';
-import { useCallback, useEffect, useRef } from 'react';
-import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
+import { useEffect, useRef } from 'react';
+import { useFieldArray, useWatch } from 'react-hook-form';
 
 import { Can } from '~/authorisation';
 import { Button } from '~/components/ui/button';
@@ -36,27 +36,34 @@ const NEW_TRANSLATION = {
 
 export const newTranslation = () => ({ ...NEW_TRANSLATION });
 
-// `isNew`: a term being created, so the headword can be typed (and its pinyin filled in).
-export function SourceTermFields({ isNew = false }: { isNew?: boolean }) {
-  const { getValues, setValue } = useFormContext();
-  const fillPhonetic = useCallback(() => {
-    const sourceTerm = getValues('sourceTerm');
-    if (sourceTerm && !getValues('phonetic')) {
-      setValue('phonetic', pinyin(sourceTerm), { shouldValidate: true, shouldDirty: true });
-    }
-  }, [getValues, setValue]);
+// The edit form's starting values for an entry (glossaryEditFormSchema). Each translation keeps
+// its id to the save, so the save edits it in place; baseTranslationIds are the ids the form was
+// opened with, so a translation someone else adds meanwhile is kept, not read as a removal.
+export const editFormValues = (glossary: {
+  id: string;
+  sourceTerm: string;
+  phonetic?: string | null;
+  cbetaFrequency?: string | null;
+  translations: ({ id?: string; discussion?: string | null } & Record<string, unknown>)[];
+}) => ({
+  id: glossary.id,
+  sourceTerm: glossary.sourceTerm,
+  cbetaFrequency: glossary.cbetaFrequency || '',
+  phonetic: glossary.phonetic || '',
+  translations: glossary.translations.map((translation) => ({
+    ...translation,
+    discussion: translation.discussion ?? null,
+  })),
+  baseTranslationIds: glossary.translations.flatMap((translation) => translation.id ?? []),
+});
+
+// The headword is fixed: an entry is edited, never renamed.
+export function SourceTermFields() {
   return (
     <>
       <Divider>CHINESE</Divider>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <FormInput
-          required
-          label="Term"
-          name="sourceTerm"
-          disabled={!isNew}
-          description="The term in Chinese"
-          onBlur={isNew ? fillPhonetic : undefined}
-        />
+        <FormInput required disabled label="Term" name="sourceTerm" description="The term in Chinese" />
         <FormInput name="phonetic" label="Phonetic" description="The phonetic of the term" />
         <FormInput name="cbetaFrequency" label="CBETA Frequency" description="The CBETA frequency of the term" />
       </div>
@@ -64,15 +71,11 @@ export function SourceTermFields({ isNew = false }: { isNew?: boolean }) {
   );
 }
 
-// `keepOne`: the create form, where an entry needs at least one translation, so the last one
-// cannot be removed. Adding and removing need Maintain (the save checks it too); Update may
-// only edit the translations there are.
-// `addAtTop`: also offer "Add translation" above the list (just after the source term), for the
-// edit form, where the existing translations can push the bottom button out of view. Not on the
-// create form, whose blank first translation is there to be filled in. Either way the new
-// translation is appended, since the list order is the saved order; the form scrolls to it so
-// it is seen to land at the bottom.
-export function TranslationsFields({ keepOne = false, addAtTop = false }: { keepOne?: boolean; addAtTop?: boolean }) {
+// "Add translation" shows above the list too (just after the source term), since the existing
+// translations can push the bottom button out of view. Either way the new translation is
+// appended, since the list order is the saved order; the form scrolls to it so it is seen to land
+// at the bottom.
+export function TranslationsFields() {
   const { fields, append, remove } = useFieldArray({ name: 'translations' });
   const lastRef = useRef<HTMLDivElement>(null);
   const scrollToLast = useRef(false);
@@ -90,7 +93,7 @@ export function TranslationsFields({ keepOne = false, addAtTop = false }: { keep
   const translations: { id?: string; language?: string }[] = useWatch({ name: 'translations' }) ?? [];
   return (
     <>
-      {addAtTop && <AddTranslationButton onClick={addTranslation} />}
+      <AddTranslationButton onClick={addTranslation} />
       {fields.map((field, index) => {
         const translation = translations[index] ?? {};
         const isNew = !translation.id;
@@ -102,22 +105,20 @@ export function TranslationsFields({ keepOne = false, addAtTop = false }: { keep
                 {isNew ? `NEW TRANSLATION${language && ` · ${language}`}` : language}
               </Divider>
               {/* Removal takes effect on Save, like every other edit in this form. */}
-              {!(keepOne && fields.length === 1) && (
-                <Can I="Maintain" this="Glossary">
-                  <Button
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                    title="Remove translation"
-                    onClick={() => remove(index)}
-                    aria-label="remove-translation"
-                  >
-                    <Trash2 className="text-muted-foreground hover:text-destructive h-4 w-4" />
-                  </Button>
-                </Can>
-              )}
+              <Can I="Maintain" this="GlossaryData">
+                <Button
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                  title="Remove translation"
+                  onClick={() => remove(index)}
+                  aria-label="remove-translation"
+                >
+                  <Trash2 className="text-muted-foreground hover:text-destructive h-4 w-4" />
+                </Button>
+              </Can>
             </div>
-            <TranslationFields index={index} isNew={isNew} />
+            <TranslationFields isNew={isNew} prefix={`translations.${index}`} />
           </div>
         );
       })}
@@ -128,7 +129,7 @@ export function TranslationsFields({ keepOne = false, addAtTop = false }: { keep
 
 function AddTranslationButton({ onClick }: { onClick: () => void }) {
   return (
-    <Can I="Maintain" this="Glossary">
+    <Can I="Maintain" this="GlossaryData">
       <div className="flex justify-center">
         <Button type="button" onClick={onClick} variant="secondary">
           <Plus className="mr-1 h-4 w-4" />
@@ -139,9 +140,11 @@ function AddTranslationButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-// One translation. Its language is chosen only while it is new; a stored one keeps its own.
-function TranslationFields({ index, isNew }: { index: number; isNew: boolean }) {
-  const name = (field: string) => `translations.${index}.${field}`;
+// One translation's fields, under `prefix` in the form's values ('' for the top level; the
+// suggestions queue enriches a single translation with them). Its language is chosen only while
+// it is new; a stored one keeps its own.
+export function TranslationFields({ prefix, isNew }: { prefix: string; isNew: boolean }) {
+  const name = (field: string) => (prefix ? `${prefix}.${field}` : field);
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {isNew && (

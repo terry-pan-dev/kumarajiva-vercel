@@ -55,6 +55,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-suggestion: var(--suggestion);
+  --color-suggestion-muted: var(--suggestion-muted);
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -151,6 +153,10 @@ body {
     --chart-3: hsl(197 37% 24%);
     --chart-4: hsl(43 74% 66%);
     --chart-5: hsl(27 87% 67%);
+    /* Pending glossary suggestions: a hue of their own, since yellow-600 marks selection and
+       search highlights. Always paired with a dashed border, so it reads without colour too. */
+    --suggestion: hsl(263 70% 50%);
+    --suggestion-muted: hsl(263 70% 97%);
     --radius: 0.5rem;
   }
 
@@ -182,6 +188,8 @@ body {
     --chart-3: hsl(30 80% 55%);
     --chart-4: hsl(280 65% 60%);
     --chart-5: hsl(340 75% 55%);
+    --suggestion: hsl(263 80% 75%);
+    --suggestion-muted: hsl(263 40% 14%);
   }
 }
 

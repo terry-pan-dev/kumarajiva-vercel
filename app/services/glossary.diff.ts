@@ -100,16 +100,3 @@ export function diffTranslations(
   }
   return diff;
 }
-
-// Whether saving `next` over the stored translations adds or removes one, which takes the
-// Maintain ability; Update may only edit the translations that exist. Matched by id, so
-// replacing one translation with another counts even though the list keeps its length.
-// Throws TranslationListError as diffTranslations does.
-export function addsOrRemoves(
-  stored: readonly StoredTranslation[],
-  next: readonly GlossaryTranslation[],
-  basis?: TranslationBasis,
-): boolean {
-  const { insert, remove } = diffTranslations(stored, next, basis);
-  return insert.length > 0 || remove.length > 0;
-}

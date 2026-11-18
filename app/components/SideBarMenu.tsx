@@ -214,6 +214,18 @@ export function SideBarMenu({
                       >
                         Glossary Import
                       </NavLink>
+                      <NavLink
+                        to="/data/glossary/editor"
+                        className={({ isActive }) =>
+                          cn(
+                            'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',
+                            'hover:rounded-md hover:bg-slate-200/50 hover:text-yellow-600',
+                            isActive && 'rounded-md bg-slate-200/30 text-yellow-400',
+                          )
+                        }
+                      >
+                        Glossary Editor
+                      </NavLink>
                       {canInspectGlossary && (
                         <NavLink
                           to="/data/glossary/inspector"

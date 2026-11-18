@@ -8,6 +8,9 @@ const abilityFor = (role: UserRole) => defineAbilityFor({ role });
 const LEVELS = ['Update', 'Maintain', 'Administrate'] as const;
 const SUBJECTS = ['Glossary', 'GlossaryData', 'Translation', 'TranslationData', 'Users'] as const;
 
+const rolesThat = (level: (typeof LEVELS)[number], subject: (typeof SUBJECTS)[number]) =>
+  ROLE_VALUES.filter((role) => abilityFor(role).can(level, subject)).sort();
+
 // ─── Levels are cumulative ───────────────────────────────────────────────────
 
 describe('defineAbilityFor — levels', () => {
@@ -28,18 +31,19 @@ describe('defineAbilityFor — levels', () => {
   });
 
   it('does not grant a higher level along with a lower one', () => {
-    const editor = abilityFor('editor');
+    const leader = abilityFor('leader');
 
-    expect(editor.can('Update', 'Glossary')).toBe(true);
-    expect(editor.can('Maintain', 'Glossary')).toBe(false);
-    expect(editor.can('Administrate', 'Glossary')).toBe(false);
+    expect(leader.can('Update', 'Glossary')).toBe(true);
+    expect(leader.can('Maintain', 'Glossary')).toBe(false);
+    expect(leader.can('Administrate', 'Glossary')).toBe(false);
   });
 });
 
 // ─── Destructive and account-level access ────────────────────────────────────
 
 describe('defineAbilityFor — Administrate', () => {
-  // Replacing the glossary, purging the trash, hard deletes and the inspectors all lean on this.
+  // Replacing the glossary, purging the trash, hard deletes, the inspectors and finalizing
+  // glossary suggestions all lean on this.
   it('grants Administrate on every subject to admin only', () => {
     for (const subject of SUBJECTS) {
       for (const role of ROLE_VALUES) {
@@ -59,15 +63,32 @@ describe('defineAbilityFor — Administrate', () => {
   });
 });
 
+// ─── The glossary: suggestions (docs/plans/glossary-suggestions.md) ──────────
+
+describe('defineAbilityFor — glossary', () => {
+  it('lets leaders and admins review suggestions (Glossary Update)', () => {
+    expect(rolesThat('Update', 'Glossary')).toEqual(['admin', 'leader']);
+  });
+
+  // Glossary Maintain is retired: only admin holds it, as part of Administrate.
+  it('gives Glossary Maintain to nobody but admin', () => {
+    expect(rolesThat('Maintain', 'Glossary')).toEqual(['admin']);
+  });
+
+  // Enriching suggestions and changing the glossary directly: the trusted roles.
+  it('lets tech and admin enrich and edit directly (GlossaryData Maintain)', () => {
+    expect(rolesThat('Maintain', 'GlossaryData')).toEqual(['admin', 'tech']);
+    expect(rolesThat('Update', 'GlossaryData')).toEqual(['admin', 'tech']);
+  });
+});
+
 // ─── Everyday pages versus Data Management ───────────────────────────────────
 
 describe('defineAbilityFor — data subjects', () => {
-  // Leaders add glossary entries and edit origin text, but are kept out of the import and
-  // cleanup tools.
-  it('lets leader maintain the everyday pages without any Data Management access', () => {
+  // Leaders edit origin text, but are kept out of the import and cleanup tools.
+  it('lets leader maintain translations without any Data Management access', () => {
     const leader = abilityFor('leader');
 
-    expect(leader.can('Maintain', 'Glossary')).toBe(true);
     expect(leader.can('Maintain', 'Translation')).toBe(true);
     for (const level of LEVELS) {
       expect(leader.can(level, 'GlossaryData'), level).toBe(false);
@@ -78,22 +99,24 @@ describe('defineAbilityFor — data subjects', () => {
   it('lets manager maintain translation data but gives it nothing on the glossary', () => {
     const manager = abilityFor('manager');
 
-    expect(manager.can('Update', 'Glossary')).toBe(true);
     expect(manager.can('Maintain', 'Translation')).toBe(true);
     expect(manager.can('Maintain', 'TranslationData')).toBe(true);
     for (const level of LEVELS) {
+      expect(manager.can(level, 'Glossary'), level).toBe(false);
       expect(manager.can(level, 'GlossaryData'), level).toBe(false);
     }
   });
 
-  // Tech does maintenance on everything, but nothing irreversible and no user management.
-  it('lets tech maintain every subject without administrating any', () => {
+  // Tech does maintenance on everything but the suggestion review, nothing irreversible and no
+  // user management.
+  it('lets tech maintain every subject but Glossary, without administrating any', () => {
     const tech = abilityFor('tech');
 
     for (const subject of SUBJECTS) {
-      expect(tech.can('Maintain', subject), subject).toBe(true);
+      expect(tech.can('Maintain', subject), subject).toBe(subject !== 'Glossary');
       expect(tech.can('Administrate', subject), subject).toBe(false);
     }
+    expect(tech.can('Update', 'Glossary')).toBe(false);
   });
 });
 
@@ -109,12 +132,14 @@ describe('defineAbilityFor — least-privileged roles', () => {
     }
   });
 
-  it('lets an assistant edit translations and nothing else', () => {
-    const assistant = abilityFor('assistant');
-    for (const subject of SUBJECTS) {
-      for (const level of LEVELS) {
-        const allowed = subject === 'Translation' && level === 'Update';
-        expect(assistant.can(level, subject), `${level} ${subject}`).toBe(allowed);
+  it('lets an editor or an assistant edit translations and nothing else', () => {
+    for (const role of ['editor', 'assistant'] as const) {
+      const ability = abilityFor(role);
+      for (const subject of SUBJECTS) {
+        for (const level of LEVELS) {
+          const allowed = subject === 'Translation' && level === 'Update';
+          expect(ability.can(level, subject), `${role} ${level} ${subject}`).toBe(allowed);
+        }
       }
     }
   });

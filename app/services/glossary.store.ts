@@ -202,13 +202,19 @@ export const GlossaryStore = {
 
   // The inspector's search box: an exact uuid, or a term, search_id or translation containing
   // the query. A translation matches on its rendering, source, passages, author or discussion.
-  // Trash included, since the inspector shows every row.
-  findForInspection: async (query: string, limit: number): Promise<GlossaryEntry[]> => {
+  // Trash included by default, since the inspector shows every row; the entry editor in Data
+  // Management passes `includeTrash: false`, as a trashed entry is not edited.
+  findForInspection: async (
+    query: string,
+    limit: number,
+    { includeTrash = true }: { includeTrash?: boolean } = {},
+  ): Promise<GlossaryEntry[]> => {
     const trimmed = query.trim();
     if (!trimmed) return [];
+    const scope = includeTrash ? undefined : notTrashed;
 
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
-      return withTranslations(await selectTerms().where(sql`${glossariesTable.id} = ${trimmed}::uuid`));
+      return withTranslations(await selectTerms().where(and(sql`${glossariesTable.id} = ${trimmed}::uuid`, scope)));
     }
 
     const pattern = `%${trimmed}%`;
@@ -231,10 +237,13 @@ export const GlossaryStore = {
     return withTranslations(
       await selectTerms()
         .where(
-          or(
-            ilike(glossariesTable.sourceTerm, pattern),
-            eq(glossariesTable.searchId, trimmed),
-            exists(translationMatches),
+          and(
+            or(
+              ilike(glossariesTable.sourceTerm, pattern),
+              eq(glossariesTable.searchId, trimmed),
+              exists(translationMatches),
+            ),
+            scope,
           ),
         )
         .orderBy(glossariesTable.sourceTerm)

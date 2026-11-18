@@ -18,6 +18,7 @@ import { readUsers } from '~/services';
 type Subtitle =
   | 'glossaryInspector'
   | 'glossaryImport'
+  | 'glossaryEntries'
   | 'translation'
   | 'documentInspector'
   | 'paragraphs'
@@ -26,6 +27,7 @@ type Subtitle =
 
 function getDataSubtitle(pathname: string): Subtitle | null {
   if (pathname.includes('/glossary/inspector')) return 'glossaryInspector';
+  if (pathname.includes('/glossary/editor')) return 'glossaryEntries';
   if (pathname.includes('/glossary')) return 'glossaryImport';
   if (pathname.includes('/translation')) return 'translation';
   if (pathname.includes('/inspector')) return 'documentInspector';

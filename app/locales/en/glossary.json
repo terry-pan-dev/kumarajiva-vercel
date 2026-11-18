@@ -340,6 +340,27 @@
       "scanFailed": "Failed to scan the search index."
     }
   },
+  "entries": {
+    "title": "Edit glossary entries",
+    "description": "Find an entry and change it directly. Changes saved here go straight into the glossary, without review.",
+    "search": "Search",
+    "searchPlaceholder": "Chinese term, translation, source or id",
+    "searchHint": "Search for the entry you want to edit.",
+    "noResults": "No entries match “{{query}}”.",
+    "resultCount_one": "{{count}} entry",
+    "resultCount_other": "{{count}} entries",
+    "selectHint": "Choose an entry to edit it.",
+    "notFound": "This entry is no longer in the glossary. It may have been moved to the trash.",
+    "save": "Save changes",
+    "saved": "“{{term}}” was saved.",
+    "stale": "This entry was changed by someone else. Reload it and edit it again.",
+    "trashed": "Moved “{{term}}” to the trash.",
+    "trashDescription_one": "This moves “{{term}}” and its translation to the trash. It disappears from the glossary and search; an admin can restore it, or delete it for good, from the Glossary Inspector.",
+    "trashDescription_other": "This moves “{{term}}” and all {{count}} of its translations to the trash. It disappears from the glossary and search; an admin can restore it, or delete it for good, from the Glossary Inspector.",
+    "suggestionsLink_zero": "Suggestions about this entry (none pending)",
+    "suggestionsLink_one": "Suggestions about this entry ({{count}} pending)",
+    "suggestionsLink_other": "Suggestions about this entry ({{count}} pending)"
+  },
   "errors": {
     "notAllowed": "Not allowed.",
     "noRows": "No rows provided.",
@@ -348,5 +369,161 @@
     "parseFailed": "Failed to parse file.",
     "invalidFileType": "Invalid file type. Please upload a CSV or XLSX file.",
     "noValidRows": "No valid rows found. Ensure the file has a ChineseTerm column."
+  },
+  "suggest": {
+    "send": "Send suggestion",
+    "sending": "Sending…",
+    "sent": "Suggestion sent",
+    "sentDescription": "Thank you. It will be reviewed before it changes the glossary.",
+    "translation": "Translation",
+    "language": "Language",
+    "notes": "Notes",
+    "notePrompt": "For example, why this translation, what is the source, a quote where it is used, location of the quote, etc.",
+    "term": {
+      "title": "Suggest a new glossary term",
+      "description": "Please provide the term and a translation. During the review process, the entry will be fully fleshed out by the team.",
+      "chineseTerm": "Chinese term",
+      "pinyin": "Pinyin",
+      "fromPassage": "From this passage",
+      "recordSource": "Record the source: {{source}}",
+      "page": "p. {{page}}",
+      "attachOrigin": "Attach the source passage",
+      "attachTarget": "Attach the translated passage",
+      "asTranslation": "Suggest it as a new translation of that entry"
+    },
+    "change": {
+      "button": "Suggest a change",
+      "title": "Suggest a change",
+      "description": "Say what needs correcting in the translation above; the team will review it.",
+      "placeholder": "e.g. a typo, the wrong source or page, a misquoted passage…"
+    },
+    "newTranslation": {
+      "button": "Suggest a translation",
+      "title": "Suggest a translation of “{{term}}”",
+      "description": "Please provide a new translation and as much relevant information as possible. During the review process, the entry will be fully fleshed out by the team."
+    },
+    "pending": {
+      "show": "Show suggestions",
+      "underReview": "Under review",
+      "by": "suggested by {{name}}, {{when}}",
+      "byYou": "suggested by you, {{when}}",
+      "changeUnderReview_one": "A change to this translation is under review",
+      "changeUnderReview_other": "{{count}} changes to this translation are under review",
+      "yourNote": "Your note:",
+      "edit": "Edit",
+      "save": "Save",
+      "withdraw": "Withdraw",
+      "withdrawConfirm": "Withdraw this suggestion?",
+      "locked": "The team has started on it, so it can no longer be edited.",
+      "updated": "Suggestion updated",
+      "withdrawn": "Suggestion withdrawn",
+      "proposed": "Proposed",
+      "proposedDescription": "A suggested new term. It isn't in the glossary until the team has reviewed it."
+    }
+  },
+  "queue": {
+    "title": "Glossary Suggestions",
+    "description": "Suggestions made on the glossary page. Tech and admins fill in what is missing; admins accept or reject them.",
+    "filters": {
+      "status": "Status",
+      "kind": "Kind",
+      "ready": "Ready",
+      "mine": "Only mine",
+      "entry": "Entry: {{term}}",
+      "clearEntry": "All entries"
+    },
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn",
+      "dismissed": "Dismissed",
+      "all": "All"
+    },
+    "kind": {
+      "all": "All kinds",
+      "new-term": "New term",
+      "new-translation": "New translation",
+      "change-request": "Change request",
+      "edit": "Edit"
+    },
+    "ready": {
+      "any": "Any",
+      "yes": "Ready",
+      "no": "Not ready"
+    },
+    "readyBadge": "Ready",
+    "empty": "No suggestions match these filters.",
+    "count_one": "{{count}} suggestion",
+    "count_other": "{{count}} suggestions",
+    "completeness": "{{filled}}/{{total}} fields",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {{page}} of {{pageCount}}",
+    "selectHint": "Select a suggestion to work on it.",
+    "notFound": "This suggestion doesn't exist.",
+    "targetGone": "(entry removed)",
+    "translationGone": "The translation this is about no longer exists.",
+    "meta": {
+      "submitted": "Suggested",
+      "from": "From",
+      "openSection": "open the section",
+      "enriched": "Enriched",
+      "ready": "Marked ready",
+      "decided": "Decided"
+    },
+    "request": "Change requested",
+    "submitterNote": "Submitter's note",
+    "existingTranslations": "The entry's translations:",
+    "stored": "STORED TRANSLATION · {{language}}",
+    "compare": {
+      "field": "Field",
+      "base": "When suggested",
+      "current": "Stored now",
+      "proposed": "Proposed",
+      "changedSince": "changed since",
+      "cleared": "(cleared)"
+    },
+    "asSubmitted": "As submitted",
+    "enrich": "PROPOSAL",
+    "headwordHint": "The term in Chinese. A changed one is checked against the glossary again.",
+    "reset": "Reset",
+    "saveEnrichment": "Save proposal",
+    "flagToEdit": "Turn into an edit",
+    "flagToEditHint": "Make the requested correction below. It becomes an edit suggestion, still pending, to accept or reject.",
+    "saveAsEdit": "Save as edit",
+    "cancel": "Cancel",
+    "markReady": "Ready for review",
+    "markReadyHint": "Information only; not required to finalize.",
+    "finalize": "FINALIZE",
+    "decisionNote": "Decision note (optional)",
+    "accept": "Accept",
+    "reject": "Reject",
+    "dismiss": "Dismiss",
+    "removeTranslation": "Remove the translation",
+    "removeConfirm": "Remove this translation for good?",
+    "staleWarning": "The stored translation changed after this suggestion was made ({{fields}}). Compare the versions above; accepting overwrites those changes.",
+    "acceptAnyway": "Accept anyway",
+    "termExists": "This headword is in the glossary now. You can merge the suggestion into that entry as a new translation; it stays pending.",
+    "merge": "Merge as a new translation",
+    "invalid": "Invalid request.",
+    "done": {
+      "enrich": "Proposal saved.",
+      "ready": "Ready mark updated.",
+      "accept": "Accepted and applied to the glossary.",
+      "reject": "Rejected.",
+      "dismiss": "Dismissed.",
+      "merge": "Merged: now a new translation of the existing entry.",
+      "flag-to-edit": "Turned into an edit.",
+      "remove-translation": "The translation was removed."
+    },
+    "openEntry": "Open the entry"
+  },
+  "editor": {
+    "tabs": {
+      "label": "Glossary Editor",
+      "entries": "Entries",
+      "suggestions": "Suggestions"
+    }
   }
 }

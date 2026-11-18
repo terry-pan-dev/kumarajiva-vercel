@@ -11,13 +11,18 @@ import {
 } from '~/components/ui/context-menu';
 
 import { useCommentContext } from './CommentContext';
+import { useGlossarySuggest } from './glossary/GlossarySuggestContext';
+import { type SuggestPassage } from './glossary/SuggestTermDialog';
 import { Icons } from './icons';
 import { useSearchContext } from './SearchContext';
 
-export default function ContextMenuWrapper({ children }: PropsWithChildren) {
+// `passage`: the paragraph this menu belongs to, offered to "Add Glossary Entry" (with the
+// document and section the page provides). The item shows only inside a GlossarySuggestProvider.
+export default function ContextMenuWrapper({ children, passage }: PropsWithChildren<{ passage?: SuggestPassage }>) {
   const [selectedText, setSelectedText] = useState('');
   const { setOpen, setSearch } = useSearchContext(); // Add this line
   const { setOpenModal } = useCommentContext();
+  const openSuggest = useGlossarySuggest();
 
   const handleSearch = () => {
     if (selectedText) {
@@ -67,6 +72,16 @@ export default function ContextMenuWrapper({ children }: PropsWithChildren) {
           Search Glossary
           <ContextMenuShortcut>⌘K</ContextMenuShortcut>
         </ContextMenuItem>
+        {/* Anyone signed in may suggest; the selection, if any, fills in the term. */}
+        {openSuggest && (
+          <ContextMenuItem
+            className="flex cursor-pointer items-center"
+            onClick={() => openSuggest({ selection: selectedText.slice(0, 50), passage })}
+          >
+            <Icons.Add className="mr-2 h-4 w-4" />
+            Add Glossary Entry
+          </ContextMenuItem>
+        )}
         <Can I="Update" this="Translation">
           <ContextMenuItem
             disabled={!selectedText}
