@@ -16,7 +16,7 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { z } from 'zod';
 
 import { assertAuthUser } from '~/auth.server';
-import { SuggestionError, type SuggestionErrorCode } from '~/services/suggestion.rules';
+import { SUGGESTION_ERROR_STATUS, SuggestionError } from '~/services/suggestion.rules';
 import {
   editOwnSuggestion,
   readPendingSuggestionViews,
@@ -25,25 +25,11 @@ import {
 } from '~/services/suggestion.service';
 import { ownRequestSchema, submitRequestSchema } from '~/validations/suggestion.validation';
 
-const STATUS: Record<SuggestionErrorCode, number> = {
-  forbidden: 403,
-  'not-found': 404,
-  invalid: 400,
-  'wrong-kind': 400,
-  'nothing-changed': 400,
-  'not-pending': 409,
-  locked: 409,
-  'target-gone': 409,
-  'term-exists': 409,
-  stale: 409,
-  'last-translation': 409,
-};
-
 // Not exported: a route module's exports other than action/loader stay in the client bundle.
 const suggestionErrorResponse = (error: SuggestionError) =>
   json(
     { success: false, code: error.code, message: error.message, glossaryId: error.glossaryId, fields: error.fields },
-    { status: STATUS[error.code] },
+    { status: SUGGESTION_ERROR_STATUS[error.code] },
   );
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {

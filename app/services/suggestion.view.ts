@@ -85,3 +85,103 @@ export const groupPendingForEntry = (views: readonly PendingSuggestionView[]) =>
   }
   return { newTranslations, changesByTranslation };
 };
+
+// ─── The Data Management queue (step 7) ──────────────────────────────────────
+
+// What a suggestion is, in the queue's words. A note-only suggestion on a stored translation
+// (action `flag`) is a "change request" (user, 2026-11-18).
+export const SUGGESTION_KINDS = ['new-term', 'new-translation', 'change-request', 'edit'] as const;
+export type SuggestionKind = (typeof SUGGESTION_KINDS)[number];
+
+export const suggestionKind = (row: Pick<ReadSuggestion, 'targetKind' | 'action'>): SuggestionKind => {
+  if (row.targetKind === 'glossary_term') return 'new-term';
+  if (row.action === 'create') return 'new-translation';
+  if (row.action === 'flag') return 'change-request';
+  return 'edit';
+};
+
+// The columns a kind is stored as, for filtering.
+export const KIND_COLUMNS: Record<SuggestionKind, { targetKind: SuggestionTarget; action: SuggestionAction }> = {
+  'new-term': { targetKind: 'glossary_term', action: 'create' },
+  'new-translation': { targetKind: 'glossary_translation', action: 'create' },
+  'change-request': { targetKind: 'glossary_translation', action: 'flag' },
+  edit: { targetKind: 'glossary_translation', action: 'edit' },
+};
+
+// A translation's optional content: what enrichers fill in.
+const OPTIONAL_FIELDS = [
+  'sourceName',
+  'volume',
+  'sourceText',
+  'targetText',
+  'author',
+  'partOfSpeech',
+  'phonetic',
+  'discussion',
+] as const;
+
+const proposedTranslationOf = (row: Pick<ReadSuggestion, 'targetKind' | 'action' | 'proposed'>) => {
+  if (row.action !== 'create' || !row.proposed) return null;
+  const proposed = row.proposed as Partial<ProposedTerm> & Partial<ProposedTranslation>;
+  return (row.targetKind === 'glossary_term' ? proposed.translation : proposed) ?? null;
+};
+
+// How many of a proposed translation's optional fields are filled in; null for change requests
+// and edits, which have no translation of their own.
+export const completeness = (
+  row: Pick<ReadSuggestion, 'targetKind' | 'action' | 'proposed'>,
+): { filled: number; total: number } | null => {
+  const translation = proposedTranslationOf(row) as Record<string, unknown> | null;
+  if (!translation) return null;
+  const filled = OPTIONAL_FIELDS.filter((field) => {
+    const value = translation[field];
+    return typeof value === 'string' && value.trim() !== '';
+  }).length;
+  return { filled, total: OPTIONAL_FIELDS.length };
+};
+
+export const proposedRendering = (row: Pick<ReadSuggestion, 'targetKind' | 'action' | 'proposed'>) =>
+  proposedTranslationOf(row)?.term ?? null;
+
+// One row of the queue.
+export type QueueItem = {
+  id: string;
+  kind: SuggestionKind;
+  status: ReadSuggestion['status'];
+  // The term it is about: the proposed headword of a new term, else the entry's (null if the
+  // entry is gone).
+  headword: string | null;
+  rendering: string | null;
+  submitter: string;
+  createdAt: string;
+  completeness: { filled: number; total: number } | null;
+  ready: boolean;
+};
+
+// An edit compared field by field: what it was suggested against (base), what is stored now
+// (current) and what it proposes. `stale`: the stored value changed since, so accepting
+// overwrites someone else's change.
+export type FieldComparison = {
+  field: string;
+  base: string | null;
+  current: string | null;
+  proposed: string | null;
+  stale: boolean;
+};
+
+const norm = (value: unknown) => (typeof value === 'string' && value !== '' ? value : null);
+
+export const compareEdit = (
+  base: Record<string, unknown>,
+  current: Record<string, unknown>,
+  edit: Record<string, unknown>,
+): FieldComparison[] =>
+  Object.keys(edit)
+    .filter((field) => edit[field] !== undefined && norm(edit[field]) !== norm(base[field]))
+    .map((field) => ({
+      field,
+      base: norm(base[field]),
+      current: norm(current[field]),
+      proposed: norm(edit[field]),
+      stale: norm(current[field]) !== norm(base[field]),
+    }));

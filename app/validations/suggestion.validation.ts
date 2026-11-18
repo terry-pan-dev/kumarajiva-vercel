@@ -123,3 +123,24 @@ export const ownRequestSchema = z.object({
   proposed: z.unknown().optional(),
   note: z.unknown().optional(),
 });
+
+// What the Data Management suggestions queue (/data/glossary/editor/suggestions) accepts. The values
+// (`proposed`, `note`) are checked by the service, by the suggestion's kind.
+const queueTarget = { id: z.string().uuid() };
+export const queueRequestSchema = z.discriminatedUnion('intent', [
+  z.object({ intent: z.literal('enrich'), ...queueTarget, proposed: z.unknown() }),
+  z.object({ intent: z.literal('ready'), ...queueTarget, ready: z.boolean() }),
+  z.object({
+    intent: z.literal('accept'),
+    ...queueTarget,
+    note: z.unknown().optional(),
+    confirmStale: z.boolean().optional(),
+  }),
+  z.object({ intent: z.literal('reject'), ...queueTarget, note: z.unknown().optional() }),
+  z.object({ intent: z.literal('dismiss'), ...queueTarget, note: z.unknown().optional() }),
+  z.object({ intent: z.literal('merge'), ...queueTarget, glossaryId: z.string().uuid() }),
+  z.object({ intent: z.literal('flag-to-edit'), ...queueTarget, proposed: z.unknown() }),
+  z.object({ intent: z.literal('remove-translation'), ...queueTarget, note: z.unknown().optional() }),
+]);
+export type QueueRequest = z.infer<typeof queueRequestSchema>;
+export type QueueIntent = QueueRequest['intent'];

@@ -10,6 +10,7 @@ import {
   editOwnSuggestion,
   enrichSuggestion,
   flagToEdit,
+  listSuggestionQueue,
   mergeIntoTerm,
   rejectSuggestion,
   removeFlaggedTranslation,
@@ -36,6 +37,7 @@ const suggestions = vi.hoisted(() => ({
 }));
 const glossaryStore = vi.hoisted(() => ({
   findById: vi.fn(),
+  findByIds: vi.fn(),
   findByTerms: vi.fn(),
   findByTermsIncludingTrash: vi.fn(),
 }));
@@ -516,5 +518,47 @@ describe('flags, merges', () => {
       proposed: expect.objectContaining({ term: 'prajñā', language: 'english' }),
     });
     expect(glossaryWrites()).toBe(0);
+  });
+});
+
+// ─── The queue ───────────────────────────────────────────────────────────────
+
+describe('listSuggestionQueue', () => {
+  it('filters a kind by its columns, and names each row’s term and submitter', async () => {
+    suggestions.list.mockResolvedValue({
+      rows: [
+        suggestion({
+          id: 'a',
+          targetKind: 'glossary_term',
+          glossaryId: null,
+          proposed: { sourceTerm: '菩提', translation: { term: 'awakening', sourceName: '金剛經' } },
+          createdBy: 'u-editor',
+        }),
+        suggestion({ id: 'b', action: 'flag', translationId: 't1', proposed: null, readyAt: new Date() }),
+        suggestion({ id: 'c', glossaryId: null }),
+      ],
+      total: 3,
+    });
+    glossaryStore.findByIds.mockResolvedValue([entry([])]);
+    const { items, total } = await listSuggestionQueue({ kind: 'change-request', status: 'pending', limit: 50 });
+    expect(suggestions.list).toHaveBeenCalledWith({
+      status: 'pending',
+      limit: 50,
+      targetKind: 'glossary_translation',
+      action: 'flag',
+    });
+    expect(glossaryStore.findByIds).toHaveBeenCalledWith(['g1']);
+    expect(total).toBe(3);
+    expect(items[0]).toMatchObject({
+      kind: 'new-term',
+      headword: '菩提',
+      rendering: 'awakening',
+      submitter: 'Ananda',
+      completeness: { filled: 1, total: 8 },
+      ready: false,
+    });
+    expect(items[1]).toMatchObject({ kind: 'change-request', headword: '般若', rendering: null, ready: true });
+    // A translation suggestion whose entry is gone.
+    expect(items[2]).toMatchObject({ kind: 'new-translation', headword: null });
   });
 });

@@ -14,7 +14,7 @@
 import { type z } from 'zod';
 
 import { type ReadSuggestion } from '~/drizzle/tables';
-import { type ReviewVerdict } from '~/utils/constants';
+import { type ReviewVerdict, type SuggestionStatus } from '~/utils/constants';
 import {
   noteSchema,
   proposedEditSchema,
@@ -44,7 +44,17 @@ import {
   type TranslationSnapshot,
 } from './suggestion.rules';
 import { SuggestionStore } from './suggestion.store';
-import { pendingSuggestionView, type PendingSuggestionView } from './suggestion.view';
+import {
+  compareEdit,
+  completeness,
+  KIND_COLUMNS,
+  pendingSuggestionView,
+  proposedRendering,
+  suggestionKind,
+  type PendingSuggestionView,
+  type QueueItem,
+  type SuggestionKind,
+} from './suggestion.view';
 import { readUsers } from './user.service';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -556,3 +566,79 @@ export const searchPendingTermViews = async (
   const names = await userNames();
   return rows.map((row) => pendingSuggestionView(row, viewer.id, names));
 };
+
+// ─── The Data Management queue (step 7) ──────────────────────────────────────
+
+export type QueueFilter = {
+  status?: SuggestionStatus;
+  kind?: SuggestionKind;
+  createdBy?: string;
+  // One entry's suggestions (its history, with status unset).
+  glossaryId?: string;
+  ready?: boolean;
+  limit: number;
+  offset?: number;
+};
+
+// A page of the queue, oldest first, with what each row needs to be told apart.
+export const listSuggestionQueue = async (filter: QueueFilter): Promise<{ items: QueueItem[]; total: number }> => {
+  const { kind, ...rest } = filter;
+  const { rows, total } = await SuggestionStore.list({ ...rest, ...(kind ? KIND_COLUMNS[kind] : {}) });
+  const glossaryIds = [...new Set(rows.flatMap((row) => row.glossaryId ?? []))];
+  const [entries, names] = await Promise.all([
+    glossaryIds.length ? GlossaryStore.findByIds(glossaryIds) : Promise.resolve([]),
+    userNames(),
+  ]);
+  const headwords = new Map(entries.map((entry) => [entry.id, entry.sourceTerm]));
+  const items = rows.map((row) => ({
+    id: row.id,
+    kind: suggestionKind(row),
+    status: row.status,
+    headword:
+      row.targetKind === 'glossary_term'
+        ? ((row.proposed as ProposedTerm | null)?.sourceTerm ?? null)
+        : (headwords.get(row.glossaryId ?? '') ?? null),
+    rendering: proposedRendering(row),
+    submitter: names.get(row.createdBy) ?? 'someone',
+    createdAt: row.createdAt.toISOString(),
+    completeness: completeness(row),
+    ready: Boolean(row.readyAt),
+  }));
+  return { items, total };
+};
+
+// One suggestion, with everything the queue's detail screen shows: the entry it is about, the
+// stored translation (change requests and edits), and for an edit its field-by-field comparison.
+export const readSuggestionForQueue = async (id: string) => {
+  const suggestion = await SuggestionStore.findById(id);
+  if (!suggestion) return null;
+  const [entry, names] = await Promise.all([
+    suggestion.glossaryId ? GlossaryStore.findById(suggestion.glossaryId) : Promise.resolve(undefined),
+    userNames(),
+  ]);
+  const translation = entry?.translations.find((t) => t.id === suggestion.translationId) ?? null;
+  const name = (userId: string | null) => (userId ? (names.get(userId) ?? 'someone') : null);
+  const comparison =
+    suggestion.action === 'edit' && translation && suggestion.proposed
+      ? compareEdit(
+          (suggestion.base ?? {}) as Record<string, unknown>,
+          snapshotOf(translation),
+          suggestion.proposed as Record<string, unknown>,
+        )
+      : null;
+  return {
+    suggestion,
+    kind: suggestionKind(suggestion),
+    submitter: name(suggestion.createdBy),
+    enrichedBy: name(suggestion.enrichedBy),
+    readyBy: name(suggestion.readyBy),
+    decidedBy: name(suggestion.decidedBy),
+    entry: entry ?? null,
+    translation,
+    comparison,
+  };
+};
+
+// How many pending suggestions an entry has, for the entry editor's link to them.
+export const countPendingSuggestions = async (glossaryId: string): Promise<number> =>
+  (await SuggestionStore.list({ status: 'pending', glossaryId, limit: 1 })).total;

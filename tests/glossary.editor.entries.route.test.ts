@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { newTranslation } from '~/components/GlossaryForm';
-import { action, loader } from '~/routes/_app.data.glossary.entries';
+import { action, loader } from '~/routes/_app.data.glossary.editor.entries';
 import { TranslationListError } from '~/services/glossary.diff';
 
 // The Data Management entry editor: direct changes to the glossary (edit, trash), for the
@@ -14,9 +14,11 @@ const mocks = vi.hoisted(() => ({
   searchGlossaryEntriesForEditing: vi.fn(),
   trashGlossaryById: vi.fn(),
   updateGlossaryTranslations: vi.fn(),
+  countPendingSuggestions: vi.fn(),
 }));
 
 vi.mock('~/auth.server', () => ({ assertAuthUser: mocks.assertAuthUser }));
+vi.mock('~/services/suggestion.service', () => ({ countPendingSuggestions: mocks.countPendingSuggestions }));
 vi.mock('~/services/glossary.service', () => ({
   readGlossariesByIds: mocks.readGlossariesByIds,
   searchGlossaryEntriesForEditing: mocks.searchGlossaryEntriesForEditing,
@@ -26,7 +28,7 @@ vi.mock('~/services/glossary.service', () => ({
 
 const G = '00000000-0000-4000-8000-00000000000a';
 const T = '00000000-0000-4000-8000-0000000000b1';
-const URL_BASE = 'http://localhost/data/glossary/entries';
+const URL_BASE = 'http://localhost/data/glossary/editor/entries';
 
 const runLoader = (search = '') => loader({ request: new Request(`${URL_BASE}${search}`), params: {}, context: {} });
 const post = (fields: Record<string, string>) =>
@@ -68,6 +70,7 @@ beforeEach(() => {
   mocks.searchGlossaryEntriesForEditing.mockResolvedValue([]);
   mocks.trashGlossaryById.mockResolvedValue({ term: '般若', deletedRecords: 1 });
   mocks.updateGlossaryTranslations.mockResolvedValue({ id: G });
+  mocks.countPendingSuggestions.mockResolvedValue(2);
 });
 
 describe('loader', () => {
@@ -82,7 +85,13 @@ describe('loader', () => {
     const response = await runLoader(`?q=%E8%88%AC&id=${G}`);
     expect(mocks.searchGlossaryEntriesForEditing).toHaveBeenCalledWith('般', 50);
     expect(mocks.readGlossariesByIds).toHaveBeenCalledWith([G]);
-    expect(await response.json()).toMatchObject({ query: '般', selectedId: G, selected: { id: G } });
+    expect(await response.json()).toMatchObject({
+      query: '般',
+      selectedId: G,
+      selected: { id: G },
+      pendingSuggestions: 2,
+    });
+    expect(mocks.countPendingSuggestions).toHaveBeenCalledWith(G);
   });
 
   it('does not search without a query', async () => {

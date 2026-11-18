@@ -215,7 +215,7 @@ export function SideBarMenu({
                         Glossary Import
                       </NavLink>
                       <NavLink
-                        to="/data/glossary/entries"
+                        to="/data/glossary/editor"
                         className={({ isActive }) =>
                           cn(
                             'flex items-center py-2 pr-4 pl-14 text-sm font-medium text-white',

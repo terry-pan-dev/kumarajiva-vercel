@@ -48,6 +48,21 @@ export class SuggestionError extends Error {
   }
 }
 
+// The HTTP status each refusal answers with, for the routes.
+export const SUGGESTION_ERROR_STATUS: Record<SuggestionErrorCode, number> = {
+  forbidden: 403,
+  'not-found': 404,
+  invalid: 400,
+  'wrong-kind': 400,
+  'nothing-changed': 400,
+  'not-pending': 409,
+  locked: 409,
+  'target-gone': 409,
+  'term-exists': 409,
+  stale: 409,
+  'last-translation': 409,
+};
+
 // ─── Permissions ─────────────────────────────────────────────────────────────
 
 export const canEnrich = (user: SuggestionUser) => defineAbilityFor(user).can('Maintain', 'GlossaryData');

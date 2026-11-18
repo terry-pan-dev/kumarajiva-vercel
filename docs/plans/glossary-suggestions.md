@@ -2,12 +2,12 @@
 
 Written 2026-11-17. **Design agreed with the user. The schema below was approved by the user on
 2026-11-17.** Steps 0–3 and the removal of "Add New Entry" are committed on `glossary-input`.
-Steps 4 and 5 are committed too. Step 6 is done in the working tree. Migration 0030 is applied to the
-shared dev database (with the user's go-ahead), not yet to prod. Steps 7+ are not started.
+Steps 4–6 are committed too. Step 7 is done in the working tree. Migration 0030 is applied to the
+shared dev database (with the user's go-ahead), not yet to prod. Steps 8+ are not started.
 
 **Merging into main:** step 5 was the minimum (everyone can now suggest changes and translations).
-Since step 6 the glossary page shows pending suggestions; until step 7 only the database shows
-them to admins.
+Since step 6 the glossary page shows pending suggestions; since step 7 admins finalize them in
+Data Management.
 
 ## Why
 
@@ -507,8 +507,49 @@ Each step is its own PR, run through typecheck, eslint and vitest.
    - **Texts:** `glossary:suggest.pending.*` in en and zh-Hant.
    - **Tests:** `tests/suggestion.view.test.ts` (6), `tests/suggestions.route.test.ts` (+8). The
      components are untested (no component-test setup).
-7. **Data Management suggestions queue:** list, filters, enrich (the step 4 editor), mark
-   ready, and the admin finalize screen.
+7. **Data Management suggestions queue. Done (working tree, 2026-11-18).**
+   - **Route** `app/routes/_app.data.glossary.suggestions.tsx` (`/data/glossary/suggestions`,
+     sidebar "Glossary Suggestions", subtitle `glossarySuggestions`). Loader and action check
+     GlossaryData Maintain (`canEnrich`); the service checks each operation's own rule, so
+     finalizing stays admin-only.
+   - **List** (`listSuggestionQueue`): oldest first, 50 a page. Filters in the URL: `status`
+     (pending by default, or `all`), `kind` (new term, new translation, change request, edit;
+     `KIND_COLUMNS`), `mine`, `ready`. Each row: headword (proposed, or the entry's), proposed
+     rendering, kind, submitter, date, completeness (filled optional translation fields of 8),
+     ready.
+   - **No review columns, filters or sort, and no extra confirmation for an unreviewed
+     suggestion:** leaders review informally (2026-11-18).
+   - **Detail** (`readSuggestionForQueue`, `SuggestionQueueDetail`): submitter, link to the
+     section it came from (context `projectId` + `sectionId`) and page, enriched / ready /
+     decided stamps, the submitter's note (labelled "Change requested" on a change request),
+     the stored translation (change request, edit), and for an edit a field table: when
+     suggested, stored now (marked when changed since), proposed (`compareEdit`). "As submitted"
+     shows the original once enriched.
+   - **Enrich:** the step 4 translation fields (`TranslationFields`, now exported with a
+     `prefix`), filled from the proposal; a new term also has headword, pinyin and CBETA
+     frequency (a changed headword is re-checked, step 6). An edit is shown as the translation
+     it would produce and saved as the fields that differ from its base. "Ready for review"
+     switch.
+   - **Finalize (admin):** a decision note, then accept / reject; for a change request, dismiss,
+     remove the translation (with a confirm), or "Turn into an edit" (a form on the stored
+     translation, saved through `flagToEdit`). A `stale` answer shows "Accept anyway"
+     (`confirmStale`); `term-exists` on a new term offers "Merge as a new translation".
+   - `SUGGESTION_ERROR_STATUS` moved to `suggestion.rules.ts`, shared by both routes.
+   - **Texts:** `glossary:queue.*` in en and zh-Hant. The form's field labels stay English, as
+     in the step 4 editor.
+   - **Tests:** `tests/glossary.suggestions.route.test.ts` (28), `suggestion.view` (+3),
+     `suggestion.service` (+1). Components untested.
+   - **Merged with the entry editor (user, 2026-11-18)**, to keep the Data Management menu short:
+     one sidebar item, "Glossary Editor" (`/data/glossary/editor`, layout
+     `_app.data.glossary.editor.tsx`), with tabs **Entries** (`…/editor/entries`, the step 4
+     editor) and **Suggestions** (`…/editor/suggestions`, this queue). Each tab keeps its own
+     loader, action and gate. `/data/glossary/editor` redirects to Entries; the old
+     `/data/glossary/entries` redirects there too (301, with its query).
+     - A suggestion links to its entry ("Open the entry"); an open entry links to its
+       suggestions, pending or not ("Suggestions about this entry (N pending)",
+       `countPendingSuggestions`). That link is the queue filtered by `?glossary=<id>&status=all`
+       (store filter `glossaryId`), shown as an "Entry: …" chip that can be cleared. This is the
+       per-term history link.
 8. **Notifications:** badges, digest cron, submitter emails.
 9. **Later:** paragraph suggestions (adding the `paragraph_id` column and the `paragraph` enum
    value) if and when translation paragraphs need them.

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { groupPendingForEntry, pendingSuggestionView } from '~/services/suggestion.view';
+import {
+  compareEdit,
+  completeness,
+  groupPendingForEntry,
+  pendingSuggestionView,
+  proposedRendering,
+  suggestionKind,
+} from '~/services/suggestion.view';
 
 // What the glossary page shows of a pending suggestion: proposals of new terms and translations
 // in full; changes to stored translations only as "under review"; the note to its submitter alone.
@@ -69,5 +76,44 @@ describe('groupPendingForEntry', () => {
     expect(newTranslations.map((v) => v.id)).toEqual(['a']);
     expect(changesByTranslation.get('t1')?.map((v) => v.id)).toEqual(['b', 'c']);
     expect(changesByTranslation.get('t2')?.map((v) => v.id)).toEqual(['d']);
+  });
+});
+
+describe('the queue helpers', () => {
+  it('names each kind, a flag as a change request', () => {
+    expect(suggestionKind({ targetKind: 'glossary_term', action: 'create' })).toBe('new-term');
+    expect(suggestionKind({ targetKind: 'glossary_translation', action: 'create' })).toBe('new-translation');
+    expect(suggestionKind({ targetKind: 'glossary_translation', action: 'flag' })).toBe('change-request');
+    expect(suggestionKind({ targetKind: 'glossary_translation', action: 'edit' })).toBe('edit');
+  });
+
+  it('counts the filled optional fields of a proposed translation, a new term’s included', () => {
+    expect(
+      completeness({
+        targetKind: 'glossary_translation',
+        action: 'create',
+        proposed: { term: 'x', language: 'english', sourceName: '金剛經', volume: ' ', discussion: 'why' },
+      }),
+    ).toEqual({ filled: 2, total: 8 });
+    expect(
+      completeness({
+        targetKind: 'glossary_term',
+        action: 'create',
+        proposed: { sourceTerm: '般若', translation: { term: 'x', author: 'K' } },
+      }),
+    ).toEqual({ filled: 1, total: 8 });
+    expect(completeness({ targetKind: 'glossary_translation', action: 'flag', proposed: null })).toBeNull();
+    expect(
+      proposedRendering({ targetKind: 'glossary_term', action: 'create', proposed: { translation: { term: 'y' } } }),
+    ).toBe('y');
+  });
+
+  it('compares an edit field by field, marking what changed in storage since', () => {
+    const base = { term: 'wisdom', volume: '1', discussion: null };
+    const current = { term: 'wisdom', volume: '2', discussion: null };
+    expect(compareEdit(base, current, { term: 'insight', volume: '3', discussion: '' })).toEqual([
+      { field: 'term', base: 'wisdom', current: 'wisdom', proposed: 'insight', stale: false },
+      { field: 'volume', base: '1', current: '2', proposed: '3', stale: true },
+    ]);
   });
 });

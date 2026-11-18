@@ -11,7 +11,7 @@
 // is a projection of a row, so it can always be regenerated.
 //
 // The trash is the one place here that does touch entries: trashing from the entry editor
-// (/data/glossary/entries) only sets deleted_at, and this page is where a trashed entry is
+// (/data/glossary/editor/entries) only sets deleted_at, and this page is where a trashed entry is
 // restored or deleted for good.
 //
 // The index writes run for minutes on the current glossary, so neither is a single request. The

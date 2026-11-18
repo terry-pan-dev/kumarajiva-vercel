@@ -118,7 +118,7 @@ export function TranslationsFields() {
                 </Button>
               </Can>
             </div>
-            <TranslationFields index={index} isNew={isNew} />
+            <TranslationFields isNew={isNew} prefix={`translations.${index}`} />
           </div>
         );
       })}
@@ -140,9 +140,11 @@ function AddTranslationButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-// One translation. Its language is chosen only while it is new; a stored one keeps its own.
-function TranslationFields({ index, isNew }: { index: number; isNew: boolean }) {
-  const name = (field: string) => `translations.${index}.${field}`;
+// One translation's fields, under `prefix` in the form's values ('' for the top level; the
+// suggestions queue enriches a single translation with them). Its language is chosen only while
+// it is new; a stored one keeps its own.
+export function TranslationFields({ prefix, isNew }: { prefix: string; isNew: boolean }) {
+  const name = (field: string) => (prefix ? `${prefix}.${field}` : field);
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {isNew && (

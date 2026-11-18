@@ -26,6 +26,7 @@ export type SuggestionFilter = {
   targetKind?: SuggestionTarget;
   action?: SuggestionAction;
   createdBy?: string;
+  glossaryId?: string;
   ready?: boolean;
   reviewed?: boolean;
   limit: number;
@@ -49,6 +50,7 @@ export const SuggestionStore = {
     if (filter.targetKind) conditions.push(eq(suggestionsTable.targetKind, filter.targetKind));
     if (filter.action) conditions.push(eq(suggestionsTable.action, filter.action));
     if (filter.createdBy) conditions.push(eq(suggestionsTable.createdBy, filter.createdBy));
+    if (filter.glossaryId) conditions.push(eq(suggestionsTable.glossaryId, filter.glossaryId));
     if (filter.ready !== undefined) {
       conditions.push(filter.ready ? isNotNull(suggestionsTable.readyAt) : isNull(suggestionsTable.readyAt));
     }

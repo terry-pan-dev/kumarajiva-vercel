@@ -339,7 +339,9 @@
     "stale": "此條目已被他人修改。請重新載入後再編輯。",
     "trashed": "已將「{{term}}」移至垃圾桶。",
     "trashDescription_one": "這會將「{{term}}」及其譯詞移至垃圾桶。它會從詞彙表和搜尋中消失；管理員可在詞彙檢查頁面還原或永久刪除。",
-    "trashDescription_other": "這會將「{{term}}」及其全部 {{count}} 個譯詞移至垃圾桶。它會從詞彙表和搜尋中消失；管理員可在詞彙檢查頁面還原或永久刪除。"
+    "trashDescription_other": "這會將「{{term}}」及其全部 {{count}} 個譯詞移至垃圾桶。它會從詞彙表和搜尋中消失；管理員可在詞彙檢查頁面還原或永久刪除。",
+    "suggestionsLink_zero": "此詞條的建議（無待處理）",
+    "suggestionsLink_other": "此詞條的建議（{{count}} 項待處理）"
   },
   "errors": {
     "notAllowed": "不允許此操作。",
@@ -398,6 +400,110 @@
       "withdrawn": "建議已撤回",
       "proposed": "建議中",
       "proposedDescription": "這是建議的新詞條，經團隊審核後才會加入詞彙表。"
+    }
+  },
+  "queue": {
+    "title": "詞彙建議",
+    "description": "在詞彙表頁面提出的建議。技術人員與管理員補充缺少的資料；管理員決定接受或拒絕。",
+    "filters": {
+      "status": "狀態",
+      "kind": "類型",
+      "ready": "就緒",
+      "mine": "只看我的",
+      "entry": "詞條：{{term}}",
+      "clearEntry": "所有詞條"
+    },
+    "status": {
+      "pending": "待處理",
+      "accepted": "已接受",
+      "rejected": "已拒絕",
+      "withdrawn": "已撤回",
+      "dismissed": "已駁回",
+      "all": "全部"
+    },
+    "kind": {
+      "all": "所有類型",
+      "new-term": "新詞條",
+      "new-translation": "新翻譯",
+      "change-request": "修改請求",
+      "edit": "編輯"
+    },
+    "ready": {
+      "any": "不限",
+      "yes": "已就緒",
+      "no": "未就緒"
+    },
+    "readyBadge": "已就緒",
+    "empty": "沒有符合條件的建議。",
+    "count_other": "{{count}} 項建議",
+    "completeness": "{{filled}}/{{total}} 欄位",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "page": "第 {{page}} 頁，共 {{pageCount}} 頁",
+    "selectHint": "選擇一項建議來處理。",
+    "notFound": "找不到這項建議。",
+    "targetGone": "（詞條已移除）",
+    "translationGone": "相關的翻譯已不存在。",
+    "meta": {
+      "submitted": "建議者",
+      "from": "來源",
+      "openSection": "開啟章節",
+      "enriched": "已補充",
+      "ready": "標記就緒",
+      "decided": "已決定"
+    },
+    "request": "修改請求",
+    "submitterNote": "建議者備註",
+    "existingTranslations": "詞條現有翻譯：",
+    "stored": "現有翻譯 · {{language}}",
+    "compare": {
+      "field": "欄位",
+      "base": "建議時",
+      "current": "目前",
+      "proposed": "建議",
+      "changedSince": "之後已變更",
+      "cleared": "（清除）"
+    },
+    "asSubmitted": "原始提交",
+    "enrich": "建議內容",
+    "headwordHint": "中文詞條。修改後會再次檢查是否已在詞彙表中。",
+    "reset": "重設",
+    "saveEnrichment": "儲存建議內容",
+    "flagToEdit": "轉為編輯",
+    "flagToEditHint": "在下方進行要求的修正。它會成為仍待處理的編輯建議，再決定接受或拒絕。",
+    "saveAsEdit": "儲存為編輯",
+    "cancel": "取消",
+    "markReady": "可供審核",
+    "markReadyHint": "僅供參考，不是決定的必要條件。",
+    "finalize": "決定",
+    "decisionNote": "決定備註（選填）",
+    "accept": "接受",
+    "reject": "拒絕",
+    "dismiss": "駁回",
+    "removeTranslation": "移除此翻譯",
+    "removeConfirm": "確定永久移除此翻譯？",
+    "staleWarning": "此建議提出後，現有翻譯已變更（{{fields}}）。請比較上方版本；接受將覆蓋這些變更。",
+    "acceptAnyway": "仍然接受",
+    "termExists": "此詞條現在已在詞彙表中。可將建議合併為該詞條的新翻譯；合併後仍待處理。",
+    "merge": "合併為新翻譯",
+    "invalid": "無效的請求。",
+    "done": {
+      "enrich": "建議內容已儲存。",
+      "ready": "就緒標記已更新。",
+      "accept": "已接受並套用到詞彙表。",
+      "reject": "已拒絕。",
+      "dismiss": "已駁回。",
+      "merge": "已合併為現有詞條的新翻譯。",
+      "flag-to-edit": "已轉為編輯。",
+      "remove-translation": "翻譯已移除。"
+    },
+    "openEntry": "開啟詞條"
+  },
+  "editor": {
+    "tabs": {
+      "label": "詞彙編輯",
+      "entries": "詞條",
+      "suggestions": "建議"
     }
   }
 }
